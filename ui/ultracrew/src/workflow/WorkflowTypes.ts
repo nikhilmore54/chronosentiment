@@ -157,6 +157,62 @@ export interface SchedulerDecision {
   selected_metrics: RosterAlternativeMetrics;
 }
 
+// ─── AT-42: Roster Provenance & Checkpoint Management ────────────────────────
+// Distinguishes four distinct roster states:
+// 1. Original recommendation (immutable system recommendation, e.g. Candidate A)
+// 2. Selected starting roster (immutable reference alternative chosen by planner, e.g. Candidate B)
+// 3. Current working roster (mutable active roster being edited)
+// 4. Saved checkpoints (named intermediate working versions, immutable & restorable)
+
+export type RosterChangeSource =
+  | 'alternative_selection'
+  | 'manual_edit'
+  | 'auto_rest_recovery'
+  | 'auto_redistribution'
+  | 'restored_checkpoint';
+
+export interface ShiftAssignmentDifference {
+  shiftId?: number;
+  staffId: string;
+  dayIdx: number;
+  originalShift: string;
+  currentShift: string;
+  source: RosterChangeSource;
+  sourceLabel: string;
+  description: string;
+}
+
+export interface RosterReference {
+  recommendationId: string;
+  scenarioId: string;
+  selectedCandidateId: string;
+  policySnapshotHash: string;
+  demandSnapshotId: string;
+  assignments: Record<string, string | null>;
+  schedule?: Record<string, string[]>;
+}
+
+export interface RosterCheckpoint {
+  checkpointId: string;
+  name: string;
+  createdAt: string;
+  sourceRevisionId: string;
+  restoredFromCheckpointId?: string;
+  recommendationId: string;
+  selectedCandidateId: string;
+  scenarioId: string;
+  policySnapshotHash: string;
+  demandSnapshotId: string;
+  assignments: Record<string, string | null>;
+  schedule: Record<string, string[]>;
+  lockedShiftIds: string[];
+  validationSummary: {
+    coverage: number;
+    hardViolations: number;
+    softViolations?: number;
+  };
+}
+
 // ─── P0-E: Raw backend API shapes ────────────────────────────────────────────
 //
 // The backend ScheduleResponse.alternatives field is Vec<ProductionParetoSolution>,

@@ -24,6 +24,9 @@ import type {
   DerivationModifierBreakdown,
   DerivationLogEntry,
   ApprovedDemandSnapshot,
+  RosterChangeSource,
+  ShiftAssignmentDifference,
+  RosterCheckpoint,
 } from './WorkflowTypes';
 import { SHIFT_CYCLE } from './WorkflowTypes';
 
@@ -3198,4 +3201,281 @@ export function createApprovedDemandSnapshot(
   };
 
   return deepFreeze(snapshot) as ApprovedDemandSnapshot;
+}
+
+// ─── AT-42: Roster Provenance & Checkpoint Management Utilities ──────────────
+
+/**
+ * Converts a UI schedule (staffId -> shift[]) to canonical shift assignments (shiftId -> workerId | null).
+ */
+export function scheduleToCanonicalAssignments(
+  staff: StaffMember[],
+  schedule: Record<string, string[]>,
+  customSlotMeta?: Record<number, ShiftSlotMeta>,
+): Record<string, string | null> {
+  const slotMeta = customSlotMeta ?? getScheduleSlotMeta(staff);
+  const conv = scheduleToAssignments(staff, schedule, slotMeta);
+  const result: Record<string, string | null> = {};
+
+  for (const slot of Object.values(slotMeta)) {
+    const wid = conv.assignments[String(slot.shiftId)];
+    result[String(slot.shiftId)] = (wid && staff[wid - 1]) ? staff[wid - 1].id : null;
+  }
+
+  return result;
+}
+
+/**
+ * Converts canonical shift assignments (shiftId -> workerId | null) back into a UI schedule (staffId -> shift[]).
+ */
+export function canonicalAssignmentsToSchedule(
+  staff: StaffMember[],
+  assignments: Record<string, string | null>,
+  customSlotMeta?: Record<number, ShiftSlotMeta>,
+): Record<string, string[]> {
+  const slotMeta = customSlotMeta ?? getScheduleSlotMeta(staff);
+  const maxDay = Math.max(...Object.values(slotMeta).map(m => m.dayIdx), 27);
+  const schedule: Record<string, string[]> = {};
+  staff.forEach(s => {
+    schedule[s.id] = Array(maxDay + 1).fill('');
+  });
+
+  for (const [shiftIdStr, workerId] of Object.entries(assignments)) {
+    if (!workerId) continue;
+    const meta = slotMeta[Number(shiftIdStr)];
+    if (!meta) continue;
+    if (schedule[workerId] && meta.dayIdx <= maxDay) {
+      schedule[workerId][meta.dayIdx] = meta.label;
+    }
+  }
+
+  return schedule;
+}
+
+/**
+ * Compares current working roster against the original recommendation.
+ * Computes differences for each canonical position / cell.
+ * Only positions that actually differ receive an entry in the returned Map.
+ */
+export function computeScheduleDifferences(params: {
+  staff: StaffMember[];
+  currentSchedule: Record<string, string[]>;
+  originalRecommendation: Record<string, string[]>;
+  selectedStartingRoster?: Record<string, string[]> | null;
+  lockedCells?: Set<string>;
+  autoResolvedCells?: Map<string, string>;
+  redistResult?: RedistributionResult | null;
+  restoredCheckpointName?: string | null;
+  customSlotMeta?: Record<number, ShiftSlotMeta>;
+}): Map<string, ShiftAssignmentDifference> {
+  const {
+    staff,
+    currentSchedule,
+    originalRecommendation,
+    selectedStartingRoster,
+    lockedCells,
+    autoResolvedCells,
+    redistResult,
+    restoredCheckpointName,
+    customSlotMeta,
+  } = params;
+
+  const slotMeta = customSlotMeta ?? getScheduleSlotMeta(staff);
+  const horizonDays = customSlotMeta && Object.keys(customSlotMeta).length > 0
+    ? Math.max(...Object.values(customSlotMeta).map(m => m.dayIdx)) + 1
+    : (Object.values(currentSchedule)[0]?.length || 28);
+
+  const diffMap = new Map<string, ShiftAssignmentDifference>();
+
+  for (const s of staff) {
+    for (let d = 0; d < horizonDays; d++) {
+      const currentShift = currentSchedule[s.id]?.[d] ?? '';
+      const origShift = originalRecommendation[s.id]?.[d] ?? '';
+      const cellKey = `${s.id}:${d}`;
+
+      // AT-42.1: If untouched/identical to original recommendation, NO indicator
+      if (currentShift === origShift) {
+        continue;
+      }
+
+      // AT-42.2: Difference detected
+      const selectedShift = selectedStartingRoster?.[s.id]?.[d] ?? '';
+      let source: RosterChangeSource = 'alternative_selection';
+      let sourceLabel = 'Selected alternative';
+      let description = 'Differs from initial recommendation';
+
+      // Find canonical shiftId if assigned
+      let shiftId: number | undefined;
+      if (currentShift) {
+        const matchingSlot = Object.values(slotMeta).find(m => m.dayIdx === d && m.label === currentShift);
+        if (matchingSlot) shiftId = matchingSlot.shiftId;
+      }
+
+      if (lockedCells?.has(cellKey)) {
+        // AT-42.4: Explicit scheduler manual edit
+        source = 'manual_edit';
+        sourceLabel = 'Manual planner edit';
+        description = 'Explicit scheduler reassignment (locked cell)';
+      } else if (autoResolvedCells?.has(cellKey)) {
+        // AT-42.4: Automatic rest-conflict recovery
+        source = 'auto_rest_recovery';
+        sourceLabel = 'Automatic rest-conflict resolution';
+        description = autoResolvedCells.get(cellKey) || 'Rebalanced to satisfy configured minimum 10h rest';
+      } else if (redistResult?.log.provenanceMap[cellKey] === 'system_reassignment') {
+        // AT-42.4: Automatic redistribution
+        source = 'auto_redistribution';
+        sourceLabel = 'Automatic redistribution';
+        const changeRec = redistResult.log.changeRecords.find(r => r.assignmentId === cellKey);
+        description = changeRec?.reason || 'Rebalanced during redistribution';
+      } else if (restoredCheckpointName) {
+        // Restored checkpoint working version
+        source = 'restored_checkpoint';
+        sourceLabel = `Restored checkpoint (${restoredCheckpointName})`;
+        description = `Restored from checkpoint "${restoredCheckpointName}"`;
+      } else if (selectedStartingRoster && currentShift === selectedShift && selectedShift !== origShift) {
+        // AT-42.3: Candidate B intentional selection over Candidate A
+        source = 'alternative_selection';
+        sourceLabel = 'Selected alternative (Candidate B)';
+        description = 'Alternative candidate selected over initial recommendation';
+      } else {
+        source = 'alternative_selection';
+        sourceLabel = 'Selected alternative';
+        description = 'Alternative roster assignment';
+      }
+
+      diffMap.set(cellKey, {
+        shiftId,
+        staffId: s.id,
+        dayIdx: d,
+        originalShift: origShift,
+        currentShift,
+        source,
+        sourceLabel,
+        description,
+      });
+    }
+  }
+
+  return diffMap;
+}
+
+/**
+ * Creates an immutable RosterCheckpoint capturing current roster state, manual locks, and validation status.
+ */
+export function createRosterCheckpoint(params: {
+  name: string;
+  staff: StaffMember[];
+  schedule: Record<string, string[]>;
+  lockedCells: Set<string>;
+  scenarioId: string;
+  recommendationId: string;
+  selectedCandidateId: string;
+  policySnapshotHash: string;
+  demandSnapshotId: string;
+  validationSummary: {
+    coverage: number;
+    hardViolations: number;
+    softViolations?: number;
+  };
+  sourceRevisionId?: string;
+  restoredFromCheckpointId?: string;
+  customSlotMeta?: Record<number, ShiftSlotMeta>;
+}): RosterCheckpoint {
+  const slotMeta = params.customSlotMeta ?? getScheduleSlotMeta(params.staff);
+  const assignments = scheduleToCanonicalAssignments(params.staff, params.schedule, slotMeta);
+  const clonedSchedule: Record<string, string[]> = {};
+  for (const [k, v] of Object.entries(params.schedule)) {
+    clonedSchedule[k] = [...v];
+  }
+
+  return {
+    checkpointId: `chk-${Date.now()}-${Math.floor(Math.random() * 10000)}`,
+    name: params.name.trim() || `Checkpoint (${new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })})`,
+    createdAt: new Date().toISOString(),
+    sourceRevisionId: params.sourceRevisionId || `rev-${Date.now()}`,
+    restoredFromCheckpointId: params.restoredFromCheckpointId,
+    recommendationId: params.recommendationId,
+    selectedCandidateId: params.selectedCandidateId,
+    scenarioId: params.scenarioId,
+    policySnapshotHash: params.policySnapshotHash,
+    demandSnapshotId: params.demandSnapshotId,
+    assignments,
+    schedule: clonedSchedule,
+    lockedShiftIds: Array.from(params.lockedCells),
+    validationSummary: { ...params.validationSummary },
+  };
+}
+
+/**
+ * Validates whether a saved checkpoint is compatible with the active workspace scenario, policy, and demand.
+ * Prevents silent cross-scenario or cross-policy restoration (AT-42.8).
+ */
+export function validateCheckpointCompatibility(
+  checkpoint: RosterCheckpoint,
+  currentScenarioId: string,
+  currentPolicyHash: string,
+  currentDemandSnapshotId: string,
+): { compatible: boolean; error?: string } {
+  if (checkpoint.scenarioId && currentScenarioId && checkpoint.scenarioId !== currentScenarioId) {
+    return {
+      compatible: false,
+      error: `Cannot restore checkpoint: scenario mismatch (checkpoint is for "${checkpoint.scenarioId}", but current workspace is "${currentScenarioId}").`,
+    };
+  }
+  if (checkpoint.policySnapshotHash && currentPolicyHash && checkpoint.policySnapshotHash !== currentPolicyHash) {
+    return {
+      compatible: false,
+      error: `Cannot restore checkpoint: policy version mismatch (checkpoint used "${checkpoint.policySnapshotHash}", but current workspace is "${currentPolicyHash}").`,
+    };
+  }
+  if (checkpoint.demandSnapshotId && currentDemandSnapshotId && checkpoint.demandSnapshotId !== currentDemandSnapshotId) {
+    return {
+      compatible: false,
+      error: `Cannot restore checkpoint: demand snapshot mismatch (checkpoint used "${checkpoint.demandSnapshotId}", but current workspace is "${currentDemandSnapshotId}").`,
+    };
+  }
+  return { compatible: true };
+}
+
+/**
+ * Non-destructive restoration of a saved checkpoint.
+ * Returns the exact restored schedule and locked cells without modifying history.
+ */
+export function restoreRosterCheckpoint(
+  checkpoint: RosterCheckpoint,
+  currentScenarioId: string,
+  currentPolicyHash: string,
+  currentDemandSnapshotId: string,
+  staff: StaffMember[],
+  customSlotMeta?: Record<number, ShiftSlotMeta>,
+): {
+  restoredSchedule: Record<string, string[]>;
+  restoredLockedCells: Set<string>;
+  restoredFromId: string;
+  restoredName: string;
+} {
+  const check = validateCheckpointCompatibility(checkpoint, currentScenarioId, currentPolicyHash, currentDemandSnapshotId);
+  if (!check.compatible) {
+    throw new Error(check.error || 'Incompatible checkpoint cannot be restored.');
+  }
+
+  const slotMeta = customSlotMeta ?? getScheduleSlotMeta(staff);
+  let restoredSchedule: Record<string, string[]>;
+  if (checkpoint.schedule && Object.keys(checkpoint.schedule).length > 0) {
+    restoredSchedule = {};
+    for (const [k, v] of Object.entries(checkpoint.schedule)) {
+      restoredSchedule[k] = [...v];
+    }
+  } else {
+    restoredSchedule = canonicalAssignmentsToSchedule(staff, checkpoint.assignments, slotMeta);
+  }
+
+  const restoredLockedCells = new Set<string>(checkpoint.lockedShiftIds || []);
+
+  return {
+    restoredSchedule,
+    restoredLockedCells,
+    restoredFromId: checkpoint.checkpointId,
+    restoredName: checkpoint.name,
+  };
 }

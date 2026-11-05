@@ -1,8 +1,29 @@
 import React, { useState } from 'react';
-import type { StaffMember, ScheduleResult, AssignmentProvenanceState, ChangeRecord, RedistributionLog, RecurringPattern } from './WorkflowTypes';
+import type {
+  StaffMember,
+  ScheduleResult,
+  AssignmentProvenanceState,
+  ChangeRecord,
+  RedistributionLog,
+  RecurringPattern,
+  ShiftAssignmentDifference,
+  RosterCheckpoint,
+} from './WorkflowTypes';
 import { SHIFT_COLORS } from './WorkflowTypes';
 import { primaryBtnStyle, ghostBtnStyle } from './WorkflowComponents';
-import { redistributeWithLocks, buildStaffingRequirements, computeCanonicalCoverage, validateCurrentSchedule, getCsrfToken, localRebalanceSchedule, detectScheduleViolations } from './WorkflowUtils';
+import {
+  redistributeWithLocks,
+  buildStaffingRequirements,
+  computeCanonicalCoverage,
+  validateCurrentSchedule,
+  getCsrfToken,
+  localRebalanceSchedule,
+  detectScheduleViolations,
+  computeScheduleDifferences,
+  createRosterCheckpoint,
+  restoreRosterCheckpoint,
+  buildEditableSchedule,
+} from './WorkflowUtils';
 import type { RedistributionResult, ShiftSlotMeta } from './WorkflowUtils';
 
 const SHIFT_OPTIONS = ['Early', 'Late', 'Night', ''];
@@ -205,8 +226,9 @@ const ExplainModal: React.FC<{
   shift: string;
   staff: StaffMember[];
   result: ScheduleResult;
+  diff?: ShiftAssignmentDifference | null;
   onClose: () => void;
-}> = ({ nurseId, dayIdx, shift, staff, result, onClose }) => {
+}> = ({ nurseId, dayIdx, shift, staff, result, diff, onClose }) => {
   const member = staff.find(s => s.id === nurseId);
   const startDate = new Date('2026-07-14');
   const dt = new Date(startDate);
@@ -296,6 +318,43 @@ const ExplainModal: React.FC<{
           <button onClick={onClose} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', fontSize: '1.4rem', lineHeight: 1, padding: 0 }}>×</button>
         </div>
 
+        {/* AT-42: Deviation from Original Recommendation */}
+        {diff && (
+          <div style={{
+            backgroundColor: 'rgba(56,189,248,0.06)',
+            border: '1px solid rgba(56,189,248,0.3)',
+            borderRadius: '8px',
+            padding: '0.85rem 1rem',
+            marginBottom: '1.25rem',
+            fontSize: '0.85rem',
+          }}>
+            <div style={{ fontWeight: 700, color: 'var(--accent-color)', marginBottom: '0.4rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+              <span>ℹ</span>
+              <span>Deviation from Original Recommendation</span>
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem', color: 'var(--text-main)' }}>
+              <div><strong>Original recommendation:</strong> {diff.originalShift || 'Off'} — {nurseId}</div>
+              <div><strong>Current assignment:</strong> {diff.currentShift || 'Off'} — {nurseId}</div>
+              <div>
+                <strong>Change source:</strong>{' '}
+                <span style={{
+                  color: diff.source === 'manual_edit' ? '#f59e0b'
+                    : diff.source === 'auto_rest_recovery' ? '#38bdf8'
+                    : diff.source === 'auto_redistribution' ? '#818cf8'
+                    : diff.source === 'alternative_selection' ? '#34d399'
+                    : 'var(--accent-color)',
+                  fontWeight: 600,
+                }}>
+                  {diff.sourceLabel}
+                </span>
+              </div>
+              <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', fontStyle: 'italic', marginTop: '0.2rem' }}>
+                {diff.description}
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Assignment reasoning */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem', marginBottom: '1.25rem' }}>
           <div style={{ fontSize: '0.78rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Why this assignment?</div>
@@ -375,9 +434,44 @@ export const ReviewSchedule: React.FC<{
   recurringPatterns?: RecurringPattern[];
   onDismissPattern?: (reason: string) => void;
   customSlotMeta?: Record<number, ShiftSlotMeta>;
-}> = ({ staff, schedule, result, onScheduleChange, onNext, onBack, onRedistributionComplete, recurringPatterns, onDismissPattern, customSlotMeta }) => {
+  // AT-42: Four distinct roster states & Checkpoint Management
+  originalRecommendation?: Record<string, string[]>;
+  selectedStartingRoster?: Record<string, string[]> | null;
+  checkpoints?: RosterCheckpoint[];
+  onSaveCheckpoint?: (cp: RosterCheckpoint) => void;
+  onRestoreCheckpoint?: (cp: RosterCheckpoint) => void;
+  currentScenarioId?: string;
+  policySnapshotHash?: string;
+  demandSnapshotId?: string;
+  recommendationId?: string;
+  selectedCandidateId?: string;
+  restoredCheckpointInfo?: { checkpointId: string; name: string } | null;
+}> = ({
+  staff,
+  schedule,
+  result,
+  onScheduleChange,
+  onNext,
+  onBack,
+  decision_id: _decision_id,
+  onRedistributionComplete,
+  recurringPatterns,
+  onDismissPattern,
+  customSlotMeta,
+  originalRecommendation,
+  selectedStartingRoster,
+  checkpoints = [],
+  onSaveCheckpoint,
+  onRestoreCheckpoint,
+  currentScenarioId = 'scenario-default',
+  policySnapshotHash = 'hospital_policy_v1',
+  demandSnapshotId = 'canonical-196',
+  recommendationId = 'Candidate A',
+  selectedCandidateId = 'Candidate A',
+  restoredCheckpointInfo,
+}) => {
   const [activeCell, setActiveCell] = useState<{ nurseId: string; dayIdx: number } | null>(null);
-  const [explainTarget, setExplainTarget] = useState<{ nurseId: string; dayIdx: number; shift: string } | null>(null);
+  const [explainTarget, setExplainTarget] = useState<{ nurseId: string; dayIdx: number; shift: string; diff?: ShiftAssignmentDifference | null } | null>(null);
   const [editCount, setEditCount] = useState(0);
   const [editDist, setEditDist] = useState<Record<string, number>>({
     shift_swap: 0,       // changed from one shift type to another
@@ -392,6 +486,11 @@ export const ReviewSchedule: React.FC<{
   const [provenanceTarget, setProvenanceTarget] = useState<{ staffId: string; dayIdx: number } | null>(null);
   const [liveReport, setLiveReport] = useState<ScheduleResult['constraint_report'] | null>(result.constraint_report);
   const [autoResolveNotice, setAutoResolveNotice] = useState<string | null>(null);
+  // AT-42: Checkpoints and difference tracking state
+  const [autoResolvedCells, setAutoResolvedCells] = useState<Map<string, string>>(new Map());
+  const [restoredCheckpointName, setRestoredCheckpointName] = useState<string | null>(restoredCheckpointInfo?.name ?? null);
+  const [checkpointNameInput, setCheckpointNameInput] = useState('');
+  const [checkpointMessage, setCheckpointMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
   const horizonDays = customSlotMeta && Object.keys(customSlotMeta).length > 0
     ? Math.max(...Object.values(customSlotMeta).map(m => m.dayIdx)) + 1
@@ -448,6 +547,18 @@ export const ReviewSchedule: React.FC<{
       }
     }
 
+    if (candidateNotice) {
+      setAutoResolvedCells(prev => {
+        const nextMap = new Map(prev);
+        for (let d = 0; d < horizonDays; d++) {
+          if (Math.abs(d - dayIdx) === 1 && !newLocked.has(`${nurseId}:${d}`)) {
+            nextMap.set(`${nurseId}:${d}`, candidateNotice!);
+          }
+        }
+        return nextMap;
+      });
+    }
+
     onScheduleChange(resolvedSchedule);
     setEditCount(c => c + 1);
     setRedistResult(null); // clear any previous redistribution result on new edit
@@ -485,6 +596,93 @@ export const ReviewSchedule: React.FC<{
     });
 
     setActiveCell(null);
+  };
+
+  const effectiveOriginalRecommendation = originalRecommendation ?? buildEditableSchedule(staff, result.schedule, customSlotMeta);
+  const diffMap = React.useMemo(() => {
+    return computeScheduleDifferences({
+      staff,
+      currentSchedule: schedule,
+      originalRecommendation: effectiveOriginalRecommendation,
+      selectedStartingRoster,
+      lockedCells,
+      autoResolvedCells,
+      redistResult,
+      restoredCheckpointName,
+      customSlotMeta,
+    });
+  }, [
+    staff,
+    schedule,
+    effectiveOriginalRecommendation,
+    selectedStartingRoster,
+    lockedCells,
+    autoResolvedCells,
+    redistResult,
+    restoredCheckpointName,
+    customSlotMeta,
+  ]);
+
+  const handleSaveCheckpoint = () => {
+    const reqs = buildStaffingRequirements(customSlotMeta);
+    const cov = computeCanonicalCoverage(reqs, schedule);
+    const hardViolations = (liveReport ?? result.constraint_report)?.hard_violations ?? 0;
+    const defaultName = checkpointNameInput.trim() || `Checkpoint ${(checkpoints?.length || 0) + 1} (${editCount} edit${editCount !== 1 ? 's' : ''})`;
+
+    const cp = createRosterCheckpoint({
+      name: defaultName,
+      staff,
+      schedule,
+      lockedCells,
+      scenarioId: currentScenarioId,
+      recommendationId,
+      selectedCandidateId,
+      policySnapshotHash,
+      demandSnapshotId,
+      validationSummary: {
+        coverage: cov.requiredPositions > 0 ? cov.filledPositions / cov.requiredPositions : 1.0,
+        hardViolations,
+      },
+      restoredFromCheckpointId: restoredCheckpointInfo?.checkpointId,
+      customSlotMeta,
+    });
+
+    onSaveCheckpoint?.(cp);
+    setCheckpointNameInput('');
+    setCheckpointMessage({ type: 'success', text: `✓ Checkpoint "${cp.name}" saved successfully.` });
+    setTimeout(() => setCheckpointMessage(null), 4000);
+  };
+
+  const handleRestore = (cp: RosterCheckpoint) => {
+    try {
+      const restored = restoreRosterCheckpoint(
+        cp,
+        currentScenarioId,
+        policySnapshotHash,
+        demandSnapshotId,
+        staff,
+        customSlotMeta,
+      );
+      onScheduleChange(restored.restoredSchedule);
+      setLockedCells(restored.restoredLockedCells);
+      setEditCount(restored.restoredLockedCells.size);
+      setRestoredCheckpointName(restored.restoredName);
+      setRedistResult(null);
+
+      validateCurrentSchedule(staff, restored.restoredSchedule, undefined, customSlotMeta).then(val => {
+        if (val) {
+          const report = val.constraint_report ?? val;
+          setLiveReport(report);
+          if (result) result.constraint_report = report;
+        }
+      });
+
+      onRestoreCheckpoint?.(cp);
+      setCheckpointMessage({ type: 'success', text: `✓ Restored working roster to checkpoint "${cp.name}".` });
+      setTimeout(() => setCheckpointMessage(null), 4000);
+    } catch (err: any) {
+      setCheckpointMessage({ type: 'error', text: err?.message || 'Failed to restore checkpoint.' });
+    }
   };
 
   const cr = liveReport ?? result.constraint_report;
@@ -704,6 +902,8 @@ export const ReviewSchedule: React.FC<{
                     const isWeekend = days[dayIdx].getDay() === 0 || days[dayIdx].getDay() === 6;
                     const color = SHIFT_COLORS[shift] || 'var(--text-muted)';
                     const cellKey = `${s.id}:${dayIdx}`;
+                    const diff = diffMap.get(cellKey);
+                    const hasDiff = Boolean(diff);
                     // P3.3: determine provenance state for this cell
                     const provenance: AssignmentProvenanceState = redistResult
                       ? (redistResult.log.provenanceMap[cellKey] ?? 'original')
@@ -776,11 +976,42 @@ export const ReviewSchedule: React.FC<{
                             {isSchedulerEdit ? '✎' : '↻'}
                           </span>
                         )}
-                        <button
-                          onClick={e => { e.stopPropagation(); setActiveCell(null); setExplainTarget({ nurseId: s.id, dayIdx, shift }); }}
-                          style={{ position: 'absolute', top: '1px', right: '1px', background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', fontSize: '0.6rem', lineHeight: 1, padding: '1px 2px', opacity: 0.5 }}
-                          title="Explain this assignment"
-                        >?</button>
+                        {/* AT-42: Question mark indicator only for shifts differing from original recommendation */}
+                        {hasDiff && (
+                          <button
+                            onClick={e => {
+                              e.stopPropagation();
+                              setActiveCell(null);
+                              setExplainTarget({ nurseId: s.id, dayIdx, shift, diff });
+                            }}
+                            style={{
+                              position: 'absolute',
+                              top: '1px',
+                              right: '1px',
+                              background: 'rgba(15,23,42,0.7)',
+                              border: `1px solid ${
+                                diff?.source === 'manual_edit' ? '#f59e0b'
+                                : diff?.source === 'auto_rest_recovery' ? '#38bdf8'
+                                : diff?.source === 'alternative_selection' ? '#34d399'
+                                : 'var(--border-color)'
+                              }`,
+                              borderRadius: '3px',
+                              color: diff?.source === 'manual_edit' ? '#f59e0b'
+                                : diff?.source === 'auto_rest_recovery' ? '#38bdf8'
+                                : diff?.source === 'alternative_selection' ? '#34d399'
+                                : 'var(--text-muted)',
+                              cursor: 'pointer',
+                              fontSize: '0.62rem',
+                              fontWeight: 700,
+                              lineHeight: 1,
+                              padding: '1px 3px',
+                              zIndex: 2,
+                            }}
+                            title={`Original recommendation: ${diff?.originalShift || 'Off'} — ${s.id}\nCurrent assignment: ${diff?.currentShift || 'Off'} — ${s.id}\nChange source: ${diff?.sourceLabel}`}
+                          >
+                            ?
+                          </button>
+                        )}
                         {isActive && (
                           <ShiftPicker
                             current={shift}
@@ -799,6 +1030,150 @@ export const ReviewSchedule: React.FC<{
             })}
           </tbody>
         </table>
+      </div>
+
+      {/* ── AT-42: Roster Provenance & Checkpoint Management ────────────── */}
+      <div style={{
+        backgroundColor: 'var(--panel-bg)',
+        border: '1px solid var(--border-color)',
+        borderRadius: '8px',
+        padding: '1rem 1.25rem',
+        display: 'flex',
+        flexDirection: 'column',
+        gap: '0.85rem',
+      }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem' }}>
+          <div>
+            <div style={{ fontSize: '0.82rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+              Roster Provenance &amp; Checkpoints
+            </div>
+            <div style={{ fontSize: '0.82rem', color: 'var(--text-muted)', marginTop: '0.15rem' }}>
+              Capture working checkpoints or restore previous versions without overwriting historical milestones.
+            </div>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+            <input
+              type="text"
+              placeholder={`Checkpoint ${(checkpoints?.length || 0) + 1} name...`}
+              value={checkpointNameInput}
+              onChange={e => setCheckpointNameInput(e.target.value)}
+              onKeyDown={e => { if (e.key === 'Enter') handleSaveCheckpoint(); }}
+              style={{
+                backgroundColor: 'var(--bg-color)',
+                border: '1px solid var(--border-color)',
+                borderRadius: '6px',
+                padding: '0.4rem 0.65rem',
+                fontSize: '0.82rem',
+                color: 'var(--text-main)',
+                minWidth: '200px',
+              }}
+            />
+            <button
+              onClick={handleSaveCheckpoint}
+              style={{ ...primaryBtnStyle, fontSize: '0.82rem', padding: '0.4rem 0.85rem' }}
+            >
+              💾 Save Checkpoint
+            </button>
+          </div>
+        </div>
+
+        {checkpointMessage && (
+          <div style={{
+            backgroundColor: checkpointMessage.type === 'success' ? 'rgba(52,211,153,0.1)' : 'rgba(239,68,68,0.1)',
+            border: `1px solid ${checkpointMessage.type === 'success' ? '#34d399' : '#ef4444'}`,
+            borderRadius: '6px',
+            padding: '0.4rem 0.75rem',
+            fontSize: '0.82rem',
+            color: checkpointMessage.type === 'success' ? '#34d399' : '#ef4444',
+          }}>
+            {checkpointMessage.text}
+          </div>
+        )}
+
+        {/* 4 Distinct Roster States Overview */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '0.6rem', fontSize: '0.8rem' }}>
+          <div style={{ backgroundColor: 'rgba(255,255,255,0.02)', border: '1px solid var(--border-color)', borderRadius: '6px', padding: '0.6rem 0.75rem' }}>
+            <div style={{ color: 'var(--text-muted)', fontSize: '0.72rem', textTransform: 'uppercase', fontWeight: 600 }}>1. Original Recommendation</div>
+            <div style={{ color: 'var(--text-main)', fontWeight: 600, marginTop: '0.2rem' }}>{recommendationId}</div>
+            <div style={{ color: 'var(--text-muted)', fontSize: '0.74rem' }}>Immutable system reference</div>
+          </div>
+          <div style={{ backgroundColor: 'rgba(255,255,255,0.02)', border: '1px solid var(--border-color)', borderRadius: '6px', padding: '0.6rem 0.75rem' }}>
+            <div style={{ color: 'var(--text-muted)', fontSize: '0.72rem', textTransform: 'uppercase', fontWeight: 600 }}>2. Selected Starting Roster</div>
+            <div style={{ color: 'var(--text-main)', fontWeight: 600, marginTop: '0.2rem' }}>{selectedCandidateId}</div>
+            <div style={{ color: 'var(--text-muted)', fontSize: '0.74rem' }}>Planner override / baseline selection</div>
+          </div>
+          <div style={{ backgroundColor: 'rgba(56,189,248,0.04)', border: '1px solid rgba(56,189,248,0.3)', borderRadius: '6px', padding: '0.6rem 0.75rem' }}>
+            <div style={{ color: 'var(--accent-color)', fontSize: '0.72rem', textTransform: 'uppercase', fontWeight: 600 }}>3. Current Working Roster</div>
+            <div style={{ color: 'var(--text-main)', fontWeight: 600, marginTop: '0.2rem' }}>
+              {editCount} manual edits · {diffMap.size} deviations
+            </div>
+            <div style={{ color: 'var(--text-muted)', fontSize: '0.74rem' }}>
+              {restoredCheckpointName ? `Active (Restored from "${restoredCheckpointName}")` : 'Mutable active roster'}
+            </div>
+          </div>
+          <div style={{ backgroundColor: 'rgba(255,255,255,0.02)', border: '1px solid var(--border-color)', borderRadius: '6px', padding: '0.6rem 0.75rem' }}>
+            <div style={{ color: 'var(--text-muted)', fontSize: '0.72rem', textTransform: 'uppercase', fontWeight: 600 }}>4. Saved Checkpoints</div>
+            <div style={{ color: 'var(--text-main)', fontWeight: 600, marginTop: '0.2rem' }}>{checkpoints?.length || 0} version{checkpoints?.length !== 1 ? 's' : ''}</div>
+            <div style={{ color: 'var(--text-muted)', fontSize: '0.74rem' }}>Restorable intermediate snapshots</div>
+          </div>
+        </div>
+
+        {/* Checkpoint History List */}
+        {checkpoints && checkpoints.length > 0 ? (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.45rem', marginTop: '0.35rem' }}>
+            <div style={{ fontSize: '0.78rem', fontWeight: 600, color: 'var(--text-muted)' }}>Checkpoint History:</div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem', maxHeight: '180px', overflowY: 'auto' }}>
+              {checkpoints.map(cp => {
+                const isCurrent = restoredCheckpointName === cp.name;
+                return (
+                  <div
+                    key={cp.checkpointId}
+                    style={{
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'center',
+                      backgroundColor: isCurrent ? 'rgba(56,189,248,0.08)' : 'rgba(255,255,255,0.02)',
+                      border: `1px solid ${isCurrent ? 'var(--accent-color)' : 'var(--border-color)'}`,
+                      borderRadius: '6px',
+                      padding: '0.5rem 0.75rem',
+                      fontSize: '0.8rem',
+                    }}
+                  >
+                    <div>
+                      <div style={{ fontWeight: 600, color: isCurrent ? 'var(--accent-color)' : 'var(--text-main)', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                        <span>{cp.name}</span>
+                        {isCurrent && (
+                          <span style={{ fontSize: '0.68rem', backgroundColor: 'rgba(56,189,248,0.2)', padding: '1px 5px', borderRadius: '3px' }}>
+                            Current Working Basis
+                          </span>
+                        )}
+                      </div>
+                      <div style={{ color: 'var(--text-muted)', fontSize: '0.72rem', marginTop: '0.15rem' }}>
+                        {new Date(cp.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })} · {Math.round(cp.validationSummary.coverage * 100)}% coverage · {cp.validationSummary.hardViolations} hard violations · {cp.lockedShiftIds.length} locked edits
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => handleRestore(cp)}
+                      style={{
+                        ...ghostBtnStyle,
+                        fontSize: '0.76rem',
+                        padding: '0.25rem 0.6rem',
+                        borderColor: 'var(--border-color)',
+                      }}
+                      title="Restore roster to this checkpoint without destroying subsequent history"
+                    >
+                      ↺ Restore
+                    </button>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        ) : (
+          <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', fontStyle: 'italic' }}>
+            No saved checkpoints yet. Save an intermediate checkpoint anytime while editing to create a restore point.
+          </div>
+        )}
       </div>
 
       {/* ── P3.3: Redistribute remaining shifts with provenance ───────────── */}
@@ -909,6 +1284,7 @@ export const ReviewSchedule: React.FC<{
           shift={explainTarget.shift}
           staff={staff}
           result={result}
+          diff={explainTarget.diff}
           onClose={() => setExplainTarget(null)}
         />
       )}

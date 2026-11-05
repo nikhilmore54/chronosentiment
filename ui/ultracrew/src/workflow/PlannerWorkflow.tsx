@@ -8,6 +8,7 @@ import type {
   BaselineAuditReport,
   BaselineAssignment,
   ApprovedDemandSnapshot,
+  RosterCheckpoint,
 } from './WorkflowTypes';
 import { RULE_PRESETS, SAMPLE_CSV, OPTIMAL_12_STAFF_CSV } from './WorkflowTypes';
 import { Stepper } from './WorkflowComponents';
@@ -71,6 +72,12 @@ export const PlannerWorkflow: React.FC<PlannerWorkflowProps> = ({
   const [demoScenario, setDemoScenario] = useState<'20-nurse' | '12-nurse' | null>(() => {
     return workflowMode === 'sample' ? '20-nurse' : null;
   });
+
+  // AT-42: Four distinct roster states & Checkpoint Management
+  const [originalRecommendationSchedule, setOriginalRecommendationSchedule] = useState<Record<string, string[]> | null>(null);
+  const [selectedStartingSchedule, setSelectedStartingSchedule] = useState<Record<string, string[]> | null>(null);
+  const [rosterCheckpoints, setRosterCheckpoints] = useState<RosterCheckpoint[]>([]);
+  const [restoredCheckpointInfo, setRestoredCheckpointInfo] = useState<{ checkpointId: string; name: string } | null>(null);
 
   // Server-side device session sync status
   const [syncStatus, setSyncStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
@@ -186,6 +193,13 @@ export const PlannerWorkflow: React.FC<PlannerWorkflowProps> = ({
     setSchedulerDecision(null);
     setBaselineAssignments(parsedBaseline);
     setBaselineAuditReport(auditReport);
+    // AT-42: Immutable original recommendation (Candidate A) and starting selection
+    const recAlt = sampleAlternatives.find(a => a.id === recId) || sampleAlternatives[0];
+    const recSchedule = recAlt ? recAlt.schedule : baseSchedule;
+    setOriginalRecommendationSchedule(recSchedule);
+    setSelectedStartingSchedule(recSchedule);
+    setRosterCheckpoints([]);
+    setRestoredCheckpointInfo(null);
     setStep(4);
     setMaxReached(6);
   };
@@ -208,6 +222,10 @@ export const PlannerWorkflow: React.FC<PlannerWorkflowProps> = ({
     setBaselineAuditReport(null);
     setBaselineAssignments([]);
     setApprovedDemandSnapshot(null);
+    setOriginalRecommendationSchedule(null);
+    setSelectedStartingSchedule(null);
+    setRosterCheckpoints([]);
+    setRestoredCheckpointInfo(null);
     setStep(1);
     setMaxReached(1);
   };
@@ -242,6 +260,10 @@ export const PlannerWorkflow: React.FC<PlannerWorkflowProps> = ({
         if (s.approvedDemandSnapshot) setApprovedDemandSnapshot(s.approvedDemandSnapshot);
         if (s.demoScenario) setDemoScenario(s.demoScenario);
         if (s.workflowMode && onWorkflowModeChange) onWorkflowModeChange(s.workflowMode);
+        if (s.originalRecommendationSchedule) setOriginalRecommendationSchedule(s.originalRecommendationSchedule);
+        if (s.selectedStartingSchedule) setSelectedStartingSchedule(s.selectedStartingSchedule);
+        if (s.rosterCheckpoints) setRosterCheckpoints(s.rosterCheckpoints);
+        if (s.restoredCheckpointInfo) setRestoredCheckpointInfo(s.restoredCheckpointInfo);
         isHydratedRef.current = true;
         return;
       }
@@ -302,6 +324,10 @@ export const PlannerWorkflow: React.FC<PlannerWorkflowProps> = ({
       approvedDemandSnapshot,
       demoScenario,
       workflowMode,
+      originalRecommendationSchedule,
+      selectedStartingSchedule,
+      rosterCheckpoints,
+      restoredCheckpointInfo,
     };
 
     DeviceSessionService.saveSessionDebounced(snapshot, 1000);
@@ -325,6 +351,10 @@ export const PlannerWorkflow: React.FC<PlannerWorkflowProps> = ({
     approvedDemandSnapshot,
     demoScenario,
     workflowMode,
+    originalRecommendationSchedule,
+    selectedStartingSchedule,
+    rosterCheckpoints,
+    restoredCheckpointInfo,
   ]);
 
   const handleStartOver = () => {
@@ -521,14 +551,23 @@ export const PlannerWorkflow: React.FC<PlannerWorkflowProps> = ({
               if (result.alternatives && result.alternatives.length > 0) {
                 // API returned alternatives — use them with the API recommendation
                 setAlternatives(result.alternatives);
-                setRecommendedId(result.recommended_alternative_id ?? result.alternatives[0]?.id ?? '');
+                const recId = result.recommended_alternative_id ?? result.alternatives[0]?.id ?? '';
+                setRecommendedId(recId);
+                const recAlt = result.alternatives.find(a => a.id === recId) || result.alternatives[0];
+                const recSched = recAlt ? recAlt.schedule : sched;
+                setOriginalRecommendationSchedule(recSched);
+                setSelectedStartingSchedule(recSched);
               } else {
                 // Backend returned no alternatives — clear the alternatives list.
                 // Step 4 (SelectDecision) will show an "alternatives unavailable" notice
                 // and allow the scheduler to proceed directly with the generated schedule.
                 setAlternatives([]);
                 setRecommendedId('');
+                setOriginalRecommendationSchedule(sched);
+                setSelectedStartingSchedule(sched);
               }
+              setRosterCheckpoints([]);
+              setRestoredCheckpointInfo(null);
 
               goTo(4);
             }}
@@ -545,6 +584,7 @@ export const PlannerWorkflow: React.FC<PlannerWorkflowProps> = ({
             onDecision={(selectedAlt, decision) => {
               // Persist the scheduler's choice
               setSchedulerDecision(decision);
+              setSelectedStartingSchedule(selectedAlt.schedule);
               // Use the selected alternative's schedule as the editable schedule
               setEditableSchedule(selectedAlt.schedule);
               goTo(5);
@@ -593,6 +633,10 @@ export const PlannerWorkflow: React.FC<PlannerWorkflowProps> = ({
                     recommended_metrics: defaultMetrics,
                     selected_metrics: defaultMetrics,
                   });
+                  setSelectedStartingSchedule(editableSchedule);
+                  if (!originalRecommendationSchedule) {
+                    setOriginalRecommendationSchedule(editableSchedule);
+                  }
                   goTo(5);
                 }}
                 style={{
@@ -629,6 +673,19 @@ export const PlannerWorkflow: React.FC<PlannerWorkflowProps> = ({
             }}
             recurringPatterns={recurringPatterns}
             onDismissPattern={handleDismissPattern}
+            originalRecommendation={originalRecommendationSchedule ?? editableSchedule}
+            selectedStartingRoster={selectedStartingSchedule}
+            checkpoints={rosterCheckpoints}
+            onSaveCheckpoint={cp => setRosterCheckpoints(prev => [...prev, cp])}
+            onRestoreCheckpoint={cp => {
+              setRestoredCheckpointInfo({ checkpointId: cp.checkpointId, name: cp.name });
+            }}
+            currentScenarioId={demoScenario || 'custom-scenario'}
+            policySnapshotHash={rulePayload ? JSON.stringify(rulePayload) : 'hospital_policy_v1'}
+            demandSnapshotId={approvedDemandSnapshot?.demandSnapshotId || 'canonical-demand'}
+            recommendationId={recommendedId || 'Candidate A'}
+            selectedCandidateId={schedulerDecision?.selected_id || recommendedId || 'Candidate A'}
+            restoredCheckpointInfo={restoredCheckpointInfo}
           />
         )}
 
