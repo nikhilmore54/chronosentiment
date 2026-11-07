@@ -33,6 +33,7 @@ pub use learning::{
 pub use timeline::{TimelineEvent, TimelineEventKind, TimelineView};
 pub use workspace::{InvestmentOutcome, InvestmentWorkspace, OutcomeResult, WorkspaceStatus};
 pub mod decision_support;
+pub mod nse_market_events;
 pub mod product;
 pub mod time_machine;
 pub mod universe;

@@ -73,6 +73,11 @@ from scripts.rp608_recommendation_trade_ledger import (
     append_recommendation_trade_link as prospective_v1_append_rec_trade,
     append_trade_outcome_link as prospective_v1_append_trade_closed,
 )
+from scripts.rp608_order_flow_mark import (
+    classify_order_flow_support,
+    l1_from_book_ticker,
+    l1_from_tick_features,
+)
 from scripts.rp608_trade_plan_overlay import TradePlanOverlayManager
 
 # RP-608-REGIME-BREAKOUT-001 — Arm A freeze + observational regime telemetry
@@ -535,6 +540,41 @@ class ExchangeClockFilter:
         self.last_rtt_ms = int(best_rtt)
         return best_offset, int(best_rtt)
 
+    def sample_offset_with_ebo(
+        self,
+        samples: int = 5,
+        *,
+        max_attempts: int = 12,
+        base_delay_sec: float = 2.0,
+        max_delay_sec: float = 60.0,
+    ) -> Tuple[int, int]:
+        """
+        Exponential back-off (EBO) around sample_offset for reboot/DNS races.
+
+        Deterministic delays: base * 2^(attempt-1), capped at max_delay_sec.
+        No jitter (chronosentiment-core determinism). Does not relax the
+        post-sync ±250 ms drift fail-closed gate.
+        """
+        if max_attempts < 1:
+            raise ValueError("max_attempts must be >= 1")
+        last_err: Optional[BaseException] = None
+        for attempt in range(1, max_attempts + 1):
+            try:
+                return self.sample_offset(samples=samples)
+            except ConnectionError as exc:
+                last_err = exc
+                if attempt >= max_attempts:
+                    break
+                delay = min(max_delay_sec, base_delay_sec * (2 ** (attempt - 1)))
+                print(
+                    f"[RP-608 Clock EBO] attempt {attempt}/{max_attempts} "
+                    f"Binance time unreachable ({exc}); retry in {delay:.1f}s"
+                )
+                time.sleep(delay)
+        raise ConnectionError(
+            f"Failed to reach Binance REST time endpoint after {max_attempts} EBO attempts: {last_err}"
+        )
+
     def is_synchronized(self) -> bool:
         if self.last_offset_ms is None:
             return False
@@ -916,11 +956,15 @@ class RP608ShadowDaemon:
                             print(f"[tick_policy] evaluate_on_tick skipped: {tick_exc}")
 
                         # Continuous overlay TP/SL on every bookTicker while OPEN.
+                        # OF recommendation exit is reverse-flow L1 — independent of plan open/60m.
                         try:
                             if recv_wall_ms - self._last_overlay_reload_ms >= self._overlay_reload_interval_ms:
                                 self._last_overlay_reload_ms = recv_wall_ms
                                 self.trade_plan_overlay.state = self.trade_plan_overlay._load_state()
                             active = (self.trade_plan_overlay.state or {}).get("active_plan")
+                            of_active = (self.trade_plan_overlay.state or {}).get(
+                                "active_order_flow_recommendation"
+                            )
                             if active and active.get("state") == "OPEN":
                                 resolved = self.trade_plan_overlay.evaluate_market_tick(
                                     self.latest_book_ticker,
@@ -941,6 +985,28 @@ class RP608ShadowDaemon:
                                         )
                                     except Exception as link_exc:
                                         print(f"[prospective_v1] trade_closed link skipped: {link_exc}")
+                            elif of_active and of_active.get("active"):
+                                prev_of = True
+                                of_now = self.trade_plan_overlay.evaluate_order_flow_tick(
+                                    self.latest_book_ticker,
+                                    now_ms=recv_wall_ms,
+                                    persist=True,
+                                    candle_ctx={
+                                        "bar_idx": self.state.get("last_durable_bar_idx"),
+                                        "close_time_ms": int(
+                                            (self.latest_book_ticker or {}).get(
+                                                "exchange_event_time_ms"
+                                            )
+                                            or event_ms
+                                            or recv_wall_ms
+                                        ),
+                                    },
+                                )
+                                if prev_of and of_now is None:
+                                    print(
+                                        "[order_flow] ORDER_FLOW_EXIT "
+                                        "(opposite-side L1 confirm; not 60m-gated)"
+                                    )
                         except Exception as overlay_exc:
                             print(f"[trade_plan_overlay] tick skipped: {overlay_exc}")
             except asyncio.CancelledError:
@@ -1006,6 +1072,23 @@ class RP608ShadowDaemon:
 
         self.tick_emission_gate.mark_emitted(quote.receive_time_ms, action_b, action_c)
 
+        # Order-flow confirm stamp (Policy B side); exit is opposite-side OF later
+        of_side = action_b if action_b in ("LONG", "SHORT") else None
+        of_mark = {
+            "order_flow_supported": False,
+            "order_flow_label": None,
+            "order_flow_imbalance": None,
+            "order_flow_source": "none",
+        }
+        if of_side:
+            of_mark = classify_order_flow_support(
+                of_side, l1_from_book_ticker(candidate_quote if isinstance(candidate_quote, dict) else None)
+            )
+            if not of_mark.get("order_flow_supported"):
+                of_mark = classify_order_flow_support(
+                    of_side, l1_from_tick_features(self._last_tick_features)
+                )
+
         decision_card: Dict[str, Any] = {
             "protocol_id": SHADOW_PROTOCOL_ID,
             "decision_clock": TICK_DECISION_CLOCK,
@@ -1030,6 +1113,10 @@ class RP608ShadowDaemon:
             "arm_a_frozen": ARM_A_FROZEN,
             "live_order_authority": LIVE_ORDER_AUTHORITY_PCT,
             "emit_reason": emit_reason,
+            "order_flow_supported": bool(of_mark.get("order_flow_supported")),
+            "order_flow_label": of_mark.get("order_flow_label"),
+            "order_flow_imbalance": of_mark.get("order_flow_imbalance"),
+            "order_flow_source": of_mark.get("order_flow_source"),
         }
         if REGIME_TELEMETRY_ENABLED and self.recent_candles:
             regime = classify_market_regime(self.recent_candles)
@@ -1242,8 +1329,13 @@ class RP608ShadowDaemon:
             f"authority={LIVE_ORDER_AUTHORITY_PCT}% (Gate C isolated)."
         )
 
-        # Calibrate Exchange Clock Offset
-        offset_ms, rtt_ms = self.clock_filter.sample_offset(samples=5)
+        # Calibrate Exchange Clock Offset (EBO: survive post-reboot DNS/network lag)
+        offset_ms, rtt_ms = self.clock_filter.sample_offset_with_ebo(
+            samples=5,
+            max_attempts=12,
+            base_delay_sec=2.0,
+            max_delay_sec=60.0,
+        )
         self.state["telemetry_gates"]["max_drift_ms"] = max(
             self.state["telemetry_gates"]["max_drift_ms"], abs(offset_ms)
         )

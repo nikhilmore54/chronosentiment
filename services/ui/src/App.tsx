@@ -9,6 +9,7 @@ import Gate5PaperDashboard from './Gate5PaperDashboard';
 import DecisionSurfacePanel from './components/DecisionSurfacePanel';
 import ResearchForensicsWorkspace from './components/ResearchForensicsWorkspace';
 import MultiHorizonBooksPanel from './components/MultiHorizonBooksPanel';
+import { OperatorShell } from './operator';
 import { SystemState } from './types';
 import { API_BASE_URL } from './config';
 
@@ -77,16 +78,26 @@ function App() {
     fetchSystemState(0);
   };
 
-  const [activeTab, setActiveTab] = useState<'surface' | 'gate5' | 'horizons' | 'forensics' | 'observatory' | 'replay' | 'inspector' | 'research'>('horizons');
+  const [activeTab, setActiveTab] = useState<'operator' | 'surface' | 'gate5' | 'horizons' | 'forensics' | 'observatory' | 'replay' | 'inspector' | 'research'>('operator');
 
   return (
     <div style={{ padding: '20px', fontFamily: 'Inter, sans-serif', backgroundColor: '#0a0a0a', color: '#e5e5e5', minHeight: '100vh' }}>
       <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '30px', borderBottom: '1px solid #333', paddingBottom: '20px', flexWrap: 'wrap', gap: '15px' }}>
         <div>
-          <h1 style={{ margin: 0, fontSize: '24px', fontWeight: 700, letterSpacing: '-0.02em', color: '#38bdf8' }}>ChronoSentiment Single Web Surface</h1>
-          <p style={{ margin: '5px 0 0 0', color: '#888', fontSize: '14px' }}>Consolidated Provider Chronology Observatory, Decision Surface & Protection System</p>
+          <h1 style={{ margin: 0, fontSize: '24px', fontWeight: 700, letterSpacing: '-0.02em', color: activeTab === 'operator' ? '#2dd4bf' : '#38bdf8' }}>
+            {activeTab === 'operator' ? 'Gate5 Operator' : 'ChronoSentiment Single Web Surface'}
+          </h1>
+          <p style={{ margin: '5px 0 0 0', color: '#888', fontSize: '14px' }}>
+            {activeTab === 'operator'
+              ? '1C / 2B · Pi telemetry presentation · 0% authority · Crypto · NSE · System'
+              : 'Consolidated Provider Chronology Observatory, Decision Surface & Protection System'}
+          </p>
         </div>
         <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+          <button
+            id="tab-operator"
+            style={{ padding: '10px 16px', backgroundColor: activeTab === 'operator' ? '#0d9488' : '#1f2937', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer', fontWeight: 700, boxShadow: activeTab === 'operator' ? '0 4px 12px rgba(13,148,136,0.35)' : 'none' }}
+            onClick={() => setActiveTab('operator')}>Operator</button>
           <button 
             id="tab-forensics"
             style={{ padding: '10px 16px', backgroundColor: activeTab === 'forensics' ? '#0ea5e9' : '#1f2937', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer', fontWeight: 700, boxShadow: activeTab === 'forensics' ? '0 4px 12px rgba(14,165,233,0.3)' : 'none' }}
@@ -125,6 +136,10 @@ function App() {
       {error && <div style={{ color: '#ef4444', backgroundColor: '#ef444420', padding: '10px', borderRadius: '4px', marginBottom: '20px' }}>{error}</div>}
 
       <main style={{ backgroundColor: '#111', padding: '20px', borderRadius: '8px', border: '1px solid #222' }}>
+        {activeTab === 'operator' && (
+          <OperatorShell onOpenHorizons={() => setActiveTab('horizons')} />
+        )}
+
         {activeTab === 'forensics' && (
           <ResearchForensicsWorkspace />
         )}

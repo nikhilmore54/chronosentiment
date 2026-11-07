@@ -699,6 +699,54 @@ class TestRP608ShadowDaemon(unittest.TestCase):
         self.assertEqual(daemon_resume_post.state["last_durable_bar_idx"], 0)
 
 
+class TestExchangeClockEBO(unittest.TestCase):
+    """Exponential back-off for post-reboot Binance time reachability."""
+
+    def test_ebo_retries_then_succeeds(self):
+        filt = ExchangeClockFilter()
+        calls = {"n": 0}
+        sleeps: list[float] = []
+
+        def flaky_sample(samples: int = 5):
+            calls["n"] += 1
+            if calls["n"] < 3:
+                raise ConnectionError("Failed to reach Binance REST time endpoint.")
+            filt.last_offset_ms = 10
+            filt.last_rtt_ms = 40
+            return 10, 40
+
+        filt.sample_offset = flaky_sample  # type: ignore[method-assign]
+        real_sleep = time.sleep
+        time.sleep = lambda s: sleeps.append(float(s))  # type: ignore[assignment]
+        try:
+            off, rtt = filt.sample_offset_with_ebo(
+                samples=5, max_attempts=5, base_delay_sec=2.0, max_delay_sec=60.0
+            )
+        finally:
+            time.sleep = real_sleep  # type: ignore[assignment]
+        self.assertEqual((off, rtt), (10, 40))
+        self.assertEqual(calls["n"], 3)
+        self.assertEqual(sleeps, [2.0, 4.0])  # 2^(0), 2^(1)
+
+    def test_ebo_exhausts_and_raises(self):
+        filt = ExchangeClockFilter()
+        filt.sample_offset = lambda samples=5: (_ for _ in ()).throw(  # type: ignore[method-assign]
+            ConnectionError("Failed to reach Binance REST time endpoint.")
+        )
+        sleeps: list[float] = []
+        real_sleep = time.sleep
+        time.sleep = lambda s: sleeps.append(float(s))  # type: ignore[assignment]
+        try:
+            with self.assertRaises(ConnectionError) as ctx:
+                filt.sample_offset_with_ebo(
+                    samples=1, max_attempts=3, base_delay_sec=1.0, max_delay_sec=60.0
+                )
+        finally:
+            time.sleep = real_sleep  # type: ignore[assignment]
+        self.assertIn("3 EBO attempts", str(ctx.exception))
+        self.assertEqual(sleeps, [1.0, 2.0])
+
+
 if __name__ == "__main__":
     unittest.main()
 

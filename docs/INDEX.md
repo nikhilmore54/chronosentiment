@@ -1,7 +1,7 @@
 # Canonical Repository Index
 
 **Document ID:** GOV-IDX-001
-**Version:** 2.04
+**Version:** 2.05
 **Status:** Active
 **Created:** 2026-08-01
 
@@ -58,6 +58,97 @@ The legacy ROADEF implementation remains the control path while the
 
 **Core constraint:** no `coralys-core` modifications unless a genuine
 contract-level mathematical deficiency is demonstrated.
+
+### RP-608 NSE — Push Event Engine + Rust Migration
+
+**Status: FORMAL REQUIREMENT LOCKED 2026-11-02**
+
+Push-driven market-event architecture (no polling) for watchlist and recommended-trade intelligence; Python behavioural reference; Rust production target. Authority 0%. OF ±0.30 / reverse-OF unchanged.
+
+* Spec: `docs/architecture/RP608_NSE_PUSH_EVENT_RUST_ENGINE_v1.md` (ARCH-007)
+* Inventory: `docs/architecture/RP608_NSE_PYTHON_PRODUCTION_INVENTORY_v1.md` (ARCH-008)
+* P0 library+diff gate: PASS — **no production cutover**
+* P1 OF±0.30 + depth linkage gate: PASS — **no production cutover**; threshold frozen
+* P0–P3 push-driven NSE path: **FORMALLY CLOSED** (hold boundary)
+* P3 paper-lifecycle observations: PASS — Python sole ledger writer; no dual-write; authority 0%
+* Production cutover: **not authorized** — separate cutover-readiness governance review only (not an automatic next milestone)
+
+### RP-608-ECON-EDGE-DIAG-001 — Economic Edge Diagnosis
+
+**Status: APPROVED RESEARCH PROGRAM 2026-11-03 · FULL-SESSION FAILURE RECORDED · AUTHORITY 0% · RULES FROZEN**
+
+Systematic diagnosis of where/why economic edge is lost. Priority: trading evidence over architecture. Books never pooled. Open MTM ≠ realized. No OF±0.30 / stop-widen / universal-60m / authority changes without separate authorization.
+
+* Plan: `docs/research/rp608_economic_edge_diagnosis_plan.md`
+* Postmortem method (4 questions + non-attribution): `docs/research/rp608_econ_edge_session_postmortem_method.md`
+* **3 Nov full-session disposition (dismal):** `docs/research/rp608_econ_edge_2026-11-03_full_session_disposition.md`
+* Step 1 session export: `artifacts/rp608_econ_edge_diag/session_export_2026-11-03.md` (refresh after close)
+* Step 1b primary accounting attribution (not causal): `artifacts/rp608_econ_edge_diag/accounting_attribution_2026-11-03.md`
+* Step 2 row-level mechanism reconstruction (assign-only-when-supported): `artifacts/rp608_econ_edge_diag/mechanism_reconstruction_2026-11-03.md`
+* **Step 2 evidence-sufficiency gate: PASS** (narrow; 2026-11-04) `docs/research/rp608_econ_edge_2026-11-03_step2_evidence_sufficiency_gate.md` — not causal / not trading pass / Step 3+ still held / Gate R unreached
+* Exit falsification Phase 2 reuse: 2026-11-02 PATH_ONLY only — **not transferable** to 2026-11-03 rows; Nov-3 CF not computed; Gate R not reached
+* Causal mechanism labels beyond descriptive partitions: require session-matched counterfactuals + sufficiency gate pass — aggregates/assignment counts alone insufficient
+* Session export 2026-11-04 (intraday): `artifacts/rp608_econ_edge_diag/session_export_2026-11-04.md` — refresh after close; open MTM ≠ realized
+* **Standing rule:** W/L ratio is the primary session diagnostic per book (payoff / gross / friction / net / MFE support it; do not lead with friction) — `.cursor/rules/chronosentiment-core.mdc` §3b · `docs/research/rp608_econ_edge_session_postmortem_method.md`
+* **RP-608-WL-IMPROVE-001** (2026-11-06): trade selection / win probability — baseline frozen · `docs/research/rp608_wl_improvement_plan.md`
+  * Gate 1 PASS: `docs/research/rp608_wl_improve_gate1_diagnostic_completeness.md`
+  * Phase 2 Crypto plan decision-time only: `artifacts/rp608_econ_edge_diag/wl_phase2_crypto_plan_entry_quality_2026-11-03_to_05.md`
+  * Replication beyond 3–5 Nov: **REPLICATES=0** · `artifacts/rp608_econ_edge_diag/wl_phase2_crypto_plan_replication_beyond_2026-11-03_to_05.md`
+  * Gate 2 **DO NOT ADVANCE** (v1): `docs/research/rp608_wl_improve_crypto_plan_hypothesis_and_gate2.md`
+  * Discovery **v2** (Rust research bin; Gate 2 criteria unchanged): scope `docs/research/rp608_wl_crypto_plan_discovery_v2_scoped.md` · artifact `artifacts/rp608_econ_edge_diag/wl_crypto_plan_discovery_v2.md`
+  * **Pi = research execution host** (Kite/journals): `docs/research/rp608_pi_research_execution.md` · helper `scripts/research/rp608_pi_research_run.sh`
+  * Kite NSE A join + discovery v2 (Pi): join `wl_nse_a_decision_time_features_kite_join.jsonl` · report `wl_nse_a_kite_discovery_v2.md` · Gate 2 **DO NOT ADVANCE** (WR replicates, payoff/net fail) `docs/research/rp608_wl_improve_nse_a_kite_gate2.md`
+  * **WR Improvement v2** `RP-608-WR-ENTRY-DISCOVERY-001` (Pi): scope `docs/research/rp608_wr_entry_discovery_001_scoped.md` · report `artifacts/rp608_econ_edge_diag/rp608_wr_entry_discovery_001.md` · Gate 2 **DO NOT ADVANCE** · best powered holdout WR 70% (n=70, cov 8.6%, gap to 85% −15 pp)
+  * **WR ENTRY-DISCOVERY-002** frontier/stability audit: scope `docs/research/rp608_wr_entry_discovery_002_scoped.md` · report `artifacts/rp608_econ_edge_diag/rp608_wr_entry_discovery_002.md` · Gate 2 **DO NOT ADVANCE** (holdout contaminated for threshold pick; 85% unmet)
+  * **WR RANKING-001** ranking/coverage + Oct 28 study: scope `docs/research/rp608_wr_ranking_001_scoped.md` · report `artifacts/rp608_econ_edge_diag/rp608_wr_ranking_001.md` · Gate 2 **DO NOT ADVANCE** (Oct 28 full WR 58.6% vs 002-slice 83.8% 31/6; AUC transfer fail; §F genuine improvement false; no thr re-scan) `docs/research/rp608_wr_ranking_001_gate2.md`
+  * **WR ADAPTIVE-EXECUTION-VELOCITY-001**: scope `docs/research/rp608_wr_adaptive_execution_velocity_001_scoped.md` · H4 parked · NSE charter + crypto capture `docs/research/rp608_crypto_prospective_capture_spec.md` · Gate 2 **DO NOT ADVANCE**
+  * **Hypothesis Validation Programme**: **CONFIRMATION-ONLY HOLDING** `docs/research/rp608_confirmation_only_holding_state.md` · H2 descriptive frozen · DQ monitor `NEED_MORE_SESSIONS` (2/5 sessions, 63/200 trades; Nov 6–7 recorded not decisive) · next decision only via frozen confirmation protocol · 85% WR aspiration separate · Gate 2 **DO NOT ADVANCE** · H1/H3 unopened · H4 untestable under current engines · authority 0%
+  * Gate 3 unauthorized · NSE OF / Crypto OF Phase 2 still deferred
+* W/L-first attribution 2026-11-04: `artifacts/rp608_econ_edge_diag/wl_first_attribution_2026-11-04.md` — cross-book WR≤50% + payoff<1; not recovery vs 3 Nov
+* Actionable MFE grades 2026-11-04: `artifacts/rp608_econ_edge_diag/actionable_mfe_grades_2026-11-04.md` — peak MFE vs friction ladder; not causal / not Step 3+
+* Session 2026-11-05 snapshot (incomplete; SSH journal sync blocked): `artifacts/rp608_econ_edge_diag/session_intraday_snapshot_2026-11-05.md` — not a full-session verdict; NSE closed W/L pending rsync
+
+### RP-608-OFX — Order Flow Response Research (parallel)
+
+**Status: REGISTERED 2026-11-04 · STAGE 0–1 COMPLETE · STAGE 2 DESIGN/READINESS ONLY · CLASSIFIER NOT AUTHORIZED · AUTHORITY 0% · Gate R UNREACHED**
+
+Independent research candidate for aggression + liquidity response + price confirmation (absorption / acceptance / failed auction). **Does not** modify NSE/crypto execution or current OF±0.30 reverse-OF paper books. Baseline four books remain the performance reference; OFX never pooled into baseline PnL; do not “fix” OF via threshold swaps.
+
+* Scope: `docs/research/rp608_ofx_order_flow_response_scoped.md`
+* Performance tracking boundary: `docs/research/rp608_ofx_performance_tracking_boundary.md`
+* **OF side/quantity semantics audit (2026-11-07, read-only):** `docs/research/rp608_orderflow_side_quantity_semantics_audit.md` — `NO_MISMATCH_FOUND_IN_AUDITED_PATH` · governance lock `ACCEPT_CONSTRUCT_DISTINCTION`: baseline OF = **resting L1 liquidity imbalance** (not executed aggression); aggression+response = **OFX only**; no ±0.30 / Gate 2 / authority / historical relabel change
+* **Stage 0 / 0A–0D:** data feasibility → inferred-aggressor capture live (`ofx_tick_capture_v1/`)
+* **Stage 1:** `docs/research/rp608_ofx_stage1_aggression_response_observer.md` · `artifacts/rp608_ofx/stage1_aggression_response_summary.json` — aggression→mid response; **DOMINANTLY_FLAT_SHORT_HORIZON**; **no** Stage-2 labels
+* **Stage 1 quality audit:** `docs/research/rp608_ofx_stage1_result_quality_audit.md` · `artifacts/rp608_ofx/stage1_result_quality_audit.json` — flat conclusion preserved; Stage 2 labeling not justified
+* **Stage 2 design/readiness (prep only):** `docs/research/rp608_ofx_stage2_design_readiness.md` — hypotheses A/B/C + UNCLASSIFIED; evidence gates; EXECUTED vs INFERRED; coverage minima; **classifier run not authorized**
+* Workspace scaffold: `research/rp608_ofx/`
+* Related (do not conflate): intrabar absorption · book intelligence · OF-REC-PERF · ECON-EDGE Step 3+ (held)
+
+### RP-608-EXIT-FALSIFICATION-001 — Estimand A Exit Falsification
+
+**Status: REGISTERED 2026-11-02 · PHASE 1+2 COMPLETE · Gate R NOT REACHED · AUTHORITY 0%**
+
+Falsify whether alternative exit policies improve net outcomes on identical Estimand A entries. Production journal read-only; research artifacts separate; no production changes; no automatic live implementation.
+
+* Scope: `docs/research/rp608_exit_falsification_001_scoped.md`
+* Phase 1: **COMPLETE** — `artifacts/rp608_exit_falsification_001/phase1_60m_report_2026-11-02.md`
+* Phase 2 PATH_ONLY A–E: **COMPLETE** — `artifacts/rp608_exit_falsification_001/phase2_path_only_report_2026-11-02.md`
+* Sibling report scope: `docs/research/rp608_nse_exit_path_falsification_scoped.md` (`RP-608-NSE-EXIT-PATH-001`)
+
+### RP-608 G3 Warmup — cross_gap_neutral_v1 (experimental live)
+
+**Status: LIVE EXPERIMENTAL 2026-11-03 · AUTHORITY 0%**
+
+Gate 3 may use prior-session + today bars with overnight gap removed from traj15 (`RP608_G3_WARMUP_POLICY=cross_gap_neutral_v1`, default). Restores early-session eligibility before 10:30 IST. Revert: `RP608_G3_WARMUP_POLICY=same_session`. Spec/evidence: `docs/research/rp608_cross_session_warmup_investigation.md`.
+
+### RP-608-NSE-NEXT-SESSION-001 — Watchlist Levels Enhancement
+
+**Status: APPROVED FUNCTIONAL SPEC 2026-11-02 · PRESENTATION/OBSERVATIONAL · AUTHORITY 0%**
+
+Indicative entry range / stop / target / R:R / level status on next-session watchlist rows. Reuses `RP608_DYNAMIC_OHLCV_STRUCTURE_V1`; structure only on completed 15m bars; validity on price events with invalidate latch; no ranking/OF/Estimand A/formula/auto-exec changes.
+
+* Approved spec: `docs/research/rp608_nse_next_session_watchlist_levels_approved.md`
+* Parent protocol: `docs/research/rp608_nse_next_session_recommendations.md`
 
 ### UltraCrew — MVP
 
@@ -255,6 +346,11 @@ Documents in this section must not be modified except for typographical correcti
 | ARCH-004 | `docs/Event_Flow_Specification.md` | Event Flow Specification |
 | ARCH-005 | `docs/ARCHITECTURE_GLOSSARY.md` | Architecture Glossary |
 | ARCH-006 | `docs/ARCH-006_RECOMMENDATION_ENGINE_ARCHITECTURE.md` | Recommendation Engine Architecture — v0 vs v1 comparison; locked-in Coralys-native direction; C3-002 mapping verified; analogue-population design; graceful degradation spec; four MVP gates (G1–G4); execution order (v1 first, fetcher parallel); MarketDataFetcher refactor spec |
+| ARCH-007 | `docs/architecture/RP608_NSE_PUSH_EVENT_RUST_ENGINE_v1.md` | RP-608 NSE push-driven event architecture + staged Python→Rust production migration (formal requirement; 0% authority) |
+| ARCH-008 | `docs/architecture/RP608_NSE_PYTHON_PRODUCTION_INVENTORY_v1.md` | Live NSE Python production inventory and migration readiness (Stage 1–3) |
+| RP608-EXIT-FALS-001 | `docs/research/rp608_exit_falsification_001_scoped.md` | RP-608-EXIT-FALSIFICATION-001 — Estimand A exit-policy falsification; Phase 1+2 PATH_ONLY complete; Gate R not reached; journal read-only; authority 0% |
+| RP608-OFX-001 | `docs/research/rp608_ofx_order_flow_response_scoped.md` | RP-608-OFX — Order Flow Response Research; parallel observational line; Stage 0 data feasibility; baseline OF/execution frozen; authority 0% |
+| RP608-OFX-TRACK-001 | `docs/research/rp608_ofx_performance_tracking_boundary.md` | Baseline four-book vs OFX reporting boundary; never pool; open MTM ≠ realized |
 
 ### 8. Evidence Governance
 
@@ -401,6 +497,15 @@ The following documents exist in the repository but have not been confirmed as c
 
 | Version | Date | Change |
 |---------|------|--------|
+| 2.13 | 2026-11-04 | RP-608-OFX Stage 2 design/readiness only; mechanism classifier held; Stage 1 DOMINANTLY_FLAT_SHORT_HORIZON locked |
+| 2.12 | 2026-11-04 | RP-608-OFX Stage 1 result-quality audit: flat conclusion preserved; magnitude/baseline/concentration diagnostics; Stage 2 not authorized |
+| 2.11 | 2026-11-04 | RP-608-OFX Stage 1: aggression→response observer authorized+run; short-horizon responses dominantly flat; Stage 2 not authorized |
+| 2.10 | 2026-11-04 | RP-608-OFX Stage 0D: NSE inferred-aggressor tick capture live on single WS; quality gate PASS (initial); Stage-1 not authorized by 0D alone |
+| 2.09 | 2026-11-04 | RP-608-OFX Stage 0C: Kite full-mode live tick feasibility PASS for inferred-aggressor research; not true trade tape; 0D not started; Stage-1 blocked |
+| 2.08 | 2026-11-04 | RP-608-OFX Stage 0B: Kite historical OHLCV sample PASS; candle price-response feasible; aggressor/Stage-1 still blocked; depth↔candle join OK |
+| 2.07 | 2026-11-04 | RP-608-OFX Stage 0 executed: NSE L1–L5 depth feasible; aggressor→response blocked (no trade tape); Stage 1 full observer not authorized |
+| 2.06 | 2026-11-04 | Register RP-608-OFX (Order Flow Response Research) + performance-tracking boundary; Stage 0 only; baseline OF/execution frozen; authority 0% |
+| 2.05 | 2026-11-02 | Register RP-608-EXIT-FALSIFICATION-001 (Estimand A exit falsification; Phase 1 authorized; authority 0%) |
 | 2.04 | 2026-09-15 | CS-P-001-H unsigned product-contract decision: cached harness as live as-of simulator vs same-day exception; no technical change |
 | 2.03 | 2026-09-15 | CS-P-001-G frozen: ambiguity closed; C≡D under as-of; A undocumented; no snap gate / date shift / delayed fill / stop rebase |
 | 2.02 | 2026-09-15 | CS-P-001-G intended temporal semantics reading: live as-of vs cached same-day tape; no driver change |

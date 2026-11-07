@@ -22,6 +22,7 @@ import csv
 import io
 import json
 import os
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 import struct
 import sys
@@ -270,7 +271,11 @@ def run_preopen_probe():
     with urllib.request.urlopen(req, timeout=10) as resp:
         data = json.loads(resp.read().decode("utf-8")).get("data", {})
 
+    # Dated snapshot + append-only ledger (Policy D observational archive).
+    ist = timezone(timedelta(hours=5, minutes=30))
+    snap_stamp = datetime.now(ist).strftime("%Y%m%dT%H%M%S")
     ledger_path = OUTPUT_DIR / "preopen_discovery_ledger.jsonl"
+    dated_path = OUTPUT_DIR / f"preopen_discovery_snapshot_{snap_stamp}.jsonl"
     records = []
     print(f"[+] Ingested pre-open quotes for {len(data)} / 119 instruments.")
 
@@ -279,36 +284,79 @@ def run_preopen_probe():
         if not q:
             continue
 
-        prev_close = float(q.get("ohlc", {}).get("close", 0.0))
+        prev_close_raw = q.get("ohlc", {}).get("close")
+        prev_close = float(prev_close_raw) if prev_close_raw not in (None, "") else None
         raw_ind = q.get("indicative_close_price")
         raw_last = q.get("last_price")
-        
-        # Source attribution for indicative price
+
+        # Provenance: never silently substitute fields.
+        field_provenance: Dict[str, str] = {
+            "previous_close": "PREVIOUS_CLOSE" if prev_close and prev_close > 0 else "UNAVAILABLE",
+            "indicative_close_price": "UNAVAILABLE",
+            "last_price": "UNAVAILABLE",
+            "buy_quantity": "UNAVAILABLE",
+            "sell_quantity": "UNAVAILABLE",
+            "total_imbalance_qty": "UNAVAILABLE",
+        }
+
+        ind_clearing = None
         if raw_ind is not None and float(raw_ind) > 0:
-            ind_price = float(raw_ind)
-            ind_source = "INDICATIVE_AUCTION_CLEARING"
-        elif raw_last is not None and float(raw_last) > 0:
-            ind_price = float(raw_last)
-            ind_source = "FALLBACK_LAST_PRICE"
+            ind_clearing = float(raw_ind)
+            field_provenance["indicative_close_price"] = "INDICATIVE_CLEARING_PRICE"
+
+        last_traded = None
+        if raw_last is not None and float(raw_last) > 0:
+            last_traded = float(raw_last)
+            field_provenance["last_price"] = "LAST_TRADED_PRICE"
+
+        # Display price for gap: prefer clearing; fallback labeled separately.
+        if ind_clearing is not None:
+            display_price = ind_clearing
+            display_source = "INDICATIVE_CLEARING_PRICE"
+        elif last_traded is not None:
+            display_price = last_traded
+            display_source = "FALLBACK_LAST_PRICE"
         else:
-            ind_price = None
-            ind_source = "UNAVAILABLE"
+            display_price = None
+            display_source = "UNAVAILABLE"
 
-        gap_bps = round(((ind_price - prev_close) / prev_close * 10000.0), 2) if (ind_price and prev_close > 0) else None
+        gap_bps = (
+            round(((display_price - prev_close) / prev_close * 10000.0), 2)
+            if (display_price is not None and prev_close and prev_close > 0)
+            else None
+        )
 
-        buy_qty = int(q.get("buy_quantity", 0))
-        sell_qty = int(q.get("sell_quantity", 0))
-        tot_qty = buy_qty + sell_qty
-
-        # Strict distinction: Zero depth vs true demand balance
-        if tot_qty > 0:
-            imbalance_ratio = round((buy_qty - sell_qty) / float(tot_qty), 4)
-            imbalance_status = "VALID_AUCTION_DEPTH"
+        # Quantities: None when key absent; 0 only when broker supplies zero.
+        if "buy_quantity" in q and q.get("buy_quantity") is not None:
+            buy_qty = int(q.get("buy_quantity"))
+            field_provenance["buy_quantity"] = "TOTAL_BUY_QTY"
         else:
+            buy_qty = None
+        if "sell_quantity" in q and q.get("sell_quantity") is not None:
+            sell_qty = int(q.get("sell_quantity"))
+            field_provenance["sell_quantity"] = "TOTAL_SELL_QTY"
+        else:
+            sell_qty = None
+
+        if buy_qty is not None and sell_qty is not None:
+            tot_qty = buy_qty + sell_qty
+            if tot_qty > 0:
+                imbalance_ratio = round((buy_qty - sell_qty) / float(tot_qty), 4)
+                imbalance_status = "VALID_AUCTION_DEPTH"
+            else:
+                imbalance_ratio = None
+                imbalance_status = "ZERO_AUCTION_DEPTH_OFF_MARKET"
+        else:
+            tot_qty = None
             imbalance_ratio = None
-            imbalance_status = "ZERO_AUCTION_DEPTH_OFF_MARKET"
+            imbalance_status = "QUANTITY_FIELDS_UNAVAILABLE"
 
-        total_imbalance_qty = int(q.get("total_imbalance_qty", 0))
+        if "total_imbalance_qty" in q and q.get("total_imbalance_qty") is not None:
+            total_imbalance_qty = int(q.get("total_imbalance_qty"))
+            field_provenance["total_imbalance_qty"] = "TOTAL_IMBALANCE_QTY"
+        else:
+            total_imbalance_qty = None
+
         exchange_ts = q.get("timestamp") or q.get("last_trade_time")
 
         rec = {
@@ -317,23 +365,31 @@ def run_preopen_probe():
             "tradingsymbol": tsym,
             "instrument_token": tok,
             "receipt_timestamp_utc_ms": t_receipt_ms,
-            "exchange_timestamp": str(exchange_ts),
+            "exchange_timestamp": str(exchange_ts) if exchange_ts is not None else None,
             "previous_close": prev_close,
-            "indicative_price": ind_price,
-            "indicative_source": ind_source,
+            "indicative_clearing_price": ind_clearing,
+            "last_traded_price": last_traded,
+            # Back-compat display fields (source always explicit)
+            "indicative_price": display_price,
+            "indicative_source": display_source,
             "opening_gap_bps": gap_bps,
             "raw_buy_quantity": buy_qty,
             "raw_sell_quantity": sell_qty,
             "total_auction_quantity": tot_qty,
             "imbalance_ratio": imbalance_ratio,
             "imbalance_status": imbalance_status,
-            "raw_total_imbalance_qty": total_imbalance_qty
+            "raw_total_imbalance_qty": total_imbalance_qty,
+            "field_provenance": field_provenance,
         }
         records.append(rec)
+        line = json.dumps(rec, separators=(",", ":")) + "\n"
         with open(ledger_path, "a", encoding="utf-8") as f:
-            f.write(json.dumps(rec, separators=(",", ":")) + "\n")
+            f.write(line)
+        with open(dated_path, "a", encoding="utf-8") as f:
+            f.write(line)
 
     print(f"[+] Appended {len(records)} records to {ledger_path}")
+    print(f"[+] Dated snapshot: {dated_path}")
     print("\n--- Sample Pre-Open Microstructure Observations ---")
     for r in records[:5]:
         print(f"  {r['symbol']:<15} PrevClose={r['previous_close']:<8} IndPrice={r['indicative_price']:<8} ({r['indicative_source']}) Gap={r['opening_gap_bps']}bps ImbalanceRatio={r['imbalance_ratio']} ({r['imbalance_status']})")

@@ -1,5 +1,7 @@
 // @vitest-environment jsdom
 import { describe, test, expect } from 'vitest';
+import * as fs from 'fs';
+import * as path from 'path';
 import {
   SAMPLE_CSV,
   type StaffMember,
@@ -11,6 +13,7 @@ import {
   auditBaselineClientSide,
   buildEditableSchedule,
   generateShiftLevelDeltaRecords,
+  exportShiftLevelDeltaCSV,
   VERIFIED_SAMPLE_SCHEDULE,
 } from './WorkflowUtils';
 
@@ -163,6 +166,15 @@ describe('Minimal Perturbation Roster Healing Verification', () => {
     expect(headNurseReassignments.length).toBeGreaterThan(0);
     const restReassignments = reassigned.filter(r => r.notes.includes('minimum 10h rest turnaround'));
     expect(restReassignments.length).toBeGreaterThan(0);
+
+    const artifactPath = '/Users/nikhil/.gemini/antigravity/brain/0165343a-dfae-45f3-91ea-4e154168d122/shift_level_delta_export.csv';
+    try {
+      const csvData = exportShiftLevelDeltaCSV(deltas);
+      fs.writeFileSync(artifactPath, csvData, 'utf-8');
+      console.log('Successfully wrote updated shift_level_delta_export.csv to artifact directory');
+    } catch (e) {
+      console.warn('Could not write artifact csv:', e);
+    }
 
     // Test baseline-preserving slot matching in delta generation
     const baselineByShift = new Map<number, string[]>();

@@ -258,6 +258,11 @@ name = "rp608_multi_horizon_status"
 path = "research/bin/rp608_multi_horizon_status.rs"
 required-features = ["research"]
 
+[[bin]]
+name = "rp608_wl_crypto_plan_discovery_v2"
+path = "research/bin/rp608_wl_crypto_plan_discovery_v2.rs"
+required-features = ["research"]
+
 [[test]]
 name = "research_dataset_tests"
 path = "research/tests/research_dataset_tests.rs"

@@ -1,9 +1,14 @@
 #!/usr/bin/env python3
 """
-RP-608 NSE — continuous Kite WebSocket L1 quote cache (0.0% order authority).
+RP-608 NSE — continuous Kite WebSocket quote cache (0.0% order authority).
 
 Uses the same binary full-mode protocol as scripts/run_rp608_nse_live_probe.py
 (wss://ws.kite.trade), not the kiteconnect SDK.
+
+Retains L1 scalars used by frozen OF ±0.30 marks **and** L1–L5 depth arrays for
+RP-608-NSE-OF-BOOK-INTELLIGENCE-001 observational history (Phase 1). Also decodes
+LTQ / last-trade-time / ATP for RP-608-OFX Stage 0D research tee (additive; OF
+consumers continue to read bid_qty/ask_qty only).
 
 Limits respected: 1 connection, ≤119 instruments (<< 3000/connection).
 """
@@ -15,9 +20,11 @@ import json
 import struct
 import threading
 import time
-from typing import Any, Dict, List, Optional, Sequence
+from typing import Any, Callable, Dict, List, Optional, Sequence
 
 import websockets
+
+TickSink = Callable[[Dict[str, Any]], None]
 
 
 def decode_full_mode_packet(pkt: bytes) -> Optional[Dict[str, Any]]:
@@ -26,7 +33,10 @@ def decode_full_mode_packet(pkt: bytes) -> Optional[Dict[str, Any]]:
         return None
     tok = struct.unpack(">I", pkt[0:4])[0]
     ltp = struct.unpack(">I", pkt[4:8])[0] / 100.0
+    ltq = struct.unpack(">I", pkt[8:12])[0]
+    atp = struct.unpack(">I", pkt[12:16])[0] / 100.0
     vol = struct.unpack(">I", pkt[16:20])[0]
+    ltt_sec = struct.unpack(">I", pkt[44:48])[0]
     exch_ts_sec = struct.unpack(">I", pkt[60:64])[0]
 
     buy_depth = []
@@ -50,17 +60,23 @@ def decode_full_mode_packet(pkt: bytes) -> Optional[Dict[str, Any]]:
     return {
         "instrument_token": int(tok),
         "last_price": float(ltp),
+        "last_traded_quantity": float(ltq),
+        "average_price": float(atp),
         "volume": float(vol),
+        "last_trade_time_sec": int(ltt_sec),
         "exchange_timestamp_sec": int(exch_ts_sec),
         "best_bid": best_bid,
         "best_ask": best_ask,
         "bid_qty": bid_qty,
         "ask_qty": ask_qty,
+        # Book-intelligence Phase 1: retain five-level displayed depth.
+        "depth_buy": buy_depth,
+        "depth_sell": sell_depth,
     }
 
 
 class KiteTickerQuoteCache:
-    """Background KiteTicker-style stream → latest L1 by instrument_token."""
+    """Background KiteTicker-style stream → latest full-mode quote by token (L1 + L1–L5)."""
 
     def __init__(
         self,
@@ -69,11 +85,13 @@ class KiteTickerQuoteCache:
         access_token: str,
         instrument_tokens: Sequence[int],
         max_quote_age_ms: float = 60_000.0,
+        tick_sinks: Optional[Sequence[TickSink]] = None,
     ):
         self.api_key = api_key
         self.access_token = access_token
         self.tokens = sorted({int(t) for t in instrument_tokens if int(t) > 0})
         self.max_quote_age_ms = float(max_quote_age_ms)
+        self._tick_sinks: List[TickSink] = list(tick_sinks or [])
         self._latest: Dict[int, Dict[str, Any]] = {}
         self._lock = threading.Lock()
         self._stop = threading.Event()
@@ -82,6 +100,10 @@ class KiteTickerQuoteCache:
         self._last_packet_mono: float = 0.0
         self._packets: int = 0
         self._unique_tokens: int = 0
+
+    def add_tick_sink(self, sink: TickSink) -> None:
+        """Register a research-only observer (e.g. OFX Stage 0D). Must not raise."""
+        self._tick_sinks.append(sink)
 
     @property
     def connected(self) -> bool:
@@ -185,6 +207,11 @@ class KiteTickerQuoteCache:
             with self._lock:
                 self._latest[tok] = tick
                 self._unique_tokens = len(self._latest)
+            for sink in self._tick_sinks:
+                try:
+                    sink(tick)
+                except Exception:
+                    pass
             updated = True
         if updated:
             self._packets += 1

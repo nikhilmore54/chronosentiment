@@ -71,6 +71,15 @@ from scripts.nse_market_context import (
     session_return_bps_from_bars,
 )
 from scripts.rp608_arm_a_baseline import attach_regime_telemetry
+from scripts.rp608_order_flow_mark import (
+    inspect_order_flow_book,
+    l1_from_nse_quote,
+)
+from scripts.rp608_nse_of_paper_ledger import NseOfPaperLedger
+from scripts.rp608_nse_of_book_depth_history import (
+    NseOfBookDepthHistoryJournal,
+    collect_ticks_by_symbol,
+)
 from scripts.rp608_prospective_v1 import Market as ProspectiveMarket
 from scripts.rp608_prospective_v1_observer import (
     observe_bar as prospective_v1_observe_bar,
@@ -80,7 +89,23 @@ from scripts.rp608_recommendation_trade_ledger import (
     append_nse_recommendation_trade_link as prospective_v1_append_nse_rec_trade,
     append_nse_trade_closed as prospective_v1_append_nse_trade_closed,
 )
-from scripts.rp608_kite_ticker_cache import KiteTickerQuoteCache
+from scripts.rp608_kite_ticker_cache import KiteTickerQuoteCache, TickSink
+from scripts.rp608_ofx_nse_tick_journal import (
+    OfxNseInferredAggressorTickJournal,
+    ofx_tick_capture_enabled,
+)
+from scripts.rp608_nse_equity_costs import (
+    BROKERAGE_CAP_PER_LEG,
+    BROKERAGE_RATE,
+    EXCHANGE_TURNOVER_RATE,
+    GST_RATE,
+    SEBI_TURNOVER_RATE,
+    SLIPPAGE_RATE_PER_LEG,
+    STAMP_DUTY_BUY_LEG,
+    STT_RATE_SELL_LEG,
+    calc_indian_equity_friction,
+    calc_nse_of_paper_accounting,
+)
 
 # ─── Registered 119 NSE Symbol Universe (RP-608-NSE-SHADOW-001 Section 2) ───
 NSE_119_SYMBOLS: Tuple[str, ...] = (
@@ -139,16 +164,17 @@ ARM_A_TARGET_BPS = 150.0
 ATR_FEATURE_LOOKBACK_DAYS = 5
 ATR_FEATURE_MAX_BARS = 40
 
-# Statutory Friction Schedule (Zerodha Cash-Equity Intraday)
-BROKERAGE_RATE = 0.0003          # 0.03%
-BROKERAGE_CAP_PER_LEG = 20.0     # min(₹20, Turnover * 0.03%)
-STT_RATE_SELL_LEG = 0.00025      # 0.025% sell side
-EXCHANGE_TURNOVER_RATE = 0.0000297  # 0.00297%
-GST_RATE = 0.18                  # 18.0% on (Brokerage + Exchange + SEBI)
-SEBI_TURNOVER_RATE = 0.000001    # ₹10 per crore (0.0001%)
-STAMP_DUTY_BUY_LEG = 0.00003     # 0.003% buy side
-SLIPPAGE_RATE_PER_LEG = 0.0002   # 2.0 bps adverse execution latency
+# Gate-3 warmup: cross_gap_neutral_v1 unlocks before 10:30 using prior-session bars
+# with overnight gap removed from traj15. Override with RP608_G3_WARMUP_POLICY=same_session.
+from scripts.rp608_nse_g3_warmup import (  # noqa: E402
+    DEFAULT_G3_WARMUP_POLICY,
+    POLICY_CROSS_GAP_NEUTRAL_V1,
+    evaluate_g3_momentum,
+)
 
+G3_WARMUP_POLICY = DEFAULT_G3_WARMUP_POLICY
+
+# Cost schedule constants re-exported from scripts.rp608_nse_equity_costs
 DEFAULT_NOTIONAL_PER_TRADE_INR = 100_000.0  # ₹100,000 INR reference notional
 
 # Brier References & Forecasts
@@ -228,65 +254,6 @@ def compute_payload_checksum(data: Dict[str, Any]) -> str:
     d = {k: v for k, v in data.items() if k != "checksum"}
     canonical_json = json.dumps(d, sort_keys=True, separators=(",", ":"))
     return hashlib.sha256(canonical_json.encode("utf-8")).hexdigest()
-
-
-def calc_indian_equity_friction(
-    buy_price: float,
-    sell_price: float,
-    quantity: float,
-    half_spread_bps: float = 2.5
-) -> Dict[str, float]:
-    """
-    Computes exact 8-component statutory & transaction friction for an intraday round trip.
-    """
-    buy_turnover = buy_price * quantity
-    sell_turnover = sell_price * quantity
-    total_turnover = buy_turnover + sell_turnover
-
-    # 1. Brokerage: min(₹20, Turnover * 0.03%) per leg
-    brok_buy = min(buy_turnover * BROKERAGE_RATE, BROKERAGE_CAP_PER_LEG)
-    brok_sell = min(sell_turnover * BROKERAGE_RATE, BROKERAGE_CAP_PER_LEG)
-    brokerage = brok_buy + brok_sell
-
-    # 2. STT: 0.025% on sell leg only
-    stt = sell_turnover * STT_RATE_SELL_LEG
-
-    # 3. Exchange transaction charges: 0.00297% on total turnover
-    exchange_charges = total_turnover * EXCHANGE_TURNOVER_RATE
-
-    # 4. SEBI turnover charges: ₹10 per crore (0.0001%)
-    sebi_charges = total_turnover * SEBI_TURNOVER_RATE
-
-    # 5. GST: 18.0% on (Brokerage + Exchange + SEBI)
-    gst = GST_RATE * (brokerage + exchange_charges + sebi_charges)
-
-    # 6. Stamp duty: 0.003% on buy leg only
-    stamp_duty = buy_turnover * STAMP_DUTY_BUY_LEG
-
-    # 7. Spread crossing: Half-spread on both legs
-    spread_rate = (half_spread_bps / 10000.0)
-    spread_cost = (buy_turnover * spread_rate) + (sell_turnover * spread_rate)
-
-    # 8. Slippage: 2.0 bps adverse latency on both legs
-    slippage_cost = (buy_turnover * SLIPPAGE_RATE_PER_LEG) + (sell_turnover * SLIPPAGE_RATE_PER_LEG)
-
-    total_friction = (
-        brokerage + stt + exchange_charges + sebi_charges + gst + stamp_duty + spread_cost + slippage_cost
-    )
-
-    return {
-        "brokerage": round(brokerage, 4),
-        "stt": round(stt, 4),
-        "exchange_charges": round(exchange_charges, 4),
-        "sebi_charges": round(sebi_charges, 4),
-        "gst": round(gst, 4),
-        "stamp_duty": round(stamp_duty, 4),
-        "spread_cost": round(spread_cost, 4),
-        "slippage_cost": round(slippage_cost, 4),
-        "total_friction": round(total_friction, 4),
-        "total_turnover": round(total_turnover, 2),
-        "effective_friction_bps": round((total_friction / buy_turnover) * 10000.0, 2) if buy_turnover > 0 else 0.0
-    }
 
 
 @dataclass
@@ -382,7 +349,14 @@ class KiteDataFeedAdapter:
         self._last_instrument_fetch_attempt_mono: float = 0.0
         self._last_historical_fetch_mono: float = 0.0
         self.ticker_cache: Optional[KiteTickerQuoteCache] = None
+        self._tick_sinks: List[TickSink] = []
         self._initialize_instrument_map()
+
+    def register_tick_sink(self, sink: TickSink) -> None:
+        """Research-only tee (OFX Stage 0D). Survives ticker restarts; must not raise."""
+        self._tick_sinks.append(sink)
+        if self.ticker_cache is not None:
+            self.ticker_cache.add_tick_sink(sink)
 
     def _credentials_mtime(self) -> Optional[float]:
         try:
@@ -440,11 +414,12 @@ class KiteDataFeedAdapter:
             access_token=self.access_token,
             instrument_tokens=tokens,
             max_quote_age_ms=60_000.0,
+            tick_sinks=list(self._tick_sinks),
         )
         self.ticker_cache.start()
         print(
-            f"[+] Kite WebSocket L1 cache started for {len(tokens)} tokens "
-            f"(mode=full, authority=0.0%)",
+            f"[+] Kite WebSocket full-mode cache started for {len(tokens)} tokens "
+            f"(L1+L1–L5 retained in memory; ofx_sinks={len(self._tick_sinks)}; authority=0.0%)",
             flush=True,
         )
 
@@ -950,6 +925,9 @@ class RP608NSEShadowDaemon:
         self.bar_history_path = self.output_dir / "rp608_nse_bar_history.json"
         self.pending_evaluations_path = self.output_dir / "rp608_nse_pending_evaluations.json"
         self.next_session_recs_path = self.output_dir / "rp608_nse_next_session_recommendations.json"
+        self.l1_feed_health_path = self.output_dir / "rp608_nse_l1_feed_health.json"
+        self.of_book_intel_dir = self.output_dir / "of_book_intelligence_v1"
+        self.ofx_tick_dir = self.output_dir / "ofx_tick_capture_v1"
 
         self.feed_adapter = feed_adapter or KiteDataFeedAdapter(NSE_119_SYMBOLS)
         self.symbols = getattr(self.feed_adapter, "symbols", NSE_119_SYMBOLS)
@@ -971,6 +949,23 @@ class RP608NSEShadowDaemon:
         # ATR/structure feature bars (may include prior sessions). Never used for traj15.
         self._atr_feature_cache: Dict[str, List[Any]] = {}
         self._atr_feature_cache_bar_idx: int = -1
+
+        # NSE OF PAPER ledger (0% authority; independent of Estimand A journal)
+        self.of_paper = NseOfPaperLedger(
+            self.output_dir,
+            friction_fn=calc_nse_of_paper_accounting,
+        )
+        # Book-intelligence Phase 1: durable L1–L5 snapshots (OF-rule inert)
+        self.of_book_depth = NseOfBookDepthHistoryJournal(
+            self.of_book_intel_dir,
+            min_interval_ms=5_000,
+            enabled=True,
+        )
+        # OFX Stage 0D: inferred-aggressor tick tee on the same WS (OF-rule inert)
+        self.ofx_tick_journal = OfxNseInferredAggressorTickJournal(
+            self.ofx_tick_dir,
+            enabled=ofx_tick_capture_enabled(default=True),
+        )
 
         self.state = self.initialize_or_resume_state()
         if getattr(self.state, "current_session_date", ""):
@@ -1058,6 +1053,80 @@ class RP608NSEShadowDaemon:
         self.atomic_commit_checkpoint(st)
         return st
 
+    def write_l1_feed_health(self) -> None:
+        """Persist live ticker-cache stats for the dashboard continuous-feed tile.
+
+        Observational only — does not affect entry/exit eligibility.
+        """
+        now_utc = datetime.now(timezone.utc)
+        adapter = self.feed_adapter
+        cache = getattr(adapter, "ticker_cache", None)
+        stats: Dict[str, Any] = {}
+        if cache is not None and hasattr(cache, "stats"):
+            try:
+                stats = dict(cache.stats() or {})
+            except Exception:
+                stats = {}
+        payload = {
+            "protocol_id": "RP-608-NSE-L1-FEED-HEALTH-001",
+            "timestamp_iso": now_utc.isoformat(),
+            "timestamp_utc_ms": int(now_utc.timestamp() * 1000),
+            "session_date": getattr(self.state, "current_session_date", "") or "",
+            "durable_bar": int(getattr(self.state, "last_durable_bar_idx", 0) or 0),
+            "accounted_bar": int(getattr(self.state, "last_accounted_bar_idx", 0) or 0),
+            "connected": bool(stats.get("connected")),
+            "subscribed_tokens": int(stats.get("subscribed_tokens") or 0),
+            "cached_tokens": int(stats.get("cached_tokens") or 0),
+            "packets": int(stats.get("packets") or 0),
+            "last_packet_age_sec": stats.get("last_packet_age_sec"),
+            "last_packet_utc": (
+                None
+                if stats.get("last_packet_age_sec") is None
+                else (now_utc - timedelta(seconds=float(stats["last_packet_age_sec"]))).isoformat()
+            ),
+            "ticker_cache_present": cache is not None,
+        }
+        try:
+            self.atomic_commit_json(self.l1_feed_health_path, payload)
+        except Exception as exc:
+            print(f"[l1_feed_health] write skipped: {exc}")
+        # Observational book-intel journal (does not affect OF / paper / Arm A).
+        try:
+            self._sample_of_book_depth_history()
+        except Exception as exc:
+            print(f"[of_book_intel] depth sample skipped: {exc}")
+
+    def _token_to_symbol_map(self) -> Dict[int, str]:
+        adapter = self.feed_adapter
+        imap = getattr(adapter, "instrument_map", None) or {}
+        out: Dict[int, str] = {}
+        if isinstance(imap, dict):
+            for sym, pair in imap.items():
+                try:
+                    if isinstance(pair, (tuple, list)) and pair:
+                        tok = int(pair[0])
+                    elif isinstance(pair, dict):
+                        tok = int(pair.get("instrument_token") or 0)
+                    else:
+                        continue
+                except (TypeError, ValueError):
+                    continue
+                if tok > 0:
+                    out[tok] = str(sym)
+        return out
+
+    def _sample_of_book_depth_history(self) -> None:
+        """Append rate-limited L1–L5 snapshots from the live ticker cache."""
+        journal = getattr(self, "of_book_depth", None)
+        if journal is None:
+            return
+        adapter = self.feed_adapter
+        cache = getattr(adapter, "ticker_cache", None)
+        ticks = collect_ticks_by_symbol(cache, self._token_to_symbol_map())
+        if not ticks:
+            return
+        journal.maybe_sample(ticks_by_symbol=ticks)
+
     def atomic_commit_checkpoint(self, state: NSECheckpointState):
         """Atomically persists state to disk via tmp file + replace + fsync."""
         d = state.to_dict()
@@ -1075,6 +1144,11 @@ class RP608NSEShadowDaemon:
                     tmp_path.unlink()
                 except OSError:
                     pass
+        # Best-effort companion artifact for dashboard continuous-feed status.
+        try:
+            self.write_l1_feed_health()
+        except Exception:
+            pass
 
     def atomic_commit_json(self, target_path: Path, data: Any):
         """Atomically persists arbitrary JSON data to disk via tmp file + replace + fsync."""
@@ -1573,21 +1647,33 @@ class RP608NSEShadowDaemon:
         if len(history) > 60:
             history.pop(0)
 
-        # ─── Causal Momentum Scoring ───────────────────────────
+        # ─── Causal Momentum Scoring (G3 warmup policy) ────────
+        # same_session: today's bars only (legacy cold until ~10:30).
+        # cross_gap_neutral_v1: prior session + today; overnight gap zeroed in traj15.
+        sess_date = str(
+            self.current_session_date
+            or getattr(self.state, "current_session_date", "")
+            or ""
+        )
+        if hasattr(self.current_session_date, "isoformat"):
+            sess_date = self.current_session_date.isoformat()
+        feature_bars = None
+        if str(G3_WARMUP_POLICY).lower() in {
+            POLICY_CROSS_GAP_NEUTRAL_V1,
+            "c",
+            "policy_c",
+            "cross_gap_neutral",
+        }:
+            feature_bars = self._feature_bars_for_boundaries(symbol, history)
+        g3_m = evaluate_g3_momentum(
+            policy=G3_WARMUP_POLICY,
+            session_bars=history,
+            feature_bars=feature_bars,
+            today_session_date=sess_date,
+        )
+        traj15 = float(g3_m["traj15"])
+        signal_entry = bool(g3_m["signal_long"])
         closes = [b.close for b in history]
-        if len(closes) < 2:
-            signal_entry = False
-            traj15 = 0.0
-        else:
-            # 15m momentum trajectory
-            lookback = min(len(closes), 15)
-            ret = (closes[-1] - closes[-lookback]) / (closes[-lookback] + 1e-9)
-            diffs = [(closes[i] - closes[i-1]) / (closes[i-1] + 1e-9) for i in range(-lookback + 1, 0)]
-            vol = (sum(d*d for d in diffs) / len(diffs))**0.5 if diffs else 1e-3
-            denom = (vol * (lookback**0.5) * 2.5) + 1e-9
-            traj15 = math.tanh(ret / denom)
-            # Signal entry rule: Positive momentum and non-warmup
-            signal_entry = (traj15 >= 0.05) and (len(closes) >= 5)
 
         # Gate G4 Quote Validation (Freshness, Non-Zero, Uncrossed Top-of-Book)
         MAX_QUOTE_AGE_MS = 60000  # 60s max permitted age
@@ -1775,9 +1861,12 @@ class RP608NSEShadowDaemon:
                 f"(entry cutoff so 60m horizon completes by 15:00 close-window)"
             )
             decision = "NO_TRADE"
-        elif len(closes) < 5:
+        elif not g3_m["g3_ready"]:
             decision_code = "COLD_START_INSUFFICIENT_HISTORY"
-            explanation = f"Warmup history: {len(closes)}/5 bars required"
+            explanation = (
+                f"Warmup history: {g3_m['g3_history_length']}/5 bars required "
+                f"(policy={g3_m['g3_warmup_policy']}; session={g3_m['g3_session_history_length']})"
+            )
             decision = "NO_TRADE"
         elif traj15 < 0.05:
             decision_code = "SUB_THRESHOLD_MOMENTUM"
@@ -1798,7 +1887,11 @@ class RP608NSEShadowDaemon:
             decision = "NO_TRADE"
         else:
             decision_code = "QUALIFIED_MOMENTUM_BREAKOUT"
-            explanation = f"Momentum breakout traj15={traj15:+.4f} >= +0.0500 with {len(closes)} bars history"
+            explanation = (
+                f"Momentum breakout traj15={traj15:+.4f} >= +0.0500 with "
+                f"{g3_m['g3_history_length']} bars history "
+                f"(policy={g3_m['g3_warmup_policy']}; session={g3_m['g3_session_history_length']})"
+            )
             decision = "RECOMMEND_LONG"
 
         rr_dict = None
@@ -1861,6 +1954,16 @@ class RP608NSEShadowDaemon:
         q_ts = quote.timestamp_utc_ms if quote else None
         q_age_ms = (now_eval_ms - q_ts) if q_ts else None
 
+        # Observational OF inspection for every symbol (0% authority; does not gate entry).
+        # Primary side = open trade side when held, else LONG (NSE Arm A is LONG-only).
+        active_side = "LONG"
+        if symbol in self.active_trades:
+            active_side = str(self.active_trades[symbol].get("side") or "LONG").upper() or "LONG"
+        of_insp = inspect_order_flow_book(
+            l1_from_nse_quote(quote, source="kite_l1"),
+            primary_side=active_side,
+        )
+
         eval_record = {
             "symbol": symbol,
             "tradingsymbol": symbol.replace(".NS", ""),
@@ -1877,15 +1980,26 @@ class RP608NSEShadowDaemon:
             "explanation": explanation,
             "score": round(traj15, 4),
             "provisional_rank": None,  # Computed across all qualifying candidates in run_single_iteration
-            "history_length": len(closes),
+            # history_length = G3 warmup length (may include prior session under Policy C).
+            "history_length": int(g3_m["g3_history_length"]),
+            "session_history_length": int(g3_m["g3_session_history_length"]),
+            "g3_ready": bool(g3_m["g3_ready"]),
+            "g3_warmup_policy": g3_m["g3_warmup_policy"],
+            "g3_warmup_policy_id": g3_m["g3_warmup_policy_id"],
+            "overnight_gap_bps": g3_m.get("overnight_gap_bps"),
+            "score_kind": g3_m.get("score_kind"),
             "bar_provenance": getattr(latest_bar, "source", "kite_live"),
             "history_provenance": {
                 "live_count": sum(1 for b in history if getattr(b, "source", "kite_live") in ("kite_live", "persisted_live")),
-                "historical_bootstrap_count": sum(1 for b in history if getattr(b, "source", "") == "kite_historical_same_day")
+                "historical_bootstrap_count": sum(1 for b in history if getattr(b, "source", "") == "kite_historical_same_day"),
+                "g3_warmup_policy": g3_m["g3_warmup_policy"],
+                "g3_history_length": int(g3_m["g3_history_length"]),
+                "g3_session_history_length": int(g3_m["g3_session_history_length"]),
             },
             "half_spread_bps": round(quote.half_spread_bps, 2) if quote else None,
             "entry_conditions": (
-                f"traj15 >= 0.05 and history >= 5 and 1 <= bar_idx <= {MAX_NEW_ENTRY_BAR} "
+                f"traj15 >= 0.05 and g3_history >= 5 (policy={g3_m['g3_warmup_policy']}) "
+                f"and 1 <= bar_idx <= {MAX_NEW_ENTRY_BAR} "
                 f"and not active_trade (60m completes by 15:00 close-window)"
             ),
             "invalidation": inval_text,
@@ -1897,6 +2011,14 @@ class RP608NSEShadowDaemon:
                 "bid_qty": quote.bid_qty if quote else 0,
                 "ask_qty": quote.ask_qty if quote else 0
             },
+            "order_flow_supported": of_insp["order_flow_supported"],
+            "order_flow_label": of_insp["order_flow_label"],
+            "order_flow_imbalance": of_insp["order_flow_imbalance"],
+            "order_flow_source": of_insp["order_flow_source"],
+            "order_flow_side": of_insp["order_flow_side"],
+            "order_flow_long_supported": of_insp["order_flow_long_supported"],
+            "order_flow_short_supported": of_insp["order_flow_short_supported"],
+            "order_flow_inspection": True,
             "arm_a_frozen": ARM_A_FROZEN,
             "live_order_authority": LIVE_ORDER_AUTHORITY_PCT,
             "horizon_class": "INTRADAY",
@@ -2024,7 +2146,73 @@ class RP608NSEShadowDaemon:
         except Exception as obs_exc:
             print(f"[prospective_v1] NSE observe skipped ({symbol}): {obs_exc}")
 
+        # NSE OF PAPER ledger — independent of Estimand A open/close above
+        try:
+            self.of_paper.evaluate_open_tick(
+                symbol=symbol,
+                quote=quote,
+                now_ms=now_eval_ms,
+                bar_idx=bar_idx,
+                force_reason=(
+                    "SESSION_SQUARE_OFF"
+                    if bar_idx >= MANDATORY_SQUARE_OFF_BAR
+                    else None
+                ),
+            )
+            if bar_idx < MANDATORY_SQUARE_OFF_BAR:
+                self.of_paper.try_open_from_eval(
+                    symbol=symbol,
+                    eval_record=eval_record,
+                    quote=quote,
+                    now_ms=now_eval_ms,
+                )
+        except Exception as ofp_exc:
+            print(f"[nse_of_paper] eval hook skipped ({symbol}): {ofp_exc}")
+
+        # Next-session indicative levels: structure on completed bar; validity on price.
+        try:
+            self._update_next_session_watch_levels(
+                symbol=symbol,
+                last_price=float(p_ref),
+                completed_bar=True,
+                bar_timestamp_utc_ms=int(latest_bar.timestamp_utc_ms),
+                feed_stale=bool(
+                    (q_age_ms is not None and q_age_ms > 120_000)
+                    or (quote is None)
+                ),
+            )
+        except Exception as nsr_lvl_exc:
+            print(f"[next_session_levels] bar update skipped ({symbol}): {nsr_lvl_exc}")
+
         return card_b
+
+    def _of_paper_midbar_poll(self, *, bar_idx: int = 0) -> None:
+        """
+        While awaiting the next 15m close, still tick open OF papers on live L1
+        so min-hold / opposite-persist anti-churn can fire (crypto-parity).
+        """
+        opens = self.of_paper.open_snapshot()
+        if not opens:
+            return
+        now_ms = int(time.time() * 1000)
+        syms = [str(t.get("symbol")) for t in opens if t.get("symbol")]
+        try:
+            feed_results = self.feed_adapter.fetch_all_symbols()
+        except Exception as exc:
+            print(f"[nse_of_paper] midbar fetch skipped: {exc}")
+            return
+        for sym in syms:
+            res = feed_results.get(sym, {}) if isinstance(feed_results, dict) else {}
+            quote = res.get("quote") if isinstance(res, dict) else None
+            try:
+                self.of_paper.evaluate_open_tick(
+                    symbol=sym,
+                    quote=quote,
+                    now_ms=now_ms,
+                    bar_idx=bar_idx,
+                )
+            except Exception as exc:
+                print(f"[nse_of_paper] midbar tick skipped ({sym}): {exc}")
 
     def _close_trade(self, trade: Dict[str, Any], exit_price: float, exit_bar: int, exit_reason: str):
         """Calculates exact statutory friction and closes trade for Estimand A."""
@@ -2095,11 +2283,27 @@ class RP608NSEShadowDaemon:
             next_sess_meta = None
             if phase == "POST_CLOSE":
                 try:
+                    # Force-flat any residual NSE OF paper opens after cash session
+                    if self.of_paper.open_snapshot():
+                        try:
+                            feed_results = self.feed_adapter.fetch_all_symbols()
+                        except Exception:
+                            feed_results = {}
+                        quotes = {
+                            sym: (feed_results.get(sym) or {}).get("quote")
+                            for sym in [t.get("symbol") for t in self.of_paper.open_snapshot()]
+                            if sym
+                        }
+                        self.of_paper.square_off_all(
+                            quotes_by_symbol=quotes,
+                            now_ms=now_ms,
+                            reason="SESSION_SQUARE_OFF",
+                        )
                     next_sess_meta = self.emit_next_session_recommendations_if_needed(now_ist=now_ist)
                 except Exception as nsr_exc:
                     print(f"[next_session_recs] emit skipped: {nsr_exc}")
             self.atomic_commit_checkpoint(self.state)
-            out = {"status": phase, "bar_idx": 0, "processed": 0}
+            out = {"status": phase, "bar_idx": 0, "processed": 0, "nse_of_paper": self.of_paper.summary()}
             if next_sess_meta:
                 out["next_session_recommendations"] = next_sess_meta
             return out
@@ -2128,6 +2332,16 @@ class RP608NSEShadowDaemon:
             self.last_evaluations.clear()
             self._symbol_last_bootstrap_bar.clear()
             self._symbol_bootstrap_fail_mono.clear()
+            # Square-off prior-session OF paper leftovers before new session id advances
+            try:
+                if self.of_paper.open_snapshot():
+                    self.of_paper.square_off_all(
+                        quotes_by_symbol={},
+                        now_ms=now_ms,
+                        reason="SESSION_ROLLOVER_SQUARE_OFF",
+                    )
+            except Exception as ofp_exc:
+                print(f"[nse_of_paper] session rollover square-off skipped: {ofp_exc}")
             self.current_session_date = today_session_str
             self.state.current_session_date = today_session_str
             # Next session must not inherit yesterday's expired access_token in memory.
@@ -2153,7 +2367,20 @@ class RP608NSEShadowDaemon:
                 return {"status": "FORMING_BAR_1", "bar_idx": 0, "processed": 0}
 
             if completed_bars <= self.state.last_durable_bar_idx:
-                # Candle already evaluated at close and committed to disk; await next bar close
+                # Candle already evaluated at close and committed to disk; await next bar close.
+                # Still poll open NSE OF paper trades on live L1 (anti-churn / reverse-OF).
+                try:
+                    self._of_paper_midbar_poll(bar_idx=int(self.state.last_durable_bar_idx or completed_bars))
+                except Exception as ofp_exc:
+                    print(f"[nse_of_paper] midbar poll skipped: {ofp_exc}")
+                try:
+                    self._next_session_levels_midbar_poll()
+                except Exception as nsr_lvl_exc:
+                    print(f"[next_session_levels] midbar poll skipped: {nsr_lvl_exc}")
+                try:
+                    self._sample_of_book_depth_history()
+                except Exception as book_exc:
+                    print(f"[of_book_intel] midbar depth sample skipped: {book_exc}")
                 self.state.last_heartbeat_utc_ms = now_ms
                 self.state.last_heartbeat_iso = now_utc.isoformat()
                 self.atomic_commit_checkpoint(self.state)
@@ -2161,7 +2388,8 @@ class RP608NSEShadowDaemon:
                     "status": "AWAITING_NEXT_BAR_CLOSE",
                     "last_durable_bar_idx": self.state.last_durable_bar_idx,
                     "completed_bars": completed_bars,
-                    "next_target_bar": completed_bars + 1
+                    "next_target_bar": completed_bars + 1,
+                    "nse_of_paper": self.of_paper.summary(),
                 }
 
             # A new 15m candle has finalized! Evaluate this finalized completed bar.
@@ -2208,6 +2436,10 @@ class RP608NSEShadowDaemon:
                 failed += 1
 
                 # Data-quality failure evaluation record (ensuring 100% census coverage)
+                fail_of = inspect_order_flow_book(
+                    l1_from_nse_quote(None),
+                    primary_side="LONG",
+                )
                 fail_record = {
                     "symbol": sym,
                     "tradingsymbol": sym.replace(".NS", ""),
@@ -2236,7 +2468,15 @@ class RP608NSEShadowDaemon:
                         "status": "DATA_FAILURE",
                         "feed_source": "kite_connect",
                         "error": str(err or "NO_BARS_RETURNED")
-                    }
+                    },
+                    "order_flow_supported": fail_of["order_flow_supported"],
+                    "order_flow_label": fail_of["order_flow_label"],
+                    "order_flow_imbalance": fail_of["order_flow_imbalance"],
+                    "order_flow_source": fail_of["order_flow_source"],
+                    "order_flow_side": fail_of["order_flow_side"],
+                    "order_flow_long_supported": fail_of["order_flow_long_supported"],
+                    "order_flow_short_supported": fail_of["order_flow_short_supported"],
+                    "order_flow_inspection": True,
                 }
                 iteration_evals.append(fail_record)
                 self.last_evaluations[sym] = fail_record
@@ -2283,6 +2523,7 @@ class RP608NSEShadowDaemon:
         self.atomic_commit_checkpoint(self.state)
 
         # Log telemetry heartbeat
+        of_paper_summary = self.of_paper.summary()
         telem = {
             "timestamp_utc_ms": now_ms,
             "timestamp_iso": now_utc.isoformat(),
@@ -2294,6 +2535,8 @@ class RP608NSEShadowDaemon:
             "evaluations_count": len(iteration_evals),
             "qualifying_recommendations": len(qualifying),
             "active_positions": len(self.active_trades),
+            "nse_of_paper_n_open": of_paper_summary.get("n_open"),
+            "nse_of_paper_n_trades": (of_paper_summary.get("of_outcomes_summary") or {}).get("n_trades"),
             "completed_trades": self.state.completed_trades_count,
             "directional_cards": self.state.directional_cards_count,
             "unexecutable_drops": self.state.unexecutable_drops_count,
@@ -2301,6 +2544,205 @@ class RP608NSEShadowDaemon:
         }
         self.append_jsonl(self.telemetry_path, telem)
         return telem
+
+    def _next_session_levels_session_actionable(self, payload: Dict[str, Any]) -> bool:
+        next_date = str(payload.get("next_session_date") or "")
+        sess = str(
+            self.current_session_date
+            or getattr(self.state, "current_session_date", "")
+            or ""
+        )
+        if hasattr(sess, "isoformat"):
+            sess = sess.isoformat()
+        bar_idx = int(getattr(self.state, "last_durable_bar_idx", 0) or 0)
+        return bool(sess and next_date and sess == next_date and bar_idx >= 5)
+
+    def _update_next_session_watch_levels(
+        self,
+        *,
+        symbol: str,
+        last_price: float,
+        completed_bar: bool,
+        bar_timestamp_utc_ms: Optional[int] = None,
+        feed_stale: bool = False,
+        reconcile_pending: bool = False,
+    ) -> None:
+        """
+        Push-path maintenance of indicative next-session levels (0% authority).
+
+        - completed_bar=True → may refresh RP608_DYNAMIC_OHLCV_STRUCTURE_V1 for that symbol
+        - always updates level_status from the price event (respecting invalidate latch)
+        - mutates only the matching watchlist row (no cross-symbol close-price rewrite)
+        """
+        from scripts.rp608_nse_next_session_recs import (
+            apply_price_event_to_watch_levels,
+            compute_indicative_watch_levels,
+            write_next_session_recommendations,
+        )
+
+        path = getattr(self, "next_session_recs_path", None)
+        if path is None or not path.exists():
+            return
+        try:
+            payload = json.loads(path.read_text(encoding="utf-8"))
+        except Exception:
+            return
+        recs = payload.get("recommendations")
+        if not isinstance(recs, list) or not recs:
+            return
+
+        target_i = next(
+            (i for i, r in enumerate(recs) if isinstance(r, dict) and str(r.get("symbol")) == symbol),
+            None,
+        )
+        if target_i is None:
+            return
+
+        session_actionable = self._next_session_levels_session_actionable(payload)
+        row = dict(recs[target_i])
+        side = str(row.get("side") or "LONG")
+        levels = row.get("levels") if isinstance(row.get("levels"), dict) else None
+        prior_gen = int((levels or {}).get("structure_generation") or 1)
+        prior_bar_ts = (levels or {}).get("levels_source_bar_timestamp_utc_ms")
+
+        if completed_bar and session_actionable:
+            bars = list(self.price_history.get(symbol) or [])
+            if bars:
+                calc_at = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
+                fresh = compute_indicative_watch_levels(
+                    bars,
+                    side=side,
+                    reference_price=None,
+                    calculated_at_utc=calc_at,
+                )
+                new_bar_ts = fresh.get("levels_source_bar_timestamp_utc_ms")
+                if fresh.get("ok") and new_bar_ts is not None and new_bar_ts != prior_bar_ts:
+                    fresh = dict(fresh)
+                    fresh["structure_generation"] = prior_gen + 1
+                    fresh["invalidation_latched"] = False
+                    levels = fresh
+                elif levels is None and fresh.get("ok"):
+                    levels = fresh
+
+        if not isinstance(levels, dict):
+            return
+
+        levels = apply_price_event_to_watch_levels(
+            levels,
+            side=side,
+            last_price=float(last_price),
+            feed_stale=bool(feed_stale),
+            reconcile_pending=bool(reconcile_pending),
+            session_actionable=session_actionable,
+        )
+        row["levels"] = levels
+        row["level_status"] = levels.get("level_status")
+        row["invalidation_latched"] = levels.get("invalidation_latched")
+        row["entry_low"] = levels.get("entry_low")
+        row["entry_high"] = levels.get("entry_high")
+        row["stop_price"] = levels.get("stop_price")
+        row["target_price"] = levels.get("target_price")
+        row["risk_reward_display"] = levels.get("risk_reward_display")
+        recs = list(recs)
+        recs[target_i] = row
+        payload["recommendations"] = recs
+        payload["levels_last_push_update_utc"] = datetime.now(timezone.utc).isoformat().replace(
+            "+00:00", "Z"
+        )
+        if bar_timestamp_utc_ms is not None:
+            payload["levels_last_bar_timestamp_utc_ms"] = int(bar_timestamp_utc_ms)
+        write_next_session_recommendations(path, payload)
+
+    def _next_session_levels_midbar_poll(self) -> None:
+        """
+        L1 price-event validity for stamped watchlist symbols between bar closes.
+
+        Structure is never recalculated here. This is the daemon interim event proxy
+        (same cadence as OF-paper midbar), not UI poll evaluation. Authority 0%.
+        """
+        from scripts.rp608_nse_next_session_recs import (
+            apply_price_event_to_watch_levels,
+            write_next_session_recommendations,
+        )
+
+        path = getattr(self, "next_session_recs_path", None)
+        if path is None or not path.exists():
+            return
+        try:
+            payload = json.loads(path.read_text(encoding="utf-8"))
+        except Exception:
+            return
+        recs = payload.get("recommendations")
+        if not isinstance(recs, list) or not recs:
+            return
+        if not self._next_session_levels_session_actionable(payload):
+            return
+        try:
+            feed_results = self.feed_adapter.fetch_all_symbols()
+        except Exception as exc:
+            print(f"[next_session_levels] midbar fetch skipped: {exc}")
+            return
+
+        session_actionable = True
+        changed = False
+        out: List[Dict[str, Any]] = []
+        for raw in recs:
+            if not isinstance(raw, dict):
+                out.append(raw)
+                continue
+            row = dict(raw)
+            sym = str(row.get("symbol") or "")
+            levels = row.get("levels") if isinstance(row.get("levels"), dict) else None
+            if not sym or not levels:
+                out.append(row)
+                continue
+            res = feed_results.get(sym, {}) if isinstance(feed_results, dict) else {}
+            quote = res.get("quote") if isinstance(res, dict) else None
+            if quote is None:
+                out.append(row)
+                continue
+            try:
+                last_px = float(
+                    getattr(quote, "last_price", None)
+                    or getattr(quote, "ltp", None)
+                    or 0.0
+                )
+            except (TypeError, ValueError):
+                last_px = 0.0
+            if last_px <= 0:
+                try:
+                    bid = float(getattr(quote, "bid_price", 0.0) or 0.0)
+                    ask = float(getattr(quote, "ask_price", 0.0) or 0.0)
+                    if bid > 0 and ask > 0:
+                        last_px = 0.5 * (bid + ask)
+                except (TypeError, ValueError):
+                    last_px = 0.0
+            if last_px <= 0:
+                out.append(row)
+                continue
+            age_ms = getattr(quote, "age_ms", None)
+            feed_stale = bool(age_ms is not None and float(age_ms) > 120_000)
+            lv = apply_price_event_to_watch_levels(
+                levels,
+                side=str(row.get("side") or "LONG"),
+                last_price=last_px,
+                feed_stale=feed_stale,
+                reconcile_pending=False,
+                session_actionable=session_actionable,
+            )
+            row["levels"] = lv
+            row["level_status"] = lv.get("level_status")
+            row["invalidation_latched"] = lv.get("invalidation_latched")
+            changed = True
+            out.append(row)
+
+        if not changed:
+            return
+        payload["recommendations"] = out
+        payload["levels_last_push_update_utc"] = datetime.now(timezone.utc).isoformat().replace(
+            "+00:00", "Z"
+        )
+        write_next_session_recommendations(path, payload)
 
     def emit_next_session_recommendations_if_needed(
         self,
@@ -2314,6 +2756,8 @@ class RP608NSEShadowDaemon:
         """
         from scripts.rp608_nse_next_session_recs import (
             build_next_session_recommendations,
+            l1_snapshots_from_latest_evaluations,
+            load_rp607_classified_symbols,
             next_weekday_session,
             write_next_session_recommendations,
         )
@@ -2338,17 +2782,59 @@ class RP608NSEShadowDaemon:
             from_date = str(d0)
 
         nxt = next_weekday_session(d0, holidays=set(getattr(self, "exchange_holidays", set()) or set()))
+        # Prefer in-memory last-eval L1; fall back to durable latest_evaluations.json
+        l1_by_symbol: Dict[str, Dict[str, Any]] = {}
+        for sym, ev in (getattr(self, "last_evaluations", {}) or {}).items():
+            if not isinstance(ev, dict):
+                continue
+            dq = ev.get("data_quality") if isinstance(ev.get("data_quality"), dict) else {}
+            try:
+                bid_qty = float(dq.get("bid_qty") or 0.0)
+                ask_qty = float(dq.get("ask_qty") or 0.0)
+            except (TypeError, ValueError):
+                continue
+            snap = {
+                "bid_qty": bid_qty,
+                "ask_qty": ask_qty,
+                "source": "daemon_last_evaluations_l1",
+            }
+            for src_k, dst_k in (
+                ("bid_price", "bid_price"),
+                ("ask_price", "ask_price"),
+                ("best_bid", "bid_price"),
+                ("best_ask", "ask_price"),
+            ):
+                if ev.get(src_k) is not None and dst_k not in snap:
+                    try:
+                        snap[dst_k] = float(ev[src_k])
+                    except (TypeError, ValueError):
+                        pass
+            l1_by_symbol[str(sym)] = snap
+        if not l1_by_symbol:
+            l1_by_symbol = l1_snapshots_from_latest_evaluations(self.latest_evaluations_path)
+
+        # Actionable watch universe = RP-607 classified 102 (exclude C_Quarantined)
+        rp607_path = self.output_dir / "rp607_stock_profiles.json"
+        classified = load_rp607_classified_symbols(rp607_path)
+        if not classified:
+            # Fail-open only if profile artifact missing; still prefer 102 when present
+            classified = None  # type: ignore[assignment]
+
         payload = build_next_session_recommendations(
             self.price_history,
             from_session_date=from_date,
             next_session_date=str(nxt),
             top_n=20,
             now_utc=datetime.now(timezone.utc),
+            l1_by_symbol=l1_by_symbol,
+            eligible_symbols=classified,
+            universe_label="RP-607-classified-102",
         )
         write_next_session_recommendations(self.next_session_recs_path, payload)
         self.state.next_session_recs_emitted_for = from_date
         print(
             f"[next_session_recs] emitted {payload.get('n_recommendations')} watches "
+            f"({payload.get('n_order_flow_supported', 0)} order-flow supported) "
             f"for {payload.get('next_session_date')} → {self.next_session_recs_path}"
         )
         return {
@@ -2356,6 +2842,7 @@ class RP608NSEShadowDaemon:
             "from_session_date": from_date,
             "next_session_date": str(nxt),
             "n_recommendations": payload.get("n_recommendations"),
+            "n_order_flow_supported": payload.get("n_order_flow_supported"),
             "path": str(self.next_session_recs_path),
         }
 
@@ -2370,6 +2857,25 @@ class RP608NSEShadowDaemon:
 
         print(f"[{datetime.now(timezone.utc).isoformat()}] RP-608 NSE Shadow Daemon started (Output: {self.output_dir})")
         try:
+            # OFX Stage 0D: map tokens→symbols then tee ticks on the same WS (before start).
+            tok_map = {}
+            imap = getattr(self.feed_adapter, "instrument_map", None) or {}
+            for sym, pair in imap.items():
+                try:
+                    tok_map[int(pair[0])] = str(sym)
+                except Exception:
+                    continue
+            if getattr(self, "ofx_tick_journal", None) is not None:
+                self.ofx_tick_journal.set_token_map(tok_map)
+                if self.ofx_tick_journal.enabled:
+                    self.feed_adapter.register_tick_sink(self.ofx_tick_journal.on_tick)
+                    print(
+                        f"[+] OFX Stage 0D inferred-aggressor tick capture ENABLED → {self.ofx_tick_dir} "
+                        f"(authority=0.0%; OF rules untouched)",
+                        flush=True,
+                    )
+                else:
+                    print("[*] OFX Stage 0D tick capture disabled (RP608_OFX_NSE_TICK_CAPTURE)", flush=True)
             self.feed_adapter.start_ticker()
         except Exception as e:
             print(f"[!] Kite ticker start skipped: {e}", file=sys.stderr)
@@ -2394,6 +2900,11 @@ class RP608NSEShadowDaemon:
         finally:
             try:
                 self.feed_adapter.stop_ticker()
+            except Exception:
+                pass
+            try:
+                if getattr(self, "ofx_tick_journal", None) is not None:
+                    self.ofx_tick_journal.close()
             except Exception:
                 pass
 

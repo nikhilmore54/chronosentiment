@@ -21,6 +21,25 @@ You are a senior systems engineer working on ChronoSentiment, a deterministic tr
 - **Metric Aggregation**: Performance metrics (PNL, Fill Rate, etc.) must be aggregated (e.g., averaged) across all scenario domains.
 - **Robustness**: High fitness requires consistent performance across diverse market environments.
 
+## 3b. RP-608 session diagnostics (four books)
+- **Primary metric:** W/L ratio (wins / closed trades; loss rate) **per book**, never pooled.
+- **Supporting (never reorder ahead of W/L):** payoff asymmetry (avg|win|/avg|loss|), gross, friction, net, MFE/path grades, concentration.
+- Raw favorable excursion is **not** a loss explanation. Count exit/hold-hypothesis support only when peak MFE clears recorded costs **and** the predeclared meaningful-movement floor; even then → hypothesis only, not execution change.
+- W/L-first does **not** mean win-rate-only success: payoff and net expectancy remain required for any proposed change.
+- Morning MTM / open marks are not substitutes for closed-trade W/L or realized net.
+
+## 3c. RP-608-WL-IMPROVE-001 (trade selection research)
+- Focus: improve win probability / trade selection via offline diagnostics and gated experiments.
+- **Do not** change frozen execution baseline (OF ±0.30, stops/targets/holds, Estimand A entry thresholds) without Gate 5 governance.
+- Books never share one corrective. No universal trend filter; no symbol bans from single-session loss lists; no WR-only success.
+- Plan: `docs/research/rp608_wl_improvement_plan.md`.
+
+## 3d. Baseline OF vs aggression OF (LOCKED 2026-11-07)
+- Baseline `OF_SUP` / ±0.30 / reverse-OF = **L1 resting liquidity imbalance**, not executed aggressor volume.
+- Do not reinterpret as buying/selling pressure or absorption; do not retrospectively relabel historical OF.
+- Aggression + response research → **RP-608-OFX** only (see `.cursor/rules/rp608-ofx.mdc`).
+- Audit: `docs/research/rp608_orderflow_side_quantity_semantics_audit.md` §1b (`ACCEPT_CONSTRUCT_DISTINCTION`).
+
 ## 4. 🧹 Code Standards
 - **Clean DTOs**: Avoid unused variables and imports in the API layer.
 - **Safety**: Use safe access patterns for nested fields in UI (`?.`, `??`).

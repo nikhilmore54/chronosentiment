@@ -79,14 +79,14 @@ class TestRP608NSEShadowDaemon(unittest.TestCase):
         # 2. STT: 0.025% on sell only = 101,000 * 0.00025 = ₹25.25
         self.assertEqual(res["stt"], 25.25)
 
-        # 3. Exchange: 0.00297% on 201,000 = ₹5.9697
-        self.assertAlmostEqual(res["exchange_charges"], tot_turnover * 0.0000297, places=3)
+        # 3. Exchange: 0.00307% on 201,000
+        self.assertAlmostEqual(res["exchange_charges"], tot_turnover * 0.0000307, places=3)
 
         # 4. SEBI: ₹10 per Cr (0.0001%) on 201,000 = ₹0.201
         self.assertAlmostEqual(res["sebi_charges"], tot_turnover * 0.000001, places=3)
 
-        # 5. GST: 18% on (40 + exch + sebi)
-        expected_gst = 0.18 * (40.0 + (tot_turnover * 0.0000297) + (tot_turnover * 0.000001))
+        # 5. GST: 18% on (40 + exch + sebi) — NOT on turnover
+        expected_gst = 0.18 * (40.0 + (tot_turnover * 0.0000307) + (tot_turnover * 0.000001))
         self.assertAlmostEqual(res["gst"], expected_gst, places=2)
 
         # 6. Stamp duty: 0.003% on buy only = 100,000 * 0.00003 = ₹3.0
@@ -350,6 +350,58 @@ class TestRP608NSEShadowDaemon(unittest.TestCase):
         # Assert no execution/order placement methods exist
         for m in ("place_order", "submit_order", "send_order", "execute_order"):
             self.assertFalse(hasattr(daemon, m))
+
+    def test_11b_order_flow_inspection_stamped_on_every_eval(self):
+        """OF inspection is observational on all symbols — even cold-start / active holds."""
+        daemon = RP608NSEShadowDaemon(output_dir=self.test_dir, single_bar_test=True)
+        sym = "JINDALSTEL.NS"
+        # Bid-heavy book should mark LONG OF immediately (inspection, not entry gate)
+        q_bid = TopOfBookQuote(
+            timestamp_utc_ms=1000,
+            bid_price=1100.0,
+            ask_price=1100.2,
+            bid_qty=900,
+            ask_qty=100,
+        )
+        b1 = BarOHLCV(
+            timestamp_utc_ms=1000,
+            open=1100.0,
+            high=1101.0,
+            low=1099.0,
+            close=1100.0,
+            volume=100.0,
+        )
+        daemon.evaluate_symbol_bar(sym, bar_idx=1, latest_bar=b1, quote=q_bid)
+        e1 = daemon.last_evaluations[sym]
+        self.assertEqual(e1["decision_code"], "COLD_START_INSUFFICIENT_HISTORY")
+        self.assertTrue(e1.get("order_flow_inspection"))
+        self.assertTrue(e1.get("order_flow_supported"))
+        self.assertTrue(e1.get("order_flow_long_supported"))
+        self.assertFalse(e1.get("order_flow_short_supported"))
+        self.assertGreaterEqual(float(e1.get("order_flow_imbalance") or 0), 0.30)
+        self.assertEqual(e1.get("order_flow_label"), "ORDER_FLOW_SUPPORTED")
+
+        # Ask-heavy: LONG primary unmarked; SHORT support true
+        q_ask = TopOfBookQuote(
+            timestamp_utc_ms=2000,
+            bid_price=1100.0,
+            ask_price=1100.2,
+            bid_qty=100,
+            ask_qty=900,
+        )
+        b2 = BarOHLCV(
+            timestamp_utc_ms=2000,
+            open=1100.0,
+            high=1101.0,
+            low=1099.0,
+            close=1100.5,
+            volume=100.0,
+        )
+        daemon.evaluate_symbol_bar(sym, bar_idx=2, latest_bar=b2, quote=q_ask)
+        e2 = daemon.last_evaluations[sym]
+        self.assertFalse(e2.get("order_flow_supported"))
+        self.assertTrue(e2.get("order_flow_short_supported"))
+        self.assertFalse(e2.get("order_flow_long_supported"))
 
     def test_12_scrip_level_decision_ledger_and_rejections(self):
         """Verifies deterministic decision codes, explanations, ranking, and statutory friction."""

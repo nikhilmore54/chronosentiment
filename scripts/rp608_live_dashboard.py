@@ -18,10 +18,12 @@ import http.server
 import json
 import math
 import os
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 import socketserver
 import subprocess
 import sys
+import threading
 import time
 import urllib.parse
 from typing import Any, Dict, List, Optional
@@ -31,6 +33,11 @@ sys.path.insert(0, str(WORKSPACE_DIR))
 
 from scripts.rp608_trade_plan_overlay import TradePlanOverlayManager, calculate_trade_plan
 from scripts.rp608_multi_horizon_status import get_multi_horizon_dashboard_state
+from scripts.rp608_order_flow_mark import (
+    inspect_order_flow_book,
+    l1_from_book_ticker,
+)
+from scripts.rp611_dashboard_status import get_rp611_dashboard_state
 
 try:
     from scripts.test_kite_probe import (
@@ -185,8 +192,95 @@ NSE_LIVE_PREFERRED_ARTIFACTS = {
     "rp608_nse_trade_journal.jsonl",
     "rp608_nse_bar_history.json",
     "rp608_nse_checkpoint.json",
+    "rp608_nse_l1_feed_health.json",
     "rp608_nse_next_session_recommendations.json",
 }
+
+
+def _nse_iso_date_ist(iso_s: Any) -> Optional[str]:
+    """Best-effort calendar date (IST) from an ISO timestamp string."""
+    if not iso_s or iso_s == "N/A":
+        return None
+    try:
+        raw = str(iso_s).replace("Z", "+00:00")
+        dt = datetime.fromisoformat(raw)
+        if dt.tzinfo is None:
+            dt = dt.replace(tzinfo=timezone.utc)
+        return (dt.astimezone(timezone(timedelta(hours=5, minutes=30)))).date().isoformat()
+    except Exception:
+        return str(iso_s)[:10] if len(str(iso_s)) >= 10 else None
+
+
+_IST = timezone(timedelta(hours=5, minutes=30))
+
+
+def _nse_recommendation_time_fields(
+    *,
+    utc_ms: Any = None,
+    iso_s: Any = None,
+) -> Dict[str, Any]:
+    """
+    Recommendation / entry clock for high-target idea cards.
+
+    Prefer explicit UTC ms (trade open); else ISO bar/eval stamp.
+    Surfaces both UTC ISO and IST display string.
+    """
+    empty = {
+        "recommendation_time_utc_ms": None,
+        "recommendation_time_utc": None,
+        "recommendation_time_ist": None,
+    }
+    dt: Optional[datetime] = None
+    ms_out: Optional[int] = None
+    try:
+        if utc_ms is not None and str(utc_ms).strip() != "":
+            ms_out = int(float(utc_ms))
+            dt = datetime.fromtimestamp(ms_out / 1000.0, tz=timezone.utc)
+    except (TypeError, ValueError, OSError, OverflowError):
+        dt = None
+        ms_out = None
+    if dt is None and iso_s and iso_s != "N/A":
+        try:
+            raw = str(iso_s).replace("Z", "+00:00")
+            parsed = datetime.fromisoformat(raw)
+            if parsed.tzinfo is None:
+                parsed = parsed.replace(tzinfo=timezone.utc)
+            dt = parsed.astimezone(timezone.utc)
+            ms_out = int(dt.timestamp() * 1000)
+        except Exception:
+            return empty
+    if dt is None:
+        return empty
+    ist = dt.astimezone(_IST)
+    return {
+        "recommendation_time_utc_ms": ms_out,
+        "recommendation_time_utc": dt.strftime("%Y-%m-%d %H:%M:%SZ"),
+        "recommendation_time_ist": ist.strftime("%Y-%m-%d %H:%M:%S IST"),
+    }
+
+
+def _load_nse_production_checkpoint() -> Dict[str, Any]:
+    ckpt_path = find_latest_nse_file("rp608_nse_checkpoint.json")
+    if not ckpt_path.exists():
+        return {}
+    try:
+        with open(ckpt_path, "r", encoding="utf-8") as f:
+            data = json.load(f)
+        return data if isinstance(data, dict) else {}
+    except Exception:
+        return {}
+
+
+def _load_nse_l1_feed_health() -> Dict[str, Any]:
+    health_path = find_latest_nse_file("rp608_nse_l1_feed_health.json")
+    if not health_path.exists():
+        return {}
+    try:
+        with open(health_path, "r", encoding="utf-8") as f:
+            data = json.load(f)
+        return data if isinstance(data, dict) else {}
+    except Exception:
+        return {}
 
 
 def find_latest_nse_file(filename: str) -> Path:
@@ -251,6 +345,28 @@ REGISTERED_WINDOW_MS = 1792972800000  # 2026-10-26 05:30:00 IST
 
 # Overlay state manager instance
 overlay_mgr = TradePlanOverlayManager()
+
+# /api/state assembly is expensive (17k+ decision cards). Short TTL cache prevents
+# Pi/UI refresh stampedes from pegging CPU/RAM while preserving fail-closed freshness.
+_STATE_CACHE_LOCK = threading.Lock()
+_STATE_CACHE: Dict[str, Any] = {"ts": 0.0, "payload": None}
+_STATE_CACHE_TTL_SEC = 2.0
+_REASONING_TAIL = 256
+
+
+def get_cached_live_state() -> Dict[str, Any]:
+    """Return load_live_state() with a short process-local TTL (presentation cache)."""
+    now = time.time()
+    with _STATE_CACHE_LOCK:
+        payload = _STATE_CACHE.get("payload")
+        ts = float(_STATE_CACHE.get("ts") or 0.0)
+        if payload is not None and (now - ts) < _STATE_CACHE_TTL_SEC:
+            return payload
+    state = load_live_state()
+    with _STATE_CACHE_LOCK:
+        _STATE_CACHE["payload"] = state
+        _STATE_CACHE["ts"] = time.time()
+    return state
 
 
 def get_observer_service_status() -> Dict[str, Any]:
@@ -444,6 +560,219 @@ def derive_card_reasoning(card: Dict[str, Any]) -> Dict[str, Any]:
     }
 
 
+def _load_nse_of_paper_ledger_state() -> Dict[str, Any]:
+    """Read-only NSE OF PAPER ledger snapshot (RP-608-NSE-OF-PAPER-TRADE-001)."""
+    empty = {
+        "protocol_id": "RP-608-NSE-OF-PAPER-TRADE-001",
+        "execution_mode": "PAPER",
+        "live_order_authority": 0.0,
+        "enabled": False,
+        "n_open": 0,
+        "open_symbols": [],
+        "of_outcomes_summary": {
+            "n_trades": 0,
+            "n_wins": 0,
+            "n_losses": 0,
+            "cumulative_net_pnl_inr": 0.0,
+        },
+        "recent": [],
+        "available": False,
+    }
+    try:
+        from scripts.rp608_nse_of_paper_ledger import NseOfPaperLedger, PROTOCOL_ID
+
+        # Prefer production NSE dir; fall back to test_run if present
+        roots = [
+            WORKSPACE_DIR / "live_capture" / "shadow_validation" / "nse",
+            WORKSPACE_DIR / "live_capture" / "shadow_validation" / "nse" / "test_run",
+        ]
+        base = None
+        for r in roots:
+            if (r / "of_paper_ledger_v1" / "of_paper_state.json").exists() or (
+                r / "of_paper_ledger_v1"
+            ).exists():
+                base = r
+                break
+        if base is None:
+            base = roots[0]
+        ledger = NseOfPaperLedger(base)
+        summary = ledger.summary()
+        recent = ledger.load_recent_outcomes(12)
+        return {
+            **summary,
+            "protocol_id": PROTOCOL_ID,
+            "recent": [
+                {
+                    "of_trade_id": r.get("of_trade_id"),
+                    "symbol": r.get("tradingsymbol") or r.get("symbol"),
+                    "direction": r.get("direction"),
+                    "exit_reason": r.get("exit_reason"),
+                    "net_pnl_inr": r.get("net_pnl_inr"),
+                    "net_return_bps": r.get("net_return_bps"),
+                    "holding_duration_seconds": r.get("holding_duration_seconds"),
+                    "entry_bar_idx": r.get("entry_bar_idx"),
+                    "exit_bar_idx": r.get("exit_bar_idx"),
+                }
+                for r in recent
+            ],
+            "opens": [
+                {
+                    "of_trade_id": t.get("of_trade_id"),
+                    "symbol": t.get("tradingsymbol") or t.get("symbol"),
+                    "direction": t.get("direction"),
+                    "entry_price": t.get("entry_price"),
+                    "entry_bar_idx": t.get("entry_bar_idx"),
+                    "order_flow_imbalance": t.get("order_flow_imbalance"),
+                    "simulated_quantity": t.get("simulated_quantity"),
+                }
+                for t in ledger.open_snapshot()
+            ],
+            "available": True,
+            "ledger_dir": str(ledger.ledger_dir),
+        }
+    except Exception as exc:
+        empty["error"] = str(exc)
+        return empty
+
+
+def _enrich_next_session_watchlist_for_api(
+    next_session_data: Dict[str, Any],
+    *,
+    stamp_mtime_utc: Optional[str],
+    scrips: List[Dict[str, Any]],
+    live_bar_idx: int,
+    session_date: Optional[str],
+) -> Dict[str, Any]:
+    """
+    Serve next-session watchlist with indicative structure levels + live status.
+    Informational only — does not authorize entries (authority 0%).
+    """
+    from scripts.rp608_nse_next_session_recs import (
+        LEVELS_POLICY_ID,
+        LEVELS_ROLE,
+        compute_indicative_watch_levels,
+        enrich_recommendation_levels_live,
+        load_price_history_json,
+    )
+
+    data = dict(next_session_data or {})
+    recs = list(data.get("recommendations") or [])
+    next_date = str(data.get("next_session_date") or "")
+    # Actionable only on the next-session calendar date after warmup bar ≥5.
+    session_actionable = bool(
+        session_date and next_date and session_date == next_date and int(live_bar_idx or 0) >= 5
+    )
+
+    live_prices: Dict[str, float] = {}
+    feed_stale: Dict[str, bool] = {}
+    for s in scrips or []:
+        sym = str(s.get("symbol") or "")
+        if not sym:
+            continue
+        try:
+            px = float(s.get("last_price") or 0.0)
+        except (TypeError, ValueError):
+            px = 0.0
+        if px > 0:
+            live_prices[sym] = px
+        label = str(s.get("status") or s.get("status_label") or "")
+        age = s.get("age_sec")
+        stale = label in {"STALE", "CROSSED", "ZERO_DEPTH"} or (
+            isinstance(age, (int, float)) and age > 120
+        )
+        feed_stale[sym] = bool(stale)
+
+    # Presentation-only: never recompute structure on API poll.
+    # One-time backfill of missing stamped levels from durable bars (old stamps).
+    need_structure = any(
+        not (isinstance(r, dict) and isinstance(r.get("levels"), dict) and r["levels"].get("stop_price"))
+        for r in recs
+    )
+    if need_structure:
+        bh_path = find_latest_nse_file("rp608_nse_bar_history.json")
+        bar_hist: Dict[str, Any] = {}
+        if bh_path.exists():
+            try:
+                bar_hist = load_price_history_json(bh_path)
+            except Exception:
+                bar_hist = {}
+        if bar_hist:
+            now_iso = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
+            filled: List[Dict[str, Any]] = []
+            for r in recs:
+                row = dict(r)
+                sym = str(row.get("symbol") or "")
+                levels = row.get("levels") if isinstance(row.get("levels"), dict) else None
+                if not (levels and levels.get("stop_price")):
+                    bars = bar_hist.get(sym) or []
+                    if bars:
+                        levels = compute_indicative_watch_levels(
+                            bars,
+                            side=str(row.get("side") or "LONG"),
+                            reference_price=(
+                                float(row["close_price"])
+                                if row.get("close_price") is not None
+                                else None
+                            ),
+                            calculated_at_utc=now_iso,
+                        )
+                        row["levels"] = levels
+                        row["entry_low"] = levels.get("entry_low")
+                        row["entry_high"] = levels.get("entry_high")
+                        row["stop_price"] = levels.get("stop_price")
+                        row["target_price"] = levels.get("target_price")
+                        row["risk_reward_display"] = levels.get("risk_reward_display")
+                        row["levels_role"] = LEVELS_ROLE
+                        row["not_executed_entry"] = True
+                        row["not_paper_trade_entry"] = True
+                filled.append(row)
+            recs = filled
+
+    feed_health = _load_nse_l1_feed_health()
+    reconcile_pending = bool(
+        feed_health.get("reconcile_pending")
+        or feed_health.get("reconciliation_pending")
+        or feed_health.get("awaiting_reconcile")
+    )
+    # Validity overlay only (price vs stamped band + latch). No structural recalc here.
+    recs = enrich_recommendation_levels_live(
+        recs,
+        price_history=None,
+        live_prices=live_prices,
+        feed_stale_by_symbol=feed_stale,
+        reconcile_pending=reconcile_pending,
+        session_actionable=session_actionable,
+        recalculate_structure=False,
+    )
+
+    return {
+        "available": bool(recs),
+        "protocol_id": data.get("protocol_id"),
+        "from_session_date": data.get("from_session_date"),
+        "next_session_date": data.get("next_session_date"),
+        "n_recommendations": data.get("n_recommendations", len(recs)),
+        "n_order_flow_supported": data.get("n_order_flow_supported", 0),
+        "order_flow_imbalance_threshold": data.get("order_flow_imbalance_threshold"),
+        "universe_label": data.get("universe_label"),
+        "universe_eligible_n": data.get("universe_eligible_n"),
+        "note": data.get("note"),
+        "emitted_utc": data.get("emitted_utc"),
+        "recommended_at_utc": data.get("recommended_at_utc") or data.get("emitted_utc"),
+        "stamp_mtime_utc": stamp_mtime_utc,
+        "live_update": True,
+        "live_poll_hint_sec": 3,
+        "live_order_authority": data.get("live_order_authority", 0.0),
+        "levels_policy_id": data.get("levels_policy_id") or LEVELS_POLICY_ID,
+        "levels_role": data.get("levels_role") or LEVELS_ROLE,
+        "levels_informational_only": True,
+        "session_actionable_for_levels": session_actionable,
+        "levels_evaluation_mode": "PRESENTATION_OVERLAY_ONLY",
+        "structure_recalc_on_poll": False,
+        "reconcile_pending": reconcile_pending,
+        "recommendations": recs,
+    }
+
+
 def get_nse_dashboard_state() -> Dict[str, Any]:
     """
     Parses durable NSE artifacts from test_run directory and evaluates live health.
@@ -571,12 +900,23 @@ def get_nse_dashboard_state() -> Dict[str, Any]:
 
     next_session_file = find_latest_nse_file("rp608_nse_next_session_recommendations.json")
     next_session_data: Dict[str, Any] = {}
+    next_session_stamp_mtime_utc: Optional[str] = None
     if next_session_file.exists():
         try:
             with open(next_session_file, "r", encoding="utf-8") as f:
                 next_session_data = json.load(f)
+            next_session_stamp_mtime_utc = datetime.fromtimestamp(
+                next_session_file.stat().st_mtime, tz=timezone.utc
+            ).isoformat().replace("+00:00", "Z")
         except Exception:
             pass
+    # Backfill recommendation time on older stamps (UI real-time panel).
+    _ns_emitted = next_session_data.get("emitted_utc") or next_session_data.get("recommended_at_utc")
+    if _ns_emitted and isinstance(next_session_data.get("recommendations"), list):
+        next_session_data.setdefault("recommended_at_utc", _ns_emitted)
+        for _rec in next_session_data["recommendations"]:
+            if isinstance(_rec, dict) and not _rec.get("recommended_at_utc"):
+                _rec["recommended_at_utc"] = _ns_emitted
 
     eval_map = eval_data.get("evaluations", {})
     qualifying_candidates = []
@@ -596,6 +936,30 @@ def get_nse_dashboard_state() -> Dict[str, Any]:
     n_qualifying = eval_data.get("n_qualifying", 0)
     eval_ts_iso = eval_data.get("timestamp_iso", "N/A")
     eval_bar_idx = eval_data.get("bar_idx", 0)
+
+    # Production session / feed health (preferred over one-shot readiness probe).
+    nse_ckpt = _load_nse_production_checkpoint()
+    feed_health = _load_nse_l1_feed_health()
+    session_date = str(nse_ckpt.get("current_session_date") or "") or None
+    durable_bar = int(nse_ckpt.get("last_durable_bar_idx") or 0)
+    accounted_bar = int(nse_ckpt.get("last_accounted_bar_idx") or 0)
+    ckpt_hb_iso = nse_ckpt.get("last_heartbeat_iso") or "N/A"
+    ckpt_hb_age_sec = None
+    try:
+        hb_ms = int(nse_ckpt.get("last_heartbeat_utc_ms") or 0)
+        if hb_ms > 0:
+            ckpt_hb_age_sec = max(0, int(now_epoch - (hb_ms / 1000.0)))
+    except Exception:
+        pass
+    eval_session_date = _nse_iso_date_ist(eval_ts_iso)
+    eval_snapshot_fresh = bool(
+        session_date and eval_session_date and session_date == eval_session_date
+    )
+    # When today's session has not yet produced a durable eval, do not treat
+    # yesterday's (or earlier) snapshot as live G1/bar authority.
+    live_bar_for_gates = (
+        int(eval_bar_idx) if eval_snapshot_fresh else int(durable_bar)
+    )
 
     # Merge scrips
     merged_scrips: List[Dict[str, Any]] = []
@@ -670,14 +1034,24 @@ def get_nse_dashboard_state() -> Dict[str, Any]:
         )
 
         # Gate 1: Entry Window Eligibility (1 <= bar_idx <= 19; 60m completes by 15:00 close-window)
+        # Stale cross-session eval snapshots must not close G1 for today's session.
         _max_entry_bar = 19
-        g1_pass = (1 <= b_idx <= _max_entry_bar)
-        g1_status = "PASS" if g1_pass else "CLOSED"
-        g1_reason = (
-            f"Entry window open (Bar {b_idx} in 1..{_max_entry_bar})"
-            if g1_pass
-            else f"Entry window closed (Bar {b_idx} > {_max_entry_bar}; 60m must finish by 15:00)"
-        )
+        if not eval_snapshot_fresh:
+            b_idx = live_bar_for_gates
+            g1_status = "UNVERIFIED"
+            g1_reason = (
+                f"Awaiting today's evaluation (stale snapshot {eval_session_date or eval_ts_iso}; "
+                f"session {session_date or 'unknown'}; durable_bar={durable_bar})"
+            )
+            g1_pass = False
+        else:
+            g1_pass = (1 <= b_idx <= _max_entry_bar)
+            g1_status = "PASS" if g1_pass else "CLOSED"
+            g1_reason = (
+                f"Entry window open (Bar {b_idx} in 1..{_max_entry_bar})"
+                if g1_pass
+                else f"Entry window closed (Bar {b_idx} > {_max_entry_bar}; 60m must finish by 15:00)"
+            )
 
         # Gate 2: Position State / Capacity (ACTIVE = simulated trade already open; NONE = slot available)
         trade_info = active_trades_map.get(sym)
@@ -704,16 +1078,25 @@ def get_nse_dashboard_state() -> Dict[str, Any]:
             g5_status = "NOT_EVALUATED"
             g5_reason = "Pending quote verification"
 
-        # Gate 3: Causal Warmup Hurdle (history >= 5 bars) — same session only
-        if is_data_fail and h_len < 5:
+        # Gate 3: Causal Warmup Hurdle (history >= 5 bars).
+        # Under cross_gap_neutral_v1, history_length includes prior-session bars.
+        g3_policy = ev.get("g3_warmup_policy") or (ev.get("history_provenance") or {}).get("g3_warmup_policy")
+        g3_flag = ev.get("g3_ready")
+        sess_h = ev.get("session_history_length")
+        if is_data_fail and h_len < 5 and g3_flag is not True:
             g3_status = "BLOCKED"
             g3_reason = f"History {h_len}/5 not evaluated — blocked by data failure (not a warmup fail)"
-        elif d_code == "COLD_START_INSUFFICIENT_HISTORY" or h_len < 5:
+        elif d_code == "COLD_START_INSUFFICIENT_HISTORY" or (
+            g3_flag is False if g3_flag is not None else h_len < 5
+        ):
             g3_status = "FAIL"
-            g3_reason = f"Warmup history: {h_len}/5 bars required"
+            pol = f"; policy={g3_policy}" if g3_policy else ""
+            sess = f"; session={sess_h}" if sess_h is not None else ""
+            g3_reason = f"Warmup history: {h_len}/5 bars required{pol}{sess}"
         else:
             g3_status = "PASS"
-            g3_reason = f"Warmup satisfied: {h_len} bars >= 5"
+            pol = f" ({g3_policy})" if g3_policy else ""
+            g3_reason = f"Warmup satisfied: {h_len} bars >= 5{pol}"
 
         # Gate 4: Momentum Threshold (traj15 >= +0.0500)
         if is_data_fail:
@@ -742,6 +1125,10 @@ def get_nse_dashboard_state() -> Dict[str, Any]:
             terminal_decision = "NO_TRADE"
             d_code = "DATA_QUALITY_FAILURE"
             ev_explanation = ev_explanation or g5_reason
+        elif g1_status == "UNVERIFIED":
+            terminal_decision = "NO_TRADE"
+            d_code = "AWAITING_TODAY_EVALUATION"
+            ev_explanation = g1_reason
         elif g1_status == "CLOSED":
             terminal_decision = "NO_TRADE"
             d_code = "INTRADAY_BOUNDARY_EXCLUDED"
@@ -817,6 +1204,34 @@ def get_nse_dashboard_state() -> Dict[str, Any]:
                 rr["estimated_friction_bps"] = round(_nse_estimate_friction_bps(hs, None), 2)
             rr["rank_score"] = _nse_rr_target_rank_score(net_rr, rr.get("target_bps"))
 
+        # Live OF inspection from L1 (all symbols). Prefer quote depth; fall back to eval stamp.
+        # Observational only — does not change Arm A entry / authority.
+        bid_q = ev.get("data_quality", {}).get("bid_qty", q.get("bid_qty", 0))
+        ask_q = ev.get("data_quality", {}).get("ask_qty", q.get("ask_qty", 0))
+        of_side = str((trade_info or {}).get("side") or "LONG").upper() or "LONG"
+        live_l1 = l1_from_book_ticker(
+            {
+                "bid_qty": bid_q,
+                "ask_qty": ask_q,
+                "bid_price": q.get("best_bid") or q.get("bid_price"),
+                "ask_price": q.get("best_ask") or q.get("ask_price"),
+            },
+            source="nse_live_l1",
+        )
+        of_live = inspect_order_flow_book(live_l1, primary_side=of_side)
+        # If live book empty, keep durable evaluator OF stamp when present.
+        if of_live.get("order_flow_source") in (None, "none") and ev.get("order_flow_imbalance") is not None:
+            of_live = {
+                "order_flow_supported": bool(ev.get("order_flow_supported")),
+                "order_flow_label": ev.get("order_flow_label"),
+                "order_flow_imbalance": ev.get("order_flow_imbalance"),
+                "order_flow_source": ev.get("order_flow_source") or "eval_stamp",
+                "order_flow_side": ev.get("order_flow_side") or of_side,
+                "order_flow_long_supported": bool(ev.get("order_flow_long_supported")),
+                "order_flow_short_supported": bool(ev.get("order_flow_short_supported")),
+                "order_flow_inspection": True,
+            }
+
         merged_scrips.append({
             "symbol": sym,
             "tradingsymbol": tsym,
@@ -827,8 +1242,8 @@ def get_nse_dashboard_state() -> Dict[str, Any]:
             "last_price": last_price,
             "best_bid": q.get("best_bid", 0.0),
             "best_ask": q.get("best_ask", 0.0),
-            "bid_qty": ev.get("data_quality", {}).get("bid_qty", q.get("bid_qty", 0)),
-            "ask_qty": ev.get("data_quality", {}).get("ask_qty", q.get("ask_qty", 0)),
+            "bid_qty": bid_q,
+            "ask_qty": ask_q,
             "half_spread_bps": half_spread_bps,
             "volume": q.get("volume", 0),
             "day_open": q.get("day_open", 0.0),
@@ -872,6 +1287,20 @@ def get_nse_dashboard_state() -> Dict[str, Any]:
             "gates_trace": gates_trace,
             "entry_price": (trade_info or {}).get("entry_price") or last_price,
             "active_entry_bar_idx": (trade_info or {}).get("entry_bar_idx"),
+            "order_flow_supported": of_live.get("order_flow_supported"),
+            "order_flow_label": of_live.get("order_flow_label"),
+            "order_flow_imbalance": of_live.get("order_flow_imbalance"),
+            "order_flow_source": of_live.get("order_flow_source"),
+            "order_flow_side": of_live.get("order_flow_side"),
+            "order_flow_long_supported": of_live.get("order_flow_long_supported"),
+            "order_flow_short_supported": of_live.get("order_flow_short_supported"),
+            "order_flow_inspection": True,
+            **_nse_recommendation_time_fields(
+                utc_ms=(trade_info or {}).get("entry_timestamp_utc_ms")
+                or ev.get("bar_timestamp_utc_ms")
+                or ev.get("quote_timestamp_utc_ms"),
+                iso_s=ev.get("bar_timestamp_iso"),
+            ),
             **recommendation_horizon_meta(market="NSE", profile="INTRADAY"),
         })
 
@@ -906,6 +1335,10 @@ def get_nse_dashboard_state() -> Dict[str, Any]:
         if tb is None or float(tb) <= NSE_HIGH_TARGET_BPS:
             continue
         ev = eval_map.get(sym, {})
+        rec_time = _nse_recommendation_time_fields(
+            utc_ms=trade.get("entry_timestamp_utc_ms"),
+            iso_s=ev.get("bar_timestamp_iso"),
+        )
         high_target_by_sym[sym] = _enrich_high_target_card({
             "symbol": sym,
             "tradingsymbol": trade.get("tradingsymbol") or sym.replace(".NS", ""),
@@ -934,6 +1367,7 @@ def get_nse_dashboard_state() -> Dict[str, Any]:
                 "net_rr_ratio": None,
                 "estimated_friction_bps": None,
             },
+            **rec_time,
         })
     for sym, ev in (eval_map or {}).items():
         rr = dict(ev.get("risk_reward") or {})
@@ -943,6 +1377,10 @@ def get_nse_dashboard_state() -> Dict[str, Any]:
         if ev.get("decision") != "RECOMMEND_LONG" and sym in high_target_by_sym:
             continue
         if ev.get("decision") == "RECOMMEND_LONG" or sym not in high_target_by_sym:
+            rec_time = _nse_recommendation_time_fields(
+                utc_ms=ev.get("bar_timestamp_utc_ms") or ev.get("quote_timestamp_utc_ms"),
+                iso_s=ev.get("bar_timestamp_iso"),
+            )
             high_target_by_sym[sym] = _enrich_high_target_card({
                 "symbol": sym,
                 "tradingsymbol": ev.get("tradingsymbol") or sym.replace(".NS", ""),
@@ -958,6 +1396,7 @@ def get_nse_dashboard_state() -> Dict[str, Any]:
                 "entry_conditions": ev.get("entry_conditions"),
                 "invalidation": ev.get("invalidation"),
                 "risk_reward": rr,
+                **rec_time,
             })
     high_target_candidates = sorted(
         high_target_by_sym.values(),
@@ -992,6 +1431,17 @@ def get_nse_dashboard_state() -> Dict[str, Any]:
     neutral_count = sum(1 for s in merged_scrips if -0.05 < s.get("score", 0.0) < 0.05)
     bearish_count = sum(1 for s in merged_scrips if s.get("score", 0.0) <= -0.05)
 
+    # Live OF inspection census (all scrips; observational)
+    n_live_order_flow_supported = sum(
+        1 for s in merged_scrips if s.get("order_flow_supported")
+    )
+    n_live_order_flow_long = sum(
+        1 for s in merged_scrips if s.get("order_flow_long_supported")
+    )
+    n_live_order_flow_short = sum(
+        1 for s in merged_scrips if s.get("order_flow_short_supported")
+    )
+
     # Check systemd status
     services_status = {}
     for unit in ["rp608-nse-shadow-daemon.service", "rp608-nse-live-probe.service", "rp608-nse-bar1-recon.service", "rp608-nse-preopen-snap1.service"]:
@@ -1000,6 +1450,62 @@ def get_nse_dashboard_state() -> Dict[str, Any]:
             services_status[unit] = res.stdout.strip()
         except Exception:
             services_status[unit] = "unknown"
+
+    daemon_active = services_status.get("rp608-nse-shadow-daemon.service") == "active"
+    heartbeat_fresh = ckpt_hb_age_sec is not None and ckpt_hb_age_sec <= 120
+    feed_age_sec = None
+    feed_last_packet_utc = "N/A"
+    feed_cached = 0
+    feed_subscribed = 119
+    feed_connected = False
+    feed_packets = 0
+    if feed_health:
+        try:
+            feed_age_sec = feed_health.get("last_packet_age_sec")
+            if feed_age_sec is not None:
+                feed_age_sec = float(feed_age_sec)
+        except Exception:
+            feed_age_sec = None
+        feed_last_packet_utc = feed_health.get("last_packet_utc") or feed_health.get("timestamp_iso") or "N/A"
+        feed_cached = int(feed_health.get("cached_tokens") or 0)
+        feed_subscribed = int(feed_health.get("subscribed_tokens") or 119)
+        feed_connected = bool(feed_health.get("connected"))
+        feed_packets = int(feed_health.get("packets") or 0)
+
+    if feed_health and feed_connected and feed_age_sec is not None and feed_age_sec <= 60:
+        live_ws_status = "LIVE L1 CACHE"
+        live_ws_source = "l1_feed_health"
+        live_ws_age = int(feed_age_sec)
+        live_mode_note = f"Continuous L1 ticker cache · {feed_cached}/{feed_subscribed} tokens"
+    elif daemon_active and heartbeat_fresh and session_date:
+        if durable_bar <= 0:
+            live_ws_status = "L1 PATH STARTED · AWAITING FIRST DURABLE BAR"
+        else:
+            live_ws_status = "L1 PATH ACTIVE · SESSION HEARTBEAT FRESH"
+        live_ws_source = "production_checkpoint"
+        live_ws_age = ckpt_hb_age_sec
+        live_mode_note = (
+            f"Session {session_date} · durable={durable_bar} accounted={accounted_bar} · "
+            "packet-age pending feed_health artifact"
+        )
+        feed_last_packet_utc = ckpt_hb_iso
+        feed_cached = 0
+    elif daemon_active:
+        live_ws_status = "DAEMON ACTIVE · HEARTBEAT STALE"
+        live_ws_source = "production_checkpoint"
+        live_ws_age = ckpt_hb_age_sec
+        live_mode_note = "NSE daemon active but checkpoint heartbeat is stale"
+    else:
+        live_ws_status = "DAEMON INACTIVE"
+        live_ws_source = "systemd"
+        live_ws_age = ckpt_hb_age_sec
+        live_mode_note = "NSE shadow daemon not active"
+
+    observer_status = (
+        "HEALTHY"
+        if eval_snapshot_fresh and live_bar_for_gates > 0
+        else ("SESSION_ACTIVE_AWAITING_EVAL" if daemon_active and heartbeat_fresh else "WARMING_UP")
+    )
 
     pending_file = find_latest_nse_file("rp608_nse_pending_evaluations.json")
     pending_count = 0
@@ -1044,12 +1550,14 @@ def get_nse_dashboard_state() -> Dict[str, Any]:
         "order_authority": 0.0,
         "operational_triad": {
             "observer_health": {
-                "status": "HEALTHY" if eval_bar_idx > 0 else "WARMING_UP",
-                "service_active": services_status.get("rp608-nse-shadow-daemon.service") == "active",
-                "latest_bar_idx": eval_bar_idx,
-                "latest_eval_iso": eval_ts_iso,
-                "symbols_evaluated": total_evaluated,
-                "warmup_passed": sum(1 for s in merged_scrips if s.get("history_length", 0) >= 5)
+                "status": observer_status,
+                "service_active": daemon_active,
+                "latest_bar_idx": live_bar_for_gates,
+                "latest_eval_iso": eval_ts_iso if eval_snapshot_fresh else None,
+                "eval_snapshot_iso": eval_ts_iso,
+                "eval_snapshot_fresh": eval_snapshot_fresh,
+                "symbols_evaluated": total_evaluated if eval_snapshot_fresh else 0,
+                "warmup_passed": sum(1 for s in merged_scrips if s.get("history_length", 0) >= 5) if eval_snapshot_fresh else 0,
             },
             "outcome_tracking": {
                 "status": "ACTIVE_ACCUMULATING" if pending_count > 0 or decision_cards_count > 0 else "STANDBY",
@@ -1075,20 +1583,52 @@ def get_nse_dashboard_state() -> Dict[str, Any]:
             "reconciled": readiness_data.get("symbols_reconciled", 119),
             "total_universe": 119,
             "status_text": "119 / 119 Reconciled",
-            "mode_note": "Last verified snapshot · Not continuous feed"
+            "mode_note": live_mode_note,
+        },
+        "production_session": {
+            "session_date": session_date,
+            "durable_bar": durable_bar,
+            "accounted_bar": accounted_bar,
+            "heartbeat_iso": ckpt_hb_iso,
+            "heartbeat_age_sec": ckpt_hb_age_sec,
+            "daemon_active": daemon_active,
+            "eval_snapshot_fresh": eval_snapshot_fresh,
+            "eval_snapshot_iso": eval_ts_iso,
+            "eval_snapshot_session_date": eval_session_date,
+            "g1_status": (
+                "UNVERIFIED"
+                if not eval_snapshot_fresh
+                else ("PASS" if 1 <= live_bar_for_gates <= 19 else "CLOSED")
+            ),
         },
         "live_websocket": {
+            "status": live_ws_status,
+            "source": live_ws_source,
+            "last_packet_utc": feed_last_packet_utc,
+            "age_sec": live_ws_age,
+            "age_metric": "packet" if live_ws_source == "l1_feed_health" else "heartbeat",
+            "ticks_captured": feed_packets,
+            "cached_tokens": feed_cached,
+            "subscribed_tokens": feed_subscribed,
+            "connected": feed_connected if feed_health else daemon_active,
+            "calibrated_ntp_offset_ms": probe_data.get("calibrated_ntp_offset_ms", 0.448),
+            "packet_format": "184-byte Full Binary Depth",
+            "valid_spreads": feed_cached if feed_health else None,
+            "zero_depth": None,
+            "crossed_market": None,
+            "control_messages": None,
+            "reconnects": int(feed_health.get("reconnects") or 0) if feed_health else 0,
+        },
+        "readiness_probe": {
             "status": "VERIFIED PROBE (15s Capture)" if probe_data else "UNVERIFIED",
+            "note": "Historical readiness probe · not the live continuous-feed indicator",
             "last_packet_utc": probe_ts_utc,
             "age_sec": probe_age_sec,
             "ticks_captured": probe_data.get("ticks_captured_count", 0),
-            "calibrated_ntp_offset_ms": probe_data.get("calibrated_ntp_offset_ms", 0.448),
-            "packet_format": "184-byte Full Binary Depth",
             "valid_spreads": probe_data.get("valid_spreads_count", 0),
             "zero_depth": probe_data.get("zero_depth_count", 0),
             "crossed_market": probe_data.get("crossed_market_count", 0),
             "control_messages": probe_data.get("control_messages_count", 0),
-            "reconnects": 0
         },
         "preopen_discovery": {
             "status": "3 CHECKPOINTS VERIFIED",
@@ -1114,33 +1654,42 @@ def get_nse_dashboard_state() -> Dict[str, Any]:
         },
         "rp607_summary": rp607_summary,
         "evaluations_summary": {
-            "total_evaluated": total_evaluated,
-            "n_qualifying": n_qualifying,
-            "evaluation_engine_status": "ACTIVE_EVALUATED" if total_evaluated > 0 else "PENDING_RUN",
-            "last_evaluation_iso": eval_ts_iso,
-            "rejection_breakdown": rejection_breakdown,
-            "qualifying_candidates": qualifying_candidates,
+            "total_evaluated": total_evaluated if eval_snapshot_fresh else 0,
+            "n_qualifying": n_qualifying if eval_snapshot_fresh else 0,
+            "evaluation_engine_status": (
+                "ACTIVE_EVALUATED"
+                if eval_snapshot_fresh and total_evaluated > 0
+                else ("AWAITING_TODAY_EVAL" if daemon_active else "PENDING_RUN")
+            ),
+            "last_evaluation_iso": eval_ts_iso if eval_snapshot_fresh else None,
+            "stale_evaluation_iso": None if eval_snapshot_fresh else eval_ts_iso,
+            "eval_snapshot_fresh": eval_snapshot_fresh,
+            "rejection_breakdown": rejection_breakdown if eval_snapshot_fresh else {},
+            "qualifying_candidates": qualifying_candidates if eval_snapshot_fresh else [],
             "high_target_bps_floor": NSE_HIGH_TARGET_BPS,
             "high_target_sort": "net_rr_x_target_pct",
-            "n_high_target": len(high_target_candidates),
-            "high_target_candidates": high_target_candidates,
+            "n_high_target": len(high_target_candidates) if eval_snapshot_fresh else 0,
+            "high_target_candidates": high_target_candidates if eval_snapshot_fresh else [],
             "momentum_distribution": {
                 "bullish_ge_005": bullish_count,
                 "neutral": neutral_count,
                 "bearish_le_005": bearish_count
-            }
+            },
+            "n_live_order_flow_supported": n_live_order_flow_supported,
+            "n_live_order_flow_long": n_live_order_flow_long,
+            "n_live_order_flow_short": n_live_order_flow_short,
         },
-        "next_session_recommendations": {
-            "available": bool(next_session_data.get("recommendations")),
-            "protocol_id": next_session_data.get("protocol_id"),
-            "from_session_date": next_session_data.get("from_session_date"),
-            "next_session_date": next_session_data.get("next_session_date"),
-            "n_recommendations": next_session_data.get("n_recommendations", 0),
-            "note": next_session_data.get("note"),
-            "emitted_utc": next_session_data.get("emitted_utc"),
-            "live_order_authority": next_session_data.get("live_order_authority", 0.0),
-            "recommendations": next_session_data.get("recommendations") or [],
-        },
+        "n_live_order_flow_supported": n_live_order_flow_supported,
+        "n_live_order_flow_long": n_live_order_flow_long,
+        "n_live_order_flow_short": n_live_order_flow_short,
+        "of_paper_ledger": _load_nse_of_paper_ledger_state(),
+        "next_session_recommendations": _enrich_next_session_watchlist_for_api(
+            next_session_data,
+            stamp_mtime_utc=next_session_stamp_mtime_utc,
+            scrips=sorted_scrips,
+            live_bar_idx=live_bar_for_gates,
+            session_date=session_date,
+        ),
         "quote_health": {
             "valid": valid_quotes or len(all_quotes),
             "stale": stale_quotes,
@@ -1166,7 +1715,7 @@ def load_live_state() -> Dict[str, Any]:
         except Exception:
             pass
 
-    # 2. Read Decision Cards
+    # 2. Read Decision Cards (parse all for accounting; reasoning only on tail used by UI)
     cards: List[Dict[str, Any]] = []
     if DECISION_CARDS_FILE.exists():
         try:
@@ -1175,11 +1724,15 @@ def load_live_state() -> Dict[str, Any]:
                     line = line.strip()
                     if line:
                         try:
-                            c = json.loads(line)
-                            c["reasoning"] = derive_card_reasoning(c)
-                            cards.append(c)
+                            cards.append(json.loads(line))
                         except Exception:
                             continue
+        except Exception:
+            pass
+
+    for c in cards[-_REASONING_TAIL:]:
+        try:
+            c["reasoning"] = derive_card_reasoning(c)
         except Exception:
             pass
 
@@ -1196,16 +1749,152 @@ def load_live_state() -> Dict[str, Any]:
     now_utc_ms = int(time.time() * 1000)
     latest_exec_quote = latest_card.get("execution_quote") if latest_card else None
 
-    overlay_state = overlay_mgr._load_state()
+    # Presentation-only: do NOT open/close OF paper trades or plans from the dashboard.
+    # Shadow daemon owns mutations; dual writers previously duplicated OF outcomes.
+    # Always adopt durable state (stale in-memory OPEN must not disagree with ledger).
+    overlay_mgr.state = overlay_mgr._load_state()
+    try:
+        # Heal only: drop ghost OPEN already in closed ledger (not a strategy mutation)
+        overlay_mgr.reconcile_of_paper_already_closed(persist=True)
+    except Exception:
+        pass
+    overlay_state = overlay_mgr.state
     active_trade_plan = overlay_state.get("active_plan")
     if not active_trade_plan and latest_card:
         try:
-            active_trade_plan = overlay_mgr.process_decision_card(latest_card, current_quote=latest_exec_quote)
-        except Exception:
             active_trade_plan = calculate_trade_plan(latest_card, quote=latest_exec_quote)
+        except Exception:
+            active_trade_plan = None
 
-    # Reconcile lifecycle against live market (fallback: card quote)
-    sync_res = overlay_mgr.sync_lifecycle(current_quote=latest_exec_quote, now_ms=now_utc_ms)
+    sync_res = overlay_mgr.sync_lifecycle(
+        current_quote=latest_exec_quote,
+        now_ms=now_utc_ms,
+        mutate_of=False,
+        mutate_plans=False,
+    )
+    # Keep summary truthful vs deduped journal
+    try:
+        overlay_mgr.rebuild_of_outcomes_summary(persist=False)
+        overlay_mgr.reconcile_of_paper_already_closed(persist=True)
+    except Exception:
+        pass
+    of_state = overlay_mgr.state if isinstance(overlay_mgr.state, dict) else overlay_mgr._load_state()
+    order_flow_recommendation = of_state.get("active_order_flow_recommendation")
+    if not (isinstance(order_flow_recommendation, dict) and order_flow_recommendation.get("active")):
+        order_flow_recommendation = None
+    # Never show OPEN for an of_trade_id already in the closed ledger
+    if (
+        isinstance(order_flow_recommendation, dict)
+        and order_flow_recommendation.get("of_trade_id")
+        and str(order_flow_recommendation.get("of_trade_id"))
+        in overlay_mgr._known_of_outcome_ids()
+    ):
+        order_flow_recommendation = None
+        of_state["active_order_flow_recommendation"] = None
+    order_flow_last_exit = of_state.get("last_closed_order_flow_recommendation")
+    if not isinstance(order_flow_last_exit, dict):
+        order_flow_last_exit = None
+
+    def _hydrate_of_last_exit_from_ledger(stub: Optional[Dict[str, Any]]) -> Optional[Dict[str, Any]]:
+        """
+        Ghost reconcile can leave last_closed as RECONCILED_ALREADY_CLOSED without
+        exit_candle / exit_imbalance. Prefer the durable outcomes row for that id
+        (or the newest outcome) so OF EXIT badges are not synthesized from `now`.
+        """
+        try:
+            recent = overlay_mgr.load_recent_of_outcomes(48)
+        except Exception:
+            recent = []
+        if not recent:
+            return stub
+        tid = (stub or {}).get("of_trade_id") if isinstance(stub, dict) else None
+        match = None
+        if tid:
+            for row in reversed(recent):
+                if str(row.get("of_trade_id") or "") == str(tid):
+                    match = row
+                    break
+        if match is None:
+            # Incomplete stub / missing id → newest realized outcome
+            if not stub or stub.get("exit_reason") == "RECONCILED_ALREADY_CLOSED" or not stub.get(
+                "exit_candle"
+            ):
+                match = recent[-1]
+        if not match:
+            return stub
+        hydrated = dict(stub or {})
+        hydrated.update(match)
+        hydrated["active"] = False
+        # Prefer true close reason from ledger over reconcile stub
+        if match.get("exit_reason"):
+            hydrated["exit_reason"] = match.get("exit_reason")
+        return hydrated
+
+    order_flow_last_exit = _hydrate_of_last_exit_from_ledger(order_flow_last_exit)
+
+    # Backfill candle marks for older OF records (pre-candle-stamp deploy).
+    # Never invent exit_candle from wall-clock `now` alone — a window-only mark
+    # (bar_idx/decision_event_idx missing → legend "15m #—") caused every
+    # prospective card in that 15m window to look like OF EXIT.
+    def _mark_badgeable(mark: Optional[Dict[str, Any]]) -> Optional[Dict[str, Any]]:
+        if not isinstance(mark, dict):
+            return None
+        if (
+            mark.get("bar_idx") is None
+            and mark.get("decision_event_idx") is None
+            and mark.get("mark_time_ms") is None
+        ):
+            return None
+        # Window-only (no event identity) is not safe for row badges
+        if mark.get("bar_idx") is None and mark.get("decision_event_idx") is None:
+            return None
+        return mark
+
+    try:
+        from scripts.rp608_trade_plan_overlay import build_of_candle_mark
+
+        if order_flow_recommendation and not order_flow_recommendation.get("entry_candle"):
+            entry_ms = order_flow_recommendation.get("activated_ms") or order_flow_recommendation.get(
+                "entry_time_ms"
+            )
+            if entry_ms is not None:
+                order_flow_recommendation["entry_candle"] = build_of_candle_mark(
+                    now_ms=int(entry_ms),
+                    bar_idx=(order_flow_recommendation.get("entry_candle") or {}).get("bar_idx"),
+                    decision_event_idx=(order_flow_recommendation.get("entry_candle") or {}).get(
+                        "decision_event_idx"
+                    ),
+                )
+        if order_flow_last_exit:
+            if not order_flow_last_exit.get("entry_candle"):
+                entry_ms = order_flow_last_exit.get("activated_ms") or order_flow_last_exit.get(
+                    "entry_time_ms"
+                )
+                if entry_ms is not None:
+                    order_flow_last_exit["entry_candle"] = build_of_candle_mark(
+                        now_ms=int(entry_ms),
+                        bar_idx=(order_flow_last_exit.get("entry_candle") or {}).get("bar_idx"),
+                        decision_event_idx=(order_flow_last_exit.get("entry_candle") or {}).get(
+                            "decision_event_idx"
+                        ),
+                    )
+            # Do NOT synthesize exit_candle without bar/event identity
+            xc = order_flow_last_exit.get("exit_candle")
+            if isinstance(xc, dict) and xc.get("bar_idx") is None and xc.get("decision_event_idx") is None:
+                order_flow_last_exit["exit_candle"] = None
+    except Exception:
+        pass
+    raw_entry = (order_flow_recommendation or order_flow_last_exit or {}).get("entry_candle")
+    raw_exit = (
+        (order_flow_last_exit or {}).get("exit_candle")
+        if not (order_flow_recommendation and order_flow_recommendation.get("active"))
+        else None
+    )
+    of_candle_markers = {
+        "entry": _mark_badgeable(raw_entry if isinstance(raw_entry, dict) else None),
+        "exit": _mark_badgeable(raw_exit if isinstance(raw_exit, dict) else None),
+        "active": bool(order_flow_recommendation and order_flow_recommendation.get("active")),
+    }
     trade_plan_payload = sync_res.get("display_plan") or active_trade_plan
     if trade_plan_payload:
         trade_plan_payload["valuation"] = sync_res.get("valuation", {})
@@ -1323,12 +2012,41 @@ def load_live_state() -> Dict[str, Any]:
         "latest_card": latest_card,
         "latest_prospective_card": latest_prospective,
         "trade_plan": trade_plan_payload,
+        "order_flow_recommendation": order_flow_recommendation,
+        "order_flow_last_exit": order_flow_last_exit,
+        "of_candle_markers": of_candle_markers,
+        "of_shadow_trade": overlay_mgr.build_of_shadow_trade_snapshot(
+            latest_exec_quote if isinstance(latest_exec_quote, dict) else None,
+            now_ms=now_utc_ms,
+        ),
+        "of_trade_pnl": {
+            "protocol_id": "RP-608-OF-PAPER-TRADE-001",
+            "execution_mode": "PAPER",
+            "live_order_authority": 0.0,
+            "independent_of_trade_plan_ttl": True,
+            "summary": (
+                of_state.get("of_outcomes_summary")
+                if isinstance(of_state.get("of_outcomes_summary"), dict)
+                else overlay_mgr.state.get("of_outcomes_summary")
+                if isinstance(overlay_mgr.state.get("of_outcomes_summary"), dict)
+                else {
+                    "n_trades": 0,
+                    "n_wins": 0,
+                    "n_losses": 0,
+                    "cumulative_gross_pnl_usdt": 0.0,
+                    "cumulative_net_pnl_usdt": 0.0,
+                    "cumulative_friction_usdt": 0.0,
+                }
+            ),
+            "recent": overlay_mgr.load_recent_of_outcomes(24),
+        },
         "ratio_framework": ratio_framework,
-        "recent_cards": cards[-8:][::-1],  # newest first
+        "recent_cards": cards[-24:][::-1],  # newest first (wider window for OF candle marks)
         "nse_schedule": nse_events,
         "gate_c": get_event_engine_status(),
         "nse_operations": get_nse_dashboard_state(),
         "multi_horizon": get_multi_horizon_dashboard_state(),
+        "rp611": get_rp611_dashboard_state(),
     }
 
 
@@ -2245,9 +2963,52 @@ DASHBOARD_HTML = """<!DOCTYPE html>
             <span class="pill-sm" style="background:rgba(255,255,255,0.06); color:var(--text-dim); border:1px solid rgba(255,255,255,0.1);">Term: ≤60 minutes</span>
           </div>
         </div>
-        <div style="display:flex; align-items:center; gap:10px;">
+        <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
           <span class="pill-sm pill-prospective" id="plan-state-pill">PLAN ACTIVE</span>
+          <span class="pill-sm" id="plan-of-pill" style="display:none; background:#86efac; color:#052e16; border:1px solid #4ade80; font-weight:700;">ORDER FLOW</span>
           <span class="pill-sm" style="background:rgba(245,158,11,0.15); color:var(--accent-amber); border:1px solid rgba(245,158,11,0.3);">0.0% ORDER AUTHORITY</span>
+        </div>
+      </div>
+
+      <div id="crypto-of-banner" style="display:none; margin:0 0 14px 0; padding:10px 12px; background:rgba(134,239,172,0.08); border:1px solid rgba(74,222,128,0.35); border-radius:8px; font-size:12px; color:#bbf7d0;">
+        <b id="crypto-of-banner-title" style="color:#86efac;">ORDER FLOW</b>
+        <span id="crypto-of-banner-text" style="margin-left:8px; color:#94a3b8;"></span>
+      </div>
+
+      <!-- OF Paper Trades (RP-608-OF-PAPER-TRADE-001) — independent of 60m plan -->
+      <div id="of-paper-trades-panel" style="margin:0 0 18px 0; padding:14px; background:rgba(45,212,191,0.06); border:1px solid rgba(45,212,191,0.28); border-radius:10px;">
+        <div style="display:flex; justify-content:space-between; align-items:center; gap:10px; flex-wrap:wrap; margin-bottom:10px;">
+          <div>
+            <div style="font-size:13px; font-weight:800; color:#5eead4;">OF Paper Trades</div>
+            <div style="font-size:11px; color:var(--text-dim); margin-top:2px;">RP-608-OF-PAPER-TRADE-001 · reverse OF closes · TP/SL/60m do not</div>
+          </div>
+          <span class="pill-sm" style="background:rgba(245,158,11,0.15); color:var(--accent-amber); border:1px solid rgba(245,158,11,0.3);">0.0% · PAPER</span>
+        </div>
+        <div id="of-paper-open" style="font-family:'JetBrains Mono',monospace; font-size:12px; color:#e2e8f0; line-height:1.55; margin-bottom:12px;">No open OF paper trade</div>
+        <div style="display:flex; gap:8px; flex-wrap:wrap; margin-bottom:8px;" id="of-paper-summary-chips"></div>
+        <div style="overflow-x:auto;">
+          <table style="width:100%; border-collapse:collapse; font-family:'JetBrains Mono',monospace; font-size:11px;">
+            <thead>
+              <tr style="color:var(--text-dim); text-align:left;">
+                <th style="padding:4px 6px;">open_utc</th>
+                <th style="padding:4px 6px;">close_utc</th>
+                <th style="padding:4px 6px;">hold</th>
+                <th style="padding:4px 6px;">dir</th>
+                <th style="padding:4px 6px;">entry_sig</th>
+                <th style="padding:4px 6px;">exit_sig</th>
+                <th style="padding:4px 6px;">qty</th>
+                <th style="padding:4px 6px;">entry</th>
+                <th style="padding:4px 6px;">exit</th>
+                <th style="padding:4px 6px;">net USDT</th>
+                <th style="padding:4px 6px;">net bps</th>
+                <th style="padding:4px 6px;">fees</th>
+                <th style="padding:4px 6px;">reason</th>
+              </tr>
+            </thead>
+            <tbody id="of-paper-ledger-body">
+              <tr><td colspan="13" style="padding:8px 6px; color:var(--text-dim);">No closed OF paper trades yet</td></tr>
+            </tbody>
+          </table>
         </div>
       </div>
 
@@ -2444,6 +3205,29 @@ DASHBOARD_HTML = """<!DOCTYPE html>
       </div>
     </div>
 
+    <!-- RP-611 Volume Absorption (independent research · presentation only) -->
+    <div class="card" style="margin-bottom:24px; border-left: 4px solid #2dd4bf; background: rgba(45,212,191,0.07);">
+      <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:12px; flex-wrap:wrap; margin-bottom:12px;">
+        <div>
+          <div style="font-size:14px; font-weight:800; color:#5eead4;">RP-611 Volume Absorption · Phase-1</div>
+          <div style="font-size:12px; color:var(--text-muted); margin-top:4px;">
+            Independent ledgers · frozen thresholds · does not alter RP-608 / OF / Gate5
+          </div>
+        </div>
+        <span class="pill-sm" style="background:rgba(45,212,191,0.2); color:#5eead4; border:1px solid rgba(45,212,191,0.35);" id="rp611-authority-pill">0.0% ORDER AUTHORITY</span>
+      </div>
+      <div style="display:grid; grid-template-columns:repeat(auto-fit,minmax(260px,1fr)); gap:12px;">
+        <div style="background:rgba(0,0,0,0.25); border-radius:8px; padding:12px;">
+          <div style="font-size:11px; letter-spacing:0.06em; color:var(--text-dim); margin-bottom:8px;">RP-611N · NSE</div>
+          <div id="rp611-nse-status" style="font-family:'JetBrains Mono',monospace; font-size:12px; color:#e2e8f0; line-height:1.55;">Loading…</div>
+        </div>
+        <div style="background:rgba(0,0,0,0.25); border-radius:8px; padding:12px;">
+          <div style="font-size:11px; letter-spacing:0.06em; color:var(--text-dim); margin-bottom:8px;">RP-611C · BTC/USDT spot</div>
+          <div id="rp611-crypto-status" style="font-family:'JetBrains Mono',monospace; font-size:12px; color:#e2e8f0; line-height:1.55;">Loading…</div>
+        </div>
+      </div>
+    </div>
+
     <!-- Pointer → dedicated Multi-Horizon Books workspace tab -->
     <div class="card" style="margin-bottom:24px; border-left: 4px solid #c4b5fd; background: rgba(124,58,237,0.08);">
       <div style="display:flex; justify-content:space-between; align-items:center; gap:12px; flex-wrap:wrap;">
@@ -2465,12 +3249,14 @@ DASHBOARD_HTML = """<!DOCTYPE html>
       <div class="section-title">
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color:var(--accent-cyan);"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
         Recent Decision Cards & Completed Candle Stream (Hover Badges for Reasoning)
+        <span id="of-candle-legend" style="margin-left:12px; font-size:11px; color:var(--text-dim); font-weight:500;"></span>
       </div>
       <table>
         <thead>
           <tr>
             <th>Bar</th>
             <th>Close Time (UTC)</th>
+            <th>OF Mark</th>
             <th>Sample Type</th>
             <th>Ref Price</th>
             <th>Policy B (Hover ⓘ)</th>
@@ -2482,7 +3268,7 @@ DASHBOARD_HTML = """<!DOCTYPE html>
           </tr>
         </thead>
         <tbody id="decision-cards-tbody">
-          <tr><td colspan="10" style="text-align:center; color:var(--text-dim); padding: 30px;">Loading decision cards...</td></tr>
+          <tr><td colspan="11" style="text-align:center; color:var(--text-dim); padding: 30px;">Loading decision cards...</td></tr>
         </tbody>
       </table>
     </div>
@@ -2510,13 +3296,14 @@ DASHBOARD_HTML = """<!DOCTYPE html>
           <div style="font-size:11px; text-transform:uppercase; letter-spacing:0.5px; color:var(--text-dim); margin-bottom:6px;">Instrument Coverage</div>
           <div style="font-family:'JetBrains Mono',monospace; font-size:22px; font-weight:700; color:var(--accent-cyan);" id="nse-cov-val">119 / 119</div>
           <div style="font-size:12px; color:#fff; margin-top:2px;">100% Universe Reconciled</div>
-          <div style="font-size:10px; color:var(--text-muted); margin-top:4px;">Last verified snapshot · Not continuous live feed</div>
+          <div style="font-size:10px; color:var(--text-muted); margin-top:4px;" id="nse-cov-note">Live session coverage · see continuous-feed tile</div>
         </div>
         <div style="background:rgba(0,0,0,0.35); border:1px solid var(--card-border); border-radius:10px; padding:14px;">
-          <div style="font-size:11px; text-transform:uppercase; letter-spacing:0.5px; color:var(--text-dim); margin-bottom:6px;">Live WebSocket Probe</div>
-          <div style="font-family:'JetBrains Mono',monospace; font-size:18px; font-weight:700; color:var(--accent-emerald);" id="nse-ws-val">Verified (15s Capture)</div>
-          <div style="font-size:12px; color:#fff; margin-top:2px;" id="nse-ws-sub">119 / 119 Spreads · 0 Crossed</div>
-          <div style="font-size:10px; color:var(--text-muted); margin-top:4px;">184-byte Full Depth · Packet Age: <span id="nse-ws-age">--</span> · 0 Drops</div>
+          <div style="font-size:11px; text-transform:uppercase; letter-spacing:0.5px; color:var(--text-dim); margin-bottom:6px;">Continuous L1 Feed</div>
+          <div style="font-family:'JetBrains Mono',monospace; font-size:16px; font-weight:700; color:var(--accent-emerald);" id="nse-ws-val">—</div>
+          <div style="font-size:12px; color:#fff; margin-top:2px;" id="nse-ws-sub">source · tokens</div>
+          <div style="font-size:10px; color:var(--text-muted); margin-top:4px;">184-byte Full Depth · <span id="nse-ws-age-metric">Age</span>: <span id="nse-ws-age">--</span></div>
+          <div style="font-size:10px; color:var(--text-muted); margin-top:2px;" id="nse-probe-note">Readiness probe kept separate</div>
         </div>
         <div style="background:rgba(0,0,0,0.35); border:1px solid var(--card-border); border-radius:10px; padding:14px;">
           <div style="font-size:11px; text-transform:uppercase; letter-spacing:0.5px; color:var(--text-dim); margin-bottom:6px;">Pre-Open Auction Discovery</div>
@@ -2529,6 +3316,12 @@ DASHBOARD_HTML = """<!DOCTYPE html>
           <div style="font-family:'JetBrains Mono',monospace; font-size:18px; font-weight:700; color:var(--accent-emerald);" id="nse-recon-val">0 / SUCCESS (PASS)</div>
           <div style="font-size:12px; color:#fff; margin-top:2px;">Single-Batch L1 RTT: <span id="nse-rtt-val">--</span>ms</div>
           <div style="font-size:10px; color:var(--text-muted); margin-top:4px;">Last Check: <span id="nse-recon-last">--</span> · 119 Scrips</div>
+        </div>
+        <div style="background:rgba(0,0,0,0.35); border:1px solid rgba(16,185,129,0.35); border-radius:10px; padding:14px;">
+          <div style="font-size:11px; text-transform:uppercase; letter-spacing:0.5px; color:var(--text-dim); margin-bottom:6px;">NSE OF Paper Ledger</div>
+          <div style="font-family:'JetBrains Mono',monospace; font-size:18px; font-weight:700; color:var(--accent-emerald);" id="nse-of-paper-val">PAPER · 0 open</div>
+          <div style="font-size:12px; color:#fff; margin-top:2px;" id="nse-of-paper-sub">n_trades=0 · net ₹0.00</div>
+          <div style="font-size:10px; color:var(--text-muted); margin-top:4px;" id="nse-of-paper-note">RP-608-NSE-OF-PAPER-TRADE-001 · reverse OF / square-off · 0% authority</div>
         </div>
       </div>
 
@@ -2617,13 +3410,25 @@ DASHBOARD_HTML = """<!DOCTYPE html>
         </div>
       </div>
 
-      <!-- PANEL B0: Next-session watchlist (post-close) -->
+      <!-- PANEL B0: Next-session watchlist (post-close) · live-polled -->
       <div id="nse-next-session-panel" style="background:rgba(0,0,0,0.35); border:1px solid rgba(6,182,212,0.35); border-radius:12px; padding:18px; margin-bottom:20px;">
         <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:12px; flex-wrap:wrap; margin-bottom:12px;">
           <div>
-            <div style="font-size:14px; font-weight:700; color:#fff;">Next Session · Intraday Watchlist</div>
+            <div style="font-size:14px; font-weight:700; color:#fff; display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+              <span>Next Session · Intraday Watchlist</span>
+              <span id="nse-next-session-live" style="display:inline-flex; align-items:center; gap:5px; font-size:10px; font-weight:700; letter-spacing:0.04em; color:#052e16; background:#67e8f9; border-radius:999px; padding:2px 8px;">
+                <span style="width:6px; height:6px; border-radius:50%; background:#065f46; box-shadow:0 0 0 2px rgba(6,95,70,0.25); animation:nseNsrPulse 1.4s ease-in-out infinite;"></span>
+                LIVE
+              </span>
+            </div>
             <div style="font-size:11px; color:var(--text-muted); margin-top:4px;" id="nse-next-session-meta">
               Post-close recommendations for the next trading session · 0.0% authority · not overnight / CAS
+            </div>
+            <div style="font-size:11px; color:#7dd3fc; margin-top:6px; font-family:'JetBrains Mono',monospace;" id="nse-next-session-rec-time">
+              Recommended at: —
+            </div>
+            <div style="font-size:10px; color:var(--text-muted); margin-top:2px; font-family:'JetBrains Mono',monospace;" id="nse-next-session-live-clock">
+              UI refresh: — · stamp poll 3s
             </div>
           </div>
           <span class="pill-sm" id="nse-next-session-pill" style="background:rgba(6,182,212,0.12); color:var(--accent-cyan); border:1px solid rgba(6,182,212,0.35);">WAITING</span>
@@ -2632,6 +3437,12 @@ DASHBOARD_HTML = """<!DOCTYPE html>
           No next-session file yet — emitted automatically after POST_CLOSE.
         </div>
       </div>
+      <style>
+        @keyframes nseNsrPulse {
+          0%, 100% { opacity: 1; transform: scale(1); }
+          50% { opacity: 0.45; transform: scale(0.85); }
+        }
+      </style>
 
       <!-- PANEL B: RP-608 Intraday Momentum & Decision Telemetry -->
       <div style="background:rgba(0,0,0,0.35); border:1px solid rgba(16,185,129,0.3); border-radius:12px; padding:18px; margin-bottom:20px;">
@@ -2654,6 +3465,7 @@ DASHBOARD_HTML = """<!DOCTYPE html>
                 <option value="target_bps">Target (bps)</option>
                 <option value="net_rr">Net R:R</option>
                 <option value="traj15">traj15 score</option>
+                <option value="rec_time">Rec time · newest</option>
                 <option value="symbol">Symbol A–Z</option>
               </select>
             </label>
@@ -2766,6 +3578,17 @@ DASHBOARD_HTML = """<!DOCTYPE html>
             </select>
           </div>
 
+          <!-- Sort -->
+          <div style="display:flex; align-items:center; gap:6px;">
+            <span style="font-size:11px; color:var(--text-muted); font-weight:600;">Sort:</span>
+            <select id="select-explorer-sort" onchange="onFilterChange()" style="background:rgba(0,0,0,0.5); border:1px solid var(--card-border); color:#fff; font-family:'JetBrains Mono',monospace; font-size:11px; padding:5px 8px; border-radius:6px; outline:none;">
+              <option value="REC_TIME_DESC" selected>Rec time · newest first</option>
+              <option value="REC_TIME_ASC">Rec time · oldest first</option>
+              <option value="TRAJ15_DESC">traj15 · high first</option>
+              <option value="SYMBOL_ASC">Symbol A–Z</option>
+            </select>
+          </div>
+
           <!-- Search Input -->
           <div style="margin-left:auto;">
             <input type="text" id="nse-filter-input" placeholder="Search symbol or code..." oninput="onFilterChange()" style="background:rgba(0,0,0,0.5); border:1px solid var(--card-border); color:#fff; font-family:'JetBrains Mono',monospace; font-size:11px; padding:5px 10px; border-radius:6px; outline:none; width:180px;">
@@ -2782,12 +3605,13 @@ DASHBOARD_HTML = """<!DOCTYPE html>
                 <th>RP-608 Momentum</th>
                 <th>Sequential Gate Trace</th>
                 <th>Terminal Decision</th>
+                <th>Rec Time</th>
                 <th>Live LTP & Spread</th>
                 <th>Quote Age & Provenance</th>
               </tr>
             </thead>
             <tbody id="nse-scrips-tbody">
-              <tr><td colspan="8" style="text-align:center; color:var(--text-dim); padding:20px;">Loading NSE scrips...</td></tr>
+              <tr><td colspan="9" style="text-align:center; color:var(--text-dim); padding:20px;">Loading NSE scrips...</td></tr>
             </tbody>
           </table>
         </div>
@@ -3148,6 +3972,155 @@ DASHBOARD_HTML = """<!DOCTYPE html>
     }
 
     window.__mhState = null;
+    function ofPaperFmtUtc(msOrIso) {
+      if (msOrIso == null || msOrIso === '') return '—';
+      if (typeof msOrIso === 'string' && msOrIso.indexOf('T') >= 0) {
+        return msOrIso.replace('T', ' ').replace('Z', 'Z');
+      }
+      const n = Number(msOrIso);
+      if (!Number.isFinite(n)) return '—';
+      try {
+        return new Date(n).toISOString().replace('T', ' ').replace('.000Z', 'Z');
+      } catch (e) {
+        return '—';
+      }
+    }
+    function ofPaperFmtHold(sec) {
+      if (sec == null || !Number.isFinite(Number(sec))) return '—';
+      const s = Number(sec);
+      if (s < 60) return s.toFixed(1) + 's';
+      if (s < 3600) return (s / 60).toFixed(1) + 'm';
+      return (s / 3600).toFixed(2) + 'h';
+    }
+    function updateOfPaperTradesUI(data) {
+      const openEl = document.getElementById('of-paper-open');
+      const chipsEl = document.getElementById('of-paper-summary-chips');
+      const bodyEl = document.getElementById('of-paper-ledger-body');
+      if (!openEl || !chipsEl || !bodyEl) return;
+      const shadow = data.of_shadow_trade;
+      if (shadow && shadow.open) {
+        const uNet = shadow.unrealized_net_pnl_usdt;
+        const uGross = shadow.unrealized_gross_pnl_usdt;
+        const ubNet = shadow.unrealized_net_return_bps;
+        const ubGross = shadow.unrealized_gross_return_bps;
+        const partPct = shadow.participation_pct != null
+          ? (Number(shadow.participation_pct) * 100).toFixed(0) + '%'
+          : '—';
+        const qtyStr = shadow.simulated_quantity != null
+          ? Number(shadow.simulated_quantity).toFixed(6)
+          : '—';
+        const notionalStr = shadow.simulated_notional_usdt != null
+          ? Number(shadow.simulated_notional_usdt).toFixed(2)
+          : '—';
+        const dq = shadow.depth_quality || {};
+        const combN = dq.combined_touch_notional_usdt;
+        const sameN = dq.same_side_touch_notional_usdt;
+        const oppN = dq.opposing_side_touch_notional_usdt;
+        const thinOpp = dq.thin_opposite_diagnostic === true;
+        openEl.innerHTML =
+          '<b style="color:#5eead4;">OPEN</b> ' + (shadow.of_trade_id || '—') +
+          ' · ' + (shadow.direction || '—') +
+          ' · opened ' + ofPaperFmtUtc(shadow.paper_open_timestamp || shadow.activated_ms) +
+          ' · entry ' + (shadow.entry_price != null ? Number(shadow.entry_price).toFixed(2) : '—') +
+          ' · mark ' + (shadow.mark_price != null ? Number(shadow.mark_price).toFixed(2) : '—') +
+          ' · entry_sig ' + (shadow.entry_signal_qty != null ? Number(shadow.entry_signal_qty).toFixed(4) : '—') +
+          ' · qty ' + qtyStr +
+          ' · notional ' + notionalStr + ' USDT' +
+          ' · part ' + partPct +
+          ' · uGross ' + (uGross != null ? Number(uGross).toFixed(4) + ' USDT' : '—') +
+          (ubGross != null ? ' (' + Number(ubGross).toFixed(2) + ' bps)' : '') +
+          ' · uNet ' + (uNet != null ? Number(uNet).toFixed(4) + ' USDT' : '—') +
+          (ubNet != null ? ' (' + Number(ubNet).toFixed(2) + ' bps)' : '') +
+          ' · hold ' + ofPaperFmtHold(shadow.holding_duration_seconds) +
+          '<div style="color:#94a3b8; font-size:11px; margin-top:4px;">' +
+            'depth · comb ' + (combN != null ? Number(combN).toFixed(0) + ' USDT' : '—') +
+            ' · same ' + (sameN != null ? Number(sameN).toFixed(0) + ' USDT' : '—') +
+            ' · opp ' + (oppN != null ? Number(oppN).toFixed(0) + ' USDT' : '—') +
+            (thinOpp ? ' · <span style="color:#fbbf24;">thin_opposite</span>' : '') +
+            ' · telemetry only (OF ±0.30 unchanged)' +
+          '</div>' +
+          '<div style="color:#64748b; font-size:11px; margin-top:2px;">PAPER · authority 0.0% · uGross=mid mark P&amp;L · uNet=gross−spread−fees · exit fill qty=entry qty</div>';
+      } else {
+        openEl.textContent = 'No open OF paper trade';
+      }
+      const pnl = data.of_trade_pnl || {};
+      const sum = pnl.summary || {};
+      chipsEl.innerHTML =
+        '<span class="pill-sm" style="background:rgba(34,211,238,0.15); color:var(--accent-cyan);">n ' + (sum.n_trades || 0) + '</span>' +
+        '<span class="pill-sm" style="background:rgba(52,211,153,0.15); color:var(--accent-emerald);">W ' + (sum.n_wins || 0) + '</span>' +
+        '<span class="pill-sm" style="background:rgba(251,113,133,0.15); color:var(--accent-rose);">L ' + (sum.n_losses || 0) + '</span>' +
+        '<span class="pill-sm" style="background:rgba(255,255,255,0.06); color:#e2e8f0;">cum net ' +
+          (sum.cumulative_net_pnl_usdt != null ? Number(sum.cumulative_net_pnl_usdt).toFixed(2) + ' USDT' : '—') + '</span>' +
+        '<span class="pill-sm" style="background:rgba(45,212,191,0.15); color:#5eead4;">cum ' +
+          (sum.cumulative_net_return_bps != null ? Number(sum.cumulative_net_return_bps).toFixed(2) + ' bps' : '—') + '</span>';
+      const recent = Array.isArray(pnl.recent) ? pnl.recent : [];
+      if (!recent.length) {
+        bodyEl.innerHTML = '<tr><td colspan="13" style="padding:8px 6px; color:var(--text-dim);">No closed OF paper trades yet</td></tr>';
+        return;
+      }
+      bodyEl.innerHTML = recent.slice(0, 24).map(function (t) {
+        const openT = ofPaperFmtUtc(t.paper_open_timestamp || t.activated_ms);
+        const closeT = ofPaperFmtUtc(t.paper_close_timestamp || t.signal_exit_timestamp || t.exited_ms || t.paper_close_ms);
+        const entryQty = t.entry_paper_quantity != null ? t.entry_paper_quantity : t.simulated_quantity;
+        const exitQty = t.exit_quantity != null ? t.exit_quantity : t.simulated_quantity;
+        const qtyMatched = t.qty_matched_entry_to_exit === true
+          || (entryQty != null && exitQty != null && Number(entryQty) === Number(exitQty));
+        const qtyCell = exitQty != null ? Number(exitQty).toFixed(6) : '—';
+        const entrySig = t.entry_signal_qty != null ? Number(t.entry_signal_qty).toFixed(4) : '—';
+        const exitSig = t.exit_signal_qty != null ? Number(t.exit_signal_qty).toFixed(4) : '—';
+        const qtyColor = qtyMatched ? '#5eead4' : '#fb7185';
+        return '<tr>' +
+          '<td style="padding:4px 6px; white-space:nowrap;">' + openT + '</td>' +
+          '<td style="padding:4px 6px; white-space:nowrap;">' + closeT + '</td>' +
+          '<td style="padding:4px 6px;">' + ofPaperFmtHold(t.holding_duration_seconds) + '</td>' +
+          '<td style="padding:4px 6px;">' + (t.direction || '—') + '</td>' +
+          '<td style="padding:4px 6px;">' + entrySig + '</td>' +
+          '<td style="padding:4px 6px;">' + exitSig + '</td>' +
+          '<td style="padding:4px 6px; color:' + qtyColor + ';" title="exit fill must equal entry paper qty">' + qtyCell + '</td>' +
+          '<td style="padding:4px 6px;">' + (t.entry_price != null ? Number(t.entry_price).toFixed(2) : '—') + '</td>' +
+          '<td style="padding:4px 6px;">' + (t.exit_price != null ? Number(t.exit_price).toFixed(2) : '—') + '</td>' +
+          '<td style="padding:4px 6px;">' + (t.net_pnl_usdt != null ? Number(t.net_pnl_usdt).toFixed(4) : '—') + '</td>' +
+          '<td style="padding:4px 6px;">' + (t.net_return_bps != null ? Number(t.net_return_bps).toFixed(2) : '—') + '</td>' +
+          '<td style="padding:4px 6px;">' + (t.fees_usdt != null ? Number(t.fees_usdt).toFixed(4) : '—') + '</td>' +
+          '<td style="padding:4px 6px;">' + (t.exit_reason || '—') + '</td>' +
+          '</tr>';
+      }).join('');
+    }
+
+    function updateRp611UI(rp) {
+      const nseEl = document.getElementById('rp611-nse-status');
+      const cryEl = document.getElementById('rp611-crypto-status');
+      if (!nseEl || !cryEl || !rp) return;
+      const fmt = (arm, kind) => {
+        if (!arm || arm.available === false) return 'UNAVAILABLE';
+        const jc = arm.journal_counts || {};
+        const gap = (arm.pre_deployment_capture_gap_sec != null)
+          ? Number(arm.pre_deployment_capture_gap_sec).toFixed(0) + 's'
+          : '—';
+        const lines = [
+          (arm.disposition || arm.status || '—'),
+          'clock ' + (arm.experiment_clock_started ? 'ON' : 'OFF') +
+            ' · T0 ' + (arm.experiment_clock_started_utc || '—'),
+          'observer ' + (arm.observer_deployed ? 'PHASE-1 DEPLOYED' : 'NOT DEPLOYED') +
+            ' · phase ' + (arm.phase || '—'),
+          'deployed ' + (arm.phase1_deployed_utc || '—') + ' · gap ' + gap,
+          'cand ' + (jc.candidates != null ? jc.candidates : '—') +
+            ' · conf ' + (jc.confirmations != null ? jc.confirmations : '—') +
+            (kind === 'CRYPTO'
+              ? (' · L1 ' + (jc.l1_telemetry_rows != null ? jc.l1_telemetry_rows : '—'))
+              : (' · census rows ' + (jc.session_log_rows != null ? jc.session_log_rows : '—'))),
+        ];
+        if (kind === 'CRYPTO') {
+          lines.push('volume ' + (arm.volume_source || 'spot_kline_15m') + ' · futures EXCLUDED');
+        } else {
+          lines.push('universe 119 · RVOL≥1.50 · body≤0.35 · wick≥0.40');
+        }
+        return lines.join('<br/>');
+      };
+      nseEl.innerHTML = fmt(rp.nse, 'NSE');
+      cryEl.innerHTML = fmt(rp.crypto, 'CRYPTO');
+    }
+
     function updateMultiHorizonUI(mh) {
       window.__mhState = mh || null;
       const note = document.getElementById('mh-note');
@@ -3375,6 +4348,10 @@ DASHBOARD_HTML = """<!DOCTYPE html>
         if (data.multi_horizon) {
           updateMultiHorizonUI(data.multi_horizon);
         }
+        if (data.rp611) {
+          updateRp611UI(data.rp611);
+        }
+        updateOfPaperTradesUI(data);
 
         // Update Clocks
         document.getElementById('live-ist-clock').textContent = data.server_time_ist;
@@ -3447,6 +4424,59 @@ DASHBOARD_HTML = """<!DOCTYPE html>
 
         // Render Trade Plan Overlay
         const plan = data.trade_plan;
+        const ofRec = data.order_flow_recommendation;
+        const ofExit = data.order_flow_last_exit;
+        const ofPill = document.getElementById('plan-of-pill');
+        const ofBanner = document.getElementById('crypto-of-banner');
+        const ofBannerTitle = document.getElementById('crypto-of-banner-title');
+        const ofBannerText = document.getElementById('crypto-of-banner-text');
+        if (ofRec && ofRec.active) {
+          const imb = (ofRec.order_flow_imbalance != null) ? Number(ofRec.order_flow_imbalance).toFixed(3) : '—';
+          if (ofPill) {
+            ofPill.style.display = 'inline-block';
+            ofPill.textContent = 'ORDER FLOW';
+            ofPill.style.background = '#86efac';
+            ofPill.style.color = '#052e16';
+            ofPill.style.borderColor = '#4ade80';
+            ofPill.title = 'Active until opposite-side OF exit (not 60m)';
+          }
+          if (ofBanner) {
+            ofBanner.style.display = 'block';
+            ofBanner.style.background = 'rgba(134,239,172,0.08)';
+            ofBanner.style.borderColor = 'rgba(74,222,128,0.35)';
+          }
+          const ec = ofRec.entry_candle || {};
+          if (ofBannerTitle) { ofBannerTitle.textContent = 'ORDER FLOW ACTIVE'; ofBannerTitle.style.color = '#86efac'; }
+          if (ofBannerText) {
+            ofBannerText.textContent = `${ofRec.direction || ''} · imb ${imb} · ENTRY candle ${ec.candle_label || ('#'+(ec.bar_idx??'—'))} · evt ${ec.decision_event_idx ?? '—'} · exits on reverse OF`;
+          }
+        } else if (ofExit && ofExit.exit_reason) {
+          const eImb = (ofExit.exit_imbalance != null) ? Number(ofExit.exit_imbalance).toFixed(3) : '—';
+          const ec = ofExit.entry_candle || {};
+          const xc = ofExit.exit_candle || {};
+          if (ofPill) {
+            ofPill.style.display = 'inline-block';
+            ofPill.textContent = 'OF EXITED';
+            ofPill.style.background = 'rgba(245,158,11,0.2)';
+            ofPill.style.color = 'var(--accent-amber)';
+            ofPill.style.borderColor = 'rgba(245,158,11,0.45)';
+            ofPill.title = 'Order-flow exit received (reverse L1); plan may still be OPEN';
+          }
+          if (ofBanner) {
+            ofBanner.style.display = 'block';
+            ofBanner.style.background = 'rgba(245,158,11,0.08)';
+            ofBanner.style.borderColor = 'rgba(245,158,11,0.35)';
+          }
+          if (ofBannerTitle) { ofBannerTitle.textContent = 'ORDER FLOW PAPER CLOSED'; ofBannerTitle.style.color = 'var(--accent-amber)'; }
+          if (ofBannerText) {
+            ofBannerText.textContent =
+              `closed ${ofExit.direction || '—'} paper (sold to flat) · reverse-OF signal was ${ofExit.exit_opposite_side || '—'} · ` +
+              `EXIT candle ${xc.candle_label || ('#'+(xc.bar_idx??'—'))} · ENTRY was ${ec.candle_label || ('#'+(ec.bar_idx??'—'))} · exit imb ${eImb} · not a naked short`;
+          }
+        } else {
+          if (ofPill) ofPill.style.display = 'none';
+          if (ofBanner) ofBanner.style.display = 'none';
+        }
         const planHzEl = document.getElementById('plan-horizon-badges');
         if (planHzEl) {
           planHzEl.innerHTML = horizonBadgeHtml(plan || {
@@ -3456,8 +4486,10 @@ DASHBOARD_HTML = """<!DOCTYPE html>
           });
         }
         const planContainer = document.getElementById('trade-plan-container');
-        if (plan) {
+        if (plan || (ofRec && ofRec.active) || (ofExit && ofExit.exit_reason)) {
           planContainer.style.display = 'block';
+        }
+        if (plan) {
           document.getElementById('plan-direction-tag').textContent = plan.direction;
           document.getElementById('plan-direction-tag').style.color = (plan.direction === 'LONG') ? 'var(--accent-emerald)' : 'var(--accent-rose)';
           document.getElementById('plan-entry-price').textContent = '$' + plan.entry_price.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2});
@@ -3564,7 +4596,7 @@ DASHBOARD_HTML = """<!DOCTYPE html>
             document.getElementById('plan-horizon-time').textContent = remainLabel;
             document.getElementById('plan-horizon-tag').textContent = 'Remaining / Max 60m';
           }
-        } else {
+        } else if (!(ofRec && ofRec.active) && !(ofExit && ofExit.exit_reason)) {
           planContainer.style.display = 'none';
         }
 
@@ -3601,9 +4633,47 @@ DASHBOARD_HTML = """<!DOCTYPE html>
         const cs = data.checkpoint_integrity;
         document.getElementById('gate-checksum').textContent = cs.recorded.substring(0, 16) + '... (VALID)';
 
-        // Decision Cards Table
+        // Decision Cards Table (+ OF entry/exit candle highlights)
         const tbody = document.getElementById('decision-cards-tbody');
         tbody.innerHTML = '';
+        const ofMarks = data.of_candle_markers || {};
+        const ofEntry = ofMarks.entry || ((data.order_flow_recommendation || data.order_flow_last_exit || {}).entry_candle) || null;
+        const ofExitC = ofMarks.exit || ((data.order_flow_last_exit || {}).exit_candle) || null;
+        const legend = document.getElementById('of-candle-legend');
+        if (legend) {
+          const bits = [];
+          if (ofEntry) bits.push(`OF ENTRY → 15m #${ofEntry.bar_idx ?? '—'} ${ofEntry.candle_label || ''}`);
+          if (ofExitC) bits.push(`OF EXIT → 15m #${ofExitC.bar_idx ?? '—'} ${ofExitC.candle_label || ''}`);
+          legend.textContent = bits.length ? ('· ' + bits.join(' · ')) : '';
+        }
+        function ofRowKind(c) {
+          // Event-precise OF badges only. Never paint by 15m window / bar_idx alone —
+          // window-only exit marks (legend "15m #—") made every #665 prospective
+          // card look like OF EXIT.
+          const ev = c.decision_event_idx;
+          const t = c.close_time_ms;
+          const MARK_PROX_MS = 5000; // ±5s around mark_time / decision event
+          const hit = (m) => {
+            if (!m) return false;
+            // Require event identity — refuse window-only marks (no bar, no evt)
+            if (m.decision_event_idx == null && m.bar_idx == null) return false;
+            if (m.decision_event_idx != null && ev != null
+                && Number(m.decision_event_idx) === Number(ev)) {
+              return true;
+            }
+            // Time proximity only when decision_event_idx is known on the mark
+            if (m.decision_event_idx != null && m.mark_time_ms != null && t != null) {
+              return Math.abs(Number(m.mark_time_ms) - Number(t)) <= MARK_PROX_MS;
+            }
+            return false;
+          };
+          const isEntry = hit(ofEntry);
+          const isExit = hit(ofExitC);
+          if (isEntry && isExit) return 'BOTH';
+          if (isEntry) return 'ENTRY';
+          if (isExit) return 'EXIT';
+          return null;
+        }
         (data.recent_cards || []).forEach(c => {
           const tr = document.createElement('tr');
           const isPro = (c.close_time_ms >= 1792972800000);
@@ -3614,10 +4684,25 @@ DASHBOARD_HTML = """<!DOCTYPE html>
           const cr = c.reasoning || {};
           const bBadge = getActionMiniBadgeWithTooltip(c.policy_b_action, cr.reason_b);
           const cBadge = getActionMiniBadgeWithTooltip(c.policy_c_action, cr.reason_c);
+          const kind = ofRowKind(c);
+          let ofCell = '<span style="color:var(--text-dim);">—</span>';
+          if (kind === 'ENTRY') {
+            ofCell = '<span class="pill-sm" style="background:#86efac; color:#052e16; border:1px solid #4ade80; font-weight:800;">OF ENTRY</span>';
+            tr.style.background = 'rgba(134,239,172,0.12)';
+            tr.style.outline = '1px solid rgba(74,222,128,0.45)';
+          } else if (kind === 'EXIT') {
+            ofCell = '<span class="pill-sm" style="background:rgba(245,158,11,0.25); color:var(--accent-amber); border:1px solid rgba(245,158,11,0.5); font-weight:800;">OF EXIT</span>';
+            tr.style.background = 'rgba(245,158,11,0.10)';
+            tr.style.outline = '1px solid rgba(245,158,11,0.4)';
+          } else if (kind === 'BOTH') {
+            ofCell = '<span class="pill-sm" style="background:rgba(6,182,212,0.2); color:var(--accent-cyan); border:1px solid rgba(6,182,212,0.45); font-weight:800;">OF IN/OUT</span>';
+            tr.style.background = 'rgba(6,182,212,0.10)';
+          }
 
           tr.innerHTML = `
             <td><b>#${c.bar_idx}</b></td>
             <td>${c.timestamp_utc.replace('T', ' ').substring(11, 19)}</td>
+            <td>${ofCell}</td>
             <td>${typeBadge}</td>
             <td>$${c.reference_price.toFixed(2)}</td>
             <td>${bBadge}</td>
@@ -3825,6 +4910,25 @@ DASHBOARD_HTML = """<!DOCTYPE html>
 
     function updateNseUI(nse) {
       if (!nse) return;
+      const ofp = nse.of_paper_ledger || {};
+      const ofpSum = ofp.of_outcomes_summary || {};
+      const ofpVal = document.getElementById('nse-of-paper-val');
+      const ofpSub = document.getElementById('nse-of-paper-sub');
+      const ofpNote = document.getElementById('nse-of-paper-note');
+      if (ofpVal) {
+        const nOpen = ofp.n_open != null ? ofp.n_open : 0;
+        ofpVal.textContent = (ofp.available ? 'PAPER' : 'OFF') + ' · ' + nOpen + ' open';
+      }
+      if (ofpSub) {
+        const nt = ofpSum.n_trades != null ? ofpSum.n_trades : 0;
+        const net = ofpSum.cumulative_net_pnl_inr != null ? Number(ofpSum.cumulative_net_pnl_inr).toFixed(2) : '0.00';
+        const opens = (ofp.opens || []).map(o => o.symbol).filter(Boolean).slice(0, 6).join(', ');
+        ofpSub.textContent = `n_trades=${nt} · net ₹${net}` + (opens ? ` · open: ${opens}` : '');
+      }
+      if (ofpNote) {
+        ofpNote.textContent = (ofp.protocol_id || 'RP-608-NSE-OF-PAPER-TRADE-001') +
+          ' · reverse OF / square-off · 0% authority';
+      }
       if (nse.api_key) {
         currentApiKey = nse.api_key;
         const link = document.getElementById('kite-login-link');
@@ -3846,18 +4950,39 @@ DASHBOARD_HTML = """<!DOCTYPE html>
       // Coverage
       const covEl = document.getElementById('nse-cov-val');
       if (covEl && nse.coverage) covEl.textContent = nse.coverage.status_text;
+      const covNote = document.getElementById('nse-cov-note');
+      if (covNote && nse.coverage && nse.coverage.mode_note) covNote.textContent = nse.coverage.mode_note;
 
-      // Live WebSocket
+      // Continuous L1 feed (not the one-shot readiness probe)
       const wsVal = document.getElementById('nse-ws-val');
       const wsSub = document.getElementById('nse-ws-sub');
       const wsAge = document.getElementById('nse-ws-age');
+      const wsAgeMetric = document.getElementById('nse-ws-age-metric');
+      const probeNote = document.getElementById('nse-probe-note');
       if (nse.live_websocket) {
-        if (wsVal) wsVal.textContent = nse.live_websocket.status;
-        if (wsSub) wsSub.textContent = `${nse.live_websocket.valid_spreads} / ${nse.coverage ? nse.coverage.total_universe : 119} Spreads · ${nse.live_websocket.crossed_market} Crossed`;
+        const lw = nse.live_websocket;
+        if (wsVal) wsVal.textContent = lw.status || '—';
+        const tokCached = (lw.cached_tokens != null) ? lw.cached_tokens : '—';
+        const tokSub = (lw.subscribed_tokens != null) ? lw.subscribed_tokens : (nse.coverage ? nse.coverage.total_universe : 119);
+        if (wsSub) wsSub.textContent = `source=${lw.source || '—'} · ${tokCached}/${tokSub} tokens`;
+        if (wsAgeMetric) wsAgeMetric.textContent = (lw.age_metric === 'packet') ? 'Packet age' : 'Heartbeat age';
         if (wsAge) {
-          const ageStr = (nse.live_websocket.age_sec !== null && nse.live_websocket.age_sec !== undefined) ? `${nse.live_websocket.age_sec}s ago` : (nse.live_websocket.last_packet_utc !== 'N/A' ? nse.live_websocket.last_packet_utc.substring(11, 19) + ' UTC' : 'N/A');
+          const ageStr = (lw.age_sec !== null && lw.age_sec !== undefined)
+            ? `${lw.age_sec}s ago`
+            : (lw.last_packet_utc && lw.last_packet_utc !== 'N/A'
+              ? String(lw.last_packet_utc).substring(11, 19) + ' UTC'
+              : 'N/A');
           wsAge.textContent = ageStr;
         }
+      }
+      if (probeNote && nse.readiness_probe) {
+        const rp = nse.readiness_probe;
+        const rpAge = (rp.age_sec != null) ? `${rp.age_sec}s` : 'n/a';
+        probeNote.textContent = `Readiness probe (separate): ${rp.status || '—'} · age ${rpAge}`;
+      }
+      const sess = nse.production_session;
+      if (sess && probeNote) {
+        probeNote.textContent += ` · session ${sess.session_date || '—'} durable=${sess.durable_bar ?? '—'} G1=${sess.g1_status || '—'}`;
       }
 
       // Pre-Open
@@ -3914,39 +5039,126 @@ DASHBOARD_HTML = """<!DOCTYPE html>
         if (tlEl && tl) tlEl.textContent = `▼ ${tl.symbol} (${tl.gap_bps} bps)`;
       }
 
-      // Next-session post-close watchlist
+      // Next-session post-close watchlist (live-polled with /api/state)
       const nsr = nse.next_session_recommendations || {};
       const nsrPill = document.getElementById('nse-next-session-pill');
       const nsrMeta = document.getElementById('nse-next-session-meta');
       const nsrList = document.getElementById('nse-next-session-list');
+      const nsrRecTime = document.getElementById('nse-next-session-rec-time');
+      const nsrLiveClock = document.getElementById('nse-next-session-live-clock');
+      const nsrLive = document.getElementById('nse-next-session-live');
+
+      function formatNsrWhen(iso) {
+        if (!iso) return null;
+        const d = new Date(iso);
+        if (Number.isNaN(d.getTime())) return String(iso);
+        try {
+          const ist = d.toLocaleString('en-IN', {
+            timeZone: 'Asia/Kolkata',
+            year: 'numeric', month: 'short', day: '2-digit',
+            hour: '2-digit', minute: '2-digit', second: '2-digit',
+            hour12: false
+          });
+          const utc = d.toLocaleString('en-GB', {
+            timeZone: 'UTC',
+            year: 'numeric', month: 'short', day: '2-digit',
+            hour: '2-digit', minute: '2-digit', second: '2-digit',
+            hour12: false
+          });
+          return { ist: ist + ' IST', utc: utc + ' UTC', ms: d.getTime() };
+        } catch (_) {
+          return { ist: String(iso), utc: '', ms: d.getTime() };
+        }
+      }
+
       if (nsrPill) {
+        const ofN = nsr.n_order_flow_supported != null ? Number(nsr.n_order_flow_supported) : 0;
         nsrPill.textContent = nsr.available
-          ? (`NEXT ${nsr.next_session_date || ''} · ${nsr.n_recommendations || 0}`)
+          ? (`NEXT ${nsr.next_session_date || ''} · ${nsr.n_recommendations || 0} · OF ${ofN}`)
           : 'WAITING';
       }
       if (nsrMeta) {
         nsrMeta.textContent = nsr.note
           || `From ${nsr.from_session_date || '—'} → next ${nsr.next_session_date || '—'} · 0.0% authority · not overnight/CAS`;
       }
+      const recAtIso = nsr.recommended_at_utc || nsr.emitted_utc || null;
+      const recAt = formatNsrWhen(recAtIso);
+      const stampAt = formatNsrWhen(nsr.stamp_mtime_utc);
+      if (nsrRecTime) {
+        nsrRecTime.textContent = recAt
+          ? (`Recommended at: ${recAt.ist}${recAt.utc ? ' · ' + recAt.utc : ''}`)
+          : 'Recommended at: — (stamp not yet emitted)';
+      }
+      const pollSec = nsr.live_poll_hint_sec != null ? Number(nsr.live_poll_hint_sec) : 3;
+      const uiNow = formatNsrWhen(new Date().toISOString());
+      if (nsrLiveClock) {
+        const stampBit = stampAt ? ` · file mtime ${stampAt.ist}` : '';
+        nsrLiveClock.textContent = `UI refresh: ${uiNow ? uiNow.ist : '—'} · live poll ${pollSec}s${stampBit}`;
+      }
+      if (nsrLive) {
+        nsrLive.style.opacity = '1';
+        nsrLive.title = recAt
+          ? `Live panel · last recommendation ${recAt.ist}`
+          : 'Live panel · waiting for next-session stamp';
+      }
       if (nsrList) {
         const rows = nsr.recommendations || [];
         if (!rows.length) {
           nsrList.innerHTML = 'No next-session watches yet — emitted automatically after POST_CLOSE.';
         } else {
+          const lvlStatusColor = (st) => {
+            if (st === 'VALID') return '#86efac';
+            if (st === 'WAITING') return '#fde68a';
+            if (st === 'INVALIDATED') return '#fda4af';
+            if (st === 'STALE_SUPPRESSED') return '#94a3b8';
+            return '#94a3b8';
+          };
           nsrList.innerHTML = rows.slice(0, 20).map((r, i) => {
             const sym = r.tradingsymbol || (r.symbol || '').replace('.NS','');
             const sc = (r.score != null) ? Number(r.score).toFixed(4) : '—';
-            const tr = (r.traj15_eod != null) ? Number(r.traj15_eod).toFixed(4) : '—';
-            const sb = (r.session_return_bps != null) ? Number(r.session_return_bps).toFixed(1) : '—';
-            const px = (r.close_price != null) ? Number(r.close_price).toFixed(2) : '—';
-            return `<div style="display:grid; grid-template-columns:32px 88px 70px 1fr 90px 90px 90px; gap:8px; align-items:center; padding:8px 10px; background:rgba(6,182,212,0.06); border:1px solid rgba(6,182,212,0.15); border-radius:8px;">
-              <span style="color:#64748b;">#${i+1}</span>
-              <span style="color:#7dd3fc; font-weight:800;">${sym}</span>
-              <span style="color:#e2e8f0;">${r.side || 'LONG'}</span>
-              <span style="color:#94a3b8; font-size:11px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" title="${(r.thesis||'').replace(/"/g,'&quot;')}">${r.status || 'WATCH_NEXT_SESSION'}</span>
-              <span style="color:#cbd5e1;">score ${sc}</span>
-              <span style="color:#94a3b8;">traj ${tr}</span>
-              <span style="color:#94a3b8;">${sb} bps · ₹${px}</span>
+            const ofOn = !!r.order_flow_supported;
+            const imb = (r.order_flow_imbalance != null) ? Number(r.order_flow_imbalance).toFixed(3) : '';
+            const rowIso = r.recommended_at_utc || recAtIso;
+            const rowRec = formatNsrWhen(rowIso);
+            let rowRecShort = '—';
+            if (rowIso) {
+              try {
+                rowRecShort = new Date(rowIso).toLocaleTimeString('en-IN', {
+                  timeZone: 'Asia/Kolkata', hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false
+                }) + ' IST';
+              } catch (_) { rowRecShort = rowRec ? rowRec.ist : '—'; }
+            }
+            const lv = r.levels || {};
+            const eLo = r.entry_low != null ? r.entry_low : lv.entry_low;
+            const eHi = r.entry_high != null ? r.entry_high : lv.entry_high;
+            const stop = r.stop_price != null ? r.stop_price : lv.stop_price;
+            const tgt = r.target_price != null ? r.target_price : lv.target_price;
+            const rr = r.risk_reward_display || lv.risk_reward_display || '—';
+            const lst = r.level_status || lv.level_status || '—';
+            const entryRange = (eLo != null && eHi != null)
+              ? (`₹${Number(eLo).toFixed(2)}–${Number(eHi).toFixed(2)}`)
+              : '—';
+            const ofBadge = ofOn
+              ? `<span style="display:inline-block; margin-left:8px; padding:1px 6px; font-size:10px; font-weight:700; letter-spacing:0.02em; color:#052e16; background:#86efac; border:1px solid #4ade80; border-radius:4px; vertical-align:middle;" title="L1 TOB imbalance agrees with side${imb ? ' ('+imb+')' : ''}">ORDER FLOW</span>`
+              : '';
+            const livePill = `<span style="display:inline-block; padding:1px 6px; font-size:10px; font-weight:700; color:#083344; background:#67e8f9; border-radius:4px;">LIVE</span>`;
+            const statusPill = `<span style="display:inline-block; margin-left:6px; padding:1px 6px; font-size:10px; font-weight:700; color:#0f172a; background:${lvlStatusColor(lst)}; border-radius:4px;" title="${(lv.level_status_reason||'')}">${lst}</span>`;
+            const lvlNote = 'Indicative watchlist levels (RP608_DYNAMIC_OHLCV_STRUCTURE_V1) — not executed / not paper entry';
+            return `<div style="display:grid; gap:6px; padding:10px 12px; background:rgba(6,182,212,0.06); border:1px solid rgba(6,182,212,0.15); border-radius:8px;">
+              <div style="display:flex; flex-wrap:wrap; gap:8px; align-items:center;">
+                <span style="color:#64748b;">#${i+1}</span>
+                <span style="color:#7dd3fc; font-weight:800; font-size:13px;">${sym}</span>
+                <span style="color:#e2e8f0;">${r.side || 'LONG'}</span>
+                ${livePill}${statusPill}${ofBadge}
+                <span style="color:#94a3b8; font-size:10px; margin-left:auto;" title="${rowRec ? (rowRec.ist + ' · ' + rowRec.utc) : ''}">rec ${rowRecShort} · score ${sc}</span>
+              </div>
+              <div style="display:grid; grid-template-columns:repeat(auto-fit,minmax(140px,1fr)); gap:8px; font-size:11px;" title="${lvlNote}">
+                <div><div style="color:#64748b; font-size:9px; text-transform:uppercase;">Entry range</div><div style="color:#e2e8f0; font-weight:700;">${entryRange}</div></div>
+                <div><div style="color:#64748b; font-size:9px; text-transform:uppercase;">Target</div><div style="color:#86efac; font-weight:700;">${tgt != null ? ('₹'+Number(tgt).toFixed(2)) : '—'}</div></div>
+                <div><div style="color:#64748b; font-size:9px; text-transform:uppercase;">Stop-loss</div><div style="color:#fda4af; font-weight:700;">${stop != null ? ('₹'+Number(stop).toFixed(2)) : '—'}</div></div>
+                <div><div style="color:#64748b; font-size:9px; text-transform:uppercase;">Risk/reward</div><div style="color:#fde68a; font-weight:700;">${rr}</div></div>
+              </div>
+              <div style="font-size:9px; color:#64748b;">Indicative only · not an executed or paper-trade entry · ref close ≠ authorized fill</div>
             </div>`;
           }).join('');
         }
@@ -3970,6 +5182,7 @@ DASHBOARD_HTML = """<!DOCTYPE html>
         target_bps: 'Target (bps) descending',
         net_rr: 'Net R:R descending',
         traj15: 'traj15 score descending',
+        rec_time: 'Rec time · newest first',
         symbol: 'Symbol A–Z'
       };
       const NSE_SORT_KEYS = Object.keys(NSE_SORT_LABELS);
@@ -3996,6 +5209,10 @@ DASHBOARD_HTML = """<!DOCTYPE html>
         if (mode === 'target_bps') return Number(rr.target_bps != null ? rr.target_bps : -Infinity);
         if (mode === 'net_rr') return Number(rr.net_rr_ratio != null ? rr.net_rr_ratio : -Infinity);
         if (mode === 'traj15') return Number(qc.score != null ? qc.score : -Infinity);
+        if (mode === 'rec_time') {
+          const ms = qc.recommendation_time_utc_ms;
+          return (ms != null && !Number.isNaN(Number(ms))) ? Number(ms) : -Infinity;
+        }
         if (mode === 'symbol') return String(qc.tradingsymbol || qc.symbol || '').toUpperCase();
         // rank_score default
         const rs = qc.rank_score != null ? qc.rank_score : rr.rank_score;
@@ -4044,6 +5261,14 @@ DASHBOARD_HTML = """<!DOCTYPE html>
         const rankBadge = rankIdx != null
           ? `<span class="badge" style="background:rgba(6,182,212,0.18); color:var(--accent-cyan); font-weight:700; margin-right:6px;">#${rankIdx + 1}</span>`
           : '';
+        const recTimeIst = qc.recommendation_time_ist || null;
+        const recTimeUtc = qc.recommendation_time_utc || null;
+        const recTimeHtml = recTimeIst
+          ? `<div style="font-size:10px; color:var(--accent-cyan); font-family:'JetBrains Mono',monospace; margin:0 0 8px 0;">
+              Rec time: <b style="color:#fff;">${recTimeIst}</b>
+              ${recTimeUtc ? `<span style="color:var(--text-dim); margin-left:6px;">(${recTimeUtc})</span>` : ''}
+            </div>`
+          : `<div style="font-size:10px; color:var(--text-dim); margin:0 0 8px 0;">Rec time: —</div>`;
         return `
           <div style="background:${bg}; border:1px solid ${border}; border-radius:8px; padding:12px;">
             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
@@ -4056,6 +5281,7 @@ DASHBOARD_HTML = """<!DOCTYPE html>
               </div>
               <span style="font-family:'JetBrains Mono',monospace; font-size:13px; font-weight:700; color:#fff;">${px != null ? '₹' + Number(px).toFixed(2) : '--'}</span>
             </div>
+            ${recTimeHtml}
             <div style="display:grid; grid-template-columns:1fr 1fr; gap:6px; font-size:11px; margin-bottom:8px;">
               <div>Rank score: <b style="color:var(--accent-cyan); font-family:'JetBrains Mono',monospace;">${rankScore != null ? Number(rankScore).toFixed(2) : '--'}</b> <span style="color:var(--text-dim); font-size:9px;">(R:R×tgt%)</span></div>
               <div>Net R:R: <b style="color:var(--accent-cyan); font-family:'JetBrains Mono',monospace;">${rr.net_rr_ratio != null ? Number(rr.net_rr_ratio).toFixed(2) + 'x' : '--'}</b></div>
@@ -4151,6 +5377,19 @@ DASHBOARD_HTML = """<!DOCTYPE html>
 
       // Momentum Census Counts
       allNseScrips = nse.scrips || [];
+      const explorerSort = document.getElementById('select-explorer-sort');
+      if (explorerSort) {
+        try {
+          const saved = localStorage.getItem('rp608_nse_explorer_sort');
+          if (saved && ['REC_TIME_DESC', 'REC_TIME_ASC', 'TRAJ15_DESC', 'SYMBOL_ASC'].includes(saved)) {
+            explorerSort.value = saved;
+          } else if (!explorerSort.value) {
+            explorerSort.value = 'REC_TIME_DESC';
+          }
+        } catch (_) {
+          explorerSort.value = 'REC_TIME_DESC';
+        }
+      }
       let cntBullish = 0;
       let cntNeutral = 0;
       let cntBearish = 0;
@@ -4178,14 +5417,16 @@ DASHBOARD_HTML = """<!DOCTYPE html>
       const compSelect = document.getElementById('select-filter-compartment');
       const decSelect = document.getElementById('select-filter-decision');
       const momSelect = document.getElementById('select-filter-momentum');
+      const sortSelect = document.getElementById('select-explorer-sort');
       const filterInput = document.getElementById('nse-filter-input');
 
       const compFilter = compSelect ? compSelect.value : 'ALL';
       const decFilter = decSelect ? decSelect.value : 'ALL';
       const momFilter = momSelect ? momSelect.value : 'ALL';
+      const sortMode = sortSelect ? sortSelect.value : 'REC_TIME_DESC';
       const q = (filterInput ? filterInput.value.trim().toUpperCase() : '');
 
-      let displayList = allNseScrips;
+      let displayList = allNseScrips.slice();
 
       // 1. Filter by Compartment
       if (compFilter !== 'ALL') {
@@ -4231,13 +5472,50 @@ DASHBOARD_HTML = """<!DOCTYPE html>
         });
       }
 
+      // 5. Sort (default: recommendation time newest first)
+      const recMs = (s) => {
+        const ms = s && s.recommendation_time_utc_ms;
+        const n = (ms != null) ? Number(ms) : NaN;
+        return Number.isFinite(n) ? n : null;
+      };
+      const traj = (s) => {
+        const n = (s && s.score != null) ? Number(s.score) : NaN;
+        return Number.isFinite(n) ? n : -Infinity;
+      };
+      displayList.sort((a, b) => {
+        if (sortMode === 'SYMBOL_ASC') {
+          return String(a.tradingsymbol || a.symbol || '').localeCompare(String(b.tradingsymbol || b.symbol || ''));
+        }
+        if (sortMode === 'TRAJ15_DESC') {
+          const d = traj(b) - traj(a);
+          if (d) return d;
+          return String(a.tradingsymbol || '').localeCompare(String(b.tradingsymbol || ''));
+        }
+        const ma = recMs(a);
+        const mb = recMs(b);
+        // Missing timestamps sink to bottom for both asc/desc rec-time modes
+        if (ma == null && mb == null) {
+          return String(a.tradingsymbol || '').localeCompare(String(b.tradingsymbol || ''));
+        }
+        if (ma == null) return 1;
+        if (mb == null) return -1;
+        if (sortMode === 'REC_TIME_ASC') {
+          if (ma !== mb) return ma - mb;
+        } else {
+          // REC_TIME_DESC (default)
+          if (mb !== ma) return mb - ma;
+        }
+        return String(a.tradingsymbol || '').localeCompare(String(b.tradingsymbol || ''));
+      });
+      try { localStorage.setItem('rp608_nse_explorer_sort', sortMode); } catch (_) {}
+
       const countBadge = document.getElementById('nse-table-count');
       if (countBadge) {
         countBadge.textContent = `Showing ${displayList.length} of ${allNseScrips.length} Scrips`;
       }
 
       if (displayList.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="8" style="text-align:center; color:var(--text-dim); padding:24px;">No instruments match the selected filters.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="9" style="text-align:center; color:var(--text-dim); padding:24px;">No instruments match the selected filters.</td></tr>';
         return;
       }
 
@@ -4354,6 +5632,14 @@ DASHBOARD_HTML = """<!DOCTYPE html>
             ${hzBadge}
             <div style="font-size:10px; color:var(--text-dim); max-width:240px; line-height:1.3;">${s.explanation || '--'}</div>
             <span style="font-size:9px; color:var(--text-muted); font-family:'JetBrains Mono',monospace;">Code: ${s.decision_code || 'N/A'}</span>
+          </td>
+          <td>
+            <div style="font-family:'JetBrains Mono',monospace; font-size:10px; line-height:1.35; max-width:160px;">
+              ${s.recommendation_time_ist
+                ? `<div style="color:var(--accent-cyan); font-weight:600;">${s.recommendation_time_ist}</div>
+                   ${s.recommendation_time_utc ? `<div style="color:var(--text-dim); font-size:9px; margin-top:2px;">${s.recommendation_time_utc}</div>` : ''}`
+                : '<span style="color:var(--text-muted);">—</span>'}
+            </div>
           </td>
           <td>
             <div style="font-family:'JetBrains Mono',monospace; font-weight:700; color:#fff; font-size:13px;">
@@ -4635,7 +5921,7 @@ class DashboardHTTPRequestHandler(http.server.BaseHTTPRequestHandler):
 
         if self.path == "/api/state":
             try:
-                state = load_live_state()
+                state = get_cached_live_state()
                 self._send_json(200, state)
             except Exception as e:
                 self._send_json(500, {"error": str(e)})
