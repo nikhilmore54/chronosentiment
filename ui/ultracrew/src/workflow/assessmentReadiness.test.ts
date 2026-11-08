@@ -1559,5 +1559,53 @@ describe('Coralys Demand Review & Approval UI Suite (Phase 2)', () => {
       }
     }
   });
+
+  // ── AT-39: Active Demand Capacity Diagnostic Alignment & Zero-FOMO Buffer ──
+  test('AT-39: Active demand capacity diagnostic correctly reflects standard baseline buffer (+352h / 22% slack) and isolates unapproved multi-bed simulation', () => {
+    const { staff: staff12 } = parseStaffCSV(OPTIMAL_12_STAFF_CSV);
+    const { staff: staff20 } = parseStaffCSV(SAMPLE_CSV);
+
+    // 1. Standard Hospital Baseline (active schedule demand: 196 shifts = 1,568h)
+    const stdDiag12 = computeDemandCapacityDiagnostic(staff12, undefined, 28);
+    expect(stdDiag12.demandHours).toBe(1568);
+    expect(stdDiag12.shiftCount).toBe(196);
+    expect(stdDiag12.workforceCapacityHours).toBe(1920);
+    expect(stdDiag12.surplusOrDeficitHours).toBe(352); // +352h buffer (positive!)
+    expect(stdDiag12.utilizationRatio).toBe(0.817); // 81.7% utilization
+    expect(stdDiag12.status).toBe('balanced'); // balanced buffer, zero deficit!
+
+    // Verify optimal establishment sizing for standard demand
+    const netFteStd = stdDiag12.demandHours / 160; // 9.8 Net FTE
+    const targetStaffStd = Math.ceil(netFteStd * 1.22); // 12 Nurses
+    const supervisoryStd = Math.ceil(targetStaffStd * 0.25); // 3 Supervisory
+    const staffNursesStd = targetStaffStd - supervisoryStd; // 9 Staff Nurses
+    expect(targetStaffStd).toBe(12);
+    expect(supervisoryStd).toBe(3);
+    expect(staffNursesStd).toBe(9);
+
+    // 2. 20-Nurse Baseline against standard hospital baseline (2,816h contractual capacity with mixed contracts)
+    const stdDiag20 = computeDemandCapacityDiagnostic(staff20, undefined, 28);
+    expect(stdDiag20.demandHours).toBe(1568);
+    expect(stdDiag20.workforceCapacityHours).toBe(2816);
+    expect(stdDiag20.surplusOrDeficitHours).toBe(1248); // +1,248h surplus buffer (positive!)
+    expect(stdDiag20.status).toBe('excess_capacity');
+
+    // 3. Approved Ward 4B Multi-Bed Simulation (448 shifts = 3,584h)
+    const wardDemand = calculateClinicalDemand(DEFAULT_HOSPITAL_CONFIG, { horizonDays: 28 });
+    expect(wardDemand.totalPositions).toBe(448);
+    expect(wardDemand.totalClinicalHours).toBe(3584);
+
+    const wardDiag12 = computeDemandCapacityDiagnostic(staff12, wardDemand.slots, 28);
+    expect(wardDiag12.demandHours).toBe(3584);
+    expect(wardDiag12.shiftCount).toBe(448);
+    expect(wardDiag12.workforceCapacityHours).toBe(1920);
+    expect(wardDiag12.surplusOrDeficitHours).toBe(-1664); // Only when 448 shifts explicitly evaluated
+    expect(wardDiag12.status).toBe('under_capacity');
+
+    // For 448 shifts, optimal establishment sizing requires 28 nurses
+    const netFteWard = wardDiag12.demandHours / 160; // 22.4 Net FTE
+    const targetStaffWard = Math.ceil(netFteWard * 1.22); // 28 Nurses
+    expect(targetStaffWard).toBe(28);
+  });
 });
 

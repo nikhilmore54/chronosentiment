@@ -117,6 +117,8 @@ export const ImportStaff: React.FC<{
   const [approvalNotes, setApprovalNotes] = useState<string>('Approved staffing demand baseline for Ward 4B acute rotation');
   const [showDerivationDetails, setShowDerivationDetails] = useState<boolean>(false);
   const [showManualDemand, setShowManualDemand] = useState<boolean>(false);
+  const [showWardCalculator, setShowWardCalculator] = useState<boolean>(!!approvedDemandSnapshot);
+  const isWardCalculatorVisible = showWardCalculator || !!approvedDemandSnapshot;
 
   const effectiveConfig = useMemo<HospitalWardConfiguration>(() => {
     return {
@@ -162,10 +164,33 @@ export const ImportStaff: React.FC<{
     }
   }, [effectiveConfig, modifierCensusInputs]);
 
-  const capacityDiagnostic = useMemo(() => {
-    if (!calculatedDemand) return null;
-    return computeDemandCapacityDiagnostic(staff, calculatedDemand.slots, 28);
-  }, [staff, calculatedDemand]);
+  const activeDemandShifts = useMemo(() => {
+    if (approvedDemandSnapshot && approvedDemandSnapshot.slots && approvedDemandSnapshot.slots.length > 0) {
+      return approvedDemandSnapshot.slots;
+    }
+    if (customShifts && customShifts.length > 0) {
+      return customShifts;
+    }
+    return undefined; // defaults in computeDemandCapacityDiagnostic to standard hospital demand (196 shifts = 1,568h)
+  }, [approvedDemandSnapshot, customShifts]);
+
+  const activeCapacityDiagnostic = useMemo(() => {
+    return computeDemandCapacityDiagnostic(staff, activeDemandShifts, 28);
+  }, [staff, activeDemandShifts]);
+
+  const optimalTargetStaff = useMemo(() => {
+    if (!activeCapacityDiagnostic || activeCapacityDiagnostic.demandHours === 0) return 12;
+    // Hospital Policy: 22.0% relief uplift
+    return Math.ceil((activeCapacityDiagnostic.demandHours / 160) * 1.22);
+  }, [activeCapacityDiagnostic]);
+
+  const optimalSupervisoryStaff = useMemo(() => {
+    return Math.max(1, Math.ceil(optimalTargetStaff * 0.25));
+  }, [optimalTargetStaff]);
+
+  const optimalStaffNurses = useMemo(() => {
+    return Math.max(1, optimalTargetStaff - optimalSupervisoryStaff);
+  }, [optimalTargetStaff, optimalSupervisoryStaff]);
 
   const handleApproveDemand = () => {
     if (!calculatedDemand || !approverName.trim()) return;
@@ -351,28 +376,77 @@ export const ImportStaff: React.FC<{
               </span>
               <button
                 onClick={() => {
+                  setShowWardCalculator(false);
                   onApprovedDemandSnapshotChange?.(null);
                   if (onCustomShiftsChange) onCustomShiftsChange([]);
                 }}
                 style={{ ...ghostBtnStyle, fontSize: '0.8rem', padding: '0.3rem 0.6rem', color: '#f59e0b' }}
               >
-                Revert to Edit / Draft
+                Revert to Standard Demand
               </button>
             </div>
           ) : (
-            <span style={{
-              backgroundColor: 'rgba(245, 158, 11, 0.12)',
-              color: '#f59e0b',
-              padding: '0.35rem 0.75rem',
-              borderRadius: '6px',
-              fontSize: '0.85rem',
-              fontWeight: 600,
-            }}>
-              Draft / Unapproved Demand Preview
-            </span>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+              <span style={{
+                backgroundColor: 'rgba(56, 189, 248, 0.12)',
+                color: 'var(--accent-color)',
+                padding: '0.35rem 0.75rem',
+                borderRadius: '6px',
+                fontSize: '0.85rem',
+                fontWeight: 600,
+              }}>
+                Standard Hospital Baseline Active ({activeCapacityDiagnostic.shiftCount} shifts)
+              </span>
+              <button
+                onClick={() => setShowWardCalculator(s => !s)}
+                style={{
+                  ...accentGhostBtnStyle,
+                  fontSize: '0.8rem',
+                  padding: '0.35rem 0.75rem',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.35rem',
+                }}
+              >
+                <span>{isWardCalculatorVisible ? '▲' : '▶'}</span>
+                <span>{isWardCalculatorVisible ? 'Collapse Ward 4B Census Derivation' : 'Configure Ward 4B Bed-Level Census (Simulation)'}</span>
+              </button>
+            </div>
           )}
         </div>
 
+        {/* Concise active baseline status banner when Ward 4B derivation is collapsed */}
+        {!isWardCalculatorVisible && !approvedDemandSnapshot && (
+          <div style={{
+            backgroundColor: 'var(--bg-color)',
+            border: '1px solid var(--border-color)',
+            borderRadius: '6px',
+            padding: '0.85rem 1rem',
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            flexWrap: 'wrap',
+            gap: '0.75rem',
+          }}>
+            <div>
+              <div style={{ fontSize: '0.88rem', fontWeight: 600, color: 'var(--text-main)' }}>
+                Active Schedule Demand: Standard Hospital Department Baseline ({activeCapacityDiagnostic.shiftCount} shifts • {activeCapacityDiagnostic.demandHours.toLocaleString()}h)
+              </div>
+              <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginTop: '0.2rem' }}>
+                Ratified 28-day inpatient staffing demand (2 Early, 2 Late, 2 Night + 1 HeadNurse early). Sized for the 12-nurse team with +22.4% buffer slack.
+              </div>
+            </div>
+            <button
+              onClick={() => setShowWardCalculator(true)}
+              style={{ ...accentGhostBtnStyle, fontSize: '0.8rem', padding: '0.35rem 0.75rem' }}
+            >
+              Configure Ward 4B Bed-Level Census →
+            </button>
+          </div>
+        )}
+
+        {isWardCalculatorVisible && (
+          <>
         {/* 1. Hospital-Defined Ward & Bed Configuration */}
         <div style={{
           backgroundColor: 'var(--bg-color)',
@@ -602,6 +676,20 @@ export const ImportStaff: React.FC<{
               </div>
             </div>
 
+            {!approvedDemandSnapshot && (
+              <div style={{
+                backgroundColor: 'rgba(56, 189, 248, 0.05)',
+                border: '1px solid rgba(56, 189, 248, 0.25)',
+                borderRadius: '6px',
+                padding: '0.65rem 0.85rem',
+                fontSize: '0.8rem',
+                color: 'var(--text-muted)',
+                lineHeight: '1.4',
+              }}>
+                <strong style={{ color: 'var(--accent-color)' }}>Draft Census Simulation:</strong> Deriving <strong>{calculatedDemand.totalPositions} shifts ({calculatedDemand.totalClinicalHours.toLocaleString()}h)</strong>. This draft is not active until governance approval in Section 5 below. The active schedule currently remains <strong>Standard Hospital Baseline ({activeCapacityDiagnostic.shiftCount} shifts • {activeCapacityDiagnostic.demandHours.toLocaleString()}h)</strong>.
+              </div>
+            )}
+
             {showDerivationDetails && (
               <div style={{ marginTop: '0.5rem', padding: '0.75rem', backgroundColor: 'var(--panel-bg)', borderRadius: '6px', border: '1px solid var(--border-color)', fontSize: '0.78rem', color: 'var(--text-muted)', display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
                 <div style={{ fontWeight: 600, color: 'var(--text-main)' }}>Deterministic Derivation Log (Day 1 Shifts):</div>
@@ -617,9 +705,11 @@ export const ImportStaff: React.FC<{
             )}
           </div>
         )}
+        </>
+        )}
 
         {/* 4. Required-versus-Available Workforce Comparison */}
-        {capacityDiagnostic && (
+        {activeCapacityDiagnostic && (
           <div style={{
             backgroundColor: 'var(--bg-color)',
             border: '1px solid var(--border-color)',
@@ -629,25 +719,34 @@ export const ImportStaff: React.FC<{
             flexDirection: 'column',
             gap: '0.75rem',
           }}>
-            <div style={{ fontWeight: 600, color: 'var(--text-main)', fontSize: '0.88rem' }}>
-              4. Required-versus-Available Workforce Comparison
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem' }}>
+              <div style={{ fontWeight: 600, color: 'var(--text-main)', fontSize: '0.88rem' }}>
+                4. Required-versus-Available Workforce Comparison
+              </div>
+              <span style={{ fontSize: '0.75rem', color: 'var(--accent-color)', backgroundColor: 'var(--panel-bg)', padding: '0.2rem 0.5rem', borderRadius: '4px', border: '1px solid var(--border-color)' }}>
+                {approvedDemandSnapshot
+                  ? `Active Demand: Approved Ward 4B Snapshot (${activeCapacityDiagnostic.shiftCount} shifts • ${activeCapacityDiagnostic.demandHours.toLocaleString()}h)`
+                  : customShifts && customShifts.length > 0
+                    ? `Active Demand: Custom Shifts (${activeCapacityDiagnostic.shiftCount} shifts • ${activeCapacityDiagnostic.demandHours.toLocaleString()}h)`
+                    : `Active Demand: Standard Hospital Baseline (${activeCapacityDiagnostic.shiftCount} shifts • ${activeCapacityDiagnostic.demandHours.toLocaleString()}h)`}
+              </span>
             </div>
 
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '0.75rem' }}>
               <div style={{ backgroundColor: 'var(--panel-bg)', padding: '0.75rem', borderRadius: '4px', border: '1px solid var(--border-color)' }}>
                 <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Required Demand Hours</div>
                 <div style={{ fontSize: '1.15rem', fontWeight: 700, color: 'var(--text-main)', margin: '0.2rem 0' }}>
-                  {capacityDiagnostic.demandHours.toLocaleString()}h
+                  {activeCapacityDiagnostic.demandHours.toLocaleString()}h
                 </div>
                 <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-                  Across {capacityDiagnostic.shiftCount} shift positions
+                  Across {activeCapacityDiagnostic.shiftCount} shift positions
                 </div>
               </div>
 
               <div style={{ backgroundColor: 'var(--panel-bg)', padding: '0.75rem', borderRadius: '4px', border: '1px solid var(--border-color)' }}>
                 <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Available Workforce Capacity</div>
                 <div style={{ fontSize: '1.15rem', fontWeight: 700, color: 'var(--accent-color)', margin: '0.2rem 0' }}>
-                  {capacityDiagnostic.workforceCapacityHours.toLocaleString()}h
+                  {activeCapacityDiagnostic.workforceCapacityHours.toLocaleString()}h
                 </div>
                 <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
                   {staff.length} nurses loaded (nominal contracts)
@@ -655,17 +754,22 @@ export const ImportStaff: React.FC<{
               </div>
 
               <div style={{ backgroundColor: 'var(--panel-bg)', padding: '0.75rem', borderRadius: '4px', border: '1px solid var(--border-color)' }}>
-                <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Preliminary Capacity Gap</div>
+                <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                  {activeCapacityDiagnostic.surplusOrDeficitHours < 0 ? 'Preliminary Capacity Gap' : 'Preliminary Capacity Buffer'}
+                </div>
                 <div style={{
                   fontSize: '1.15rem',
                   fontWeight: 700,
-                  color: capacityDiagnostic.surplusOrDeficitHours < 0 ? '#ef4444' : '#10b981',
+                  color: activeCapacityDiagnostic.surplusOrDeficitHours < 0 ? '#ef4444' : '#10b981',
                   margin: '0.2rem 0',
                 }}>
-                  {capacityDiagnostic.surplusOrDeficitHours > 0 ? `+${capacityDiagnostic.surplusOrDeficitHours}h` : `${capacityDiagnostic.surplusOrDeficitHours}h`}
+                  {activeCapacityDiagnostic.surplusOrDeficitHours >= 0 ? `+${activeCapacityDiagnostic.surplusOrDeficitHours}h` : `${activeCapacityDiagnostic.surplusOrDeficitHours}h`}
                 </div>
                 <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-                  ≈ {(capacityDiagnostic.surplusOrDeficitHours / 160).toFixed(1)} FTE {capacityDiagnostic.surplusOrDeficitHours < 0 ? 'gap' : 'buffer'}
+                  ≈ {activeCapacityDiagnostic.surplusOrDeficitHours >= 0 ? '+' : ''}{(activeCapacityDiagnostic.surplusOrDeficitHours / 160).toFixed(1)} FTE {activeCapacityDiagnostic.surplusOrDeficitHours < 0 ? 'gap' : 'buffer'}
+                  {activeCapacityDiagnostic.surplusOrDeficitHours >= 0 && activeCapacityDiagnostic.demandHours > 0
+                    ? ` (+${((activeCapacityDiagnostic.surplusOrDeficitHours / activeCapacityDiagnostic.demandHours) * 100).toFixed(1)}% slack)`
+                    : ''}
                 </div>
               </div>
             </div>
@@ -709,20 +813,20 @@ export const ImportStaff: React.FC<{
                 <div style={{ backgroundColor: 'var(--panel-bg)', padding: '0.6rem', borderRadius: '4px', border: '1px solid var(--border-color)' }}>
                   <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>Net Productive Demand</div>
                   <div style={{ fontSize: '1.05rem', fontWeight: 700, color: 'var(--text-main)', margin: '0.15rem 0' }}>
-                    {(capacityDiagnostic.demandHours / 160).toFixed(1)} Net FTE
+                    {(activeCapacityDiagnostic.demandHours / 160).toFixed(1)} Net FTE
                   </div>
                   <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>
-                    {capacityDiagnostic.demandHours}h / 40h standard
+                    {activeCapacityDiagnostic.demandHours}h / 40h standard
                   </div>
                 </div>
 
                 <div style={{ backgroundColor: 'var(--panel-bg)', padding: '0.6rem', borderRadius: '4px', border: '1px solid var(--border-color)' }}>
                   <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>Optimal Establishment Sizing</div>
                   <div style={{ fontSize: '1.05rem', fontWeight: 700, color: '#10b981', margin: '0.15rem 0' }}>
-                    12 Nurses (12.0 FTE)
+                    {optimalTargetStaff} Nurses ({optimalTargetStaff}.0 FTE)
                   </div>
                   <div style={{ fontSize: '0.7rem', color: '#10b981' }}>
-                    3 Supervisory + 9 Staff Nurses
+                    {optimalSupervisoryStaff} Supervisory + {optimalStaffNurses} Staff Nurses
                   </div>
                 </div>
 
@@ -731,18 +835,30 @@ export const ImportStaff: React.FC<{
                   <div style={{
                     fontSize: '0.85rem',
                     fontWeight: 700,
-                    color: staff.length > 13 ? '#f59e0b' : staff.length < 11 ? '#ef4444' : '#10b981',
+                    color: staff.length === optimalTargetStaff
+                      ? '#10b981'
+                      : staff.length > optimalTargetStaff
+                        ? '#f59e0b'
+                        : '#ef4444',
                     margin: '0.2rem 0',
                   }}>
-                    {staff.length === 20 ? 'Over-Established (20 loaded)' : staff.length === 12 ? 'Right-Sized (12 loaded)' : `${staff.length} staff loaded`}
+                    {staff.length === optimalTargetStaff
+                      ? `Right-Sized (${staff.length} loaded)`
+                      : staff.length > optimalTargetStaff
+                        ? `Over-Established (${staff.length} loaded)`
+                        : `Under-Established (${staff.length} loaded)`}
                   </div>
                   <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>
-                    {staff.length === 20 ? '+8 FTE surplus (~49% utilization)' : staff.length === 12 ? '81.7% utilization (22% slack)' : `Target: 12 nurses`}
+                    {staff.length === optimalTargetStaff
+                      ? `${(activeCapacityDiagnostic.utilizationRatio * 100).toFixed(1)}% utilization (${((activeCapacityDiagnostic.surplusOrDeficitHours / activeCapacityDiagnostic.demandHours) * 100).toFixed(1)}% slack)`
+                      : staff.length > optimalTargetStaff
+                        ? `+${staff.length - optimalTargetStaff} FTE surplus (~${(activeCapacityDiagnostic.utilizationRatio * 100).toFixed(0)}% utilization)`
+                        : `${staff.length - optimalTargetStaff} FTE deficit • Target: ${optimalTargetStaff} nurses`}
                   </div>
                 </div>
               </div>
 
-              {staff.length !== 12 && (
+              {staff.length !== optimalTargetStaff && !approvedDemandSnapshot && (
                 <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '0.25rem' }}>
                   <button
                     onClick={() => {
@@ -766,6 +882,7 @@ export const ImportStaff: React.FC<{
         )}
 
         {/* 5. Explicit Approval & Immutable Snapshot Creation */}
+        {isWardCalculatorVisible && (
         <div style={{
           backgroundColor: 'var(--bg-color)',
           border: '1px solid var(--border-color)',
@@ -860,6 +977,7 @@ export const ImportStaff: React.FC<{
             </div>
           )}
         </div>
+        )}
 
         {/* Collapsible Manual Demand CSV Section (Advanced / Legacy) */}
         <div style={{ borderTop: '1px solid var(--border-color)', paddingTop: '0.75rem' }}>
