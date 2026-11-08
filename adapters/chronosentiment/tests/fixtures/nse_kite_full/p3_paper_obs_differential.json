@@ -1,0 +1,136 @@
+{
+  "protocol": "RP608-NSE-P3-PAPER-OBS",
+  "constants": {
+    "min_hold_ms": 300000,
+    "persist_ms": 30000
+  },
+  "close_allowed_cases": [
+    {
+      "name": "min_hold",
+      "now_ms": 1700000100000,
+      "seen": null,
+      "ok": false,
+      "reason": "min_hold_not_met_100000ms<300000ms",
+      "new_seen": null
+    },
+    {
+      "name": "arm",
+      "now_ms": 1700000400000,
+      "seen": null,
+      "ok": false,
+      "reason": "opposite_persist_arming_need_30000ms",
+      "new_seen": 1700000400000
+    },
+    {
+      "name": "persist_wait",
+      "now_ms": 1700000400000,
+      "seen": 1700000400000,
+      "ok": false,
+      "reason": "opposite_persist_0ms<30000ms",
+      "new_seen": 1700000400000
+    },
+    {
+      "name": "fire",
+      "now_ms": 1700000430000,
+      "seen": 1700000400000,
+      "ok": true,
+      "reason": "ok",
+      "new_seen": 1700000400000
+    }
+  ],
+  "tick_sequence": [
+    {
+      "symbol": "TEST.NS",
+      "of_trade_id": "NSE-OF-PAPER-TEST.NS-10-1",
+      "action": "hold",
+      "deny_reason": null,
+      "exit_signal": false,
+      "opposite_side": "SHORT",
+      "order_flow_exit_label": null,
+      "same_side_supported": true,
+      "order_flow_imbalance": 0.8,
+      "ingest_seq": 1,
+      "content_fp": 111,
+      "exchange_timestamp_utc_ms": 1700000400000,
+      "receipt_utc_ms": 1700000400100,
+      "now_ms": 1700000400000,
+      "is_current": true,
+      "ledger_writer": "python_authoritative",
+      "ORDER_FLOW_EXIT_LABEL": "ORDER_FLOW_EXIT"
+    },
+    {
+      "symbol": "TEST.NS",
+      "of_trade_id": "NSE-OF-PAPER-TEST.NS-10-1",
+      "action": "close_suppressed",
+      "deny_reason": "opposite_persist_arming_need_30000ms",
+      "exit_signal": true,
+      "opposite_side": "SHORT",
+      "order_flow_exit_label": "ORDER_FLOW_EXIT",
+      "same_side_supported": false,
+      "order_flow_imbalance": -0.8,
+      "ingest_seq": 2,
+      "content_fp": 222,
+      "exchange_timestamp_utc_ms": 1700000400000,
+      "receipt_utc_ms": 1700000400200,
+      "now_ms": 1700000400000,
+      "is_current": true,
+      "ledger_writer": "python_authoritative",
+      "ORDER_FLOW_EXIT_LABEL": "ORDER_FLOW_EXIT"
+    },
+    {
+      "symbol": "TEST.NS",
+      "of_trade_id": "NSE-OF-PAPER-TEST.NS-10-1",
+      "action": "close_suppressed",
+      "deny_reason": "opposite_persist_10000ms<30000ms",
+      "exit_signal": true,
+      "opposite_side": "SHORT",
+      "order_flow_exit_label": "ORDER_FLOW_EXIT",
+      "same_side_supported": false,
+      "order_flow_imbalance": -0.8,
+      "ingest_seq": 3,
+      "content_fp": 333,
+      "exchange_timestamp_utc_ms": 1700000410000,
+      "receipt_utc_ms": 1700000410100,
+      "now_ms": 1700000410000,
+      "is_current": true,
+      "ledger_writer": "python_authoritative",
+      "ORDER_FLOW_EXIT_LABEL": "ORDER_FLOW_EXIT"
+    },
+    {
+      "symbol": "TEST.NS",
+      "of_trade_id": "NSE-OF-PAPER-TEST.NS-10-1",
+      "action": "close_opposite_side_order_flow",
+      "deny_reason": null,
+      "exit_signal": true,
+      "opposite_side": "SHORT",
+      "order_flow_exit_label": "ORDER_FLOW_EXIT",
+      "same_side_supported": false,
+      "order_flow_imbalance": -0.8,
+      "ingest_seq": 4,
+      "content_fp": 444,
+      "exchange_timestamp_utc_ms": 1700000430000,
+      "receipt_utc_ms": 1700000430100,
+      "now_ms": 1700000430000,
+      "is_current": true,
+      "ledger_writer": "python_authoritative",
+      "ORDER_FLOW_EXIT_LABEL": "ORDER_FLOW_EXIT"
+    }
+  ],
+  "stale_obs": {
+    "symbol": "TEST.NS",
+    "of_trade_id": "NSE-OF-PAPER-TEST.NS-10-1",
+    "action": "suppressed_stale",
+    "deny_reason": "feed_stale_or_reconciling",
+    "exit_signal": false,
+    "is_current": false,
+    "ingest_seq": 9,
+    "content_fp": 999,
+    "ledger_writer": "python_authoritative"
+  },
+  "governance": {
+    "ledger_writer": "python_authoritative",
+    "dual_write": false,
+    "cutover": false,
+    "authority_pct": 0.0
+  }
+}

@@ -1,0 +1,493 @@
+{
+  "protocol": "RP608-NSE-P0-MARKET-EVENTS",
+  "packets": {
+    "pkt_a_hex": "0000190100002715000000000000000000003039000000000000000000000000000000000000000000000000000000000000000000000000000000006553f1000000000a0000271000000000000000140000270b000000000000001e000027060000000000000028000027010000000000000032000026fc000000000000000c0000271a00000000000000180000271f000000000000002400002724000000000000003000002729000000000000003c0000272e00000000",
+    "pkt_b_hex": "000019010000271a00000000000000000000303e000000000000000000000000000000000000000000000000000000000000000000000000000000006553f1010000000b0000271500000000000000160000271000000000000000210000270b000000000000002c00002706000000000000003700002701000000000000000d0000271f000000000000001a0000272400000000000000270000272900000000000000340000272e00000000000000410000273300000000",
+    "pkt_c_hex": "000b45010003d090000000000000000000000063000000000000000000000000000000000000000000000000000000000000000000000000000000006553f100000000050003d05e00000000000000050003cffa00000000000000050003cf9600000000000000050003cf3200000000000000050003cece00000000000000060003d0c200000000000000060003d12600000000000000060003d18a00000000000000060003d1ee00000000000000060003d25200000000",
+    "pkt_old_hex": "00001901000026ac000000000000000000000001000000000000000000000000000000000000000000000000000000000000000000000000000000006553f0880000000a0000271000000000000000140000270b000000000000001e000027060000000000000028000027010000000000000032000026fc000000000000000c0000271a00000000000000180000271f000000000000002400002724000000000000003000002729000000000000003c0000272e00000000",
+    "frame_ab_hex": "000200b80000190100002715000000000000000000003039000000000000000000000000000000000000000000000000000000000000000000000000000000006553f1000000000a0000271000000000000000140000270b000000000000001e000027060000000000000028000027010000000000000032000026fc000000000000000c0000271a00000000000000180000271f000000000000002400002724000000000000003000002729000000000000003c0000272e0000000000b8000019010000271a00000000000000000000303e000000000000000000000000000000000000000000000000000000000000000000000000000000006553f1010000000b0000271500000000000000160000271000000000000000210000270b000000000000002c00002706000000000000003700002701000000000000000d0000271f000000000000001a0000272400000000000000270000272900000000000000340000272e00000000000000410000273300000000"
+  },
+  "python_engine": {
+    "accepted": [
+      {
+        "event": {
+          "instrument_token": 6401,
+          "last_price": 100.05,
+          "volume": 12345.0,
+          "exchange_timestamp_sec": 1700000000,
+          "exchange_timestamp_utc_ms": 1700000000000,
+          "receipt_utc_ms": 1700000000500,
+          "quote_age_ms": 500.0,
+          "best_bid": 100.0,
+          "best_ask": 100.1,
+          "bid_qty": 10.0,
+          "ask_qty": 12.0,
+          "depth_buy": [
+            {
+              "price": 100.0,
+              "quantity": 10
+            },
+            {
+              "price": 99.95,
+              "quantity": 20
+            },
+            {
+              "price": 99.9,
+              "quantity": 30
+            },
+            {
+              "price": 99.85,
+              "quantity": 40
+            },
+            {
+              "price": 99.8,
+              "quantity": 50
+            }
+          ],
+          "depth_sell": [
+            {
+              "price": 100.1,
+              "quantity": 12
+            },
+            {
+              "price": 100.15,
+              "quantity": 24
+            },
+            {
+              "price": 100.2,
+              "quantity": 36
+            },
+            {
+              "price": 100.25,
+              "quantity": 48
+            },
+            {
+              "price": 100.3,
+              "quantity": 60
+            }
+          ],
+          "source": "fixture_replay",
+          "ingest_seq": 1,
+          "content_fp": 14653967075024316855
+        },
+        "depth_snapshot": {
+          "protocol_id": "RP-608-NSE-OF-BOOK-INTELLIGENCE-001",
+          "record_type": "depth_snapshot_l1_l5",
+          "symbol": "TEST.NS",
+          "instrument_token": 6401,
+          "sample_utc_ms": 1700000000500,
+          "sample_iso": "2023-11-14T22:13:20.500000+00:00",
+          "exchange_timestamp_sec": 1700000000,
+          "exchange_timestamp_utc_ms": 1700000000000,
+          "receipt_utc_ms": 1700000000500,
+          "quote_age_ms": 500.0,
+          "stale": false,
+          "missing_level_qty": false,
+          "bid_levels_qty_nonzero": 5,
+          "ask_levels_qty_nonzero": 5,
+          "last_price": 100.05,
+          "best_bid": 100.0,
+          "best_ask": 100.1,
+          "bid_qty": 10.0,
+          "ask_qty": 12.0,
+          "volume": 12345.0,
+          "depth_buy": [
+            {
+              "price": 100.0,
+              "quantity": 10.0
+            },
+            {
+              "price": 99.95,
+              "quantity": 20.0
+            },
+            {
+              "price": 99.9,
+              "quantity": 30.0
+            },
+            {
+              "price": 99.85,
+              "quantity": 40.0
+            },
+            {
+              "price": 99.8,
+              "quantity": 50.0
+            }
+          ],
+          "depth_sell": [
+            {
+              "price": 100.1,
+              "quantity": 12.0
+            },
+            {
+              "price": 100.15,
+              "quantity": 24.0
+            },
+            {
+              "price": 100.2,
+              "quantity": 36.0
+            },
+            {
+              "price": 100.25,
+              "quantity": 48.0
+            },
+            {
+              "price": 100.3,
+              "quantity": 60.0
+            }
+          ],
+          "quote_source": "fixture_replay",
+          "ingest_seq": 1,
+          "content_fp": 14653967075024316855
+        },
+        "observed_while_stale": false
+      },
+      {
+        "event": {
+          "instrument_token": 6401,
+          "last_price": 100.1,
+          "volume": 12350.0,
+          "exchange_timestamp_sec": 1700000001,
+          "exchange_timestamp_utc_ms": 1700000001000,
+          "receipt_utc_ms": 1700000001500,
+          "quote_age_ms": 500.0,
+          "best_bid": 100.05,
+          "best_ask": 100.15,
+          "bid_qty": 11.0,
+          "ask_qty": 13.0,
+          "depth_buy": [
+            {
+              "price": 100.05,
+              "quantity": 11
+            },
+            {
+              "price": 100.0,
+              "quantity": 22
+            },
+            {
+              "price": 99.95,
+              "quantity": 33
+            },
+            {
+              "price": 99.9,
+              "quantity": 44
+            },
+            {
+              "price": 99.85,
+              "quantity": 55
+            }
+          ],
+          "depth_sell": [
+            {
+              "price": 100.15,
+              "quantity": 13
+            },
+            {
+              "price": 100.2,
+              "quantity": 26
+            },
+            {
+              "price": 100.25,
+              "quantity": 39
+            },
+            {
+              "price": 100.3,
+              "quantity": 52
+            },
+            {
+              "price": 100.35,
+              "quantity": 65
+            }
+          ],
+          "source": "fixture_replay",
+          "ingest_seq": 2,
+          "content_fp": 6863563219690999833
+        },
+        "depth_snapshot": {
+          "protocol_id": "RP-608-NSE-OF-BOOK-INTELLIGENCE-001",
+          "record_type": "depth_snapshot_l1_l5",
+          "symbol": "TEST.NS",
+          "instrument_token": 6401,
+          "sample_utc_ms": 1700000001500,
+          "sample_iso": "2023-11-14T22:13:21.500000+00:00",
+          "exchange_timestamp_sec": 1700000001,
+          "exchange_timestamp_utc_ms": 1700000001000,
+          "receipt_utc_ms": 1700000001500,
+          "quote_age_ms": 500.0,
+          "stale": false,
+          "missing_level_qty": false,
+          "bid_levels_qty_nonzero": 5,
+          "ask_levels_qty_nonzero": 5,
+          "last_price": 100.1,
+          "best_bid": 100.05,
+          "best_ask": 100.15,
+          "bid_qty": 11.0,
+          "ask_qty": 13.0,
+          "volume": 12350.0,
+          "depth_buy": [
+            {
+              "price": 100.05,
+              "quantity": 11.0
+            },
+            {
+              "price": 100.0,
+              "quantity": 22.0
+            },
+            {
+              "price": 99.95,
+              "quantity": 33.0
+            },
+            {
+              "price": 99.9,
+              "quantity": 44.0
+            },
+            {
+              "price": 99.85,
+              "quantity": 55.0
+            }
+          ],
+          "depth_sell": [
+            {
+              "price": 100.15,
+              "quantity": 13.0
+            },
+            {
+              "price": 100.2,
+              "quantity": 26.0
+            },
+            {
+              "price": 100.25,
+              "quantity": 39.0
+            },
+            {
+              "price": 100.3,
+              "quantity": 52.0
+            },
+            {
+              "price": 100.35,
+              "quantity": 65.0
+            }
+          ],
+          "quote_source": "fixture_replay",
+          "ingest_seq": 2,
+          "content_fp": 6863563219690999833
+        },
+        "observed_while_stale": false
+      },
+      {
+        "event": {
+          "instrument_token": 738561,
+          "last_price": 2500.0,
+          "volume": 99.0,
+          "exchange_timestamp_sec": 1700000000,
+          "exchange_timestamp_utc_ms": 1700000000000,
+          "receipt_utc_ms": 1700000002500,
+          "quote_age_ms": 2500.0,
+          "best_bid": 2499.5,
+          "best_ask": 2500.5,
+          "bid_qty": 5.0,
+          "ask_qty": 6.0,
+          "depth_buy": [
+            {
+              "price": 2499.5,
+              "quantity": 5
+            },
+            {
+              "price": 2498.5,
+              "quantity": 5
+            },
+            {
+              "price": 2497.5,
+              "quantity": 5
+            },
+            {
+              "price": 2496.5,
+              "quantity": 5
+            },
+            {
+              "price": 2495.5,
+              "quantity": 5
+            }
+          ],
+          "depth_sell": [
+            {
+              "price": 2500.5,
+              "quantity": 6
+            },
+            {
+              "price": 2501.5,
+              "quantity": 6
+            },
+            {
+              "price": 2502.5,
+              "quantity": 6
+            },
+            {
+              "price": 2503.5,
+              "quantity": 6
+            },
+            {
+              "price": 2504.5,
+              "quantity": 6
+            }
+          ],
+          "source": "fixture_replay",
+          "ingest_seq": 3,
+          "content_fp": 6573136853720256676
+        },
+        "depth_snapshot": {
+          "protocol_id": "RP-608-NSE-OF-BOOK-INTELLIGENCE-001",
+          "record_type": "depth_snapshot_l1_l5",
+          "symbol": "RELIANCE.NS",
+          "instrument_token": 738561,
+          "sample_utc_ms": 1700000002500,
+          "sample_iso": "2023-11-14T22:13:22.500000+00:00",
+          "exchange_timestamp_sec": 1700000000,
+          "exchange_timestamp_utc_ms": 1700000000000,
+          "receipt_utc_ms": 1700000002500,
+          "quote_age_ms": 2500.0,
+          "stale": false,
+          "missing_level_qty": false,
+          "bid_levels_qty_nonzero": 5,
+          "ask_levels_qty_nonzero": 5,
+          "last_price": 2500.0,
+          "best_bid": 2499.5,
+          "best_ask": 2500.5,
+          "bid_qty": 5.0,
+          "ask_qty": 6.0,
+          "volume": 99.0,
+          "depth_buy": [
+            {
+              "price": 2499.5,
+              "quantity": 5.0
+            },
+            {
+              "price": 2498.5,
+              "quantity": 5.0
+            },
+            {
+              "price": 2497.5,
+              "quantity": 5.0
+            },
+            {
+              "price": 2496.5,
+              "quantity": 5.0
+            },
+            {
+              "price": 2495.5,
+              "quantity": 5.0
+            }
+          ],
+          "depth_sell": [
+            {
+              "price": 2500.5,
+              "quantity": 6.0
+            },
+            {
+              "price": 2501.5,
+              "quantity": 6.0
+            },
+            {
+              "price": 2502.5,
+              "quantity": 6.0
+            },
+            {
+              "price": 2503.5,
+              "quantity": 6.0
+            },
+            {
+              "price": 2504.5,
+              "quantity": 6.0
+            }
+          ],
+          "quote_source": "fixture_replay",
+          "ingest_seq": 3,
+          "content_fp": 6573136853720256676
+        },
+        "observed_while_stale": false
+      }
+    ],
+    "depth_history_len": 3,
+    "dropped_duplicates": 1,
+    "ordered_tokens_prices": [
+      [
+        6401,
+        100.05,
+        1
+      ],
+      [
+        738561,
+        2500.0,
+        3
+      ],
+      [
+        6401,
+        100.1,
+        2
+      ]
+    ],
+    "after_disconnect_status": "stale",
+    "after_begin_reconcile": "reconciling",
+    "after_complete_reconcile": "live",
+    "final_feed_status": "live"
+  },
+  "age_stale": {
+    "status": "stale",
+    "reason": "quote_age_exceeded",
+    "observed_while_stale": true,
+    "quote_age_ms": 120000.0
+  },
+  "decoded_pkt_a": {
+    "instrument_token": 6401,
+    "last_price": 100.05,
+    "volume": 12345.0,
+    "exchange_timestamp_sec": 1700000000,
+    "best_bid": 100.0,
+    "best_ask": 100.1,
+    "bid_qty": 10.0,
+    "ask_qty": 12.0,
+    "depth_buy": [
+      {
+        "price": 100.0,
+        "quantity": 10
+      },
+      {
+        "price": 99.95,
+        "quantity": 20
+      },
+      {
+        "price": 99.9,
+        "quantity": 30
+      },
+      {
+        "price": 99.85,
+        "quantity": 40
+      },
+      {
+        "price": 99.8,
+        "quantity": 50
+      }
+    ],
+    "depth_sell": [
+      {
+        "price": 100.1,
+        "quantity": 12
+      },
+      {
+        "price": 100.15,
+        "quantity": 24
+      },
+      {
+        "price": 100.2,
+        "quantity": 36
+      },
+      {
+        "price": 100.25,
+        "quantity": 48
+      },
+      {
+        "price": 100.3,
+        "quantity": 60
+      }
+    ]
+  }
+}
