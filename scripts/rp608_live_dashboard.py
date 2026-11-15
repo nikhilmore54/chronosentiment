@@ -38,6 +38,12 @@ from scripts.rp608_order_flow_mark import (
     l1_from_book_ticker,
 )
 from scripts.rp611_dashboard_status import get_rp611_dashboard_state
+from scripts.rp608_nse_muhurat_session import resolve_session_window, session_phase
+
+try:
+    from scripts.run_rp608_nse_shadow_daemon import NSE_2026_HOLIDAYS
+except Exception:  # pragma: no cover
+    NSE_2026_HOLIDAYS = set()
 
 try:
     from scripts.test_kite_probe import (
@@ -55,6 +61,50 @@ except Exception:
     kite_api_get = None
 
 CRYPTO_DIR = WORKSPACE_DIR / "live_capture" / "shadow_validation" / "crypto"
+
+
+def _load_ofx_volume_flow_snapshot() -> Optional[Dict[str, Any]]:
+    """Research-only OFX volume mark; never conflated with baseline L1 OF paper."""
+    path = CRYPTO_DIR / "ofx_aggtrade_capture_v1" / "ofx_volume_flow_snapshot.json"
+    if not path.exists():
+        return None
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+        return data if isinstance(data, dict) else None
+    except Exception:
+        return None
+
+
+def _load_ofx_volume_paper_status() -> Dict[str, Any]:
+    """Parallel OFX volume PAPER book (not baseline L1 OF paper)."""
+    root = CRYPTO_DIR / "ofx_aggtrade_capture_v1"
+    out: Dict[str, Any] = {
+        "protocol_id": "RP-608-OFX-VOLUME-PAPER-001",
+        "construct": "EXECUTED_AGGRESSOR_VOLUME",
+        "baseline_of_inert": True,
+        "live_order_authority": 0.0,
+        "open": None,
+        "summary": None,
+        "recent": [],
+    }
+    try:
+        open_p = root / "ofx_volume_paper_open.json"
+        if open_p.exists():
+            out["open"] = json.loads(open_p.read_text(encoding="utf-8"))
+        sum_p = root / "ofx_volume_paper_summary.json"
+        if sum_p.exists():
+            out["summary"] = json.loads(sum_p.read_text(encoding="utf-8"))
+        out_p = root / "ofx_volume_paper_outcomes.jsonl"
+        if out_p.exists():
+            rows = []
+            for line in out_p.read_text(encoding="utf-8").splitlines()[-24:]:
+                if line.strip():
+                    rows.append(json.loads(line))
+            out["recent"] = list(reversed(rows))
+    except Exception:
+        pass
+    return out
+
 NSE_DIR = WORKSPACE_DIR / "live_capture" / "shadow_validation" / "nse"
 NSE_TEST_DIR = WORKSPACE_DIR / "live_capture" / "shadow_validation" / "nse" / "test_run"
 # UI surface: show open/qualified NSE ideas whose frozen ATR target exceeds this floor (bps).
@@ -797,17 +847,29 @@ def get_nse_dashboard_state() -> Dict[str, Any]:
             pass
 
     valid_preopen_count = sum(1 for r in preopen_records if r.get("imbalance_status") == "VALID_AUCTION_DEPTH")
-    avg_gap_bps = (sum(r.get("opening_gap_bps", 0.0) for r in preopen_records) / len(preopen_records)) if preopen_records else 0.0
-    sorted_by_gap = sorted(preopen_records, key=lambda x: x.get("opening_gap_bps", 0.0), reverse=True)
+    avg_gap_bps = (
+        sum(float(r.get("opening_gap_bps") or 0.0) for r in preopen_records) / len(preopen_records)
+    ) if preopen_records else 0.0
+    sorted_by_gap = sorted(
+        preopen_records, key=lambda x: float(x.get("opening_gap_bps") or 0.0), reverse=True
+    )
     top_gainers = [
-        {"symbol": r["tradingsymbol"], "gap_bps": round(r["opening_gap_bps"], 2), "indicative_price": r.get("indicative_price", 0.0)}
+        {
+            "symbol": r["tradingsymbol"],
+            "gap_bps": round(float(r.get("opening_gap_bps") or 0.0), 2),
+            "indicative_price": r.get("indicative_price", 0.0),
+        }
         for r in sorted_by_gap[:4]
     ] if sorted_by_gap else []
     top_losers = [
-        {"symbol": r["tradingsymbol"], "gap_bps": round(r["opening_gap_bps"], 2), "indicative_price": r.get("indicative_price", 0.0)}
+        {
+            "symbol": r["tradingsymbol"],
+            "gap_bps": round(float(r.get("opening_gap_bps") or 0.0), 2),
+            "indicative_price": r.get("indicative_price", 0.0),
+        }
         for r in sorted_by_gap[-4:][::-1]
     ] if sorted_by_gap else []
-    total_auction_qty = sum(r.get("total_auction_quantity", 0) for r in preopen_records)
+    total_auction_qty = sum(float(r.get("total_auction_quantity") or 0) for r in preopen_records)
 
     # 2. Parse WebSocket Live Probe Evidence
     probe_file = find_latest_nse_file("live_probe_evidence.json")
@@ -955,11 +1017,31 @@ def get_nse_dashboard_state() -> Dict[str, Any]:
     eval_snapshot_fresh = bool(
         session_date and eval_session_date and session_date == eval_session_date
     )
-    # When today's session has not yet produced a durable eval, do not treat
-    # yesterday's (or earlier) snapshot as live G1/bar authority.
-    live_bar_for_gates = (
-        int(eval_bar_idx) if eval_snapshot_fresh else int(durable_bar)
+    # G1 entry-window authority = live session clock (regular or muhurat), not a
+    # stale prior-day eval snapshot. Waiting for first durable bar close must not
+    # mark every scrip UNVERIFIED and blank the app.
+    now_ist_gate = datetime.now(timezone.utc) + timedelta(hours=5, minutes=30)
+    now_ist_gate = now_ist_gate.replace(tzinfo=None)
+    _win, _closed = resolve_session_window(
+        now_ist_gate, exchange_holidays=NSE_2026_HOLIDAYS
     )
+    clock_active = False
+    clock_bar = 0
+    clock_phase = _closed or "SESSION_CLOSED"
+    g1_max_entry_bar = 19
+    if _win is not None:
+        clock_active, clock_bar, clock_phase = session_phase(now_ist_gate, _win)
+        if _win.kind == "MUHURAT":
+            # Entry allowed before mandatory square-off bar
+            g1_max_entry_bar = max(1, int(_win.square_off_bar) - 1)
+        else:
+            g1_max_entry_bar = 19
+    if clock_active and int(clock_bar) >= 1:
+        live_bar_for_gates = int(clock_bar)
+    elif eval_snapshot_fresh and int(eval_bar_idx or 0) > 0:
+        live_bar_for_gates = int(eval_bar_idx)
+    else:
+        live_bar_for_gates = int(durable_bar or 0)
 
     # Merge scrips
     merged_scrips: List[Dict[str, Any]] = []
@@ -1033,25 +1115,31 @@ def get_nse_dashboard_state() -> Dict[str, Any]:
             or "Data quality failure" in ev_explanation
         )
 
-        # Gate 1: Entry Window Eligibility (1 <= bar_idx <= 19; 60m completes by 15:00 close-window)
-        # Stale cross-session eval snapshots must not close G1 for today's session.
-        _max_entry_bar = 19
-        if not eval_snapshot_fresh:
-            b_idx = live_bar_for_gates
-            g1_status = "UNVERIFIED"
+        # Gate 1: Entry Window Eligibility — live clock (1..19 regular; muhurat to sq-1).
+        # Do NOT force UNVERIFIED merely because durable eval snapshot is still prior-day;
+        # that blanks the app through the whole first forming candle.
+        _max_entry_bar = int(g1_max_entry_bar)
+        b_idx = int(live_bar_for_gates or b_idx or 0)
+        if clock_active and 1 <= b_idx <= _max_entry_bar:
+            g1_pass = True
+            g1_status = "PASS"
             g1_reason = (
-                f"Awaiting today's evaluation (stale snapshot {eval_session_date or eval_ts_iso}; "
-                f"session {session_date or 'unknown'}; durable_bar={durable_bar})"
+                f"Entry window open (live bar {b_idx} in 1..{_max_entry_bar}; "
+                f"phase={clock_phase}"
+                + ("" if eval_snapshot_fresh else "; provisional/awaiting durable eval OK")
+                + ")"
             )
+        elif clock_active:
             g1_pass = False
-        else:
-            g1_pass = (1 <= b_idx <= _max_entry_bar)
-            g1_status = "PASS" if g1_pass else "CLOSED"
+            g1_status = "CLOSED"
             g1_reason = (
-                f"Entry window open (Bar {b_idx} in 1..{_max_entry_bar})"
-                if g1_pass
-                else f"Entry window closed (Bar {b_idx} > {_max_entry_bar}; 60m must finish by 15:00)"
+                f"Entry window closed (live bar {b_idx} outside 1..{_max_entry_bar}; "
+                f"phase={clock_phase})"
             )
+        else:
+            g1_pass = False
+            g1_status = "CLOSED"
+            g1_reason = f"Session not in entry window ({clock_phase})"
 
         # Gate 2: Position State / Capacity (ACTIVE = simulated trade already open; NONE = slot available)
         trade_info = active_trades_map.get(sym)
@@ -1064,14 +1152,26 @@ def get_nse_dashboard_state() -> Dict[str, Any]:
             g2_status = "NONE"
             g2_reason = "No active trade conflict (Position available)"
 
-        # Gate 5 first when evaluator already recorded a feed/auth failure
+        # Gate 5 first when evaluator already recorded a feed/auth failure.
+        # Prefer durable/provisional eval L1 over stale readiness zero_depth probes —
+        # readiness all_quotes can stay ZERO_DEPTH while the live daemon has VALID_L1.
+        ev_bid = float((dq or {}).get("bid_qty") or q.get("bid_qty") or 0.0)
+        ev_ask = float((dq or {}).get("ask_qty") or q.get("ask_qty") or 0.0)
+        ev_has_l1 = bool(
+            dq_status == "VALID_L1"
+            or (
+                float(q.get("best_bid") or 0.0) > 0
+                and float(q.get("best_ask") or 0.0) > 0
+            )
+            or (ev_bid > 0 and ev_ask > 0)
+        )
         if is_data_fail:
             g5_status = "FAIL"
             g5_reason = dq_error or ev_explanation or "Data quality / feed failure"
-        elif dq_status == "VALID_L1" or is_valid:
+        elif ev_has_l1 or (is_valid and not is_zero_depth):
             g5_status = "PASS"
             g5_reason = "Executable quote valid & spread within bounds"
-        elif not is_valid:
+        elif is_zero_depth or not is_valid:
             g5_status = "FAIL"
             g5_reason = "Quote stale or missing L1 depth"
         else:
@@ -1125,10 +1225,6 @@ def get_nse_dashboard_state() -> Dict[str, Any]:
             terminal_decision = "NO_TRADE"
             d_code = "DATA_QUALITY_FAILURE"
             ev_explanation = ev_explanation or g5_reason
-        elif g1_status == "UNVERIFIED":
-            terminal_decision = "NO_TRADE"
-            d_code = "AWAITING_TODAY_EVALUATION"
-            ev_explanation = g1_reason
         elif g1_status == "CLOSED":
             terminal_decision = "NO_TRADE"
             d_code = "INTRADAY_BOUNDARY_EXCLUDED"
@@ -1236,8 +1332,9 @@ def get_nse_dashboard_state() -> Dict[str, Any]:
             "symbol": sym,
             "tradingsymbol": tsym,
             "indicative_price": po.get("indicative_price", 0.0),
-            "opening_gap_bps": round(po.get("opening_gap_bps", 0.0), 2),
-            "imbalance_ratio": round(po.get("imbalance_ratio", 0.0), 4),
+            # preopen ledger may store explicit nulls; .get default only covers missing keys
+            "opening_gap_bps": round(float(po.get("opening_gap_bps") or 0.0), 2),
+            "imbalance_ratio": round(float(po.get("imbalance_ratio") or 0.0), 4),
             "imbalance_status": po.get("imbalance_status", "N/A"),
             "last_price": last_price,
             "best_bid": q.get("best_bid", 0.0),
@@ -1503,7 +1600,7 @@ def get_nse_dashboard_state() -> Dict[str, Any]:
 
     observer_status = (
         "HEALTHY"
-        if eval_snapshot_fresh and live_bar_for_gates > 0
+        if live_bar_for_gates > 0 and (eval_snapshot_fresh or clock_active)
         else ("SESSION_ACTIVE_AWAITING_EVAL" if daemon_active and heartbeat_fresh else "WARMING_UP")
     )
 
@@ -1596,10 +1693,14 @@ def get_nse_dashboard_state() -> Dict[str, Any]:
             "eval_snapshot_iso": eval_ts_iso,
             "eval_snapshot_session_date": eval_session_date,
             "g1_status": (
-                "UNVERIFIED"
-                if not eval_snapshot_fresh
-                else ("PASS" if 1 <= live_bar_for_gates <= 19 else "CLOSED")
+                "PASS"
+                if clock_active and 1 <= int(live_bar_for_gates or 0) <= int(g1_max_entry_bar)
+                else "CLOSED"
             ),
+            "g1_max_entry_bar": g1_max_entry_bar,
+            "session_phase": clock_phase,
+            "session_kind": getattr(_win, "kind", None) if _win is not None else None,
+            "clock_bar_idx": clock_bar,
         },
         "live_websocket": {
             "status": live_ws_status,
@@ -2014,6 +2115,9 @@ def load_live_state() -> Dict[str, Any]:
         "trade_plan": trade_plan_payload,
         "order_flow_recommendation": order_flow_recommendation,
         "order_flow_last_exit": order_flow_last_exit,
+        # OFX research: executed aggressor volume mark (NOT baseline L1 OF_SUP)
+        "ofx_volume_flow": _load_ofx_volume_flow_snapshot(),
+        "ofx_volume_paper": _load_ofx_volume_paper_status(),
         "of_candle_markers": of_candle_markers,
         "of_shadow_trade": overlay_mgr.build_of_shadow_trade_snapshot(
             latest_exec_quote if isinstance(latest_exec_quote, dict) else None,
@@ -2966,6 +3070,7 @@ DASHBOARD_HTML = """<!DOCTYPE html>
         <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
           <span class="pill-sm pill-prospective" id="plan-state-pill">PLAN ACTIVE</span>
           <span class="pill-sm" id="plan-of-pill" style="display:none; background:#86efac; color:#052e16; border:1px solid #4ade80; font-weight:700;">ORDER FLOW</span>
+          <span class="pill-sm" id="plan-ofx-vol-pill" style="display:none; background:rgba(56,189,248,0.2); color:#7dd3fc; border:1px solid rgba(56,189,248,0.45); font-weight:700;">OFX VOL</span>
           <span class="pill-sm" style="background:rgba(245,158,11,0.15); color:var(--accent-amber); border:1px solid rgba(245,158,11,0.3);">0.0% ORDER AUTHORITY</span>
         </div>
       </div>
@@ -2973,6 +3078,10 @@ DASHBOARD_HTML = """<!DOCTYPE html>
       <div id="crypto-of-banner" style="display:none; margin:0 0 14px 0; padding:10px 12px; background:rgba(134,239,172,0.08); border:1px solid rgba(74,222,128,0.35); border-radius:8px; font-size:12px; color:#bbf7d0;">
         <b id="crypto-of-banner-title" style="color:#86efac;">ORDER FLOW</b>
         <span id="crypto-of-banner-text" style="margin-left:8px; color:#94a3b8;"></span>
+      </div>
+      <div id="crypto-ofx-vol-banner" style="display:none; margin:0 0 14px 0; padding:10px 12px; background:rgba(56,189,248,0.08); border:1px solid rgba(56,189,248,0.35); border-radius:8px; font-size:12px; color:#bae6fd;">
+        <b style="color:#7dd3fc;">OFX VOLUME FLOW</b>
+        <span id="crypto-ofx-vol-banner-text" style="margin-left:8px; color:#94a3b8;"></span>
       </div>
 
       <!-- OF Paper Trades (RP-608-OF-PAPER-TRADE-001) — independent of 60m plan -->
@@ -4426,10 +4535,31 @@ DASHBOARD_HTML = """<!DOCTYPE html>
         const plan = data.trade_plan;
         const ofRec = data.order_flow_recommendation;
         const ofExit = data.order_flow_last_exit;
+        const ofxVol = data.ofx_volume_flow;
         const ofPill = document.getElementById('plan-of-pill');
+        const ofxVolPill = document.getElementById('plan-ofx-vol-pill');
         const ofBanner = document.getElementById('crypto-of-banner');
         const ofBannerTitle = document.getElementById('crypto-of-banner-title');
         const ofBannerText = document.getElementById('crypto-of-banner-text');
+        const ofxVolBanner = document.getElementById('crypto-ofx-vol-banner');
+        const ofxVolBannerText = document.getElementById('crypto-ofx-vol-banner-text');
+        if (ofxVolPill && ofxVolBanner) {
+          if (ofxVol && ofxVol.dominant_aggressor && ofxVol.dominant_aggressor !== 'UNAVAILABLE') {
+            const imb = (ofxVol.inspection && ofxVol.inspection.ofx_volume_imbalance != null)
+              ? Number(ofxVol.inspection.ofx_volume_imbalance).toFixed(3) : '—';
+            const dQ = (ofxVol.signed_delta_qty != null) ? Number(ofxVol.signed_delta_qty).toFixed(4) : '—';
+            ofxVolPill.style.display = 'inline-block';
+            ofxVolPill.textContent = 'OFX VOL · ' + ofxVol.dominant_aggressor.replace('_AGGRESSOR','');
+            ofxVolBanner.style.display = 'block';
+            if (ofxVolBannerText) {
+              ofxVolBannerText.textContent =
+                `${ofxVol.dominant_aggressor} · ΔQ ${dQ} · vol_imb ${imb} · cov ${ofxVol.classification_coverage ?? '—'} · construct EXECUTED_AGGRESSOR (not L1 OF)`;
+            }
+          } else {
+            ofxVolPill.style.display = 'none';
+            ofxVolBanner.style.display = 'none';
+          }
+        }
         if (ofRec && ofRec.active) {
           const imb = (ofRec.order_flow_imbalance != null) ? Number(ofRec.order_flow_imbalance).toFixed(3) : '—';
           if (ofPill) {

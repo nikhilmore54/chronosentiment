@@ -143,6 +143,32 @@ class KiteTickerQuoteCache:
             self._thread.join(timeout=5.0)
         self._connected = False
 
+    def request_reconnect(self, *, reason: str = "stale_packets") -> None:
+        """Force WS cycle when the socket is 'connected' but packets have gone stale.
+
+        Does not touch credentials — only tears down the ticker thread so
+        `_thread_main` opens a fresh wss session and re-subscribes full mode.
+        """
+        print(f"[kite_ticker] reconnect requested ({reason})", flush=True)
+        self.stop()
+        # Brief pause so the remote side drops the old socket before re-auth.
+        time.sleep(0.5)
+        self.start()
+
+    def ensure_fresh(self, *, max_age_sec: float = 90.0) -> bool:
+        """Reconnect if no full-mode packet within max_age_sec. Returns True if fresh."""
+        age = self.stats().get("last_packet_age_sec")
+        if age is None:
+            # Connected thread but never received a 184-byte packet — bounce once.
+            if self._thread and self._thread.is_alive() and self._packets <= 0:
+                self.request_reconnect(reason="no_packets_yet")
+                return False
+            return bool(self._connected and self._packets > 0)
+        if float(age) > float(max_age_sec):
+            self.request_reconnect(reason=f"packet_age_{age}s")
+            return False
+        return True
+
     def get_l1(self, instrument_token: int) -> Optional[Dict[str, Any]]:
         with self._lock:
             row = self._latest.get(int(instrument_token))

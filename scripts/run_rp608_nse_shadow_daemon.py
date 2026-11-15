@@ -76,6 +76,17 @@ from scripts.rp608_order_flow_mark import (
     l1_from_nse_quote,
 )
 from scripts.rp608_nse_of_paper_ledger import NseOfPaperLedger
+from scripts.rp608_nse_muhurat_session import (
+    completed_bars_since_open,
+    resolve_session_window,
+    session_phase,
+)
+from scripts.rp608_ofx_nse_volume_flow_mark import (
+    build_ofx_nse_volume_flow_snapshot,
+    global_nse_volume_flow_buffer,
+    write_ofx_nse_volume_flow_snapshot,
+)
+from scripts.rp608_ofx_nse_volume_paper_trades import OfxNseVolumePaperManager
 from scripts.rp608_nse_of_book_depth_history import (
     NseOfBookDepthHistoryJournal,
     collect_ticks_by_symbol,
@@ -716,14 +727,18 @@ class KiteDataFeedAdapter:
             c = float(ohlc.get("close", last_price))
             v = float(q_data.get("volume", 0.0))
 
-            # Completed / current bar representation
+            # Quote batch returns day OHLC + LTP — NOT a completed 15m candle.
+            # Mark incomplete so evaluate_symbol_bar upserts one slot instead of
+            # flooding price_history (which zeroed traj15 / locked dashboard G4).
             bar = BarOHLCV(
                 timestamp_utc_ms=t_req_utc,
                 open=o,
                 high=h,
                 low=l,
                 close=last_price if last_price > 0 else c,
-                volume=v
+                volume=v,
+                is_completed=False,
+                source="kite_quote_snapshot",
             )
 
             # L1 Top-of-Book depth
@@ -753,7 +768,8 @@ class KiteDataFeedAdapter:
                         low=l,
                         close=last_price,
                         volume=float(ws_l1.get("volume") or v),
-                        source="kite_ws_full",
+                        is_completed=False,
+                        source="kite_quote_snapshot",
                     )
             else:
                 quote_ts = t_req_utc
@@ -942,6 +958,9 @@ class RP608NSEShadowDaemon:
         self._symbol_bootstrap_fail_mono: Dict[str, float] = {}
         # Price history ring buffer per symbol loaded from durable storage: {symbol: [BarOHLCV]}
         self.price_history: Dict[str, List[BarOHLCV]] = self.load_bar_history()
+        purged = self._purge_quote_snapshot_spam()
+        if purged:
+            print(f"[bar_history] purged {purged} quote-snapshot/dupe bars after load", flush=True)
         # Forward outcome pending queue and active trades restored from durable storage across restarts:
         self.pending_directional_evals, self.active_trades = self.load_pending_evaluations()
         # Scrip-level decision ledger cache: {symbol: evaluation_record}
@@ -966,6 +985,11 @@ class RP608NSEShadowDaemon:
             self.ofx_tick_dir,
             enabled=ofx_tick_capture_enabled(default=True),
         )
+        # OFX NSE volume PAPER (DERIVED_VALIDATED; parallel to L1 OF paper; baseline inert)
+        self.ofx_nse_volume_buf = global_nse_volume_flow_buffer()
+        self.ofx_nse_volume_paper = OfxNseVolumePaperManager(self.ofx_tick_dir)
+        self.ofx_tick_journal.register_row_listener(self.ofx_nse_volume_buf.ingest_row)
+        self._active_session_window = None  # set by is_ist_session_active
 
         self.state = self.initialize_or_resume_state()
         if getattr(self.state, "current_session_date", ""):
@@ -1061,6 +1085,13 @@ class RP608NSEShadowDaemon:
         now_utc = datetime.now(timezone.utc)
         adapter = self.feed_adapter
         cache = getattr(adapter, "ticker_cache", None)
+        # Stuck "connected" sockets with no fresh full-mode packets lock G5
+        # (zero/stale L1). Bounce the ticker thread only — no credential changes.
+        if cache is not None and hasattr(cache, "ensure_fresh"):
+            try:
+                cache.ensure_fresh(max_age_sec=90.0)
+            except Exception as exc:
+                print(f"[l1_feed_health] ticker ensure_fresh skipped: {exc}")
         stats: Dict[str, Any] = {}
         if cache is not None and hasattr(cache, "stats"):
             try:
@@ -1273,33 +1304,39 @@ class RP608NSEShadowDaemon:
         ist_offset = timedelta(hours=5, minutes=30)
         now_ist = now_utc + ist_offset
 
-        # Check weekend
-        if now_ist.weekday() >= 5:
-            return {"status": "WEEKEND_CLOSED", "recovered_symbols": 0}
+        window, closed_reason = resolve_session_window(
+            now_ist,
+            exchange_holidays=getattr(self, "exchange_holidays", NSE_2026_HOLIDAYS),
+        )
+        if window is None:
+            return {"status": closed_reason or "SESSION_CLOSED", "recovered_symbols": 0}
 
-        # Check exchange holiday
-        if now_ist.date() in getattr(self, "exchange_holidays", NSE_2026_HOLIDAYS):
-            return {"status": "EXCHANGE_HOLIDAY", "recovered_symbols": 0}
-
-        open_time_ist = now_ist.replace(hour=9, minute=15, second=0, microsecond=0)
+        open_time_ist = now_ist.replace(
+            hour=window.open_ist.hour,
+            minute=window.open_ist.minute,
+            second=0,
+            microsecond=0,
+        )
 
         # Before market open
         if now_ist < open_time_ist:
-            return {"status": "PRE_OPEN", "recovered_symbols": 0}
+            return {"status": f"PRE_OPEN_{window.kind}", "recovered_symbols": 0}
 
-        # Calculate completed 15m intervals since 09:15 IST
-        elapsed_sec = (now_ist - open_time_ist).total_seconds()
-        completed_bars = int(elapsed_sec // (15 * 60))
-        completed_bars = min(completed_bars, TOTAL_BARS_PER_SESSION)
+        # Calculate completed 15m intervals since session open
+        completed_bars = completed_bars_since_open(now_ist, window)
 
-        # Rule 2: Do not bootstrap at the opening.
-        # Before the 5th completed bar (i.e. before 10:30 IST), Gate 3 must remain cold.
-        if completed_bars < 5:
+        # Rule 2: Do not bootstrap at the opening (muhurat uses reduced warmup).
+        warmup_n = int(window.warmup_completed_bars)
+        if completed_bars < warmup_n:
             return {
                 "status": "OPENING_WARMUP_COLD",
                 "completed_bars_today": completed_bars,
                 "recovered_symbols": 0,
-                "reason": f"Only {completed_bars}/5 completed bars today; opening warm-up active"
+                "session_kind": window.kind,
+                "reason": (
+                    f"Only {completed_bars}/{warmup_n} completed bars today; "
+                    f"opening warm-up active ({window.label})"
+                ),
             }
 
         # Pick up dashboard re-auth before same-day hist storm (next-session + mid-day rotate).
@@ -1309,6 +1346,17 @@ class RP608NSEShadowDaemon:
 
         now_mono = time.monotonic()
         need_n = min(completed_bars, 5)
+        # Drop poll-spam before measuring readiness — fake kite_live day-OHLC clones
+        # previously satisfied need_n and blocked real 15m historical recovery (G4 lock).
+        self._purge_quote_snapshot_spam()
+
+        def _durable_bar_count(sym: str) -> int:
+            return sum(
+                1
+                for b in (self.price_history.get(sym) or [])
+                if bool(getattr(b, "is_completed", True))
+                and str(getattr(b, "source", "") or "") != "kite_quote_snapshot"
+            )
 
         # Determine symbols that actually need recovery
         if target_symbols is not None:
@@ -1316,7 +1364,7 @@ class RP608NSEShadowDaemon:
         else:
             symbols_to_query = []
             for s in self.symbols:
-                if len(self.price_history.get(s, [])) >= need_n:
+                if _durable_bar_count(s) >= need_n:
                     continue
                 # Successful empty/complete attempt for this bar: wait for next completed bar.
                 if self._symbol_last_bootstrap_bar.get(s, 0) >= completed_bars:
@@ -1454,7 +1502,7 @@ class RP608NSEShadowDaemon:
 
             # Mark bar complete only once warm enough; otherwise retry within cooldown/next pass
             # (covers filtered-empty responses without consuming the bar slot forever).
-            if len(self.price_history.get(sym, [])) >= need_n:
+            if _durable_bar_count(sym) >= need_n:
                 self._symbol_last_bootstrap_bar[sym] = completed_bars
             else:
                 self._symbol_bootstrap_fail_mono[sym] = time.monotonic()
@@ -1495,37 +1543,24 @@ class RP608NSEShadowDaemon:
 
     def is_ist_session_active(self, now_utc: Optional[datetime] = None) -> Tuple[bool, int, str]:
         """
-        Determines if the current moment is within the NSE active session (09:15 to 15:30 IST).
+        Determines if the current moment is within an NSE active session.
+        Regular cash: 09:15–15:30 IST. Muhurat (e.g. 2026-11-08): 14:20–15:30 IST.
         Returns: (is_active, bar_idx, phase_name)
-          bar_idx: 1..25 if active; 0 if pre-open / post-close
+          bar_idx: 1..N if active; 0 if pre-open / post-close
         """
         if now_utc is None:
             now_utc = datetime.now(timezone.utc)
         ist_offset = timedelta(hours=5, minutes=30)
         now_ist = now_utc + ist_offset
 
-        # Check weekend (Saturday = 5, Sunday = 6)
-        if now_ist.weekday() >= 5:
-            return False, 0, "WEEKEND_CLOSED"
-
-        # Check exchange holiday
-        if now_ist.date() in getattr(self, "exchange_holidays", NSE_2026_HOLIDAYS):
-            return False, 0, "EXCHANGE_HOLIDAY"
-
-        # Check session hours
-        open_time = now_ist.replace(hour=9, minute=15, second=0, microsecond=0)
-        close_time = now_ist.replace(hour=15, minute=30, second=0, microsecond=0)
-
-        if now_ist < open_time:
-            return False, 0, "PRE_OPEN"
-        if now_ist >= close_time:
-            return False, 0, "POST_CLOSE"
-
-        # Elapsed minutes from 09:15
-        elapsed_min = (now_ist - open_time).total_seconds() / 60.0
-        bar_idx = int(elapsed_min // 15) + 1
-        bar_idx = min(bar_idx, TOTAL_BARS_PER_SESSION)
-        return True, bar_idx, "ACTIVE_SESSION"
+        window, closed_reason = resolve_session_window(
+            now_ist,
+            exchange_holidays=getattr(self, "exchange_holidays", NSE_2026_HOLIDAYS),
+        )
+        self._active_session_window = window
+        if window is None:
+            return False, 0, closed_reason or "SESSION_CLOSED"
+        return session_phase(now_ist, window)
 
     @staticmethod
     def _arm_a_fixed_boundaries(entry_price: float) -> Dict[str, Any]:
@@ -1628,6 +1663,159 @@ class RP608NSEShadowDaemon:
         arm["trend_label"] = dyn.get("trend_label") or "DYNAMIC_FALLBACK_ARM_A"
         return arm
 
+    def _bar_idx_candle_start_utc_ms(self, bar_idx: int) -> Optional[int]:
+        """UTC ms for the IST 15m candle open of session bar_idx (1-based)."""
+        if int(bar_idx) < 1:
+            return None
+        window = getattr(self, "_active_session_window", None)
+        now_utc = datetime.now(timezone.utc)
+        ist_offset = timedelta(hours=5, minutes=30)
+        now_ist = (now_utc + ist_offset).replace(tzinfo=None)
+        if window is None:
+            window, _ = resolve_session_window(
+                now_ist,
+                exchange_holidays=getattr(self, "exchange_holidays", NSE_2026_HOLIDAYS),
+            )
+        if window is None:
+            return None
+        open_ist = now_ist.replace(
+            hour=window.open_ist.hour,
+            minute=window.open_ist.minute,
+            second=0,
+            microsecond=0,
+        )
+        candle_ist = open_ist + timedelta(minutes=(int(bar_idx) - 1) * 15)
+        return int((candle_ist - ist_offset).replace(tzinfo=timezone.utc).timestamp() * 1000)
+
+    @staticmethod
+    def _is_quote_snapshot_bar(bar: Any) -> bool:
+        src = str(getattr(bar, "source", "") or "")
+        if src == "kite_quote_snapshot":
+            return True
+        if not bool(getattr(bar, "is_completed", True)):
+            return True
+        return False
+
+    def _purge_quote_snapshot_spam(self, symbol: Optional[str] = None) -> int:
+        """Drop day-OHLC quote-poll spam from price_history without touching unit-test bars.
+
+        Live poll spam uses real wall-clock timestamps (year >= 2024) with non-zero
+        seconds and source kite_live/persisted_live. Synthetic test bars use tiny
+        epoch offsets and must be preserved verbatim.
+        """
+        # 2024-01-01 UTC — live market stamps are far above this; unittest bars are not.
+        live_epoch_floor_ms = 1_704_067_200_000
+        ist_offset = timedelta(hours=5, minutes=30)
+        symbols = [symbol] if symbol else list(self.price_history.keys())
+        removed_total = 0
+        for sym in symbols:
+            bars = list(self.price_history.get(sym) or [])
+            if not bars:
+                continue
+            before = len(bars)
+            kept: List[BarOHLCV] = []
+            live_slots: Dict[int, BarOHLCV] = {}
+            for b in bars:
+                ts = int(getattr(b, "timestamp_utc_ms", 0) or 0)
+                if ts <= 0:
+                    continue
+                src = str(getattr(b, "source", "") or "")
+                if src == "kite_quote_snapshot":
+                    continue
+                if not bool(getattr(b, "is_completed", True)) and src != "kite_historical_same_day":
+                    continue
+                is_live_stamp = ts >= live_epoch_floor_ms and src in {
+                    "kite_live",
+                    "persisted_live",
+                }
+                if not is_live_stamp:
+                    kept.append(b)
+                    continue
+                try:
+                    b_ist = datetime.fromtimestamp(ts / 1000.0, tz=timezone.utc) + ist_offset
+                    aligned = b_ist.minute % 15 == 0 and b_ist.second == 0
+                    floor_min = (b_ist.hour * 60 + b_ist.minute) // 15 * 15
+                    slot_ist = b_ist.replace(
+                        hour=floor_min // 60, minute=floor_min % 60, second=0, microsecond=0
+                    )
+                    slot_ms = int((slot_ist - ist_offset).timestamp() * 1000)
+                except Exception:
+                    aligned = False
+                    slot_ms = ts
+                if not aligned:
+                    # Unaligned wall-clock poll — drop (re-upserted as snapshot live).
+                    continue
+                prev = live_slots.get(slot_ms)
+                if prev is None:
+                    live_slots[slot_ms] = b
+                    continue
+                # Prefer keeping a single aligned bar per slot.
+                live_slots[slot_ms] = b
+            # Merge preserved synthetic/historical bars with deduped live slots.
+            by_ts: Dict[int, BarOHLCV] = {
+                int(b.timestamp_utc_ms): b for b in kept if int(getattr(b, "timestamp_utc_ms", 0) or 0) > 0
+            }
+            for slot_ms, b in live_slots.items():
+                by_ts[int(b.timestamp_utc_ms)] = b
+            merged = [by_ts[k] for k in sorted(by_ts.keys())]
+            if len(merged) > 60:
+                merged = merged[-60:]
+            self.price_history[sym] = merged
+            removed_total += max(0, before - len(merged))
+        return removed_total
+
+    def _upsert_session_bar(self, symbol: str, bar_idx: int, latest_bar: BarOHLCV) -> BarOHLCV:
+        """Insert/replace bars without letting quote-poll spam flood traj15 history."""
+        history = self.price_history.setdefault(symbol, [])
+        src = str(getattr(latest_bar, "source", "kite_live") or "kite_live")
+        is_snap = src == "kite_quote_snapshot"
+
+        # Unit tests + durable/historical bars: keep exact-timestamp append/replace.
+        if not is_snap:
+            if history and history[-1].timestamp_utc_ms == latest_bar.timestamp_utc_ms:
+                history[-1] = latest_bar
+            else:
+                history.append(latest_bar)
+            if len(history) > 60:
+                history.pop(0)
+            return latest_bar
+
+        candle_ts = self._bar_idx_candle_start_utc_ms(bar_idx)
+        if candle_ts is None:
+            # No active session window — replace-in-place by identical stamp only.
+            if history and history[-1].timestamp_utc_ms == latest_bar.timestamp_utc_ms:
+                history[-1] = latest_bar
+            else:
+                history.append(latest_bar)
+            if len(history) > 60:
+                history.pop(0)
+            return latest_bar
+
+        bar = BarOHLCV(
+            timestamp_utc_ms=int(candle_ts),
+            open=float(latest_bar.open),
+            high=float(latest_bar.high),
+            low=float(latest_bar.low),
+            close=float(latest_bar.close),
+            volume=float(latest_bar.volume),
+            is_completed=False,
+            source="kite_quote_snapshot",
+        )
+        for i, existing in enumerate(history):
+            if int(existing.timestamp_utc_ms) == int(candle_ts):
+                # Never clobber a completed candle with a day-OHLC snapshot poll.
+                if bool(getattr(existing, "is_completed", True)) and str(
+                    getattr(existing, "source", "")
+                ) != "kite_quote_snapshot":
+                    return existing
+                history[i] = bar
+                return bar
+        history.append(bar)
+        history.sort(key=lambda b: int(b.timestamp_utc_ms))
+        if len(history) > 60:
+            self.price_history[symbol] = history[-60:]
+        return bar
+
     def evaluate_symbol_bar(
         self,
         symbol: str,
@@ -1639,13 +1827,20 @@ class RP608NSEShadowDaemon:
         Evaluates a completed 15m bar for a symbol.
         Emits Estimand B directional decision card and manages Estimand A trade lifecycle.
         """
+        latest_bar = self._upsert_session_bar(symbol, bar_idx, latest_bar)
         history = self.price_history[symbol]
-        if history and history[-1].timestamp_utc_ms == latest_bar.timestamp_utc_ms:
-            history[-1] = latest_bar
-        else:
-            history.append(latest_bar)
-        if len(history) > 60:
-            history.pop(0)
+        # Session bars for G3 traj must exclude incomplete quote snapshots so the
+        # 15-bar lookback is not filled with identical day-OHLC clones (G4 lock).
+        session_bars_for_g3 = [
+            b for b in history
+            if not (
+                str(getattr(b, "source", "")) == "kite_quote_snapshot"
+                and not bool(getattr(b, "is_completed", True))
+            )
+        ]
+        # Forming bar still counts toward session_n when it is the only today mark.
+        if not session_bars_for_g3 and history:
+            session_bars_for_g3 = list(history[-1:])
 
         # ─── Causal Momentum Scoring (G3 warmup policy) ────────
         # same_session: today's bars only (legacy cold until ~10:30).
@@ -1664,10 +1859,10 @@ class RP608NSEShadowDaemon:
             "policy_c",
             "cross_gap_neutral",
         }:
-            feature_bars = self._feature_bars_for_boundaries(symbol, history)
+            feature_bars = self._feature_bars_for_boundaries(symbol, session_bars_for_g3)
         g3_m = evaluate_g3_momentum(
             policy=G3_WARMUP_POLICY,
-            session_bars=history,
+            session_bars=session_bars_for_g3,
             feature_bars=feature_bars,
             today_session_date=sess_date,
         )
@@ -2147,6 +2342,10 @@ class RP608NSEShadowDaemon:
             print(f"[prospective_v1] NSE observe skipped ({symbol}): {obs_exc}")
 
         # NSE OF PAPER ledger — independent of Estimand A open/close above
+        sq_bar = int(
+            getattr(self._active_session_window, "square_off_bar", MANDATORY_SQUARE_OFF_BAR)
+            or MANDATORY_SQUARE_OFF_BAR
+        )
         try:
             self.of_paper.evaluate_open_tick(
                 symbol=symbol,
@@ -2155,11 +2354,11 @@ class RP608NSEShadowDaemon:
                 bar_idx=bar_idx,
                 force_reason=(
                     "SESSION_SQUARE_OFF"
-                    if bar_idx >= MANDATORY_SQUARE_OFF_BAR
+                    if bar_idx >= sq_bar
                     else None
                 ),
             )
-            if bar_idx < MANDATORY_SQUARE_OFF_BAR:
+            if bar_idx < sq_bar:
                 self.of_paper.try_open_from_eval(
                     symbol=symbol,
                     eval_record=eval_record,
@@ -2168,6 +2367,32 @@ class RP608NSEShadowDaemon:
                 )
         except Exception as ofp_exc:
             print(f"[nse_of_paper] eval hook skipped ({symbol}): {ofp_exc}")
+
+        # OFX NSE volume PAPER — DERIVED_VALIDATED aggressor volume (baseline L1 OF inert)
+        try:
+            vol_snap = build_ofx_nse_volume_flow_snapshot(
+                symbol=symbol,
+                buffer=self.ofx_nse_volume_buf,
+                now_ms=now_eval_ms,
+            )
+            write_ofx_nse_volume_flow_snapshot(self.ofx_tick_dir, vol_snap)
+            self.ofx_nse_volume_paper.evaluate_open_tick(
+                symbol=symbol,
+                volume_snapshot=vol_snap,
+                quote=quote,
+                now_ms=now_eval_ms,
+                force_reason=("SESSION_SQUARE_OFF" if bar_idx >= sq_bar else None),
+            )
+            if bar_idx < sq_bar:
+                self.ofx_nse_volume_paper.try_open_from_eval(
+                    symbol=symbol,
+                    eval_record=eval_record,
+                    volume_snapshot=vol_snap,
+                    quote=quote,
+                    now_ms=now_eval_ms,
+                )
+        except Exception as ofx_vol_exc:
+            print(f"[ofx_nse_volume_paper] eval hook skipped ({symbol}): {ofx_vol_exc}")
 
         # Next-session indicative levels: structure on completed bar; validity on price.
         try:
@@ -2190,29 +2415,55 @@ class RP608NSEShadowDaemon:
         """
         While awaiting the next 15m close, still tick open OF papers on live L1
         so min-hold / opposite-persist anti-churn can fire (crypto-parity).
+        Also ticks open OFX NSE volume papers on derived aggressor volume marks.
         """
-        opens = self.of_paper.open_snapshot()
-        if not opens:
+        of_opens = self.of_paper.open_snapshot()
+        ofx_opens = self.ofx_nse_volume_paper.open_snapshot()
+        if not of_opens and not ofx_opens:
             return
         now_ms = int(time.time() * 1000)
-        syms = [str(t.get("symbol")) for t in opens if t.get("symbol")]
+        syms = sorted(
+            {
+                str(t.get("symbol"))
+                for t in (of_opens + ofx_opens)
+                if t.get("symbol")
+            }
+        )
         try:
             feed_results = self.feed_adapter.fetch_all_symbols()
         except Exception as exc:
             print(f"[nse_of_paper] midbar fetch skipped: {exc}")
             return
+        of_syms = {str(t.get("symbol")) for t in of_opens if t.get("symbol")}
+        ofx_syms = {str(t.get("symbol")) for t in ofx_opens if t.get("symbol")}
         for sym in syms:
             res = feed_results.get(sym, {}) if isinstance(feed_results, dict) else {}
             quote = res.get("quote") if isinstance(res, dict) else None
-            try:
-                self.of_paper.evaluate_open_tick(
-                    symbol=sym,
-                    quote=quote,
-                    now_ms=now_ms,
-                    bar_idx=bar_idx,
-                )
-            except Exception as exc:
-                print(f"[nse_of_paper] midbar tick skipped ({sym}): {exc}")
+            if sym in of_syms:
+                try:
+                    self.of_paper.evaluate_open_tick(
+                        symbol=sym,
+                        quote=quote,
+                        now_ms=now_ms,
+                        bar_idx=bar_idx,
+                    )
+                except Exception as exc:
+                    print(f"[nse_of_paper] midbar tick skipped ({sym}): {exc}")
+            if sym in ofx_syms:
+                try:
+                    vol_snap = build_ofx_nse_volume_flow_snapshot(
+                        symbol=sym,
+                        buffer=self.ofx_nse_volume_buf,
+                        now_ms=now_ms,
+                    )
+                    self.ofx_nse_volume_paper.evaluate_open_tick(
+                        symbol=sym,
+                        volume_snapshot=vol_snap,
+                        quote=quote,
+                        now_ms=now_ms,
+                    )
+                except Exception as exc:
+                    print(f"[ofx_nse_volume_paper] midbar tick skipped ({sym}): {exc}")
 
     def _close_trade(self, trade: Dict[str, Any], exit_price: float, exit_bar: int, exit_reason: str):
         """Calculates exact statutory friction and closes trade for Estimand A."""
@@ -2281,14 +2532,20 @@ class RP608NSEShadowDaemon:
             self.state.last_heartbeat_utc_ms = now_ms
             self.state.last_heartbeat_iso = now_utc.isoformat()
             next_sess_meta = None
-            if phase == "POST_CLOSE":
+            if phase.startswith("POST_CLOSE"):
                 try:
-                    # Force-flat any residual NSE OF paper opens after cash session
-                    if self.of_paper.open_snapshot():
+                    # Force-flat residual NSE OF paper + OFX volume paper after cash/muhurat
+                    need_quotes = bool(
+                        self.of_paper.open_snapshot()
+                        or self.ofx_nse_volume_paper.open_snapshot()
+                    )
+                    feed_results: Dict[str, Any] = {}
+                    if need_quotes:
                         try:
                             feed_results = self.feed_adapter.fetch_all_symbols()
                         except Exception:
                             feed_results = {}
+                    if self.of_paper.open_snapshot():
                         quotes = {
                             sym: (feed_results.get(sym) or {}).get("quote")
                             for sym in [t.get("symbol") for t in self.of_paper.open_snapshot()]
@@ -2299,11 +2556,30 @@ class RP608NSEShadowDaemon:
                             now_ms=now_ms,
                             reason="SESSION_SQUARE_OFF",
                         )
+                    if self.ofx_nse_volume_paper.open_snapshot():
+                        quotes_x = {
+                            sym: (feed_results.get(sym) or {}).get("quote")
+                            for sym in [
+                                t.get("symbol") for t in self.ofx_nse_volume_paper.open_snapshot()
+                            ]
+                            if sym
+                        }
+                        self.ofx_nse_volume_paper.square_off_all(
+                            quotes_by_symbol=quotes_x,
+                            now_ms=now_ms,
+                            reason="SESSION_SQUARE_OFF",
+                        )
                     next_sess_meta = self.emit_next_session_recommendations_if_needed(now_ist=now_ist)
                 except Exception as nsr_exc:
                     print(f"[next_session_recs] emit skipped: {nsr_exc}")
             self.atomic_commit_checkpoint(self.state)
-            out = {"status": phase, "bar_idx": 0, "processed": 0, "nse_of_paper": self.of_paper.summary()}
+            out = {
+                "status": phase,
+                "bar_idx": 0,
+                "processed": 0,
+                "nse_of_paper": self.of_paper.summary(),
+                "ofx_nse_volume_paper": self.ofx_nse_volume_paper.summary(),
+            }
             if next_sess_meta:
                 out["next_session_recommendations"] = next_sess_meta
             return out
@@ -2340,6 +2616,12 @@ class RP608NSEShadowDaemon:
                         now_ms=now_ms,
                         reason="SESSION_ROLLOVER_SQUARE_OFF",
                     )
+                if self.ofx_nse_volume_paper.open_snapshot():
+                    self.ofx_nse_volume_paper.square_off_all(
+                        quotes_by_symbol={},
+                        now_ms=now_ms,
+                        reason="SESSION_ROLLOVER_SQUARE_OFF",
+                    )
             except Exception as ofp_exc:
                 print(f"[nse_of_paper] session rollover square-off skipped: {ofp_exc}")
             self.current_session_date = today_session_str
@@ -2352,23 +2634,45 @@ class RP608NSEShadowDaemon:
             self.save_pending_evaluations()
             self.atomic_commit_checkpoint(self.state)
 
-        # Determine completed bars vs forming bars in current session
-        open_time = now_ist.replace(hour=9, minute=15, second=0, microsecond=0)
-        elapsed_sec = (now_ist - open_time).total_seconds()
-        completed_bars = int(elapsed_sec // (15 * 60))
-        completed_bars = min(completed_bars, TOTAL_BARS_PER_SESSION)
+        # Determine completed bars vs forming bars in current session (regular or muhurat)
+        window = self._active_session_window
+        if window is None:
+            window, _ = resolve_session_window(
+                now_ist,
+                exchange_holidays=getattr(self, "exchange_holidays", NSE_2026_HOLIDAYS),
+            )
+        if window is not None:
+            completed_bars = completed_bars_since_open(now_ist, window)
+            warmup_n = int(window.warmup_completed_bars)
+        else:
+            open_time = now_ist.replace(hour=9, minute=15, second=0, microsecond=0)
+            elapsed_sec = (now_ist - open_time).total_seconds()
+            completed_bars = min(int(elapsed_sec // (15 * 60)), TOTAL_BARS_PER_SESSION)
+            warmup_n = 5
 
+        # Durable eval runs only when a new 15m bar has closed. Provisional live
+        # evals run while bar 1 (or the next bar) is still forming so G1/recs are
+        # available from session open — not only after the first close (~15m wait).
+        provisional_eval = False
         if not self.single_bar_test and is_active:
             if completed_bars == 0:
-                # Interval 1 is still forming (09:15-09:30 IST); wait for candle completion
-                self.state.last_heartbeat_utc_ms = now_ms
-                self.state.last_heartbeat_iso = now_utc.isoformat()
-                self.atomic_commit_checkpoint(self.state)
-                return {"status": "FORMING_BAR_1", "bar_idx": 0, "processed": 0}
-
-            if completed_bars <= self.state.last_durable_bar_idx:
-                # Candle already evaluated at close and committed to disk; await next bar close.
-                # Still poll open NSE OF paper trades on live L1 (anti-churn / reverse-OF).
+                provisional_eval = True
+                eval_bar = max(1, int(bar_idx) or 1)
+                try:
+                    self._of_paper_midbar_poll(bar_idx=eval_bar)
+                except Exception as ofp_exc:
+                    print(f"[nse_of_paper] forming-bar midbar poll skipped: {ofp_exc}")
+                try:
+                    self._next_session_levels_midbar_poll()
+                except Exception as nsr_lvl_exc:
+                    print(f"[next_session_levels] forming-bar midbar poll skipped: {nsr_lvl_exc}")
+                try:
+                    self._sample_of_book_depth_history()
+                except Exception as book_exc:
+                    print(f"[of_book_intel] forming-bar depth sample skipped: {book_exc}")
+            elif completed_bars <= self.state.last_durable_bar_idx:
+                provisional_eval = True
+                eval_bar = max(int(completed_bars) + 1, int(bar_idx) or 1)
                 try:
                     self._of_paper_midbar_poll(bar_idx=int(self.state.last_durable_bar_idx or completed_bars))
                 except Exception as ofp_exc:
@@ -2381,24 +2685,19 @@ class RP608NSEShadowDaemon:
                     self._sample_of_book_depth_history()
                 except Exception as book_exc:
                     print(f"[of_book_intel] midbar depth sample skipped: {book_exc}")
-                self.state.last_heartbeat_utc_ms = now_ms
-                self.state.last_heartbeat_iso = now_utc.isoformat()
-                self.atomic_commit_checkpoint(self.state)
-                return {
-                    "status": "AWAITING_NEXT_BAR_CLOSE",
-                    "last_durable_bar_idx": self.state.last_durable_bar_idx,
-                    "completed_bars": completed_bars,
-                    "next_target_bar": completed_bars + 1,
-                    "nse_of_paper": self.of_paper.summary(),
-                }
-
-            # A new 15m candle has finalized! Evaluate this finalized completed bar.
-            eval_bar = completed_bars
+            else:
+                # A new 15m candle has finalized! Durable evaluate at close.
+                eval_bar = completed_bars
         else:
             eval_bar = bar_idx
 
-        # Auto-recovery: If active session at bar >= 5, attempt same-day recovery for any deficient symbols
-        if is_active and eval_bar >= 5:
+        # Auto-recovery after warmup bars (1 on muhurat; 5 on regular).
+        # On provisional forming-bar-1, still try bootstrap so G3 can use history.
+        # Always purge quote-snapshot spam first so traj15 lookback is not stuffed
+        # with identical day-OHLC clones (dashboard G4 lock at +0.0000).
+        if is_active:
+            self._purge_quote_snapshot_spam()
+        if is_active and (eval_bar >= warmup_n or provisional_eval):
             self.bootstrap_same_day_history(now_utc)
 
         # Fetch market data for all symbols
@@ -2494,9 +2793,15 @@ class RP608NSEShadowDaemon:
             code = r.get("decision_code", "UNKNOWN")
             rejection_breakdown[code] = rejection_breakdown.get(code, 0) + 1
 
-        # ─── Persist Every Evaluation to Durable Ledger ─────────────
+        # Tag provisional vs durable for dashboard freshness without waiting on bar close
         for r in iteration_evals:
-            self.append_jsonl(self.evaluations_path, r)
+            r["provisional_eval"] = bool(provisional_eval)
+            r["eval_mode"] = "PROVISIONAL_LIVE" if provisional_eval else "DURABLE_BAR_CLOSE"
+
+        # Durable ledger: only commit closed-bar evals (avoid jsonl flood on mid-bar polls)
+        if not provisional_eval:
+            for r in iteration_evals:
+                self.append_jsonl(self.evaluations_path, r)
 
         # ─── Commit Atomic Snapshot for Immediate Dashboard Access ──
         latest_eval_snapshot = {
@@ -2504,6 +2809,9 @@ class RP608NSEShadowDaemon:
             "timestamp_iso": now_utc.isoformat(),
             "session_idx": self.state.session_idx,
             "bar_idx": eval_bar,
+            "provisional": bool(provisional_eval),
+            "eval_mode": "PROVISIONAL_LIVE" if provisional_eval else "DURABLE_BAR_CLOSE",
+            "session_kind": getattr(window, "kind", None) if window is not None else None,
             "total_evaluated": len(iteration_evals),
             "n_qualifying": len(qualifying),
             "rejection_breakdown": rejection_breakdown,
@@ -2514,8 +2822,9 @@ class RP608NSEShadowDaemon:
         self.save_bar_history()
         self.save_pending_evaluations()
 
-        self.state.last_durable_bar_idx = eval_bar
-        self.state.last_accounted_bar_idx = max(self.state.last_accounted_bar_idx, eval_bar)
+        if not provisional_eval:
+            self.state.last_durable_bar_idx = eval_bar
+            self.state.last_accounted_bar_idx = max(self.state.last_accounted_bar_idx, eval_bar)
         self.state.active_positions_count = len(self.active_trades)
         self.state.consecutive_outages = 0
         self.state.last_heartbeat_utc_ms = now_ms
@@ -2530,6 +2839,9 @@ class RP608NSEShadowDaemon:
             "session_idx": self.state.session_idx,
             "bar_idx": eval_bar,
             "phase": phase,
+            "provisional": bool(provisional_eval),
+            "eval_mode": "PROVISIONAL_LIVE" if provisional_eval else "DURABLE_BAR_CLOSE",
+            "session_kind": getattr(window, "kind", None) if window is not None else None,
             "successful_symbols": successful,
             "failed_symbols": failed,
             "evaluations_count": len(iteration_evals),
@@ -2874,6 +3186,27 @@ class RP608NSEShadowDaemon:
                         f"(authority=0.0%; OF rules untouched)",
                         flush=True,
                     )
+                    print(
+                        f"[+] OFX NSE volume PAPER armed → {self.ofx_tick_dir} "
+                        "(RP-608-OFX-NSE-VOLUME-PAPER-001; DERIVED_VALIDATED; baseline L1 OF inert)",
+                        flush=True,
+                    )
+                    try:
+                        now_ist_boot = datetime.now(timezone.utc) + timedelta(hours=5, minutes=30)
+                        win_boot, _ = resolve_session_window(
+                            now_ist_boot.replace(tzinfo=None),
+                            exchange_holidays=self.exchange_holidays,
+                        )
+                        if win_boot is not None and win_boot.kind == "MUHURAT":
+                            print(
+                                f"[+] NSE MUHURAT session calendar armed today "
+                                f"{win_boot.open_ist.strftime('%H:%M')}–"
+                                f"{win_boot.close_ist.strftime('%H:%M')} IST "
+                                f"({win_boot.label}; warmup_bars={win_boot.warmup_completed_bars})",
+                                flush=True,
+                            )
+                    except Exception as muh_exc:
+                        print(f"[muhurat] calendar note skipped: {muh_exc}", flush=True)
                 else:
                     print("[*] OFX Stage 0D tick capture disabled (RP608_OFX_NSE_TICK_CAPTURE)", flush=True)
             self.feed_adapter.start_ticker()
