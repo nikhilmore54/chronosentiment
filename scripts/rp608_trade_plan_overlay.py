@@ -376,7 +376,7 @@ def compute_of_paper_cost_breakdown(
 # Fixed Governance Parameters (Protocol RP-608-TRADE-PLAN-OVERLAY-001)
 CONFIG: Dict[str, Any] = {
     "protocol_id": "RP-608-TRADE-PLAN-OVERLAY-001",
-    "version": "1.2.3",
+    "version": "1.2.4",
     "instrument": "BTC/USDT",
     "signal_policy": "B",
     # Signals open on tick bookTicker decisions (RP-608-SHADOW-TICK-001);
@@ -392,6 +392,12 @@ CONFIG: Dict[str, Any] = {
     # Prior: conservative SL / AMBIGUOUS_STOP_TARGET. Authority remains 0%.
     "ambiguous_tie_break": "TP",  # TP | SL
     "gate5_policy_g": "RP-608-GATE5-CRYPTO-G-001",
+    # Gate 5 H120_PATH (2026-11-16): early ATR SL (<120s) → scratch@entry only if
+    # L1 mid left entry±6bps adverse then revisited the band (Gate3X PATH, not OPT).
+    "gate5_policy_h": "RP-608-GATE5-CRYPTO-H-001",
+    "early_sl_path_scratch_enabled": True,
+    "early_sl_path_scratch_max_hold_s": 120.0,
+    "early_sl_path_friction_bps_side": 6.0,
     "simulated_notional_usdt": 1000.0,
     "price_tick_size": 0.01,
     "taker_fee_bps": 5.0,
@@ -624,6 +630,9 @@ def calculate_trade_plan(
         # OF mark at open; live OF recommendation lifecycle is exit-signal driven
         # (reverse flow), not the 60m plan horizon.
         "order_flow_latched_at_open": bool(of.get("order_flow_supported")),
+        # Gate 5 H120_PATH live path stamps (L1 mid)
+        "path_h_adverse_seen": False,
+        "path_h_revisit_seen": False,
     }
 
 
@@ -688,6 +697,7 @@ class TradePlanOverlayManager:
                 "sl_hits": 0,
                 "time_exits": 0,
                 "ambiguous_hits": 0,
+                "early_sl_path_scratches": 0,
                 "cumulative_net_pnl_usdt": 0.0
             },
             "of_outcomes_summary": {
@@ -2300,7 +2310,31 @@ class TradePlanOverlayManager:
         plan["last_mark_price"] = round_tick(exec_px)
         plan["last_mark_time_ms"] = now_ms
         plan["lifecycle_monitor"] = CONFIG.get("lifecycle_monitor", "continuous_l1_bookTicker")
+
+        # Gate 5 H120_PATH: track L1 mid adverse → revisit around entry (±side friction bps)
+        mid = 0.5 * (bid + ask)
+        band = float(entry_price) * (
+            float(CONFIG.get("early_sl_path_friction_bps_side") or 6.0) / 10000.0
+        )
+        prev_adv = bool(plan.get("path_h_adverse_seen"))
+        prev_rev = bool(plan.get("path_h_revisit_seen"))
+        if direction == "LONG":
+            if mid < float(entry_price) - band:
+                plan["path_h_adverse_seen"] = True
+            if plan.get("path_h_adverse_seen") and mid >= float(entry_price) - band:
+                plan["path_h_revisit_seen"] = True
+        else:
+            if mid > float(entry_price) + band:
+                plan["path_h_adverse_seen"] = True
+            if plan.get("path_h_adverse_seen") and mid <= float(entry_price) + band:
+                plan["path_h_revisit_seen"] = True
+        path_stamp_flipped = (bool(plan.get("path_h_adverse_seen")) != prev_adv) or (
+            bool(plan.get("path_h_revisit_seen")) != prev_rev
+        )
         self.state["active_plan"] = plan
+        # Persist path stamps so periodic daemon state reload cannot wipe them.
+        if path_stamp_flipped:
+            self._save_state()
 
         # OF exit is L1 reverse-flow only — independent of plan TP/SL/60m
         if evaluate_of:
@@ -2357,10 +2391,24 @@ class TradePlanOverlayManager:
             self.state["outcomes_summary"]["tp_hits"] += 1
             exit_price = tp
         elif hit_sl:
-            terminal_state = "CLOSED_SL"
-            exit_reason = "STOP_LOSS_HIT"
-            self.state["outcomes_summary"]["sl_hits"] += 1
-            exit_price = sl
+            hold_s = (now_ms - entry_ms) / 1000.0
+            h_enabled = bool(CONFIG.get("early_sl_path_scratch_enabled"))
+            h_max = float(CONFIG.get("early_sl_path_scratch_max_hold_s") or 120.0)
+            path_ok = bool(plan.get("path_h_adverse_seen") and plan.get("path_h_revisit_seen"))
+            if h_enabled and hold_s < h_max and path_ok:
+                # Gate 5 H120_PATH: scratch@entry (not optimistic OPT-all early SL)
+                terminal_state = "CLOSED_SCRATCH"
+                exit_reason = "EARLY_SL_PATH_SCRATCH"
+                exit_price = float(entry_price)
+                plan["gate5_policy_h"] = CONFIG.get("gate5_policy_h")
+                plan["exit_reason_detail"] = "EARLY_SL_PATH_SCRATCH_GATE5_H120"
+                summ = self.state.setdefault("outcomes_summary", {})
+                summ["early_sl_path_scratches"] = int(summ.get("early_sl_path_scratches") or 0) + 1
+            else:
+                terminal_state = "CLOSED_SL"
+                exit_reason = "STOP_LOSS_HIT"
+                self.state["outcomes_summary"]["sl_hits"] += 1
+                exit_price = sl
         elif now_ms >= expiry_ms:
             terminal_state = "TIME_EXIT"
             exit_reason = "MAX_HORIZON_60M_EXPIRED"

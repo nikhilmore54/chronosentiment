@@ -1,0 +1,29 @@
+---
+description: RP-608-OFX parallel order-flow response research — observational only; never modify frozen OF/execution baselines
+alwaysApply: true
+---
+
+# RP-608-OFX Boundary
+
+When working on order-flow research after 2026-11-04:
+
+## Hard separation
+- **NSE Estimand A, crypto plan, NSE OF paper, crypto OF paper** are the performance-tracking **baseline**. Do not change their entry, exit, sizing, thresholds (±0.30), reverse-OF, hold, or persistence logic for OFX work.
+- **RP-608-OFX** is an independent observational research line. No orders, no shared mutable OF policy config, authority **0%**.
+- Never pool OFX results into baseline books or replace baseline OF PnL with OFX simulations in session reports.
+
+## Conceptual constraint
+- Do not “fix” OF by swapping imbalance thresholds. OFX must study **aggression + liquidity response + price movement + structural confirmation** (absorption / acceptance / failed auction), not snapshot imbalance alone.
+
+## Construct distinction (LOCKED 2026-11-07 — `ACCEPT_CONSTRUCT_DISTINCTION`)
+- **Baseline OF** (`OF_SUP`, ±0.30, reverse-OF paper): **L1 resting bid/ask quantity imbalance** (displayed liquidity at the touch). Not incorrectly paired in audit — different construct from executed flow.
+- **Intended volume/aggression Order Flow**: buy-aggressor vs sell-aggressor quantity and response — **RP-608-OFX only**.
+- **Do not** reinterpret `OF_SUP` as executed buying/selling pressure; **do not** use L1 imbalance as absorption proof; **do not** retrospectively relabel historical OF; **do not** equate baseline OF stamps with OFX mechanism evidence.
+- Institutional reading of aggression remains a **hypothesis** (aggression ≠ participant identity).
+- Audit: `docs/research/rp608_orderflow_side_quantity_semantics_audit.md` §1b. No Gate 2 / ±0.30 / authority change from this lock alone.
+
+## Governance
+- Rules frozen · Step 3+ held · Gate R unreached.
+- Stage 1 locked: `DOMINANTLY_FLAT_SHORT_HORIZON`. Stage 2 **mechanism labeling not authorized**; design/readiness only (`docs/research/rp608_ofx_stage2_design_readiness.md`).
+- Scope: `docs/research/rp608_ofx_order_flow_response_scoped.md`
+- Tracking: `docs/research/rp608_ofx_performance_tracking_boundary.md`

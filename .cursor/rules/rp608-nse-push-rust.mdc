@@ -1,0 +1,29 @@
+---
+description: RP-608 NSE push-driven event architecture and Python→Rust production migration
+globs: scripts/**/*nse*,scripts/rp608_kite*,scripts/run_rp608_nse*,scripts/rp608_live_dashboard.py,adapters/chronosentiment/**,docs/architecture/RP608_NSE*
+alwaysApply: false
+---
+
+# RP-608 NSE Push + Rust Production Mandate
+
+Formal requirement: `docs/architecture/RP608_NSE_PUSH_EVENT_RUST_ENGINE_v1.md`  
+Inventory: `docs/architecture/RP608_NSE_PYTHON_PRODUCTION_INVENTORY_v1.md`
+
+## Push-driven (mandatory)
+
+- Kite WebSocket is the live market source (LTP, L1–L5, volume).
+- One shared ordered/timestamped/deduplicated market-event stream serves **watchlist** and **recommended trades**.
+- No new periodic polling loops for OF, price response, traj15 triggers, reverse-OF, or dashboard freshness.
+- On disconnect/gap: mark stale → reconcile → then restore live. Preserve timestamps, sequence, provenance.
+- Never present a stale OF status as current.
+
+## Rust vs Python
+
+- **Rust target:** production ingestion, event processing, watchlist, recommendations, OF, paper lifecycle observations, dashboard event publication.
+- **Python:** research, validation, behavioural reference until differential parity.
+- Migrate in verified modules; one authoritative writer per state/ledger.
+- Do not accumulate permanent new Python production dependencies for this path.
+
+## Frozen behaviour (parity)
+
+OF ±0.30, LONG/SHORT, reverse-OF, paper accounting legs API, NSE session boundaries, traj15 semantics, stale handling, event order — **unchanged**. Live authority **0%**.

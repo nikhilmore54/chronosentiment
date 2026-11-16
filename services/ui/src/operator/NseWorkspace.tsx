@@ -1,4 +1,3 @@
-import { useMemo, useState } from 'react';
 import type { OperatorState } from './types';
 import { displayOrUnavailable } from './freshness';
 import { chip, labelStyle, op, panelStyle } from './operatorStyles';
@@ -7,8 +6,6 @@ type Props = {
   state: OperatorState | null;
   onBack: () => void;
 };
-
-const PAGE = 25;
 
 function formatIst(iso: string | null | undefined): string {
   if (!iso) return '—';
@@ -53,23 +50,7 @@ function formatIstClock(iso: string | null | undefined): string {
 
 export default function NseWorkspace({ state, onBack }: Props) {
   const nse = state?.nse;
-  const [showExplorer, setShowExplorer] = useState(false);
-  const [filter, setFilter] = useState('');
-  const [page, setPage] = useState(0);
   const recommendedAt = nse?.recommended_at_utc ?? nse?.emitted_utc ?? null;
-
-  const filtered = useMemo(() => {
-    const rows = nse?.scrips ?? [];
-    const q = filter.trim().toUpperCase();
-    if (!q) return rows;
-    return rows.filter((r) => {
-      const sym = String(r.tradingsymbol ?? r.symbol ?? '').toUpperCase();
-      return sym.includes(q);
-    });
-  }, [nse?.scrips, filter]);
-
-  const pageRows = filtered.slice(page * PAGE, page * PAGE + PAGE);
-  const pages = Math.max(1, Math.ceil(filtered.length / PAGE));
 
   const rejections = nse?.rejection_breakdown
     ? Object.entries(nse.rejection_breakdown).sort((a, b) => b[1] - a[1]).slice(0, 8)
@@ -305,114 +286,6 @@ export default function NseWorkspace({ state, onBack }: Props) {
             )}
           </section>
 
-          <section style={panelStyle}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-              <div style={labelStyle}>Symbol explorer (secondary)</div>
-              <button
-                type="button"
-                style={backBtn}
-                onClick={() => {
-                  setShowExplorer((v) => !v);
-                  setPage(0);
-                }}
-              >
-                {showExplorer ? 'Hide explorer' : `Show explorer (${nse.scrips?.length ?? 0})`}
-              </button>
-            </div>
-            {showExplorer && (
-              <>
-                <input
-                  value={filter}
-                  onChange={(e) => {
-                    setFilter(e.target.value);
-                    setPage(0);
-                  }}
-                  placeholder="Filter symbol…"
-                  style={{
-                    marginTop: 8,
-                    width: '100%',
-                    maxWidth: 280,
-                    padding: '8px 10px',
-                    borderRadius: 6,
-                    border: `1px solid ${op.border}`,
-                    background: '#0f172a',
-                    color: op.text,
-                    fontFamily: op.mono,
-                    fontSize: 12,
-                  }}
-                />
-                <div style={{ overflowX: 'auto', marginTop: 10 }}>
-                  <table style={{ width: '100%', borderCollapse: 'collapse', fontFamily: op.mono, fontSize: 11 }}>
-                    <thead>
-                      <tr style={{ color: op.dim, textAlign: 'left' }}>
-                        <th style={th}>symbol</th>
-                        <th style={th}>status</th>
-                        <th style={th}>dec</th>
-                        <th style={th}>OF</th>
-                        <th style={th}>imb</th>
-                        <th style={th}>ltp</th>
-                        <th style={th}>hist</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {pageRows.map((r, i) => (
-                        <tr key={`${String(r.tradingsymbol ?? r.symbol)}-${i}`}>
-                          <td style={td}>{String(r.tradingsymbol ?? r.symbol ?? '—')}</td>
-                          <td style={td}>
-                            {String(
-                              r.quarantine_reason
-                                ? 'QUARANTINED'
-                                : r.classified === false
-                                  ? '—'
-                                  : r.status ?? r.comp_status ?? '—'
-                            )}
-                          </td>
-                          <td style={td}>{String(r.decision ?? r.decision_code ?? '—')}</td>
-                          <td style={td}>
-                            {r.order_flow_supported ? (
-                              <span style={chip('rgba(251,191,36,0.3)', op.amber)}>
-                                {String(r.order_flow_label || 'ORDER FLOW')}
-                              </span>
-                            ) : (
-                              '—'
-                            )}
-                          </td>
-                          <td style={td}>
-                            {typeof r.order_flow_imbalance === 'number'
-                              ? r.order_flow_imbalance.toFixed(3)
-                              : '—'}
-                          </td>
-                          <td style={td}>{String(r.ltp ?? r.last_price ?? '—')}</td>
-                          <td style={td}>{String(r.history_length ?? '—')}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-                <div style={{ display: 'flex', gap: 8, marginTop: 10, alignItems: 'center' }}>
-                  <button
-                    type="button"
-                    style={backBtn}
-                    disabled={page <= 0}
-                    onClick={() => setPage((p) => Math.max(0, p - 1))}
-                  >
-                    Prev
-                  </button>
-                  <span style={{ fontFamily: op.mono, fontSize: 11, color: op.dim }}>
-                    {page + 1} / {pages} · {filtered.length} rows
-                  </span>
-                  <button
-                    type="button"
-                    style={backBtn}
-                    disabled={page >= pages - 1}
-                    onClick={() => setPage((p) => Math.min(pages - 1, p + 1))}
-                  >
-                    Next
-                  </button>
-                </div>
-              </>
-            )}
-          </section>
         </div>
       )}
     </div>
@@ -429,5 +302,3 @@ const backBtn = {
   fontSize: 12,
 };
 
-const th = { padding: '6px 8px', fontWeight: 600, borderBottom: `1px solid ${op.border}` };
-const td = { padding: '6px 8px', borderBottom: `1px solid rgba(148,163,184,0.08)`, color: op.text };

@@ -36,16 +36,18 @@ Operator tab default → Overview:
 
 No 119-row table, hardcoded RP-607 compartment cards, or Sharpe essay in the first viewport.
 
-## App shell tabs (kept)
+## App shell (kept)
 
-Operator · Research & Forensics · Decision Surface · Paper Trading · Multi-Horizon Books.
+Operator shell only (Overview · Crypto · NSE).
 
-**Discarded from shell:** Observatory, Replay Timeline, Trade Inspector, Research Console (API-offline chronology surfaces).
+**Discarded from shell:** Multi-Horizon Books, RP-611 strip, Research & Forensics, Decision Surface, Paper Trading (`Gate5PaperDashboard`), Observatory, Replay Timeline, Trade Inspector, Research Console, RP609 dashboard.
 
 ## Workspaces
 
 - **Crypto** — Policy B/C · Trade plan (60m) · OF latch/exit (independent) · candle marks · recent cards with ENTRY/EXIT  
-- **NSE** — universe strip · Coralys input gate panel · next-session + OF badges · session board (incl. STANDASIDE count) · symbol explorer secondary (paged)
+- **NSE** — universe strip · Coralys input gate panel · next-session + OF badges · session board (incl. STANDASIDE count)
+
+**Pi Command Center slim (2026-11-16):** single command surface — removed Multi-Horizon tab, Sharpe/Calmar essay, Gate C panel, RP-611 panel, 119-row symbol explorer, static G1–G4 essay grid. `/api/state` payloads unchanged.
 
 ## Parity checklist (cutover gate)
 

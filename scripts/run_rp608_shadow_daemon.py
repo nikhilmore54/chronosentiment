@@ -9,6 +9,7 @@ Features:
   1. Concurrent WebSocket Ingestion:
      - wss://stream.binance.com:9443/ws/btcusdt@bookTicker → canonical Policy B/C decisions
      - wss://stream.binance.com:9443/ws/btcusdt@kline_15m → completed-bar buffer for ATR(14) geometry
+     - wss://…/btcusdt@aggTrade → OFX research durable journal only (baseline OF inert; env RP608_OFX_CRYPTO_AGGTRADE_CAPTURE)
   2. Protocol Invariant & Quality Gate Enforcement:
      - Clock offset calibration (|Delta_clock| <= 250 ms, 5-sample NTP minimum RTT)
      - Quote freshness boundary (<= 500 ms); min refractory 1.0s between decision emits
@@ -79,6 +80,13 @@ from scripts.rp608_order_flow_mark import (
     l1_from_tick_features,
 )
 from scripts.rp608_trade_plan_overlay import TradePlanOverlayManager
+from scripts.rp608_ofx_crypto_aggtrade_journal import (
+    DEFAULT_WS_URL as OFX_AGGTRADE_WS_URL,
+    OfxCryptoAggTradeJournal,
+    ofx_crypto_aggtrade_capture_enabled,
+)
+from scripts.rp608_ofx_crypto_volume_flow_mark import refresh_ofx_volume_flow_mark
+from scripts.rp608_ofx_volume_paper_trades import OfxVolumePaperManager
 
 # RP-608-REGIME-BREAKOUT-001 — Arm A freeze + observational regime telemetry
 # Policy B actions / costs / horizons MUST remain unchanged while ARM_A_FROZEN.
@@ -651,6 +659,18 @@ class RP608ShadowDaemon:
         self._last_overlay_reload_ms: int = 0
         self._overlay_reload_interval_ms: int = 5000
 
+        # OFX research-only: durable Binance aggTrade journal (separate WS; baseline OF inert)
+        self.ofx_aggtrade_dir = self.output_dir / "ofx_aggtrade_capture_v1"
+        self.ofx_aggtrade_journal = OfxCryptoAggTradeJournal(
+            self.ofx_aggtrade_dir,
+            enabled=ofx_crypto_aggtrade_capture_enabled(default=True),
+            symbol="BTCUSDT",
+            flush_every=32,
+        )
+        self._ofx_volume_mark_last_ms: int = 0
+        self._ofx_volume_mark_interval_ms: int = 1000  # research snapshot throttle
+        self.ofx_volume_paper = OfxVolumePaperManager(self.ofx_aggtrade_dir)
+
         self.running = False
         self.shutdown_event: Optional[asyncio.Event] = None
         self.opportunity_registry = OpportunityAccountingRegistry()
@@ -903,6 +923,54 @@ class RP608ShadowDaemon:
     def _completed_closes(self) -> List[float]:
         return [c.close for c in self.recent_candles]
 
+    async def ingest_ofx_aggtrade(self):
+        """
+        OFX research capture: Binance aggTrade → durable journal.
+        Separate socket from bookTicker. Never calls classify_order_flow_support /
+        overlay activation. Failures stay on this task only.
+        """
+        journal = getattr(self, "ofx_aggtrade_journal", None)
+        if journal is None or not journal.enabled:
+            return
+        ws_url = OFX_AGGTRADE_WS_URL
+        while self.running:
+            try:
+                async with websockets.connect(ws_url, ping_interval=20, ping_timeout=10) as ws:
+                    async for msg in ws:
+                        if not self.running:
+                            break
+                        try:
+                            recv_wall_ms = int(time.time() * 1000)
+                            data = json.loads(msg)
+                            journal.on_raw_event(data, receipt_utc_ms=recv_wall_ms)
+                            # Volume/direction OFX mark (parallel to baseline L1 OF; never mutates it)
+                            if recv_wall_ms - self._ofx_volume_mark_last_ms >= self._ofx_volume_mark_interval_ms:
+                                self._ofx_volume_mark_last_ms = recv_wall_ms
+                                try:
+                                    snap = refresh_ofx_volume_flow_mark(
+                                        self.ofx_aggtrade_dir,
+                                        symbol="BTCUSDT",
+                                        now_ms=recv_wall_ms,
+                                    )
+                                    # Parallel OFX volume paper exit eval (never touches L1 OF paper)
+                                    self.ofx_volume_paper.evaluate_tick(
+                                        volume_snapshot=snap,
+                                        quote=self.latest_book_ticker
+                                        if isinstance(self.latest_book_ticker, dict)
+                                        else None,
+                                        now_ms=recv_wall_ms,
+                                    )
+                                except Exception:
+                                    pass
+                        except Exception:
+                            # Research path fail-closed — never disrupt decision clock
+                            continue
+            except asyncio.CancelledError:
+                raise
+            except Exception as exc:
+                print(f"[OFX aggTrade] reconnect after error: {exc}", flush=True)
+                await asyncio.sleep(2.0)
+
     async def ingest_book_ticker(self):
         """bookTicker path: L1 maintenance, overlay exits, and tick Policy B/C decisions."""
         ws_url = "wss://stream.binance.com:9443/ws/btcusdt@bookTicker"
@@ -1138,6 +1206,37 @@ class RP608ShadowDaemon:
         except Exception as plan_exc:
             print(f"[trade_plan_overlay] process_decision_card skipped: {plan_exc}")
 
+        # Parallel OFX volume PAPER book (research-only; baseline L1 OF paper untouched)
+        if action_b in ("LONG", "SHORT"):
+            try:
+                vol_path = self.ofx_aggtrade_dir / "ofx_volume_flow_snapshot.json"
+                vol_snap: Optional[Dict[str, Any]] = None
+                if vol_path.exists():
+                    loaded = json.loads(vol_path.read_text(encoding="utf-8"))
+                    if isinstance(loaded, dict):
+                        vol_snap = loaded
+                if vol_snap is None:
+                    vol_snap = refresh_ofx_volume_flow_mark(
+                        self.ofx_aggtrade_dir, symbol="BTCUSDT", now_ms=quote.receive_time_ms
+                    )
+                plan_id = None
+                if isinstance(plan_result, dict):
+                    plan_id = (plan_result.get("plan") or {}).get("plan_id") or plan_result.get(
+                        "plan_id"
+                    )
+                self.ofx_volume_paper.try_open_from_decision(
+                    direction=action_b,
+                    volume_snapshot=vol_snap,
+                    quote=candidate_quote if valid_execution_quote else None,
+                    plan_id=plan_id,
+                    bar_idx=bar_idx,
+                    decision_event_idx=decision_event_idx,
+                    entry_price=float(snap.mid_price),
+                    now_ms=int(quote.receive_time_ms),
+                )
+            except Exception as ofx_paper_exc:
+                print(f"[ofx_volume_paper] try_open skipped: {ofx_paper_exc}")
+
         try:
             ask_v = bid_v = age_v = None
             if candidate_quote:
@@ -1347,9 +1446,19 @@ class RP608ShadowDaemon:
 
         print(f"[RP-608 Clock Sync] Offset: {offset_ms} ms (RTT: {rtt_ms} ms). Status: PASS")
 
-        # Concurrent Tasks: bookTicker ingestion and kline_15m evaluation
+        # Concurrent Tasks: bookTicker + kline_15m + OFX aggTrade research capture
+        if getattr(self, "ofx_aggtrade_journal", None) is not None and self.ofx_aggtrade_journal.enabled:
+            print(
+                f"[+] OFX crypto aggTrade durable capture armed → {self.ofx_aggtrade_dir} "
+                "(RP608_OFX_CRYPTO_AGGTRADE_CAPTURE; baseline OF inert)",
+                flush=True,
+            )
+        else:
+            print("[*] OFX crypto aggTrade capture disabled (RP608_OFX_CRYPTO_AGGTRADE_CAPTURE)", flush=True)
+
         t_ticker = asyncio.create_task(self.ingest_book_ticker())
         t_klines = asyncio.create_task(self.ingest_klines())
+        t_ofx_agg = asyncio.create_task(self.ingest_ofx_aggtrade())
 
         shutdown_persisted = False
         try:
@@ -1368,12 +1477,21 @@ class RP608ShadowDaemon:
             # Cancel feed tasks
             t_ticker.cancel()
             t_klines.cancel()
+            t_ofx_agg.cancel()
 
             # Await feed tasks to ensure clean socket closures
-            results = await asyncio.gather(t_ticker, t_klines, return_exceptions=True)
+            results = await asyncio.gather(
+                t_ticker, t_klines, t_ofx_agg, return_exceptions=True
+            )
             for r in results:
                 if isinstance(r, Exception) and not isinstance(r, asyncio.CancelledError):
                     print(f"[RP-608 Warning] Feed task returned error on cancellation: {r}")
+
+            if getattr(self, "ofx_aggtrade_journal", None) is not None:
+                try:
+                    self.ofx_aggtrade_journal.close()
+                except Exception as ofx_exc:
+                    print(f"[OFX aggTrade] journal close warning: {ofx_exc}", flush=True)
 
             # Persist final heartbeat and atomic checkpoint
             print("[RP-608 Shutdown] Persisting final heartbeat and atomic checkpoint...")

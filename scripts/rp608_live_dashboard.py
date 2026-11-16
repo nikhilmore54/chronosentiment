@@ -41,6 +41,7 @@ from scripts.rp611_dashboard_status import get_rp611_dashboard_state
 from scripts.rp608_nse_muhurat_session import resolve_session_window, session_phase
 from scripts.rp608_nse_coralys_input_context import (
     PROTOCOL_ID as CORALYS_INPUT_GATE_PROTOCOL,
+    classify_prior_watch_status,
     gate_enabled as coralys_input_gate_enabled,
     session_phase_ist as coralys_session_phase_ist,
 )
@@ -847,10 +848,10 @@ def _build_coralys_input_gate_summary(
     sess = (session_date or "")[:10] or None
     if not next_d:
         prior_status = "MISSING"
-    elif sess and next_d == sess:
-        prior_status = "OK"
+    elif sess:
+        prior_status = classify_prior_watch_status(sess, next_d)
     else:
-        prior_status = "STALE_OR_MISMATCH"
+        prior_status = "MISSING"
     preopen_status = "OK" if preopen_records else "MISSING"
     standaside_n = int(rejection_breakdown.get("STANDASIDE_CORALYS_INPUT_GATE") or 0)
     return {
@@ -2975,17 +2976,10 @@ DASHBOARD_HTML = """<!DOCTYPE html>
           <div class="pulse-dot"></div>
           <span id="service-status">DAEMON ACTIVE</span>
         </div>
-        <span class="pill-sm" id="regime-state-badge" title="RP-608 Stage-1 completed-bar regime (observational)"
-              style="background:rgba(148,163,184,0.12); color:var(--text-dim); border:1px solid rgba(148,163,184,0.25);">REGIME: --</span>
         <div class="clock-pill" id="live-ist-clock">Loading IST...</div>
         <div class="clock-pill" id="live-utc-clock">Loading UTC...</div>
       </div>
     </header>
-
-    <nav class="ws-nav" aria-label="Workspace">
-      <button type="button" class="ws-tab active" data-ws="command" id="ws-tab-command">Command Center</button>
-      <button type="button" class="ws-tab" data-ws="horizons" id="ws-tab-horizons">Multi-Horizon Books</button>
-    </nav>
 
     <div id="ws-panel-command">
     <!-- Hero Cards -->
@@ -3276,40 +3270,7 @@ DASHBOARD_HTML = """<!DOCTYPE html>
 
       <div class="plan-footer-notes">
         <div>Plan ID: <b id="plan-id-text" style="color:var(--text-muted); font-family:'JetBrains Mono',monospace;">PLAN-00021-SHORT-1792975500000</b></div>
-        <div>Invalidation Level: <b id="plan-inval-text" style="color:var(--accent-rose);">$80,434.43</b> · Conservative Stop-First Tie-Break on Ambiguous Bars</div>
-      </div>
-    </div>
-
-    <!-- SHARPE & CALMAR EVALUATION CARD -->
-    <div class="ratio-card">
-      <div class="section-title" style="margin-bottom:8px;">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color:var(--accent-violet);"><circle cx="12" cy="12" r="10"/><path d="M16 8l-4 4-2-2-4 4"/></svg>
-        Sharpe & Calmar Ratio Prospective Evaluation Roadmap
-      </div>
-      <p style="font-size:12px; color:var(--text-muted); margin-bottom:14px;" id="ratio-disclaimer">
-        Current Stage: Stage 1 Setup & Calculation Check. Interim metrics are descriptive; formal evaluation at window close (25 Nov 2026).
-      </p>
-      <div class="ratio-grid">
-        <div class="ratio-box">
-          <div class="gate-name">Annualized Sharpe Ratio</div>
-          <div class="gate-val" id="metric-sharpe" style="color:var(--accent-cyan);">--</div>
-          <div style="font-size:11px; color:var(--text-dim); margin-top:4px;">15m Returns (Descriptive)</div>
-        </div>
-        <div class="ratio-box">
-          <div class="gate-name">Calmar Ratio</div>
-          <div class="gate-val" id="metric-calmar" style="color:var(--accent-violet);">Awaiting 7d DD</div>
-          <div style="font-size:11px; color:var(--text-dim); margin-top:4px;">Max Drawdown Baseline</div>
-        </div>
-        <div class="ratio-box">
-          <div class="gate-name">Evaluation Phase</div>
-          <div class="gate-val" id="metric-stage" style="color:#fff; font-size:14px;">Stage 1 / 5</div>
-          <div style="font-size:11px; color:var(--text-dim); margin-top:4px;">Next: 7-Day Operational Audit</div>
-        </div>
-        <div class="ratio-box">
-          <div class="gate-name">Prospective Sample</div>
-          <div class="gate-val" id="metric-prospective-sample" style="color:var(--accent-emerald);">--</div>
-          <div style="font-size:11px; color:var(--text-dim); margin-top:4px;">Completed 15m Candles</div>
-        </div>
+        <div>Invalidation Level: <b id="plan-inval-text" style="color:var(--accent-rose);">$80,434.43</b> · Gate5 G ambiguous tie-break = TP</div>
       </div>
     </div>
 
@@ -3338,75 +3299,6 @@ DASHBOARD_HTML = """<!DOCTYPE html>
       <div class="gate-item">
         <div class="gate-name">SHA-256 Checksum</div>
         <div class="gate-val" id="gate-checksum" style="font-size:12px; color:var(--text-muted);">VALID</div>
-      </div>
-    </div>
-
-    <!-- GATE C: RP-608-EVENT-001 PARALLEL CANDIDATE LOOKBACK STREAMS -->
-    <div class="card" style="margin-bottom:24px; border-left: 4px solid var(--accent-cyan); background: linear-gradient(135deg, rgba(6, 182, 212, 0.05) 0%, rgba(15, 23, 42, 0.6) 100%);">
-      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; flex-wrap:wrap; gap:8px;">
-        <div class="section-title" style="margin-bottom:0;">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color:var(--accent-cyan);"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
-          Gate C: RP-608-EVENT-001 Parallel Multi-Timescale Tick Shadow Decision Streams
-        </div>
-        <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
-          <span class="pill-sm pill-prospective" id="gate-c-status-badge">GATE C: DEPLOYED (SHADOW)</span>
-          <span class="pill-sm" id="gate-c-agreement-badge" style="background:rgba(244,63,94,0.15); color:var(--accent-rose); border:1px solid rgba(244,63,94,0.3);">AGREEMENT: 4/4 SHORT</span>
-          <span class="badge badge-active" id="gate-c-service-pill">SERVICE ACTIVE</span>
-          <span class="pill-sm pill-prewindow" style="border:1px solid rgba(255,255,255,0.2);">0.0% ORDER AUTHORITY</span>
-        </div>
-      </div>
-      <p style="font-size:12px; color:var(--text-muted); margin-bottom:16px;">
-        Four independent lookback recommendation engines evaluated concurrently against live Binance BTC/USDT top-of-book quotes. Invalidation policy: explicit 30.0 bps adverse tick stop. Dedicated output: <code style="color:var(--accent-cyan);">live_capture/shadow_validation/crypto/event_driven/</code>.
-      </p>
-
-      <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(230px, 1fr)); gap:14px; margin-bottom:16px;" id="gate-c-candidates-grid">
-        <!-- Rendered dynamically by JS -->
-      </div>
-
-      <div style="display:flex; justify-content:space-between; align-items:center; background:rgba(0,0,0,0.3); border-radius:8px; padding:10px 14px; font-size:11px; color:var(--text-dim); flex-wrap:wrap; gap:8px;">
-        <div>Canonical clock: <b style="color:var(--accent-emerald);">btcusdt@bookTicker</b> · ATR context: <b style="color:var(--accent-emerald);">kline_15m</b> · Gate C isolated</div>
-        <div id="gate-c-telemetry-counters">Quotes: <b style="color:#fff;">--</b> · Rate-Limited (&ge;1s): <b style="color:#fff;">--</b> · Filtered: <b style="color:var(--accent-amber);">--</b></div>
-        <div>Candle Buffer: <b style="color:#fff;" id="gate-c-candle-buffer">149 Bars (Warmed Up)</b></div>
-        <div>Isolation: <b style="color:var(--accent-emerald);">Canonical Files 100% Untouched</b></div>
-      </div>
-    </div>
-
-    <!-- RP-611 Volume Absorption (independent research · presentation only) -->
-    <div class="card" style="margin-bottom:24px; border-left: 4px solid #2dd4bf; background: rgba(45,212,191,0.07);">
-      <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:12px; flex-wrap:wrap; margin-bottom:12px;">
-        <div>
-          <div style="font-size:14px; font-weight:800; color:#5eead4;">RP-611 Volume Absorption · Phase-1</div>
-          <div style="font-size:12px; color:var(--text-muted); margin-top:4px;">
-            Independent ledgers · frozen thresholds · does not alter RP-608 / OF / Gate5
-          </div>
-        </div>
-        <span class="pill-sm" style="background:rgba(45,212,191,0.2); color:#5eead4; border:1px solid rgba(45,212,191,0.35);" id="rp611-authority-pill">0.0% ORDER AUTHORITY</span>
-      </div>
-      <div style="display:grid; grid-template-columns:repeat(auto-fit,minmax(260px,1fr)); gap:12px;">
-        <div style="background:rgba(0,0,0,0.25); border-radius:8px; padding:12px;">
-          <div style="font-size:11px; letter-spacing:0.06em; color:var(--text-dim); margin-bottom:8px;">RP-611N · NSE</div>
-          <div id="rp611-nse-status" style="font-family:'JetBrains Mono',monospace; font-size:12px; color:#e2e8f0; line-height:1.55;">Loading…</div>
-        </div>
-        <div style="background:rgba(0,0,0,0.25); border-radius:8px; padding:12px;">
-          <div style="font-size:11px; letter-spacing:0.06em; color:var(--text-dim); margin-bottom:8px;">RP-611C · BTC/USDT spot</div>
-          <div id="rp611-crypto-status" style="font-family:'JetBrains Mono',monospace; font-size:12px; color:#e2e8f0; line-height:1.55;">Loading…</div>
-        </div>
-      </div>
-    </div>
-
-    <!-- Pointer → dedicated Multi-Horizon Books workspace tab -->
-    <div class="card" style="margin-bottom:24px; border-left: 4px solid #c4b5fd; background: rgba(124,58,237,0.08);">
-      <div style="display:flex; justify-content:space-between; align-items:center; gap:12px; flex-wrap:wrap;">
-        <div>
-          <div style="font-size:14px; font-weight:800; color:#c4b5fd;">Multi-Horizon Books live in their own tab</div>
-          <div style="font-size:12px; color:var(--text-muted); margin-top:4px;" id="mh-pointer-counts">
-            Open observation books · 0.0% order authority · gates CLOSED
-          </div>
-        </div>
-        <button type="button" onclick="switchWorkspace('horizons')"
-          style="background:#7c3aed; border:none; color:#fff; font-family:'JetBrains Mono',monospace; font-size:12px; font-weight:800; padding:10px 14px; border-radius:8px; cursor:pointer;">
-          Open Multi-Horizon Books
-        </button>
       </div>
     </div>
 
@@ -3444,7 +3336,7 @@ DASHBOARD_HTML = """<!DOCTYPE html>
       <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px; flex-wrap:wrap; gap:10px;">
         <div class="section-title" style="margin-bottom:0;">
           <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color:var(--accent-violet);"><circle cx="12" cy="12" r="10"/><path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20"/><path d="M2 12h20"/></svg>
-          NSE Operations & Research Center (RP-607 & RP-608 Linked Observability)
+          NSE Operations
         </div>
         <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
           <span class="pill-sm pill-prospective" style="background:rgba(139,92,246,0.15); color:var(--accent-violet); border:1px solid rgba(139,92,246,0.3);">RESEARCH OBSERVABILITY</span>
@@ -3471,18 +3363,6 @@ DASHBOARD_HTML = """<!DOCTYPE html>
           <div style="font-size:10px; color:var(--text-muted); margin-top:4px;">184-byte Full Depth · <span id="nse-ws-age-metric">Age</span>: <span id="nse-ws-age">--</span></div>
           <div style="font-size:10px; color:var(--text-muted); margin-top:2px;" id="nse-probe-note">Readiness probe kept separate</div>
         </div>
-        <div style="background:rgba(0,0,0,0.35); border:1px solid var(--card-border); border-radius:10px; padding:14px;">
-          <div style="font-size:11px; text-transform:uppercase; letter-spacing:0.5px; color:var(--text-dim); margin-bottom:6px;">Pre-Open Auction Discovery</div>
-          <div style="font-family:'JetBrains Mono',monospace; font-size:18px; font-weight:700; color:var(--accent-violet);" id="nse-pre-val">3 Checkpoints Verified</div>
-          <div style="font-size:12px; color:#fff; margin-top:2px;">09:07 · 09:11:30 · 09:14:30 IST</div>
-          <div style="font-size:10px; color:var(--text-muted); margin-top:4px;">119 Scrips · Avg Gap: <span id="nse-avg-gap">--</span> · Vol: <span id="nse-pre-vol">--</span></div>
-        </div>
-        <div style="background:rgba(0,0,0,0.35); border:1px solid var(--card-border); border-radius:10px; padding:14px;">
-          <div style="font-size:11px; text-transform:uppercase; letter-spacing:0.5px; color:var(--text-dim); margin-bottom:6px;">Bar 1 Reconciliation</div>
-          <div style="font-family:'JetBrains Mono',monospace; font-size:18px; font-weight:700; color:var(--accent-emerald);" id="nse-recon-val">0 / SUCCESS (PASS)</div>
-          <div style="font-size:12px; color:#fff; margin-top:2px;">Single-Batch L1 RTT: <span id="nse-rtt-val">--</span>ms</div>
-          <div style="font-size:10px; color:var(--text-muted); margin-top:4px;">Last Check: <span id="nse-recon-last">--</span> · 119 Scrips</div>
-        </div>
         <div style="background:rgba(0,0,0,0.35); border:1px solid rgba(16,185,129,0.35); border-radius:10px; padding:14px;">
           <div style="font-size:11px; text-transform:uppercase; letter-spacing:0.5px; color:var(--text-dim); margin-bottom:6px;">NSE OF Paper Ledger</div>
           <div style="font-family:'JetBrains Mono',monospace; font-size:18px; font-weight:700; color:var(--accent-emerald);" id="nse-of-paper-val">PAPER · 0 open</div>
@@ -3508,7 +3388,7 @@ DASHBOARD_HTML = """<!DOCTYPE html>
       <div id="nse-universe-strip" style="background:rgba(0,0,0,0.35); border:1px solid rgba(139,92,246,0.3); border-radius:12px; padding:14px 18px; margin-bottom:20px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;">
         <div>
           <div style="font-size:13px; font-weight:700; color:#fff;">NSE universe · live census</div>
-          <div style="font-size:11px; color:var(--text-muted); margin-top:2px;">RP-607 classification counts from telemetry · explorer filters retained below</div>
+          <div style="font-size:11px; color:var(--text-muted); margin-top:2px;">RP-607 classification counts from telemetry</div>
         </div>
         <div style="display:flex; gap:8px; flex-wrap:wrap; font-family:'JetBrains Mono',monospace; font-size:12px;" id="nse-universe-pills">
           <span class="pill-sm" style="background:rgba(6,182,212,0.12); color:var(--accent-cyan);">CENSUS <b id="nse-univ-census">—</b></span>
@@ -3577,11 +3457,10 @@ DASHBOARD_HTML = """<!DOCTYPE html>
           <div>
             <div style="font-size:14px; font-weight:700; color:#fff; display:flex; align-items:center; gap:8px;">
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color:var(--accent-emerald);"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
-              <span>RP-608 · Intraday Momentum & Sequential Decision Telemetry</span>
+              <span>NSE session board</span>
             </div>
             <div style="font-size:11px; color:var(--text-muted); margin-top:2px;">
-              Protocol: <b style="color:var(--text-dim);">RP-608-NSE-SHADOW-001</b> · 15m Causal Momentum (traj15) · Gate Progression Observer
-              · <b style="color:var(--accent-cyan);">UI: target &gt; 75 bps board</b>
+              Estimand A · traj15 ≥ 0.05 · Coralys input gate · 0% authority
             </div>
           </div>
           <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
@@ -3599,35 +3478,6 @@ DASHBOARD_HTML = """<!DOCTYPE html>
             <div id="nse-eval-status-pill">
               <span class="pill-sm" style="background:rgba(255,255,255,0.08); color:var(--text-muted);">INITIALIZING</span>
             </div>
-          </div>
-        </div>
-
-        <!-- Entry progression (frozen Estimand A + Coralys adapter input gate) -->
-        <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(160px, 1fr)); gap:10px; margin-bottom:14px;">
-          <div style="background:rgba(255,255,255,0.02); border:1px solid rgba(255,255,255,0.08); border-radius:8px; padding:10px;">
-            <div style="font-size:10px; text-transform:uppercase; color:var(--text-dim); margin-bottom:2px;">G1 · Session window</div>
-            <div style="font-size:12px; font-weight:700; color:#fff;">1 &le; Bar &le; 19</div>
-            <div style="font-size:10px; color:var(--text-muted);">60m completes by 15:00</div>
-          </div>
-          <div style="background:rgba(255,255,255,0.02); border:1px solid rgba(255,255,255,0.08); border-radius:8px; padding:10px;">
-            <div style="font-size:10px; text-transform:uppercase; color:var(--text-dim); margin-bottom:2px;">G3 · Warmup</div>
-            <div style="font-size:12px; font-weight:700; color:#fff;">History &ge; 5</div>
-            <div style="font-size:10px; color:var(--text-muted);">Policy C/D ready</div>
-          </div>
-          <div style="background:rgba(255,255,255,0.02); border:1px solid rgba(255,255,255,0.08); border-radius:8px; padding:10px;">
-            <div style="font-size:10px; text-transform:uppercase; color:var(--text-dim); margin-bottom:2px;">G4 · Momentum</div>
-            <div style="font-size:12px; font-weight:700; color:var(--accent-emerald);">traj15 &ge; +0.05</div>
-            <div style="font-size:10px; color:var(--text-muted);">Estimand A frozen</div>
-          </div>
-          <div style="background:rgba(255,255,255,0.02); border:1px solid rgba(251,191,36,0.25); border-radius:8px; padding:10px;">
-            <div style="font-size:10px; text-transform:uppercase; color:var(--text-dim); margin-bottom:2px;">Coralys input</div>
-            <div style="font-size:12px; font-weight:700; color:var(--accent-amber);">Prior · Pre-open · Phase</div>
-            <div style="font-size:10px; color:var(--text-muted);">STANDASIDE when opposed</div>
-          </div>
-          <div style="background:rgba(255,255,255,0.02); border:1px solid rgba(255,255,255,0.08); border-radius:8px; padding:10px;">
-            <div style="font-size:10px; text-transform:uppercase; color:var(--text-dim); margin-bottom:2px;">G4 quote</div>
-            <div style="font-size:12px; font-weight:700; color:var(--accent-cyan);">Fresh L1</div>
-            <div style="font-size:10px; color:var(--text-muted);">Feasibility only</div>
           </div>
         </div>
 
@@ -3650,100 +3500,6 @@ DASHBOARD_HTML = """<!DOCTYPE html>
         </div>
       </div>
 
-      <!-- PANEL C: SHARED SYMBOL EXPLORER (The Linking Layer) -->
-      <div style="margin-bottom:16px;">
-        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; flex-wrap:wrap; gap:8px;">
-          <div>
-            <div style="font-size:14px; font-weight:700; color:#fff; display:flex; align-items:center; gap:8px;">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color:var(--accent-cyan);"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
-              <span>Shared Symbol Explorer · Historical Morphology & Intraday Evaluator Link</span>
-            </div>
-            <div style="font-size:11px; color:var(--text-muted); margin-top:2px;">
-              Independent Timestamps: RP-607 Historical Profile (2026-10-01) &harr; RP-608 Intraday Quote & Decision
-            </div>
-          </div>
-          <span class="pill-sm" style="background:rgba(255,255,255,0.08); color:var(--text-muted);" id="nse-table-count">Showing All 119 Scrips</span>
-        </div>
-
-        <!-- Filter Controls Bar -->
-        <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap; background:rgba(0,0,0,0.3); border:1px solid var(--card-border); border-radius:8px; padding:10px 14px; margin-bottom:12px;">
-          <!-- Filter by Compartment -->
-          <div style="display:flex; align-items:center; gap:6px;">
-            <span style="font-size:11px; color:var(--text-muted); font-weight:600;">RP-607 Compartment:</span>
-            <select id="select-filter-compartment" onchange="onFilterChange()" style="background:rgba(0,0,0,0.5); border:1px solid var(--card-border); color:#fff; font-family:'JetBrains Mono',monospace; font-size:11px; padding:5px 8px; border-radius:6px; outline:none;">
-              <option value="ALL">All Compartments (119)</option>
-              <option value="C1">C1 · Directional (18)</option>
-              <option value="C2">C2 · Oscillator (8)</option>
-              <option value="C3">C3 · Stable Moderate (64)</option>
-              <option value="C4">C4 · Friction-Bound (12)</option>
-              <option value="QUARANTINED">Quarantined (17)</option>
-            </select>
-          </div>
-
-          <!-- Filter by Decision -->
-          <div style="display:flex; align-items:center; gap:6px;">
-            <span style="font-size:11px; color:var(--text-muted); font-weight:600;">RP-608 Decision:</span>
-            <select id="select-filter-decision" onchange="onFilterChange()" style="background:rgba(0,0,0,0.5); border:1px solid var(--card-border); color:#fff; font-family:'JetBrains Mono',monospace; font-size:11px; padding:5px 8px; border-radius:6px; outline:none;">
-              <option value="ALL">All Decisions</option>
-              <option value="RECOMMEND_LONG">Qualifying Long Candidates</option>
-              <option value="TARGET_GT_75">Target &gt; 75 bps</option>
-              <option value="INTRADAY_BOUNDARY_EXCLUDED">Boundary Excluded (&ge; 15:00)</option>
-              <option value="COLD_START_INSUFFICIENT_HISTORY">Cold Start (< 5 bars)</option>
-              <option value="SUB_THRESHOLD_MOMENTUM">Sub-Threshold Momentum</option>
-              <option value="EXISTING_POSITION_ACTIVE">Active Trade Open</option>
-              <option value="DATA_QUALITY_FAILURE">Data Quality Failure</option>
-            </select>
-          </div>
-
-          <!-- Filter by Momentum -->
-          <div style="display:flex; align-items:center; gap:6px;">
-            <span style="font-size:11px; color:var(--text-muted); font-weight:600;">Momentum:</span>
-            <select id="select-filter-momentum" onchange="onFilterChange()" style="background:rgba(0,0,0,0.5); border:1px solid var(--card-border); color:#fff; font-family:'JetBrains Mono',monospace; font-size:11px; padding:5px 8px; border-radius:6px; outline:none;">
-              <option value="ALL">All Scores</option>
-              <option value="BULLISH">Bullish (&ge; +0.0500)</option>
-              <option value="SUB_THRESHOLD">Below Threshold (&lt; +0.0500)</option>
-            </select>
-          </div>
-
-          <!-- Sort -->
-          <div style="display:flex; align-items:center; gap:6px;">
-            <span style="font-size:11px; color:var(--text-muted); font-weight:600;">Sort:</span>
-            <select id="select-explorer-sort" onchange="onFilterChange()" style="background:rgba(0,0,0,0.5); border:1px solid var(--card-border); color:#fff; font-family:'JetBrains Mono',monospace; font-size:11px; padding:5px 8px; border-radius:6px; outline:none;">
-              <option value="REC_TIME_DESC" selected>Rec time · newest first</option>
-              <option value="REC_TIME_ASC">Rec time · oldest first</option>
-              <option value="TRAJ15_DESC">traj15 · high first</option>
-              <option value="SYMBOL_ASC">Symbol A–Z</option>
-            </select>
-          </div>
-
-          <!-- Search Input -->
-          <div style="margin-left:auto;">
-            <input type="text" id="nse-filter-input" placeholder="Search symbol or code..." oninput="onFilterChange()" style="background:rgba(0,0,0,0.5); border:1px solid var(--card-border); color:#fff; font-family:'JetBrains Mono',monospace; font-size:11px; padding:5px 10px; border-radius:6px; outline:none; width:180px;">
-          </div>
-        </div>
-
-        <div style="overflow-x:auto; border:1px solid var(--card-border); border-radius:10px; background:rgba(0,0,0,0.25);">
-          <table>
-            <thead>
-              <tr>
-                <th>Scrip</th>
-                <th>RP-607 Compartment</th>
-                <th>Historical Features (2026-10-01)</th>
-                <th>RP-608 Momentum</th>
-                <th>Sequential Gate Trace</th>
-                <th>Terminal Decision</th>
-                <th>Rec Time</th>
-                <th>Live LTP & Spread</th>
-                <th>Quote Age & Provenance</th>
-              </tr>
-            </thead>
-            <tbody id="nse-scrips-tbody">
-              <tr><td colspan="9" style="text-align:center; color:var(--text-dim); padding:20px;">Loading NSE scrips...</td></tr>
-            </tbody>
-          </table>
-        </div>
-      </div>
-
       <!-- Today's NSE Pre-Open & Live Schedule Timeline -->
       <div style="border-top: 1px solid var(--card-border); padding-top:14px;">
         <div style="font-size:12px; font-weight:700; color:var(--text-muted); margin-bottom:10px; text-transform:uppercase; letter-spacing:0.5px;">
@@ -3756,135 +3512,6 @@ DASHBOARD_HTML = """<!DOCTYPE html>
     </div>
 
     </div><!-- /ws-panel-command -->
-
-    <!-- MULTI-HORIZON BOOKS WORKSPACE -->
-    <div id="ws-panel-horizons" style="display:none;">
-      <div class="card" style="margin-bottom:20px; border-left: 4px solid #c4b5fd; background: linear-gradient(135deg, rgba(167,139,250,0.07) 0%, rgba(15,23,42,0.65) 100%);">
-        <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:12px; flex-wrap:wrap; margin-bottom:10px;">
-          <div>
-            <div class="section-title" style="margin-bottom:6px;">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color:#c4b5fd;"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
-              Multi-Horizon Observation Books
-            </div>
-            <p style="font-size:13px; color:var(--text-muted); max-width:820px; line-height:1.5; margin:0;" id="mh-note">
-              Separate holding-term paper books for NSE (RP-609 CNC) and Crypto (RP-610 spot-sim).
-              This is <b style="color:#e2e8f0;">not</b> the intraday decision feed — each row is an open observation position with a named symbol and a holding class.
-            </p>
-          </div>
-          <div style="display:flex; gap:8px; flex-wrap:wrap;">
-            <span class="pill-sm" style="background:rgba(167,139,250,0.15); color:#c4b5fd; border:1px solid rgba(167,139,250,0.35);">RP-609 NSE · RP-610 CRYPTO</span>
-            <span class="pill-sm pill-prewindow" style="border:1px solid rgba(255,255,255,0.2);">0.0% ORDER AUTHORITY</span>
-            <span class="pill-sm" id="mh-gates-pill" style="background:rgba(245,158,11,0.12); color:var(--accent-amber); border:1px solid rgba(245,158,11,0.3);">GATES CLOSED</span>
-          </div>
-        </div>
-
-        <div style="display:flex; gap:8px; margin:16px 0 14px; flex-wrap:wrap;">
-          <button type="button" class="mh-inner-tab active" data-mh-inner="OPEN" id="mh-inner-open"
-            style="padding:10px 16px; border-radius:8px; border:none; cursor:pointer; font-weight:800; font-size:13px; background:#7c3aed; color:#fff;">1. Open books (actionable)</button>
-          <button type="button" class="mh-inner-tab" data-mh-inner="UNIVERSE" id="mh-inner-universe"
-            style="padding:10px 16px; border-radius:8px; border:none; cursor:pointer; font-weight:800; font-size:13px; background:#1e293b; color:#fff;">2. NSE universe (119)</button>
-          <button type="button" class="mh-inner-tab" data-mh-inner="GUIDE" id="mh-inner-guide"
-            style="padding:10px 16px; border-radius:8px; border:none; cursor:pointer; font-weight:800; font-size:13px; background:#1e293b; color:#fff;">3. How to read classes</button>
-        </div>
-
-        <div id="mh-coverage-strip" style="display:flex; gap:8px; flex-wrap:wrap; margin-bottom:14px; align-items:center;">
-          <span class="pill-sm" style="background:rgba(56,189,248,0.12); color:#38bdf8; border:1px solid rgba(56,189,248,0.35);">NSE universe: —</span>
-        </div>
-
-        <div id="mh-guide-panel" style="display:none; margin-bottom:8px;">
-          <div style="display:grid; gap:12px;" id="mh-guide-grid"></div>
-        </div>
-
-        <div id="mh-universe-panel" style="display:none; margin-bottom:8px;">
-          <p style="font-size:12px; color:var(--text-muted); margin:0 0 12px 0; max-width:820px; line-height:1.45;">
-            All <b style="color:#e2e8f0;">119</b> RP-608 NSE shadow scrips. Symbols marked <b style="color:#34d399;">IN MH</b> appear in an open H1/H2/H3 observation book.
-            The rest are covered for market data only — not missing rows, and not auto-opened (0.0% order authority).
-          </p>
-          <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap; margin-bottom:12px;">
-            <span style="font-size:11px; color:var(--text-muted); font-weight:700; text-transform:uppercase;">Filter</span>
-            <select id="mh-universe-filter" style="background:rgba(0,0,0,0.5); border:1px solid var(--card-border); color:#fff; font-family:'JetBrains Mono',monospace; font-size:11px; padding:5px 8px; border-radius:6px; outline:none;">
-              <option value="ALL">All 119</option>
-              <option value="IN">In MH books</option>
-              <option value="OUT">Not in MH books</option>
-            </select>
-            <input id="mh-universe-search" type="search" placeholder="Search symbol…"
-              style="background:rgba(0,0,0,0.5); border:1px solid var(--card-border); color:#fff; font-family:'JetBrains Mono',monospace; font-size:11px; padding:5px 8px; border-radius:6px; outline:none; min-width:160px;" />
-          </div>
-          <div style="overflow-x:auto; border:1px solid rgba(255,255,255,0.08); border-radius:10px; max-height:520px; overflow-y:auto;">
-            <table class="mh-open-table">
-              <thead>
-                <tr>
-                  <th>Symbol</th>
-                  <th>Tradingsymbol</th>
-                  <th>MH status</th>
-                  <th>Classes</th>
-                  <th>Open book detail</th>
-                </tr>
-              </thead>
-              <tbody id="mh-universe-tbody">
-                <tr><td colspan="5" style="color:var(--text-muted); padding:24px 14px;">Loading universe…</td></tr>
-              </tbody>
-            </table>
-          </div>
-        </div>
-
-        <div id="mh-open-panel">
-          <div style="display:flex; gap:8px; flex-wrap:wrap; margin-bottom:14px; align-items:center;" id="mh-class-counts">
-            <span class="pill-sm" style="background:rgba(255,255,255,0.06); color:#fff; border:1px solid rgba(255,255,255,0.12);">Loading…</span>
-          </div>
-          <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap; margin-bottom:12px;">
-            <span style="font-size:11px; color:var(--text-muted); font-weight:700; text-transform:uppercase;">Market</span>
-            <select id="mh-filter-market" style="background:rgba(0,0,0,0.5); border:1px solid var(--card-border); color:#fff; font-family:'JetBrains Mono',monospace; font-size:11px; padding:5px 8px; border-radius:6px; outline:none;">
-              <option value="ALL">NSE + CRYPTO</option>
-              <option value="NSE">NSE only</option>
-              <option value="CRYPTO">CRYPTO only</option>
-            </select>
-            <span style="font-size:11px; color:var(--text-muted); font-weight:700; text-transform:uppercase;">Class</span>
-            <select id="mh-filter-class" style="background:rgba(0,0,0,0.5); border:1px solid var(--card-border); color:#fff; font-family:'JetBrains Mono',monospace; font-size:11px; padding:5px 8px; border-radius:6px; outline:none;">
-              <option value="ALL">All classes</option>
-              <option value="INTRADAY">INTRADAY</option>
-              <option value="MULTI_DAY">MULTI_DAY</option>
-              <option value="MULTI_WEEK">MULTI_WEEK</option>
-              <option value="LONG_TERM">LONG_TERM</option>
-            </select>
-            <span style="font-size:11px; color:var(--text-muted); font-weight:700; text-transform:uppercase;">Books</span>
-            <select id="mh-filter-book-kind" style="background:rgba(0,0,0,0.5); border:1px solid var(--card-border); color:#fff; font-family:'JetBrains Mono',monospace; font-size:11px; padding:5px 8px; border-radius:6px; outline:none;">
-              <option value="ALL">Actionable + 119 COVERED</option>
-              <option value="ACTIONABLE">Actionable only (H1–H3)</option>
-              <option value="UNIVERSE">COVERED universe only</option>
-            </select>
-            <input id="mh-filter-search" type="search" placeholder="Search symbol…"
-              style="background:rgba(0,0,0,0.5); border:1px solid var(--card-border); color:#fff; font-family:'JetBrains Mono',monospace; font-size:11px; padding:5px 8px; border-radius:6px; outline:none; min-width:140px;" />
-          </div>
-          <div style="overflow-x:auto; border:1px solid rgba(255,255,255,0.08); border-radius:10px; margin-bottom:16px;">
-            <table class="mh-open-table">
-              <thead>
-                <tr>
-                  <th>Symbol(s)</th>
-                  <th>Market</th>
-                  <th>Holding class</th>
-                  <th>What it means</th>
-                  <th>Decision</th>
-                  <th>Side</th>
-                  <th>Status</th>
-                  <th>Entry</th>
-                  <th>Stop</th>
-                  <th>Target</th>
-                  <th>Thesis / plan</th>
-                </tr>
-              </thead>
-              <tbody id="mh-recs-tbody">
-                <tr><td colspan="11" style="color:var(--text-muted); padding:24px 14px;">Loading open books…</td></tr>
-              </tbody>
-            </table>
-          </div>
-          <details style="background:rgba(0,0,0,0.25); border:1px solid var(--card-border); border-radius:10px; padding:12px 14px;">
-            <summary style="cursor:pointer; font-size:12px; font-weight:800; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.04em;">Catalog reference (which books exist — not open positions)</summary>
-            <div style="margin-top:12px;" id="mh-catalog-grid"></div>
-          </details>
-        </div>
-      </div>
-    </div><!-- /ws-panel-horizons -->
 
     <!-- Footer -->
     <footer>
@@ -4437,33 +4064,10 @@ DASHBOARD_HTML = """<!DOCTYPE html>
       const us = document.getElementById('mh-universe-search');
       if (uf) uf.addEventListener('change', paintNseUniverse);
       if (us) us.addEventListener('input', paintNseUniverse);
-      document.querySelectorAll('.ws-tab').forEach(btn => {
-        btn.addEventListener('click', () => switchWorkspace(btn.getAttribute('data-ws')));
-      });
-      document.querySelectorAll('.mh-inner-tab').forEach(btn => {
-        btn.addEventListener('click', () => switchMhInner(btn.getAttribute('data-mh-inner')));
-      });
-      let initial = 'command';
-      try {
-        const saved = localStorage.getItem('rp608_ws');
-        if (saved === 'horizons' || saved === 'command') initial = saved;
-      } catch (e) {}
-      if (location.hash === '#horizons') initial = 'horizons';
-      switchWorkspace(initial);
+      // Multi-Horizon / workspace tabs removed — keep command panel visible
+      switchWorkspace('command');
+      try { localStorage.setItem('rp608_ws', 'command'); } catch (e) {}
     });
-
-    async function fetchMultiHorizon() {
-      try {
-        const resp = await fetch('/api/multi_horizon');
-        if (!resp.ok) return;
-        const mh = await resp.json();
-        if (mh && (mh.recommendations || mh.counts_by_class)) {
-          updateMultiHorizonUI(mh);
-        }
-      } catch (e) {
-        console.warn('multi_horizon fetch failed', e);
-      }
-    }
 
     async function fetchState() {
       try {
@@ -4471,13 +4075,6 @@ DASHBOARD_HTML = """<!DOCTYPE html>
         if (!resp.ok) return;
         const data = await resp.json();
 
-        // Paint MH first so this tab never depends on later fragile UI blocks
-        if (data.multi_horizon) {
-          updateMultiHorizonUI(data.multi_horizon);
-        }
-        if (data.rp611) {
-          updateRp611UI(data.rp611);
-        }
         updateOfPaperTradesUI(data);
 
         // Update Clocks
@@ -4748,15 +4345,7 @@ DASHBOARD_HTML = """<!DOCTYPE html>
           planContainer.style.display = 'none';
         }
 
-        // Ratio Framework (Sharpe / Calmar)
-        const rf = data.ratio_framework;
-        if (rf) {
-          document.getElementById('ratio-disclaimer').textContent = rf.disclaimer;
-          document.getElementById('metric-sharpe').textContent = rf.descriptive_sharpe !== null ? rf.descriptive_sharpe : 'Insufficient Data';
-          document.getElementById('metric-calmar').textContent = rf.descriptive_calmar;
-          document.getElementById('metric-stage').textContent = rf.current_stage.split(':')[0];
-          document.getElementById('metric-prospective-sample').textContent = rf.prospective_sample_size + ' Cards';
-        }
+        // Sharpe/Calmar UI removed (clutter) — ratio_framework still in /api/state if needed
 
         // Countdown Timer
         const cd = data.next_candle_close_countdown_sec;
@@ -5925,9 +5514,7 @@ DASHBOARD_HTML = """<!DOCTYPE html>
 
     // Initial and periodic refresh
     fetchState();
-    fetchMultiHorizon();
     setInterval(fetchState, 3000);
-    setInterval(fetchMultiHorizon, 15000);
 
     // Continuous Kite batch live feed polling (15s interval)
     refreshNseBatch();

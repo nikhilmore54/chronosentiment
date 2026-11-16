@@ -1,0 +1,24 @@
+[Unit]
+Description=RP-608 Dedicated Prospective Shadow Observer (Binance BTC/USDT)
+After=network-online.target
+Wants=network-online.target
+# Allow longer post-reboot DNS settle; pair with in-process Clock EBO
+StartLimitIntervalSec=600
+StartLimitBurst=20
+
+[Service]
+Type=simple
+User=ultraspeed
+Group=ultraspeed
+WorkingDirectory=/home/ultraspeed/ChronoSentiment_MEGA_FINAL
+ExecStart=/usr/bin/python3 scripts/run_rp608_shadow_daemon.py
+Restart=always
+RestartSec=10s
+TimeoutStopSec=15s
+KillSignal=SIGTERM
+UMask=0077
+LimitNOFILE=65536
+Environment=PYTHONUNBUFFERED=1
+
+[Install]
+WantedBy=multi-user.target

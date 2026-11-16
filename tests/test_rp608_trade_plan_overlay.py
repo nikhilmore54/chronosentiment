@@ -157,6 +157,69 @@ class TestTradePlanOverlay(unittest.TestCase):
         self.assertEqual(resolved.get("ambiguous_resolved_as"), "TP")
         self.assertAlmostEqual(float(resolved["exit_price"]), float(tp), places=2)
 
+    def test_06b_early_sl_path_scratch_gate5_h(self):
+        """Gate 5 H120_PATH: early SL after adverse→revisit → scratch@entry."""
+        mgr = TradePlanOverlayManager(base_dir=self.test_overlay_dir)
+        plan = calculate_trade_plan(self.sample_card_short)
+        entry = float(plan["entry_price"])
+        sl = float(plan["stop_loss_price"])
+        t0 = int(time.time() * 1000)
+        plan["entry_time_ms"] = t0
+        plan["expiry_time_ms"] = t0 + 3_600_000
+        mgr.state["active_plan"] = plan
+        mgr._save_state()
+
+        # 1) Adverse mid beyond entry±6bps but below ATR stop
+        mid_adv = entry + 80.0
+        mgr.evaluate_market_tick(
+            {"best_bid_price": mid_adv - 0.5, "best_ask_price": mid_adv + 0.5},
+            now_ms=t0 + 1_000,
+        )
+        self.assertTrue(mgr.state["active_plan"]["path_h_adverse_seen"])
+        self.assertFalse(mgr.state["active_plan"]["path_h_revisit_seen"])
+
+        # 2) Revisit entry band
+        mgr.evaluate_market_tick(
+            {"best_bid_price": entry - 0.5, "best_ask_price": entry + 0.5},
+            now_ms=t0 + 2_000,
+        )
+        self.assertTrue(mgr.state["active_plan"]["path_h_revisit_seen"])
+
+        # 3) ATR stop within 120s → PATH scratch
+        resolved = mgr.evaluate_market_tick(
+            {"best_bid_price": sl - 1.0, "best_ask_price": sl + 1.0},
+            now_ms=t0 + 5_000,
+        )
+        self.assertIsNotNone(resolved)
+        self.assertEqual(resolved["state"], "CLOSED_SCRATCH")
+        self.assertEqual(resolved["exit_reason"], "EARLY_SL_PATH_SCRATCH")
+        self.assertAlmostEqual(float(resolved["exit_price"]), entry, places=2)
+        self.assertEqual(resolved.get("gate5_policy_h"), CONFIG.get("gate5_policy_h"))
+
+    def test_06c_early_sl_without_revisit_keeps_stop(self):
+        """Early SL with adverse-only path (no revisit) keeps ATR stop."""
+        mgr = TradePlanOverlayManager(base_dir=self.test_overlay_dir)
+        plan = calculate_trade_plan(self.sample_card_short)
+        entry = float(plan["entry_price"])
+        sl = float(plan["stop_loss_price"])
+        t0 = int(time.time() * 1000)
+        plan["entry_time_ms"] = t0
+        plan["expiry_time_ms"] = t0 + 3_600_000
+        mgr.state["active_plan"] = plan
+        mgr._save_state()
+
+        mid_adv = entry + 80.0
+        mgr.evaluate_market_tick(
+            {"best_bid_price": mid_adv - 0.5, "best_ask_price": mid_adv + 0.5},
+            now_ms=t0 + 1_000,
+        )
+        resolved = mgr.evaluate_market_tick(
+            {"best_bid_price": sl - 1.0, "best_ask_price": sl + 1.0},
+            now_ms=t0 + 5_000,
+        )
+        self.assertEqual(resolved["state"], "CLOSED_SL")
+        self.assertEqual(resolved["exit_reason"], "STOP_LOSS_HIT")
+
     def test_07_60_minute_time_exit(self):
         """Verifies time exit triggers when 3600 seconds elapse."""
         mgr = TradePlanOverlayManager(base_dir=self.test_overlay_dir)

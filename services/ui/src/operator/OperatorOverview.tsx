@@ -3,7 +3,7 @@ import type { OperatorState } from './types';
 import { displayOrUnavailable, formatAgeSec, ageFromMs, staleLabel } from './freshness';
 import { chip, labelStyle, op, panelStyle, valueStyle } from './operatorStyles';
 
-export type OperatorWorkspace = 'overview' | 'crypto' | 'nse' | 'horizons';
+export type OperatorWorkspace = 'overview' | 'crypto' | 'nse';
 
 type Props = {
   state: OperatorState | null;
@@ -260,52 +260,12 @@ export default function OperatorOverview({ state, loading, onNavigate }: Props) 
         </Strip>
       </div>
 
-      <section style={{ ...panelStyle, marginBottom: 18, borderTop: `3px solid ${op.emerald}` }}>
-        <div style={{ ...labelStyle, color: op.emerald }}>RP-611 Volume Absorption · Phase-1</div>
-        {!state?.rp611 ? (
-          <div style={{ color: op.dim, fontFamily: op.mono, fontSize: 12 }}>UNAVAILABLE</div>
-        ) : (
-          <div
-            style={{
-              display: 'grid',
-              gridTemplateColumns: 'repeat(auto-fit,minmax(240px,1fr))',
-              gap: 12,
-              fontFamily: op.mono,
-              fontSize: 12,
-            }}
-          >
-            <div>
-              <div style={{ color: op.dim, marginBottom: 4 }}>611N NSE</div>
-              <div>{displayOrUnavailable(state.rp611.nse?.disposition)}</div>
-              <div style={{ color: op.muted }}>
-                clock {state.rp611.nse?.experiment_clock_started ? 'ON' : 'OFF'} · T0{' '}
-                {displayOrUnavailable(state.rp611.nse?.experiment_clock_started_utc)} · observer{' '}
-                {state.rp611.nse?.observer_deployed ? 'DEPLOYED' : 'NO'} · cand{' '}
-                {state.rp611.nse?.journal_counts?.candidates ?? '—'}
-              </div>
-            </div>
-            <div>
-              <div style={{ color: op.dim, marginBottom: 4 }}>611C Crypto spot</div>
-              <div>{displayOrUnavailable(state.rp611.crypto?.disposition)}</div>
-              <div style={{ color: op.muted }}>
-                {displayOrUnavailable(state.rp611.crypto?.volume_source)} · L1 rows{' '}
-                {state.rp611.crypto?.journal_counts?.l1_telemetry_rows ?? '—'} · cand{' '}
-                {state.rp611.crypto?.journal_counts?.candidates ?? '—'}
-              </div>
-            </div>
-          </div>
-        )}
-      </section>
-
       <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
         <button type="button" style={ctaStyle} onClick={() => onNavigate('crypto')}>
           Crypto workspace →
         </button>
         <button type="button" style={ctaStyle} onClick={() => onNavigate('nse')}>
           NSE workspace →
-        </button>
-        <button type="button" style={ctaStyle} onClick={() => onNavigate('horizons')}>
-          Multi-Horizon →
         </button>
       </div>
     </div>

@@ -21,6 +21,7 @@ UMask=0077
 LimitNOFILE=65536
 Environment=PYTHONUNBUFFERED=1
 Environment=RP608_NSE_EXIT_POLICY=DYNAMIC_OHLCV_STRUCTURE_V1
+Environment=RP608_NSE_ENTRY_PATH=TICK_PATH
 # Adapter-side Coralys prior+preopen+phase gate (crates frozen; OF ±0.30 untouched).
 Environment=RP608_NSE_CORALYS_INPUT_GATE=1
 

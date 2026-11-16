@@ -1,0 +1,11 @@
+[Unit]
+Description=Trigger RP-608 NSE Pre-Open Snapshot 3 at 09:14:30 IST (daily, observational)
+
+[Timer]
+OnCalendar=*-*-* 09:14:30 Asia/Kolkata
+AccuracySec=1s
+Persistent=true
+Unit=rp608-nse-preopen-snap3.service
+
+[Install]
+WantedBy=timers.target

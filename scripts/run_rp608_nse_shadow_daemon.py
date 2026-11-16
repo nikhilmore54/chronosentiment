@@ -55,6 +55,7 @@ import os
 from pathlib import Path
 import signal
 import sys
+import threading
 import time
 from typing import Any, Dict, List, Optional, Tuple
 import urllib.request
@@ -103,6 +104,7 @@ from scripts.rp608_recommendation_trade_ledger import (
 from scripts.rp608_kite_ticker_cache import KiteTickerQuoteCache, TickSink
 from scripts.rp608_ofx_nse_tick_journal import (
     OfxNseInferredAggressorTickJournal,
+    classify_trade_like,
     ofx_tick_capture_enabled,
 )
 from scripts.rp608_nse_equity_costs import (
@@ -168,6 +170,15 @@ HOLDOUT_SESSIONS_SEALED = "41-68"
 # Exit policy: DYNAMIC_OHLCV_STRUCTURE_V1 (ATR/swing, frozen at entry) or ARM_A_FIXED.
 # Dynamic needs ≥15 completed 15m bars (prior sessions allowed for ATR only; traj15 stays session-causal).
 EXIT_POLICY = os.environ.get("RP608_NSE_EXIT_POLICY", "DYNAMIC_OHLCV_STRUCTURE_V1").strip().upper()
+# Entry timing: TICK_PATH = arm on durable 15m close, fill on each WS L1 tick; BAR_CLOSE = legacy 15m close.
+ENTRY_PATH = os.environ.get("RP608_NSE_ENTRY_PATH", "TICK_PATH").strip().upper()
+# Reject quote-only WS refreshes for Estimand A entry (volume/LT trade-like filter).
+TICK_TRADE_LIKE_ENTRY = os.environ.get("RP608_NSE_TICK_TRADE_LIKE_ENTRY", "1").strip().lower() not in {
+    "0",
+    "false",
+    "no",
+    "off",
+}
 ARM_A_STOP_MULT = 0.990
 ARM_A_TARGET_MULT = 1.015
 ARM_A_STOP_BPS = 100.0
@@ -184,6 +195,7 @@ from scripts.rp608_nse_g3_warmup import (  # noqa: E402
 )
 from scripts.rp608_nse_coralys_input_context import (  # noqa: E402
     CoralysInputContextStore,
+    classify_prior_watch_status,
     decision_ts_from_bar_ms,
     gate_enabled as coralys_input_gate_enabled,
 )
@@ -951,6 +963,19 @@ class RP608NSEShadowDaemon:
         self.ofx_tick_dir = self.output_dir / "ofx_tick_capture_v1"
         # Adapter-side Coralys inputs (prior + pre-open + phase). Crates untouched.
         self.coralys_input_store = CoralysInputContextStore(self.output_dir)
+        self._coralys_prior_logged_for: Optional[str] = None
+        # Closed Estimand A trade_ids already journaled (prevents midbar re-entry churn).
+        self._journaled_trade_ids: set[str] = set()
+        # TICK_PATH: durable close arms signal_bar; fills happen on WS L1 ticks (not batch-at-close).
+        self._estimand_a_lock = threading.Lock()
+        self._estimand_a_armed_signal_bar: int = 0
+        self._token_to_symbol: Dict[int, str] = {}
+        self._estimand_a_tick_opens_since_log: int = 0
+        self._estimand_a_last_persist_mono: float = 0.0
+        # Prior WS packet per symbol for volume/LT trade-like authenticity (false-print filter).
+        self._estimand_a_prev_ws_tick: Dict[str, Dict[str, Any]] = {}
+        # Last bar decision armed for OF / OFX per-tick open attempts (books stay separate).
+        self._paper_armed_eval_by_symbol: Dict[str, Dict[str, Any]] = {}
 
         self.feed_adapter = feed_adapter or KiteDataFeedAdapter(NSE_119_SYMBOLS)
         self.symbols = getattr(self.feed_adapter, "symbols", NSE_119_SYMBOLS)
@@ -970,6 +995,7 @@ class RP608NSEShadowDaemon:
             print(f"[bar_history] purged {purged} quote-snapshot/dupe bars after load", flush=True)
         # Forward outcome pending queue and active trades restored from durable storage across restarts:
         self.pending_directional_evals, self.active_trades = self.load_pending_evaluations()
+        self._journaled_trade_ids = self._load_journaled_trade_ids()
         # Scrip-level decision ledger cache: {symbol: evaluation_record}
         self.last_evaluations: Dict[str, Dict[str, Any]] = {}
         # ATR/structure feature bars (may include prior sessions). Never used for traj15.
@@ -1001,6 +1027,10 @@ class RP608NSEShadowDaemon:
         self.state = self.initialize_or_resume_state()
         if getattr(self.state, "current_session_date", ""):
             self.current_session_date = self.state.current_session_date
+        if ENTRY_PATH == "TICK_PATH":
+            self._estimand_a_armed_signal_bar = int(
+                getattr(self.state, "last_durable_bar_idx", 0) or 0
+            )
 
     def initialize_or_resume_state(self) -> NSECheckpointState:
         """Loads state from durable checkpoint with fail-closed tamper checking."""
@@ -1190,7 +1220,10 @@ class RP608NSEShadowDaemon:
 
     def atomic_commit_json(self, target_path: Path, data: Any):
         """Atomically persists arbitrary JSON data to disk via tmp file + replace + fsync."""
-        tmp_path = target_path.with_suffix(".tmp")
+        # Unique tmp avoids WS-tick vs main-loop races on the same .tmp path.
+        tmp_path = target_path.parent / (
+            f".{target_path.name}.{os.getpid()}.{threading.get_ident()}.{time.time_ns()}.tmp"
+        )
         try:
             with open(tmp_path, "w", encoding="utf-8") as f:
                 json.dump(data, f, indent=2)
@@ -1280,6 +1313,29 @@ class RP608NSEShadowDaemon:
             except Exception as e:
                 print(f"[!] Warning: Failed to load pending evaluations from {self.pending_evaluations_path}: {e}", file=sys.stderr)
         return pending_evals, active_trades
+
+    def _load_journaled_trade_ids(self) -> set:
+        """Load Estimand A trade_ids already present in the trade journal."""
+        ids: set = set()
+        path = getattr(self, "trade_journal_path", None)
+        if path is None or not Path(path).exists():
+            return ids
+        try:
+            with open(path, "r", encoding="utf-8") as f:
+                for line in f:
+                    line = line.strip()
+                    if not line:
+                        continue
+                    try:
+                        r = json.loads(line)
+                    except json.JSONDecodeError:
+                        continue
+                    tid = r.get("trade_id")
+                    if tid:
+                        ids.add(str(tid))
+        except OSError as e:
+            print(f"[!] Warning: Failed to load trade_ids from {path}: {e}", file=sys.stderr)
+        return ids
 
     def save_pending_evaluations(self):
         """Atomically persists pending directional evaluations and active trades to durable storage."""
@@ -1828,11 +1884,14 @@ class RP608NSEShadowDaemon:
         symbol: str,
         bar_idx: int,
         latest_bar: BarOHLCV,
-        quote: Optional[TopOfBookQuote]
+        quote: Optional[TopOfBookQuote],
+        *,
+        mutate_trades: bool = True,
     ) -> Optional[Dict[str, Any]]:
         """
         Evaluates a completed 15m bar for a symbol.
         Emits Estimand B directional decision card and manages Estimand A trade lifecycle.
+        mutate_trades=False on provisional midbar polls (no open/close churn).
         """
         latest_bar = self._upsert_session_bar(symbol, bar_idx, latest_bar)
         history = self.price_history[symbol]
@@ -1976,94 +2035,153 @@ class RP608NSEShadowDaemon:
             self.state.directional_cards_count += 1
 
         # ─── Estimand A: Trade Lifecycle Simulation ───────────
+        # Management path: L1/tick midbar for SL/TP (TICK_PATH); durable bar
+        # close uses OHLC path-through (not close-only) + horizon / square-off.
+        # Stop/target *levels* remain frozen (Gate 5) — fidelity only.
+        # Provisional midbar must NOT open/close (prevents day-OHLC re-entry churn).
+        bar_hi = float(getattr(latest_bar, "high", p_ref) or p_ref)
+        bar_lo = float(getattr(latest_bar, "low", p_ref) or p_ref)
+
+        if not mutate_trades:
+            # Observation-only: leave active_trades untouched on provisional polls.
+            pass
         # Mandatory square-off at Bar 23 close (15:00 IST) — adapt to 15:00–15:15
         # closing window / F&O continuous halt (do not carry into CAS).
-        if bar_idx >= MANDATORY_SQUARE_OFF_BAR and symbol in self.active_trades:
-            trade = self.active_trades.pop(symbol)
-            self._close_trade(
-                trade,
-                exit_price=p_ref,
-                exit_bar=bar_idx,
-                exit_reason="MANDATORY_INTRADAY_SQUARE_OFF",
-            )
+        elif bar_idx >= MANDATORY_SQUARE_OFF_BAR and symbol in self.active_trades:
+            with self._estimand_a_lock:
+                trade = self.active_trades.pop(symbol, None)
+                if trade is not None:
+                    self._close_trade(
+                        trade,
+                        exit_price=p_ref,
+                        exit_bar=bar_idx,
+                        exit_reason="MANDATORY_INTRADAY_SQUARE_OFF",
+                        exit_path="BAR_CLOSE",
+                        exit_mark_source="BAR_CLOSE",
+                    )
 
-        # Check existing open trade for exit conditions
+        # Check existing open trade for exit conditions (OHLC path-through).
+        # Lock vs WS tick fill/manage thread.
         elif symbol in self.active_trades:
-            trade = self.active_trades[symbol]
-            entry_p = trade["entry_price"]
-            # Excursions
-            if p_ref > trade["mfe_price"]:
-                trade["mfe_price"] = p_ref
-            if p_ref < trade["mae_price"]:
-                trade["mae_price"] = p_ref
+            with self._estimand_a_lock:
+                trade = self.active_trades.get(symbol)
+                if trade is None:
+                    pass
+                else:
+                    entry_p = trade["entry_price"]
+                    # Excursions from bar high/low (path), not close alone.
+                    if bar_hi > trade["mfe_price"]:
+                        trade["mfe_price"] = bar_hi
+                    if bar_lo < trade["mae_price"]:
+                        trade["mae_price"] = bar_lo
+                    if p_ref > trade["mfe_price"]:
+                        trade["mfe_price"] = p_ref
+                    if p_ref < trade["mae_price"]:
+                        trade["mae_price"] = p_ref
 
-            bars_held = bar_idx - trade["entry_bar_idx"]
-            # Upgrade legacy open trades (fixed ±1%/1.5%) once to entry-frozen dynamic bounds.
-            if trade.get("stop_loss_price") is None and EXIT_POLICY == "DYNAMIC_OHLCV_STRUCTURE_V1":
-                fric = max(9.0, float(trade.get("half_spread_bps") or 2.5) * 2.0 + 8.0)
-                ub = self.resolve_exit_boundaries(symbol, entry_p, history, fric)
-                trade["stop_loss_price"] = ub["stop_price"]
-                trade["target_price"] = ub["target_price"]
-                trade["stop_loss_bps"] = ub["stop_bps"]
-                trade["target_bps"] = ub["target_bps"]
-                trade["atr_14"] = ub.get("atr_14")
-                trade["exit_policy"] = ub.get("policy_id")
-                trade["exit_trend_label"] = ub.get("trend_label")
-                trade["exit_fallback_reason"] = ub.get("fallback_reason")
-                trade["bounds_upgraded_at_bar"] = bar_idx
-            # Prefer entry-frozen dynamic bounds; Arm A % only if still unset.
-            sl_price = float(trade.get("stop_loss_price") or (entry_p * ARM_A_STOP_MULT))
-            tp_price = float(trade.get("target_price") or (entry_p * ARM_A_TARGET_MULT))
+                    bars_held = bar_idx - trade["entry_bar_idx"]
+                    # Upgrade legacy open trades (fixed ±1%/1.5%) once to entry-frozen dynamic bounds.
+                    if trade.get("stop_loss_price") is None and EXIT_POLICY == "DYNAMIC_OHLCV_STRUCTURE_V1":
+                        fric = max(9.0, float(trade.get("half_spread_bps") or 2.5) * 2.0 + 8.0)
+                        ub = self.resolve_exit_boundaries(symbol, entry_p, history, fric)
+                        trade["stop_loss_price"] = ub["stop_price"]
+                        trade["target_price"] = ub["target_price"]
+                        trade["stop_loss_bps"] = ub["stop_bps"]
+                        trade["target_bps"] = ub["target_bps"]
+                        trade["atr_14"] = ub.get("atr_14")
+                        trade["exit_policy"] = ub.get("policy_id")
+                        trade["exit_trend_label"] = ub.get("trend_label")
+                        trade["exit_fallback_reason"] = ub.get("fallback_reason")
+                        trade["bounds_upgraded_at_bar"] = bar_idx
+                    # Prefer entry-frozen dynamic bounds; Arm A % only if still unset.
+                    sl_price = float(trade.get("stop_loss_price") or (entry_p * ARM_A_STOP_MULT))
+                    tp_price = float(trade.get("target_price") or (entry_p * ARM_A_TARGET_MULT))
 
-            if p_ref <= sl_price:
-                self._close_trade(self.active_trades.pop(symbol), exit_price=p_ref, exit_bar=bar_idx, exit_reason="STOP_LOSS")
-            elif p_ref >= tp_price:
-                self._close_trade(self.active_trades.pop(symbol), exit_price=p_ref, exit_bar=bar_idx, exit_reason="TAKE_PROFIT")
-            elif bars_held >= 12:
-                self._close_trade(self.active_trades.pop(symbol), exit_price=p_ref, exit_bar=bar_idx, exit_reason="MAX_HOLD_HORIZON_180M")
-            elif bars_held >= 4 and p_ref > entry_p:
-                self._close_trade(self.active_trades.pop(symbol), exit_price=p_ref, exit_bar=bar_idx, exit_reason="TARGET_HORIZON_60M")
+                    # Path-through only after entry bar (entry-bar H/L is not post-entry path).
+                    # Same-bar OHLC + provisional day-OHLC caused trade_id re-entry churn.
+                    allow_ohlc_path = bars_held >= 1
+                    if allow_ohlc_path and bar_lo <= sl_price:
+                        self._close_trade(
+                            self.active_trades.pop(symbol),
+                            exit_price=sl_price,
+                            exit_bar=bar_idx,
+                            exit_reason="STOP_LOSS",
+                            exit_path="BAR_OHLC_PATH",
+                            exit_mark_source="BAR_LOW",
+                        )
+                    elif allow_ohlc_path and bar_hi >= tp_price:
+                        self._close_trade(
+                            self.active_trades.pop(symbol),
+                            exit_price=tp_price,
+                            exit_bar=bar_idx,
+                            exit_reason="TAKE_PROFIT",
+                            exit_path="BAR_OHLC_PATH",
+                            exit_mark_source="BAR_HIGH",
+                        )
+                    elif bars_held >= 12:
+                        self._close_trade(
+                            self.active_trades.pop(symbol),
+                            exit_price=p_ref,
+                            exit_bar=bar_idx,
+                            exit_reason="MAX_HOLD_HORIZON_180M",
+                            exit_path="BAR_CLOSE",
+                            exit_mark_source="BAR_CLOSE",
+                        )
+                    elif bars_held >= 4 and p_ref > entry_p:
+                        self._close_trade(
+                            self.active_trades.pop(symbol),
+                            exit_price=p_ref,
+                            exit_bar=bar_idx,
+                            exit_reason="TARGET_HORIZON_60M",
+                            exit_path="BAR_CLOSE",
+                            exit_mark_source="BAR_CLOSE",
+                        )
 
-        # Entry: bars 1..MAX_NEW_ENTRY_BAR so 60m horizon completes by 15:00 close-window.
+        # Entry on durable bar close only when ENTRY_PATH=BAR_CLOSE (legacy).
+        # TICK_PATH fills on each WS L1 tick after durable arms signal_bar (not here).
         elif (
-            signal_entry
+            ENTRY_PATH == "BAR_CLOSE"
+            and signal_entry
             and (not input_gate_blocks)
             and (1 <= bar_idx <= MAX_NEW_ENTRY_BAR)
             and symbol not in self.active_trades
         ):
             trade_id = f"nse_trade_{self.state.session_idx}_{bar_idx}_{symbol}"
-            qty = max(1.0, math.floor(DEFAULT_NOTIONAL_PER_TRADE_INR / p_ref))
-            half_spread = quote.half_spread_bps if (quote and quote.half_spread_bps > 0) else 2.5
-            # Rough round-trip friction proxy for Net R:R gate inside dynamic bounds.
-            friction_proxy_bps = max(9.0, float(half_spread) * 2.0 + 8.0)
-            bounds = self.resolve_exit_boundaries(symbol, p_ref, history, friction_proxy_bps)
-            self.active_trades[symbol] = {
-                "protocol_id": PROTOCOL_ID,
-                "estimand": "ESTIMAND_A",
-                "trade_id": trade_id,
-                "symbol": symbol,
-                "side": "LONG",
-                "session_idx": self.state.session_idx,
-                "entry_bar_idx": bar_idx,
-                "entry_timestamp_utc_ms": t_decision,
-                "entry_price": p_ref,
-                "quantity": qty,
-                "half_spread_bps": half_spread,
-                "mfe_price": p_ref,
-                "mae_price": p_ref,
-                "forecast_prob": FORECAST_LONG_PROB,
-                "reference_training_prevalence": ESTIMAND_A_TRAIN_PREVALENCE,
-                "balanced_accuracy": None,  # Strictly None / N/A for Estimand A
-                "stop_loss_price": bounds["stop_price"],
-                "target_price": bounds["target_price"],
-                "stop_loss_bps": bounds["stop_bps"],
-                "target_bps": bounds["target_bps"],
-                "atr_14": bounds.get("atr_14"),
-                "exit_policy": bounds.get("policy_id"),
-                "exit_trend_label": bounds.get("trend_label"),
-                "exit_fallback_reason": bounds.get("fallback_reason"),
-                "coralys_input_context": input_ctx,
-            }
+            with self._estimand_a_lock:
+                if trade_id not in self._journaled_trade_ids and symbol not in self.active_trades:
+                    qty = max(1.0, math.floor(DEFAULT_NOTIONAL_PER_TRADE_INR / p_ref))
+                    half_spread = quote.half_spread_bps if (quote and quote.half_spread_bps > 0) else 2.5
+                    friction_proxy_bps = max(9.0, float(half_spread) * 2.0 + 8.0)
+                    bounds = self.resolve_exit_boundaries(symbol, p_ref, history, friction_proxy_bps)
+                    self.active_trades[symbol] = {
+                        "protocol_id": PROTOCOL_ID,
+                        "estimand": "ESTIMAND_A",
+                        "trade_id": trade_id,
+                        "symbol": symbol,
+                        "side": "LONG",
+                        "session_idx": self.state.session_idx,
+                        "entry_bar_idx": bar_idx,
+                        "entry_timestamp_utc_ms": t_decision,
+                        "entry_price": p_ref,
+                        "quantity": qty,
+                        "half_spread_bps": half_spread,
+                        "mfe_price": p_ref,
+                        "mae_price": p_ref,
+                        "forecast_prob": FORECAST_LONG_PROB,
+                        "reference_training_prevalence": ESTIMAND_A_TRAIN_PREVALENCE,
+                        "balanced_accuracy": None,  # Strictly None / N/A for Estimand A
+                        "stop_loss_price": bounds["stop_price"],
+                        "target_price": bounds["target_price"],
+                        "stop_loss_bps": bounds["stop_bps"],
+                        "target_bps": bounds["target_bps"],
+                        "atr_14": bounds.get("atr_14"),
+                        "exit_policy": bounds.get("policy_id"),
+                        "exit_trend_label": bounds.get("trend_label"),
+                        "exit_fallback_reason": bounds.get("fallback_reason"),
+                        "entry_path": "BAR_CLOSE",
+                        "management_path": "TICK_PATH",
+                        "coralys_input_context": input_ctx,
+                    }
 
         self.state.active_positions_count = len(self.active_trades)
 
@@ -2385,11 +2503,19 @@ class RP608NSEShadowDaemon:
         except Exception as obs_exc:
             print(f"[prospective_v1] NSE observe skipped ({symbol}): {obs_exc}")
 
-        # NSE OF PAPER ledger — independent of Estimand A open/close above
+        # NSE OF PAPER + OFX volume PAPER — arm decision for per-tick WS action;
+        # also run once here so bar-close path stays live if WS is quiet.
         sq_bar = int(
             getattr(self._active_session_window, "square_off_bar", MANDATORY_SQUARE_OFF_BAR)
             or MANDATORY_SQUARE_OFF_BAR
         )
+        if (
+            bar_idx < sq_bar
+            and str(decision) in ("RECOMMEND_LONG", "RECOMMEND_SHORT")
+        ):
+            self._paper_armed_eval_by_symbol[symbol] = dict(eval_record)
+        elif bar_idx >= sq_bar:
+            self._paper_armed_eval_by_symbol.pop(symbol, None)
         try:
             self.of_paper.evaluate_open_tick(
                 symbol=symbol,
@@ -2455,31 +2581,507 @@ class RP608NSEShadowDaemon:
 
         return card_b
 
+    @staticmethod
+    def _estimand_a_mark_from_feed(res: Any) -> Tuple[Optional[float], str]:
+        """Prefer L1 last (quote snapshot bar.close); else mid. Fidelity only."""
+        if not isinstance(res, dict):
+            return None, "NONE"
+        bars = res.get("bars") or []
+        last = None
+        if bars:
+            b0 = bars[0]
+            try:
+                last = float(getattr(b0, "close", None) or (b0.get("close") if isinstance(b0, dict) else 0) or 0)
+            except (TypeError, ValueError, AttributeError):
+                last = None
+        quote = res.get("quote")
+        mid = None
+        if quote is not None:
+            try:
+                bid = float(getattr(quote, "bid_price", 0) or 0)
+                ask = float(getattr(quote, "ask_price", 0) or 0)
+                if bid > 0 and ask > 0:
+                    mid = (bid + ask) / 2.0
+            except (TypeError, ValueError):
+                mid = None
+        if last is not None and last > 0:
+            return last, "LAST"
+        if mid is not None and mid > 0:
+            return mid, "MID"
+        return None, "NONE"
+
+    def _session_bars_for_g3(self, symbol: str) -> List[Any]:
+        """Completed session bars only (exclude incomplete quote-snapshot clones)."""
+        history = self.price_history.get(symbol) or []
+        session_bars = [
+            b
+            for b in history
+            if not (
+                str(getattr(b, "source", "")) == "kite_quote_snapshot"
+                and not bool(getattr(b, "is_completed", True))
+            )
+        ]
+        return session_bars
+
+    def _try_estimand_a_tick_entry(
+        self,
+        *,
+        symbol: str,
+        signal_bar_idx: int,
+        quote: Optional[Any],
+        mark: float,
+        mark_src: str,
+        now_ms: int,
+    ) -> bool:
+        """
+        Tick-path entry: traj15 from completed bars; fill at live L1/last.
+        One trade_id per session/signal_bar/symbol (no bar-close fill).
+        """
+        if ENTRY_PATH != "TICK_PATH":
+            return False
+        if symbol in self.active_trades:
+            return False
+        if not (1 <= int(signal_bar_idx) <= MAX_NEW_ENTRY_BAR):
+            return False
+        if quote is None:
+            return False
+        try:
+            bid = float(getattr(quote, "bid_price", 0) or 0)
+            ask = float(getattr(quote, "ask_price", 0) or 0)
+        except (TypeError, ValueError):
+            return False
+        if bid <= 0 or ask <= 0 or ask <= bid:
+            return False
+
+        trade_id = f"nse_trade_{self.state.session_idx}_{int(signal_bar_idx)}_{symbol}"
+        if trade_id in self._journaled_trade_ids:
+            return False
+
+        session_bars = self._session_bars_for_g3(symbol)
+        sess_date = (
+            self.current_session_date
+            or getattr(self.state, "current_session_date", "")
+            or ""
+        )
+        if hasattr(sess_date, "isoformat"):
+            sess_date = sess_date.isoformat()
+        sess_date = str(sess_date)[:10]
+        feature_bars = session_bars
+        if str(G3_WARMUP_POLICY).strip().lower() in {
+            POLICY_CROSS_GAP_NEUTRAL_V1,
+            "c",
+            "policy_c",
+            "cross_gap_neutral",
+        }:
+            feature_bars = self._feature_bars_for_boundaries(symbol, session_bars)
+        g3_m = evaluate_g3_momentum(
+            policy=G3_WARMUP_POLICY,
+            session_bars=session_bars,
+            feature_bars=feature_bars,
+            today_session_date=sess_date,
+        )
+        traj15 = float(g3_m["traj15"])
+        signal_entry = bool(g3_m["signal_long"])
+        if not signal_entry:
+            return False
+
+        decision_ts_ist = datetime.now(timezone.utc).astimezone(
+            timezone(timedelta(hours=5, minutes=30))
+        )
+        if not sess_date:
+            sess_date = decision_ts_ist.date().isoformat()
+        input_ctx = self.coralys_input_store.evaluate(
+            symbol=symbol,
+            session_date=sess_date,
+            decision_ts_ist=decision_ts_ist,
+            traj15=traj15,
+            signal_long=True,
+        )
+        if coralys_input_gate_enabled() and not bool(input_ctx.get("allow_long_entry")):
+            return False
+
+        half_spread = float(getattr(quote, "half_spread_bps", 0) or 0) or 2.5
+        friction_proxy_bps = max(9.0, float(half_spread) * 2.0 + 8.0)
+        history = self.price_history.get(symbol) or []
+        bounds = self.resolve_exit_boundaries(symbol, mark, history, friction_proxy_bps)
+        qty = max(1.0, math.floor(DEFAULT_NOTIONAL_PER_TRADE_INR / mark))
+        self.active_trades[symbol] = {
+            "protocol_id": PROTOCOL_ID,
+            "estimand": "ESTIMAND_A",
+            "trade_id": trade_id,
+            "symbol": symbol,
+            "side": "LONG",
+            "session_idx": self.state.session_idx,
+            "entry_bar_idx": int(signal_bar_idx),
+            "entry_timestamp_utc_ms": int(now_ms),
+            "entry_price": float(mark),
+            "quantity": qty,
+            "half_spread_bps": half_spread,
+            "mfe_price": float(mark),
+            "mae_price": float(mark),
+            "forecast_prob": FORECAST_LONG_PROB,
+            "reference_training_prevalence": ESTIMAND_A_TRAIN_PREVALENCE,
+            "balanced_accuracy": None,
+            "stop_loss_price": bounds["stop_price"],
+            "target_price": bounds["target_price"],
+            "stop_loss_bps": bounds["stop_bps"],
+            "target_bps": bounds["target_bps"],
+            "atr_14": bounds.get("atr_14"),
+            "exit_policy": bounds.get("policy_id"),
+            "exit_trend_label": bounds.get("trend_label"),
+            "exit_fallback_reason": bounds.get("fallback_reason"),
+            "entry_path": "TICK_PATH",
+            "entry_mark_source": mark_src,
+            "management_path": "TICK_PATH",
+            "traj15_at_entry": round(traj15, 6),
+            "coralys_input_context": input_ctx,
+            "entry_trade_like": True,
+        }
+        return True
+
+    def _rebuild_token_to_symbol(self) -> None:
+        """Map Kite instrument tokens → universe symbols for WS tick fills."""
+        out: Dict[int, str] = {}
+        imap = getattr(self.feed_adapter, "instrument_map", None) or {}
+        for sym, pair in imap.items():
+            try:
+                out[int(pair[0])] = str(sym)
+            except Exception:
+                continue
+        self._token_to_symbol = out
+
+    def _persist_estimand_a_pending(self, *, force: bool = False) -> None:
+        """Debounced pending-trade persist for WS tick path."""
+        now_m = time.monotonic()
+        if (not force) and (now_m - float(self._estimand_a_last_persist_mono or 0.0) < 1.0):
+            return
+        self._estimand_a_last_persist_mono = now_m
+        self.state.active_positions_count = len(self.active_trades)
+        try:
+            self.save_pending_evaluations()
+        except Exception as exc:
+            print(f"[estimand_a_tick] persist skipped: {exc}")
+
+    def _manage_estimand_a_open_on_mark(
+        self,
+        *,
+        symbol: str,
+        mark: float,
+        mark_src: str,
+        now_ms: int,
+        bar_idx: int,
+    ) -> bool:
+        """Tick-path SL/TP for one open. Caller holds `_estimand_a_lock`. True if closed."""
+        trade = self.active_trades.get(symbol)
+        if not trade or mark is None or mark <= 0:
+            return False
+        entry_p = float(trade["entry_price"])
+        if mark > float(trade.get("mfe_price") or entry_p):
+            trade["mfe_price"] = mark
+        if mark < float(trade.get("mae_price") or entry_p):
+            trade["mae_price"] = mark
+        trade["last_tick_mark"] = mark
+        trade["last_tick_mark_source"] = mark_src
+        trade["last_tick_utc_ms"] = now_ms
+        sl_price = float(trade.get("stop_loss_price") or (entry_p * ARM_A_STOP_MULT))
+        tp_price = float(trade.get("target_price") or (entry_p * ARM_A_TARGET_MULT))
+        if mark <= sl_price:
+            self._close_trade(
+                self.active_trades.pop(symbol),
+                exit_price=sl_price,
+                exit_bar=bar_idx,
+                exit_reason="STOP_LOSS",
+                exit_path="TICK_PATH",
+                exit_mark_source=mark_src,
+            )
+            return True
+        if mark >= tp_price:
+            self._close_trade(
+                self.active_trades.pop(symbol),
+                exit_price=tp_price,
+                exit_bar=bar_idx,
+                exit_reason="TAKE_PROFIT",
+                exit_path="TICK_PATH",
+                exit_mark_source=mark_src,
+            )
+            return True
+        return False
+
+    def _on_estimand_a_ws_tick(self, tick: Dict[str, Any]) -> None:
+        """
+        True tick-path hub: Estimand A (if TICK_PATH) + OF/OFX paper per WS packet.
+        Signal (traj15) stays completed-bar causal; fill time/price are per-tick.
+        Estimand A / OFX entry require trade-like volume/LT (reject quote-only false prints).
+        Baseline OF acts on every valid L1 packet (resting imbalance construct).
+        """
+        try:
+            tok = int(tick.get("instrument_token") or 0)
+        except (TypeError, ValueError):
+            return
+        symbol = self._token_to_symbol.get(tok)
+        if not symbol:
+            return
+        try:
+            bid = float(tick.get("best_bid") or 0.0)
+            ask = float(tick.get("best_ask") or 0.0)
+            last = float(tick.get("last_price") or 0.0)
+            ltq = float(tick.get("last_traded_quantity") or 0.0)
+            volume = float(tick.get("volume") or 0.0)
+            ltt_sec = int(tick.get("last_trade_time_sec") or 0)
+        except (TypeError, ValueError):
+            return
+        if bid <= 0.0 or ask <= 0.0 or ask <= bid:
+            return
+
+        prev = self._estimand_a_prev_ws_tick.get(symbol)
+        update_class, trade_like = classify_trade_like(
+            prev=prev,
+            ltp=last,
+            ltq=ltq,
+            ltt_sec=ltt_sec,
+            volume=volume,
+        )
+        # Always advance prev so the next packet can detect volume/LT deltas.
+        self._estimand_a_prev_ws_tick[symbol] = {
+            "last_price": last,
+            "last_traded_quantity": ltq,
+            "last_trade_time_sec": ltt_sec,
+            "volume": volume,
+            "best_bid": bid,
+            "best_ask": ask,
+        }
+
+        mark = last if last > 0.0 else (bid + ask) / 2.0
+        mark_src = "WS_LAST" if last > 0.0 else "WS_MID"
+        try:
+            now_ms = int(tick.get("receipt_utc_ms") or int(time.time() * 1000))
+        except (TypeError, ValueError):
+            now_ms = int(time.time() * 1000)
+        quote = TopOfBookQuote(
+            timestamp_utc_ms=now_ms,
+            bid_price=bid,
+            ask_price=ask,
+            bid_qty=float(tick.get("bid_qty") or 0.0),
+            ask_qty=float(tick.get("ask_qty") or 0.0),
+        )
+        signal_bar = int(
+            self._estimand_a_armed_signal_bar
+            or getattr(self.state, "last_durable_bar_idx", 0)
+            or 0
+        )
+
+        if ENTRY_PATH == "TICK_PATH" and signal_bar >= 1:
+            opened = False
+            closed = False
+            with self._estimand_a_lock:
+                try:
+                    # Entry decision: volume/LT trade-like only (false-print filter).
+                    allow_entry = (not TICK_TRADE_LIKE_ENTRY) or bool(trade_like)
+                    if allow_entry and symbol not in self.active_trades:
+                        opened = bool(
+                            self._try_estimand_a_tick_entry(
+                                symbol=symbol,
+                                signal_bar_idx=signal_bar,
+                                quote=quote,
+                                mark=float(mark),
+                                mark_src=mark_src,
+                                now_ms=now_ms,
+                            )
+                        )
+                        if opened:
+                            tr = self.active_trades.get(symbol)
+                            if tr is not None:
+                                tr["entry_update_class"] = update_class
+                                tr["entry_ltq"] = ltq
+                                tr["entry_session_volume"] = volume
+                    # Manage opens on any fresh L1 mark (stop/target fidelity).
+                    if symbol in self.active_trades:
+                        closed = self._manage_estimand_a_open_on_mark(
+                            symbol=symbol,
+                            mark=float(mark),
+                            mark_src=mark_src,
+                            now_ms=now_ms,
+                            bar_idx=signal_bar,
+                        )
+                except Exception as exc:
+                    print(f"[estimand_a_tick] ws tick skipped ({symbol}): {exc}", flush=True)
+                    return
+                if opened or closed:
+                    self.state.active_positions_count = len(self.active_trades)
+            if opened:
+                self._estimand_a_tick_opens_since_log += 1
+                if self._estimand_a_tick_opens_since_log >= 5:
+                    n = self._estimand_a_tick_opens_since_log
+                    self._estimand_a_tick_opens_since_log = 0
+                    print(
+                        f"[estimand_a_tick] ws_fills+={n} signal_bar={signal_bar} "
+                        f"active={len(self.active_trades)} trade_like_gate={int(TICK_TRADE_LIKE_ENTRY)}",
+                        flush=True,
+                    )
+            if opened or closed:
+                self._persist_estimand_a_pending(force=closed)
+
+        # OF (L1 resting) + OFX (volume paper): per-tick action; books never pooled.
+        try:
+            self._of_ofx_action_on_ws_tick(
+                symbol=symbol,
+                quote=quote,
+                now_ms=now_ms,
+                bar_idx=int(signal_bar or getattr(self.state, "last_durable_bar_idx", 0) or 0),
+                trade_like=bool(trade_like),
+            )
+        except Exception as of_tick_exc:
+            print(f"[nse_of_ofx_tick] skipped ({symbol}): {of_tick_exc}", flush=True)
+
+    def _of_ofx_action_on_ws_tick(
+        self,
+        *,
+        symbol: str,
+        quote: TopOfBookQuote,
+        now_ms: int,
+        bar_idx: int,
+        trade_like: bool,
+    ) -> None:
+        """
+        Per-tick OF / OFX paper actions (authority 0%; books separate).
+
+        - Baseline OF: manage + try_open on every valid L1 packet (resting imbalance).
+        - OFX volume: manage + try_open on trade-like ticks only (false-print filter + surge).
+        Armed decision comes from last bar eval (`_paper_armed_eval_by_symbol`).
+        """
+        sq_bar = int(
+            getattr(self._active_session_window, "square_off_bar", MANDATORY_SQUARE_OFF_BAR)
+            or MANDATORY_SQUARE_OFF_BAR
+        )
+        force = "SESSION_SQUARE_OFF" if bar_idx >= sq_bar else None
+        armed = self._paper_armed_eval_by_symbol.get(symbol)
+
+        # --- Baseline OF (L1 resting imbalance; not aggressor volume) ---
+        try:
+            self.of_paper.evaluate_open_tick(
+                symbol=symbol,
+                quote=quote,
+                now_ms=now_ms,
+                bar_idx=bar_idx,
+                force_reason=force,
+            )
+            if armed is not None and bar_idx < sq_bar:
+                # Re-check live L1 on this tick (do not trust stale bar OF stamp alone).
+                of_eval = dict(armed)
+                of_eval["order_flow_supported"] = False
+                of_eval["order_flow_long_supported"] = False
+                self.of_paper.try_open_from_eval(
+                    symbol=symbol,
+                    eval_record=of_eval,
+                    quote=quote,
+                    now_ms=now_ms,
+                )
+        except Exception as ofp_exc:
+            print(f"[nse_of_paper] ws tick skipped ({symbol}): {ofp_exc}", flush=True)
+
+        # --- OFX volume paper (executed/inferred aggressor; baseline OF inert) ---
+        if not trade_like and TICK_TRADE_LIKE_ENTRY:
+            return
+        try:
+            vol_snap = build_ofx_nse_volume_flow_snapshot(
+                symbol=symbol,
+                buffer=self.ofx_nse_volume_buf,
+                now_ms=now_ms,
+            )
+            self.ofx_nse_volume_paper.evaluate_open_tick(
+                symbol=symbol,
+                volume_snapshot=vol_snap,
+                quote=quote,
+                now_ms=now_ms,
+                force_reason=force,
+            )
+            if armed is not None and bar_idx < sq_bar:
+                self.ofx_nse_volume_paper.try_open_from_eval(
+                    symbol=symbol,
+                    eval_record=armed,
+                    volume_snapshot=vol_snap,
+                    quote=quote,
+                    now_ms=now_ms,
+                )
+        except Exception as ofx_exc:
+            print(f"[ofx_nse_volume_paper] ws tick skipped ({symbol}): {ofx_exc}", flush=True)
+
+    def _estimand_a_tick_path_poll(self, *, bar_idx: int = 0, feed_results: Optional[Dict[str, Any]] = None) -> int:
+        """
+        Fallback midbar Estimand A: catch-up fills + L1 SL/TP if a WS tick was missed.
+        Primary fills are `_on_estimand_a_ws_tick`. Gate 5 levels frozen.
+        """
+        now_ms = int(time.time() * 1000)
+        if feed_results is None:
+            try:
+                feed_results = self.feed_adapter.fetch_all_symbols()
+            except Exception as exc:
+                print(f"[estimand_a_tick] midbar fetch skipped: {exc}")
+                return 0
+
+        signal_bar = int(
+            self._estimand_a_armed_signal_bar
+            or bar_idx
+            or getattr(self.state, "last_durable_bar_idx", 0)
+            or 0
+        )
+        opened = 0
+        closed = 0
+        mutated = False
+
+        with self._estimand_a_lock:
+            # Manage-only on REST midbar. Entries are WS-tick only (no candle-batch fills).
+            for sym in list(self.active_trades.keys()):
+                res = feed_results.get(sym, {}) if isinstance(feed_results, dict) else {}
+                mark, mark_src = self._estimand_a_mark_from_feed(res)
+                if mark is None or mark <= 0:
+                    continue
+                mutated = True
+                if self._manage_estimand_a_open_on_mark(
+                    symbol=sym,
+                    mark=float(mark),
+                    mark_src=str(mark_src),
+                    now_ms=now_ms,
+                    bar_idx=signal_bar,
+                ):
+                    closed += 1
+
+            if mutated or closed:
+                self.state.active_positions_count = len(self.active_trades)
+
+        if mutated or closed:
+            try:
+                self.save_pending_evaluations()
+            except Exception as exc:
+                print(f"[estimand_a_tick] persist skipped: {exc}")
+        return closed
+
     def _of_paper_midbar_poll(self, *, bar_idx: int = 0) -> None:
         """
         While awaiting the next 15m close, still tick open OF papers on live L1
         so min-hold / opposite-persist anti-churn can fire (crypto-parity).
         Also ticks open OFX NSE volume papers on derived aggressor volume marks.
+        Also Estimand A tick entry + L1 SL/TP (ENTRY_PATH/TICK_PATH).
         """
         of_opens = self.of_paper.open_snapshot()
         ofx_opens = self.ofx_nse_volume_paper.open_snapshot()
-        if not of_opens and not ofx_opens:
+        need_a = True  # always poll Estimand A tick entry/manage midbar
+        if not of_opens and not ofx_opens and not need_a:
             return
         now_ms = int(time.time() * 1000)
-        syms = sorted(
-            {
-                str(t.get("symbol"))
-                for t in (of_opens + ofx_opens)
-                if t.get("symbol")
-            }
-        )
         try:
             feed_results = self.feed_adapter.fetch_all_symbols()
         except Exception as exc:
             print(f"[nse_of_paper] midbar fetch skipped: {exc}")
             return
+        # Estimand A tick-path entry + management (shared feed fetch).
+        try:
+            self._estimand_a_tick_path_poll(bar_idx=bar_idx, feed_results=feed_results)
+        except Exception as exc:
+            print(f"[estimand_a_tick] midbar poll skipped: {exc}")
         of_syms = {str(t.get("symbol")) for t in of_opens if t.get("symbol")}
         ofx_syms = {str(t.get("symbol")) for t in ofx_opens if t.get("symbol")}
+        syms = sorted(of_syms | ofx_syms)
         for sym in syms:
             res = feed_results.get(sym, {}) if isinstance(feed_results, dict) else {}
             quote = res.get("quote") if isinstance(res, dict) else None
@@ -2509,7 +3111,16 @@ class RP608NSEShadowDaemon:
                 except Exception as exc:
                     print(f"[ofx_nse_volume_paper] midbar tick skipped ({sym}): {exc}")
 
-    def _close_trade(self, trade: Dict[str, Any], exit_price: float, exit_bar: int, exit_reason: str):
+    def _close_trade(
+        self,
+        trade: Dict[str, Any],
+        exit_price: float,
+        exit_bar: int,
+        exit_reason: str,
+        *,
+        exit_path: str = "BAR_CLOSE",
+        exit_mark_source: str = "BAR_CLOSE",
+    ):
         """Calculates exact statutory friction and closes trade for Estimand A."""
         entry_p = trade["entry_price"]
         qty = trade["quantity"]
@@ -2530,12 +3141,19 @@ class RP608NSEShadowDaemon:
         mae_bps = ((entry_p - trade["mae_price"]) / entry_p) * 10000.0
         edge_ratio = round(mfe_bps / mae_bps, 2) if mae_bps > 0 else None
 
+        tid = str(trade.get("trade_id") or "")
+        if tid and tid in self._journaled_trade_ids:
+            # Idempotent close: already journaled (midbar re-eval churn guard).
+            return
+
         record = {
             **trade,
             "exit_bar_idx": exit_bar,
             "exit_timestamp_utc_ms": int(time.time() * 1000),
             "exit_price": exit_price,
             "exit_reason": exit_reason,
+            "exit_path": exit_path,
+            "exit_mark_source": exit_mark_source,
             "gross_pnl_inr": round(gross_pnl, 2),
             "gross_return_bps": round(gross_return_bps, 2),
             "win_label": 1 if gross_pnl > 0.0 else 0,
@@ -2548,6 +3166,8 @@ class RP608NSEShadowDaemon:
         }
 
         self.append_jsonl(self.trade_journal_path, record)
+        if tid:
+            self._journaled_trade_ids.add(tid)
         self.state.completed_trades_count += 1
         try:
             prospective_v1_append_nse_trade_closed(trade=record)
@@ -2637,6 +3257,9 @@ class RP608NSEShadowDaemon:
             self.state.current_session_date = today_session_str
             self.state.last_durable_bar_idx = 0
             self.state.last_accounted_bar_idx = 0
+            self._estimand_a_armed_signal_bar = 0
+            self._paper_armed_eval_by_symbol.clear()
+            self._estimand_a_prev_ws_tick.clear()
             # Fresh session: always load latest Kite token (daily rotate / overnight re-auth).
             reload_fn = getattr(self.feed_adapter, "reload_credentials_if_stale", None)
             if callable(reload_fn):
@@ -2646,6 +3269,9 @@ class RP608NSEShadowDaemon:
             self.state.session_idx += 1
             self.state.last_durable_bar_idx = 0
             self.state.last_accounted_bar_idx = 0
+            self._estimand_a_armed_signal_bar = 0
+            self._paper_armed_eval_by_symbol.clear()
+            self._estimand_a_prev_ws_tick.clear()
             self.price_history = {s: [] for s in self.symbols}
             self.active_trades.clear()
             self.pending_directional_evals.clear()
@@ -2677,6 +3303,21 @@ class RP608NSEShadowDaemon:
             self.save_bar_history()
             self.save_pending_evaluations()
             self.atomic_commit_checkpoint(self.state)
+
+        # Once per session: classify prior-watch freshness (V3 ladder, 6-day holiday buffer).
+        if is_active and today_session_str and self._coralys_prior_logged_for != today_session_str:
+            try:
+                self.coralys_input_store.invalidate_watch_cache()
+                self.coralys_input_store.load_watchlist_for_session(today_session_str)
+                meta = dict(getattr(self.coralys_input_store, "_watch_meta", {}) or {})
+                print(
+                    f"[coralys_input] prior_status={meta.get('status')} "
+                    f"next_session_date={meta.get('next_session_date')} "
+                    f"n={meta.get('n_recommendations')} path={meta.get('path')}"
+                )
+            except Exception as prior_exc:
+                print(f"[coralys_input] prior watch classify skipped: {prior_exc}")
+            self._coralys_prior_logged_for = today_session_str
 
         # Determine completed bars vs forming bars in current session (regular or muhurat)
         window = self._active_session_window
@@ -2763,7 +3404,14 @@ class RP608NSEShadowDaemon:
                 latest_bar = None
 
             if latest_bar is not None:
-                self.evaluate_symbol_bar(sym, eval_bar, latest_bar, quote)
+                # Provisional midbar: observe only — no Estimand A open/close mutations.
+                self.evaluate_symbol_bar(
+                    sym,
+                    eval_bar,
+                    latest_bar,
+                    quote,
+                    mutate_trades=not bool(provisional_eval),
+                )
                 eval_rec = self.last_evaluations.get(sym)
                 if eval_rec:
                     iteration_evals.append(eval_rec)
@@ -2841,6 +3489,16 @@ class RP608NSEShadowDaemon:
         for r in iteration_evals:
             r["provisional_eval"] = bool(provisional_eval)
             r["eval_mode"] = "PROVISIONAL_LIVE" if provisional_eval else "DURABLE_BAR_CLOSE"
+
+        # After durable bar close: arm signal_bar only. Fills happen on each WS L1 tick.
+        if (not provisional_eval) and ENTRY_PATH == "TICK_PATH" and is_active:
+            self._estimand_a_armed_signal_bar = int(eval_bar)
+            self._estimand_a_tick_opens_since_log = 0
+            print(
+                f"[estimand_a_tick] armed signal_bar={int(eval_bar)} "
+                "(fills on WS ticks, not candle batch)",
+                flush=True,
+            )
 
         # Durable ledger: only commit closed-bar evals (avoid jsonl flood on mid-bar polls)
         if not provisional_eval:
@@ -3213,14 +3871,18 @@ class RP608NSEShadowDaemon:
 
         print(f"[{datetime.now(timezone.utc).isoformat()}] RP-608 NSE Shadow Daemon started (Output: {self.output_dir})")
         try:
-            # OFX Stage 0D: map tokens→symbols then tee ticks on the same WS (before start).
-            tok_map = {}
-            imap = getattr(self.feed_adapter, "instrument_map", None) or {}
-            for sym, pair in imap.items():
-                try:
-                    tok_map[int(pair[0])] = str(sym)
-                except Exception:
-                    continue
+            # Token→symbol map for OFX tee + Estimand A WS tick fills (before start).
+            self._rebuild_token_to_symbol()
+            tok_map = dict(self._token_to_symbol)
+            # Always register: Estimand A (if TICK_PATH) + OF/OFX per-tick paper actions.
+            self.feed_adapter.register_tick_sink(self._on_estimand_a_ws_tick)
+            print(
+                f"[+] WS tick actions: Estimand A ENTRY_PATH={ENTRY_PATH} "
+                f"(armed_signal_bar={self._estimand_a_armed_signal_bar}); "
+                f"OF L1 per tick; OFX volume on trade-like ticks; "
+                f"trade_like_gate={int(TICK_TRADE_LIKE_ENTRY)}; tokens={len(tok_map)}",
+                flush=True,
+            )
             if getattr(self, "ofx_tick_journal", None) is not None:
                 self.ofx_tick_journal.set_token_map(tok_map)
                 if self.ofx_tick_journal.enabled:

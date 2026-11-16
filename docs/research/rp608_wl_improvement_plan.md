@@ -73,9 +73,12 @@ Baseline OF stamps / ±0.30 paper = **L1 resting liquidity imbalance**, not volu
 | Gate 2 (v1 disposition) | **DO NOT ADVANCE** · historical record (immutable) |
 | **Gate 2 amendment v2** | **ACTIVE 2026-11-15** · split 2E/2X · `rp608_gate2_amendment_v2.md` |
 | **Gate 2X-001** | **DONE** · crypto G/H60/H120 **ADVANCE_CANDIDATE** · NSE F scratch **DO_NOT_ADVANCE** · `rp608_gate2x_001_review.md` |
+| **Gate 2X-002** | **DONE** · NSE G_ohlc **DO_NOT_ADVANCE** · `rp608_gate2x_002_nse_a_ohlc_ambiguous_scoped.md` |
+| **Gate 2X-003** | **DONE** · CLOSE_GRID C/F_path **ADVANCE_CANDIDATE** (relative; fidelity caveat) · `rp608_gate2x_003_nse_a_close_grid_fpath_review.md` |
 | **Gate 3 offline proceed** | **DONE** · 3X G **PASS** · 3E BAR_ge_12 **CONFOUND_DOMINANT** · `rp608_gate3_offline_proceed_review.md` |
 | **Gate 5 Crypto G** | **DEPLOYED 2026-11-15** · Pi crypto shadow · `ambiguous_tie_break=TP` · authority 0% · `rp608_gate5_packet_crypto_g_draft.md` |
-| **Gate 3X H* path-stress** | **SCOPED** · `rp608_gate3x_crypto_h_path_stress_scoped.md` |
+| **Gate 3X H* path-stress** | **PASS_BOTH 2026-11-16** · H60/H120_PATH holdout Δ+255/+381 · `rp608_gate3x_crypto_h_path_review.md` |
+| **Gate 5 Crypto H\*** | **DEPLOYED 2026-11-16** · H120_PATH live · `EARLY_SL_PATH_SCRATCH` · authority 0% · `rp608_gate5_packet_crypto_h_draft.md` |
 | Discovery v2 (algorithm upgrade) | **DONE** · Rust `rp608_wl_crypto_plan_discovery_v2` · Gate 2 criteria unchanged · still closed |
 | NSE A Kite feature join (ext. holdout) | **DONE** · Pi · 1625 feature-ready rows |
 | NSE A Kite discovery v2 | **DONE** · WR REPLICATES on mom/location · payoff/net bar fail · Gate 2 **DO NOT ADVANCE** |

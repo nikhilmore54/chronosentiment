@@ -1,0 +1,11 @@
+[Unit]
+Description=Trigger RP-608 NSE Pre-Open WS Continuity Probe at 09:00:00 IST (daily, observational)
+
+[Timer]
+OnCalendar=*-*-* 09:00:00 Asia/Kolkata
+AccuracySec=1s
+Persistent=true
+Unit=rp608-nse-preopen-ws-continuity.service
+
+[Install]
+WantedBy=timers.target

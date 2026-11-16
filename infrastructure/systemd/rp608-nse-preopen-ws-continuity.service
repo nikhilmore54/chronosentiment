@@ -1,0 +1,15 @@
+[Unit]
+Description=RP-608 NSE Pre-Open WebSocket Continuity Probe (09:00–09:15 IST, 0% authority)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=ultraspeed
+Group=ultraspeed
+WorkingDirectory=/home/ultraspeed/ChronoSentiment_MEGA_FINAL
+Environment=HOME=/home/ultraspeed
+Environment=PYTHONPATH=/home/ultraspeed/.local/lib/python3.13/site-packages:/home/ultraspeed/ChronoSentiment_MEGA_FINAL
+Environment=PYTHONUNBUFFERED=1
+ExecStart=/usr/bin/python3 scripts/research/rp608_preopen_ws_continuity_probe.py --until-ist 09:15:00
+TimeoutStartSec=960

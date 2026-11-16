@@ -5,21 +5,9 @@ import NseWorkspace from './NseWorkspace';
 import { useOperatorState } from './useOperatorState';
 import { op } from './operatorStyles';
 
-type Props = {
-  onOpenHorizons?: () => void;
-};
-
-export default function OperatorShell({ onOpenHorizons }: Props) {
+export default function OperatorShell() {
   const [ws, setWs] = useState<OperatorWorkspace>('overview');
   const { state, loading } = useOperatorState(true);
-
-  const navigate = (next: OperatorWorkspace) => {
-    if (next === 'horizons') {
-      onOpenHorizons?.();
-      return;
-    }
-    setWs(next);
-  };
 
   return (
     <div
@@ -34,7 +22,7 @@ export default function OperatorShell({ onOpenHorizons }: Props) {
       }}
     >
       {ws === 'overview' && (
-        <OperatorOverview state={state} loading={loading} onNavigate={navigate} />
+        <OperatorOverview state={state} loading={loading} onNavigate={setWs} />
       )}
       {ws === 'crypto' && (
         <CryptoWorkspace state={state} onBack={() => setWs('overview')} />
