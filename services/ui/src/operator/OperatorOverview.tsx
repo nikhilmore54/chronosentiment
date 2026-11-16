@@ -167,7 +167,24 @@ export default function OperatorOverview({ state, loading, onNavigate }: Props) 
             <div style={{ color: op.rose, fontFamily: op.mono, fontSize: 13 }}>UNAVAILABLE</div>
           ) : (
             <>
-              <Kv k="Session / phase" v={displayOrUnavailable(nse.status)} />
+              <Kv
+                k="Session / Coralys phase"
+                v={`${displayOrUnavailable(nse.status)} · ${displayOrUnavailable(
+                  nse.session_phase ?? nse.coralys_input_gate?.session_phase
+                )}`}
+              />
+              <Kv
+                k="Input gate"
+                v={
+                  nse.coralys_input_gate
+                    ? `${nse.coralys_input_gate.gate_enabled === false ? 'OFF' : 'ON'} · prior ${
+                        nse.coralys_input_gate.prior_status ?? '—'
+                      } · preopen ${nse.coralys_input_gate.preopen_status ?? '—'} · standaside ${
+                        nse.coralys_input_gate.n_standaside ?? 0
+                      }`
+                    : 'UNAVAILABLE'
+                }
+              />
               <Kv
                 k="Next session"
                 v={`${displayOrUnavailable(nse.next_session_date)} · n=${

@@ -182,6 +182,11 @@ from scripts.rp608_nse_g3_warmup import (  # noqa: E402
     POLICY_CROSS_GAP_NEUTRAL_V1,
     evaluate_g3_momentum,
 )
+from scripts.rp608_nse_coralys_input_context import (  # noqa: E402
+    CoralysInputContextStore,
+    decision_ts_from_bar_ms,
+    gate_enabled as coralys_input_gate_enabled,
+)
 
 G3_WARMUP_POLICY = DEFAULT_G3_WARMUP_POLICY
 
@@ -944,6 +949,8 @@ class RP608NSEShadowDaemon:
         self.l1_feed_health_path = self.output_dir / "rp608_nse_l1_feed_health.json"
         self.of_book_intel_dir = self.output_dir / "of_book_intelligence_v1"
         self.ofx_tick_dir = self.output_dir / "ofx_tick_capture_v1"
+        # Adapter-side Coralys inputs (prior + pre-open + phase). Crates untouched.
+        self.coralys_input_store = CoralysInputContextStore(self.output_dir)
 
         self.feed_adapter = feed_adapter or KiteDataFeedAdapter(NSE_119_SYMBOLS)
         self.symbols = getattr(self.feed_adapter, "symbols", NSE_119_SYMBOLS)
@@ -1870,6 +1877,29 @@ class RP608NSEShadowDaemon:
         signal_entry = bool(g3_m["signal_long"])
         closes = [b.close for b in history]
 
+        # Coralys adapter inputs (prior + pre-open + phase). Crates untouched.
+        _t_decision_ms = int(getattr(latest_bar, "timestamp_utc_ms", 0) or 0)
+        sess_date_str = str(sess_date)[:10] if sess_date else ""
+        _decision_ts_ist = (
+            decision_ts_from_bar_ms(_t_decision_ms)
+            if _t_decision_ms > 0
+            else datetime.now(timezone(timedelta(hours=5, minutes=30)))
+        )
+        if not sess_date_str:
+            sess_date_str = _decision_ts_ist.date().isoformat()
+        input_ctx = self.coralys_input_store.evaluate(
+            symbol=symbol,
+            session_date=sess_date_str,
+            decision_ts_ist=_decision_ts_ist,
+            traj15=traj15,
+            signal_long=bool(signal_entry),
+        )
+        input_gate_blocks = bool(
+            signal_entry
+            and coralys_input_gate_enabled()
+            and not bool(input_ctx.get("allow_long_entry"))
+        )
+
         # Gate G4 Quote Validation (Freshness, Non-Zero, Uncrossed Top-of-Book)
         MAX_QUOTE_AGE_MS = 60000  # 60s max permitted age
         is_fresh = True
@@ -1997,6 +2027,7 @@ class RP608NSEShadowDaemon:
         # Entry: bars 1..MAX_NEW_ENTRY_BAR so 60m horizon completes by 15:00 close-window.
         elif (
             signal_entry
+            and (not input_gate_blocks)
             and (1 <= bar_idx <= MAX_NEW_ENTRY_BAR)
             and symbol not in self.active_trades
         ):
@@ -2031,6 +2062,7 @@ class RP608NSEShadowDaemon:
                 "exit_policy": bounds.get("policy_id"),
                 "exit_trend_label": bounds.get("trend_label"),
                 "exit_fallback_reason": bounds.get("fallback_reason"),
+                "coralys_input_context": input_ctx,
             }
 
         self.state.active_positions_count = len(self.active_trades)
@@ -2079,6 +2111,15 @@ class RP608NSEShadowDaemon:
                 explanation = "Crossed or locked top-of-book quote fails Gate G4 execution feasibility"
             else:
                 explanation = "Invalid top-of-book quote fails Gate G4 execution feasibility"
+            decision = "NO_TRADE"
+        elif input_gate_blocks:
+            # Estimand A signal fired, but Coralys adapter inputs stand aside (observational gate).
+            decision_code = "STANDASIDE_CORALYS_INPUT_GATE"
+            explanation = (
+                f"Coralys input gate blocks long entry "
+                f"(phase={input_ctx.get('session_phase')}; "
+                f"reason={input_ctx.get('standaside_reason')})"
+            )
             decision = "NO_TRADE"
         else:
             decision_code = "QUALIFIED_MOMENTUM_BREAKOUT"
@@ -2226,6 +2267,9 @@ class RP608NSEShadowDaemon:
             "closing_window_ist": "15:00-15:15",
             "max_new_entry_bar": MAX_NEW_ENTRY_BAR,
             "mandatory_square_off_bar": MANDATORY_SQUARE_OFF_BAR,
+            "coralys_input_context": input_ctx,
+            "coralys_input_gate_enabled": coralys_input_gate_enabled(),
+            "coralys_input_gate_blocks": bool(input_gate_blocks),
         }
         # Observational regime telemetry on completed-bar history only (Phase 1–2).
         # Must not alter decision / entry / exit / cost fields above.

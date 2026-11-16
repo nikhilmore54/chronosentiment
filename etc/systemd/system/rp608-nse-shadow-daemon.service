@@ -1,0 +1,28 @@
+[Unit]
+Description=RP-608 NSE Dedicated Prospective Shadow Observer Daemon (119 Symbols)
+After=network-online.target
+Wants=network-online.target
+StartLimitIntervalSec=60s
+StartLimitBurst=5
+
+[Service]
+Type=simple
+User=ultraspeed
+Group=ultraspeed
+WorkingDirectory=/home/ultraspeed/ChronoSentiment_MEGA_FINAL
+# Single writer. Do NOT pass --reset-outages here: Restart=always would clear
+# outage counters on every crash loop and created twin writers beside ad-hoc launches.
+ExecStart=/usr/bin/python3 -u scripts/run_rp608_nse_shadow_daemon.py
+Restart=always
+RestartSec=10s
+TimeoutStopSec=15s
+KillSignal=SIGTERM
+UMask=0077
+LimitNOFILE=65536
+Environment=PYTHONUNBUFFERED=1
+Environment=RP608_NSE_EXIT_POLICY=DYNAMIC_OHLCV_STRUCTURE_V1
+# Adapter-side Coralys prior+preopen+phase gate (crates frozen; OF ±0.30 untouched).
+Environment=RP608_NSE_CORALYS_INPUT_GATE=1
+
+[Install]
+WantedBy=multi-user.target

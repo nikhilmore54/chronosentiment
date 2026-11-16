@@ -84,7 +84,7 @@ export default function NseWorkspace({ state, onBack }: Props) {
           </button>
           <h2 style={{ margin: '10px 0 4px', fontSize: 20 }}>NSE workspace</h2>
           <p style={{ margin: 0, color: op.muted, fontSize: 13 }}>
-            Census / classified / quarantine · next-session + OF · session board. Explorer secondary.
+            Universe · Coralys input gate (prior + pre-open + phase) · next-session · session board.
           </p>
         </div>
         <span style={chip(op.emerald, '#052e16')}>AUTHORITY 0%</span>
@@ -106,12 +106,70 @@ export default function NseWorkspace({ state, onBack }: Props) {
               <span style={chip('rgba(148,163,184,0.25)', op.text)}>
                 QUARANTINED {nse.quarantined_count ?? 'UNAVAILABLE'}
               </span>
+              <span style={chip('rgba(251,191,36,0.25)', op.amber)}>
+                PHASE {nse.session_phase ?? nse.coralys_input_gate?.session_phase ?? '—'}
+              </span>
               {nse.universe_label && (
                 <span style={{ fontFamily: op.mono, fontSize: 12, color: op.dim }}>
                   {nse.universe_label}
                 </span>
               )}
             </div>
+          </section>
+
+          <section style={{ ...panelStyle, borderColor: 'rgba(251,191,36,0.35)' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10, flexWrap: 'wrap', marginBottom: 8 }}>
+              <div style={labelStyle}>Coralys input gate · prior + pre-open + phase</div>
+              <span
+                style={chip(
+                  nse.coralys_input_gate?.gate_enabled === false
+                    ? 'rgba(148,163,184,0.25)'
+                    : 'rgba(251,191,36,0.3)',
+                  op.amber
+                )}
+              >
+                {nse.coralys_input_gate
+                  ? nse.coralys_input_gate.gate_enabled === false
+                    ? 'GATE OFF'
+                    : 'GATE ON'
+                  : 'UNAVAILABLE'}
+              </span>
+            </div>
+            {!nse.coralys_input_gate ? (
+              <div style={{ color: op.amber, fontSize: 13 }}>
+                No coralys_input_gate on /api/state — Pi dashboard may need refresh.
+              </div>
+            ) : (
+              <>
+                <div style={{ fontFamily: op.mono, fontSize: 12, color: op.muted, marginBottom: 8 }}>
+                  {nse.coralys_input_gate.protocol_id ?? 'RP-608-NSE-CORALYS-INPUT-GATE-001'} ·
+                  crates frozen · OF ±0.30 untouched
+                </div>
+                <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+                  <span style={chip('rgba(251,191,36,0.2)', op.amber)}>
+                    PHASE {nse.coralys_input_gate.session_phase ?? '—'}
+                  </span>
+                  <span style={chip('rgba(34,211,238,0.2)', op.cyan)}>
+                    PRIOR {nse.coralys_input_gate.prior_status ?? '—'}
+                    {nse.coralys_input_gate.prior_next_session_date
+                      ? ` · ${nse.coralys_input_gate.prior_next_session_date}`
+                      : ''}
+                  </span>
+                  <span style={chip('rgba(167,139,250,0.25)', op.violet)}>
+                    PREOPEN {nse.coralys_input_gate.preopen_status ?? '—'}
+                    {nse.coralys_input_gate.preopen_n_records != null
+                      ? ` · n=${nse.coralys_input_gate.preopen_n_records}`
+                      : ''}
+                  </span>
+                  <span style={chip('rgba(251,113,133,0.25)', op.rose)}>
+                    STANDASIDE {nse.coralys_input_gate.n_standaside ?? 0}
+                  </span>
+                  <span style={chip('rgba(52,211,153,0.25)', op.emerald)}>
+                    QUAL {nse.coralys_input_gate.n_qualifying ?? nse.n_qualifying ?? '—'}
+                  </span>
+                </div>
+              </>
+            )}
           </section>
 
           <section style={panelStyle}>
@@ -213,6 +271,9 @@ export default function NseWorkspace({ state, onBack }: Props) {
               </span>
               <span style={chip('rgba(52,211,153,0.25)', op.emerald)}>
                 QUAL {nse.n_qualifying ?? 'UNAVAILABLE'}
+              </span>
+              <span style={chip('rgba(251,113,133,0.25)', op.rose)}>
+                STANDASIDE {nse.rejection_breakdown?.STANDASIDE_CORALYS_INPUT_GATE ?? nse.coralys_input_gate?.n_standaside ?? 0}
               </span>
               <span style={chip('rgba(167,139,250,0.25)', op.violet)}>
                 HIGH-T {nse.n_high_target ?? 'UNAVAILABLE'}

@@ -39,11 +39,18 @@ from scripts.rp608_order_flow_mark import (
 )
 from scripts.rp611_dashboard_status import get_rp611_dashboard_state
 from scripts.rp608_nse_muhurat_session import resolve_session_window, session_phase
+from scripts.rp608_nse_coralys_input_context import (
+    PROTOCOL_ID as CORALYS_INPUT_GATE_PROTOCOL,
+    gate_enabled as coralys_input_gate_enabled,
+    session_phase_ist as coralys_session_phase_ist,
+)
 
 try:
     from scripts.run_rp608_nse_shadow_daemon import NSE_2026_HOLIDAYS
 except Exception:  # pragma: no cover
     NSE_2026_HOLIDAYS = set()
+
+IST_TZ = timezone(timedelta(hours=5, minutes=30))
 
 try:
     from scripts.test_kite_probe import (
@@ -820,6 +827,47 @@ def _enrich_next_session_watchlist_for_api(
         "structure_recalc_on_poll": False,
         "reconcile_pending": reconcile_pending,
         "recommendations": recs,
+    }
+
+
+def _build_coralys_input_gate_summary(
+    *,
+    session_date: Optional[str],
+    clock_active: bool,
+    next_session_data: Dict[str, Any],
+    preopen_records: List[Any],
+    rejection_breakdown: Dict[str, Any],
+    n_qualifying: int,
+    total_evaluated: int,
+) -> Dict[str, Any]:
+    """Presentation summary for RP-608-NSE-CORALYS-INPUT-GATE-001 (0% authority)."""
+    now_ist = datetime.now(timezone.utc).astimezone(IST_TZ)
+    phase = coralys_session_phase_ist(now_ist) if clock_active else "CLOSED"
+    next_d = str(next_session_data.get("next_session_date") or "")[:10] or None
+    sess = (session_date or "")[:10] or None
+    if not next_d:
+        prior_status = "MISSING"
+    elif sess and next_d == sess:
+        prior_status = "OK"
+    else:
+        prior_status = "STALE_OR_MISMATCH"
+    preopen_status = "OK" if preopen_records else "MISSING"
+    standaside_n = int(rejection_breakdown.get("STANDASIDE_CORALYS_INPUT_GATE") or 0)
+    return {
+        "protocol_id": CORALYS_INPUT_GATE_PROTOCOL,
+        "gate_enabled": bool(coralys_input_gate_enabled()),
+        "session_phase": phase,
+        "prior_status": prior_status,
+        "prior_next_session_date": next_d,
+        "from_session_date": next_session_data.get("from_session_date"),
+        "preopen_status": preopen_status,
+        "preopen_n_records": len(preopen_records) if preopen_records else 0,
+        "n_standaside": standaside_n,
+        "n_qualifying": int(n_qualifying or 0),
+        "total_evaluated": int(total_evaluated or 0),
+        "baseline_of_inert": True,
+        "coralys_crates_untouched": True,
+        "live_order_authority": 0.0,
     }
 
 
@@ -1790,6 +1838,15 @@ def get_nse_dashboard_state() -> Dict[str, Any]:
             scrips=sorted_scrips,
             live_bar_idx=live_bar_for_gates,
             session_date=session_date,
+        ),
+        "coralys_input_gate": _build_coralys_input_gate_summary(
+            session_date=session_date,
+            clock_active=bool(clock_active),
+            next_session_data=next_session_data,
+            preopen_records=preopen_records,
+            rejection_breakdown=rejection_breakdown if eval_snapshot_fresh else {},
+            n_qualifying=n_qualifying if eval_snapshot_fresh else 0,
+            total_evaluated=total_evaluated if eval_snapshot_fresh else 0,
         ),
         "quote_health": {
             "valid": valid_quotes or len(all_quotes),
@@ -3447,75 +3504,36 @@ DASHBOARD_HTML = """<!DOCTYPE html>
         </div>
       </div>
 
-      <!-- PANEL A: RP-607 Historical Stock Compartments -->
-      <div style="background:rgba(0,0,0,0.35); border:1px solid rgba(139,92,246,0.3); border-radius:12px; padding:18px; margin-bottom:20px;">
-        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px; flex-wrap:wrap; gap:8px;">
-          <div>
-            <div style="font-size:14px; font-weight:700; color:#fff; display:flex; align-items:center; gap:8px;">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color:var(--accent-violet);"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
-              <span>RP-607 · Historical Stock Compartments (Structural Movement DNA)</span>
-            </div>
-            <div style="font-size:11px; color:var(--text-muted); margin-top:2px;">
-              Protocol: <b style="color:var(--text-dim);">RP-607-RANGE-001</b> · Rolling Daily Volatility & Efficiency Morphology · Descriptive Baseline
-            </div>
-          </div>
-          <div style="display:flex; gap:8px; align-items:center;">
-            <span class="pill-sm" style="background:rgba(139,92,246,0.15); color:var(--accent-violet); border:1px solid rgba(139,92,246,0.3); font-weight:700;">HISTORICAL SNAPSHOT · AS OF 2026-10-01</span>
-            <span class="pill-sm" style="background:rgba(255,255,255,0.08); color:var(--text-dim);">119 UNIVERSE · 102 CLASSIFIED · 17 QUARANTINED</span>
-          </div>
+      <!-- PANEL A: Live universe strip (RP-607 counts from API — no hardcoded Oct-2026 compartment cards) -->
+      <div id="nse-universe-strip" style="background:rgba(0,0,0,0.35); border:1px solid rgba(139,92,246,0.3); border-radius:12px; padding:14px 18px; margin-bottom:20px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;">
+        <div>
+          <div style="font-size:13px; font-weight:700; color:#fff;">NSE universe · live census</div>
+          <div style="font-size:11px; color:var(--text-muted); margin-top:2px;">RP-607 classification counts from telemetry · explorer filters retained below</div>
         </div>
+        <div style="display:flex; gap:8px; flex-wrap:wrap; font-family:'JetBrains Mono',monospace; font-size:12px;" id="nse-universe-pills">
+          <span class="pill-sm" style="background:rgba(6,182,212,0.12); color:var(--accent-cyan);">CENSUS <b id="nse-univ-census">—</b></span>
+          <span class="pill-sm" style="background:rgba(16,185,129,0.12); color:var(--accent-emerald);">CLASSIFIED <b id="nse-univ-classified">—</b></span>
+          <span class="pill-sm" style="background:rgba(255,255,255,0.08); color:var(--text-dim);">QUARANTINED <b id="nse-univ-quarantined">—</b></span>
+        </div>
+      </div>
 
-        <!-- Compartment Cards Grid -->
-        <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(200px, 1fr)); gap:12px;">
-          <!-- C1 -->
-          <div style="background:rgba(6,182,212,0.05); border:1px solid rgba(6,182,212,0.25); border-radius:8px; padding:12px; cursor:pointer;" onclick="setNseCompartmentFilter('C1')">
-            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
-              <span class="comp-pill comp-c1">C1 · Directional</span>
-              <span style="font-family:'JetBrains Mono',monospace; font-size:18px; font-weight:700; color:var(--accent-cyan);">18</span>
+      <!-- PANEL A2: Coralys adapter input gate (prior + pre-open + phase) -->
+      <div id="nse-coralys-gate-panel" style="background:rgba(0,0,0,0.35); border:1px solid rgba(251,191,36,0.35); border-radius:12px; padding:18px; margin-bottom:20px;">
+        <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:12px; flex-wrap:wrap; margin-bottom:12px;">
+          <div>
+            <div style="font-size:14px; font-weight:700; color:#fff;">Coralys input gate · prior + pre-open + phase</div>
+            <div style="font-size:11px; color:var(--text-muted); margin-top:2px;" id="nse-coralys-gate-meta">
+              RP-608-NSE-CORALYS-INPUT-GATE-001 · adapter-only · crates frozen · OF ±0.30 untouched · 0% authority
             </div>
-            <div style="font-size:11px; color:#fff; font-weight:600;">High-Range Directional</div>
-            <div style="font-size:10px; color:var(--text-muted); margin-top:4px;">15.1% of Universe · NATR &ge; 220 bps, Eff &ge; 0.14</div>
           </div>
-
-          <!-- C2 -->
-          <div style="background:rgba(139,92,246,0.05); border:1px solid rgba(139,92,246,0.25); border-radius:8px; padding:12px; cursor:pointer;" onclick="setNseCompartmentFilter('C2')">
-            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
-              <span class="comp-pill comp-c2">C2 · Oscillator</span>
-              <span style="font-family:'JetBrains Mono',monospace; font-size:18px; font-weight:700; color:var(--accent-violet);">8</span>
-            </div>
-            <div style="font-size:11px; color:#fff; font-weight:600;">High-Range Oscillator</div>
-            <div style="font-size:10px; color:var(--text-muted); margin-top:4px;">6.7% of Universe · NATR &ge; 220 bps, AR1 &le; -0.12</div>
-          </div>
-
-          <!-- C3 -->
-          <div style="background:rgba(59,130,246,0.05); border:1px solid rgba(59,130,246,0.25); border-radius:8px; padding:12px; cursor:pointer;" onclick="setNseCompartmentFilter('C3')">
-            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
-              <span class="comp-pill comp-c3">C3 · Stable</span>
-              <span style="font-family:'JetBrains Mono',monospace; font-size:18px; font-weight:700; color:#60a5fa;">64</span>
-            </div>
-            <div style="font-size:11px; color:#fff; font-weight:600;">Stable Moderate Movers</div>
-            <div style="font-size:10px; color:var(--text-muted); margin-top:4px;">53.8% of Universe · 160 &le; NATR &lt; 220 bps</div>
-          </div>
-
-          <!-- C4 -->
-          <div style="background:rgba(245,158,11,0.05); border:1px solid rgba(245,158,11,0.25); border-radius:8px; padding:12px; cursor:pointer;" onclick="setNseCompartmentFilter('C4')">
-            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
-              <span class="comp-pill comp-c4">C4 · Friction-Bound</span>
-              <span style="font-family:'JetBrains Mono',monospace; font-size:18px; font-weight:700; color:var(--accent-amber);">12</span>
-            </div>
-            <div style="font-size:11px; color:#fff; font-weight:600;">Low-Range Friction-Bound</div>
-            <div style="font-size:10px; color:var(--text-muted); margin-top:4px;">10.1% of Universe · NATR &lt; 160 bps</div>
-          </div>
-
-          <!-- Quarantined -->
-          <div style="background:rgba(255,255,255,0.02); border:1px solid rgba(255,255,255,0.12); border-radius:8px; padding:12px; cursor:pointer;" onclick="setNseCompartmentFilter('QUARANTINED')">
-            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
-              <span class="comp-pill comp-quarantined">Quarantined</span>
-              <span style="font-family:'JetBrains Mono',monospace; font-size:18px; font-weight:700; color:var(--text-muted);">17</span>
-            </div>
-            <div style="font-size:11px; color:var(--text-dim); font-weight:600;">Insufficient History</div>
-            <div style="font-size:10px; color:var(--text-muted); margin-top:4px;">14.3% of Universe · &lt; 20 daily bars in cache</div>
-          </div>
+          <span class="pill-sm" id="nse-coralys-gate-pill" style="background:rgba(251,191,36,0.15); color:var(--accent-amber); border:1px solid rgba(251,191,36,0.35);">—</span>
+        </div>
+        <div style="display:grid; grid-template-columns:repeat(auto-fit,minmax(140px,1fr)); gap:10px; font-family:'JetBrains Mono',monospace; font-size:12px;" id="nse-coralys-gate-grid">
+          <div><div style="font-size:9px; color:var(--text-dim); text-transform:uppercase;">Phase</div><div id="nse-coralys-phase" style="color:#fff; font-weight:700;">—</div></div>
+          <div><div style="font-size:9px; color:var(--text-dim); text-transform:uppercase;">Prior watch</div><div id="nse-coralys-prior" style="color:#fff; font-weight:700;">—</div></div>
+          <div><div style="font-size:9px; color:var(--text-dim); text-transform:uppercase;">Pre-open</div><div id="nse-coralys-preopen" style="color:#fff; font-weight:700;">—</div></div>
+          <div><div style="font-size:9px; color:var(--text-dim); text-transform:uppercase;">Standaside</div><div id="nse-coralys-standaside" style="color:var(--accent-amber); font-weight:700;">—</div></div>
+          <div><div style="font-size:9px; color:var(--text-dim); text-transform:uppercase;">Qualified</div><div id="nse-coralys-qual" style="color:var(--accent-emerald); font-weight:700;">—</div></div>
         </div>
       </div>
 
@@ -3584,32 +3602,32 @@ DASHBOARD_HTML = """<!DOCTYPE html>
           </div>
         </div>
 
-        <!-- 5-Gate Sequential Progression Visualizer -->
-        <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(180px, 1fr)); gap:10px; margin-bottom:14px;">
+        <!-- Entry progression (frozen Estimand A + Coralys adapter input gate) -->
+        <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(160px, 1fr)); gap:10px; margin-bottom:14px;">
           <div style="background:rgba(255,255,255,0.02); border:1px solid rgba(255,255,255,0.08); border-radius:8px; padding:10px;">
-            <div style="font-size:10px; text-transform:uppercase; color:var(--text-dim); margin-bottom:2px;">Gate 01 · Session Window</div>
+            <div style="font-size:10px; text-transform:uppercase; color:var(--text-dim); margin-bottom:2px;">G1 · Session window</div>
             <div style="font-size:12px; font-weight:700; color:#fff;">1 &le; Bar &le; 19</div>
-            <div style="font-size:10px; color:var(--text-muted);">Entry cutoff · 60m ends by 15:00 close-window</div>
+            <div style="font-size:10px; color:var(--text-muted);">60m completes by 15:00</div>
           </div>
           <div style="background:rgba(255,255,255,0.02); border:1px solid rgba(255,255,255,0.08); border-radius:8px; padding:10px;">
-            <div style="font-size:10px; text-transform:uppercase; color:var(--text-dim); margin-bottom:2px;">Gate 02 · Concurrency</div>
-            <div style="font-size:12px; font-weight:700; color:#fff;">Zero Position Active</div>
-            <div style="font-size:10px; color:var(--text-muted);">Prevents duplicate allocation</div>
+            <div style="font-size:10px; text-transform:uppercase; color:var(--text-dim); margin-bottom:2px;">G3 · Warmup</div>
+            <div style="font-size:12px; font-weight:700; color:#fff;">History &ge; 5</div>
+            <div style="font-size:10px; color:var(--text-muted);">Policy C/D ready</div>
           </div>
           <div style="background:rgba(255,255,255,0.02); border:1px solid rgba(255,255,255,0.08); border-radius:8px; padding:10px;">
-            <div style="font-size:10px; text-transform:uppercase; color:var(--text-dim); margin-bottom:2px;">Gate 03 · Causal Warmup</div>
-            <div style="font-size:12px; font-weight:700; color:#fff;">History &ge; 5 Bars</div>
-            <div style="font-size:10px; color:var(--text-muted);">Minimum rolling sample</div>
+            <div style="font-size:10px; text-transform:uppercase; color:var(--text-dim); margin-bottom:2px;">G4 · Momentum</div>
+            <div style="font-size:12px; font-weight:700; color:var(--accent-emerald);">traj15 &ge; +0.05</div>
+            <div style="font-size:10px; color:var(--text-muted);">Estimand A frozen</div>
+          </div>
+          <div style="background:rgba(255,255,255,0.02); border:1px solid rgba(251,191,36,0.25); border-radius:8px; padding:10px;">
+            <div style="font-size:10px; text-transform:uppercase; color:var(--text-dim); margin-bottom:2px;">Coralys input</div>
+            <div style="font-size:12px; font-weight:700; color:var(--accent-amber);">Prior · Pre-open · Phase</div>
+            <div style="font-size:10px; color:var(--text-muted);">STANDASIDE when opposed</div>
           </div>
           <div style="background:rgba(255,255,255,0.02); border:1px solid rgba(255,255,255,0.08); border-radius:8px; padding:10px;">
-            <div style="font-size:10px; text-transform:uppercase; color:var(--text-dim); margin-bottom:2px;">Gate 04 · Momentum</div>
-            <div style="font-size:12px; font-weight:700; color:var(--accent-emerald);">traj15 &ge; +0.0500</div>
-            <div style="font-size:10px; color:var(--text-muted);">Directional breakout filter</div>
-          </div>
-          <div style="background:rgba(255,255,255,0.02); border:1px solid rgba(255,255,255,0.08); border-radius:8px; padding:10px;">
-            <div style="font-size:10px; text-transform:uppercase; color:var(--text-dim); margin-bottom:2px;">Gate 05 · Quote Quality</div>
-            <div style="font-size:12px; font-weight:700; color:var(--accent-cyan);">Spread &lt; 5 bps</div>
-            <div style="font-size:10px; color:var(--text-muted);">Valid top-of-book L1 depth</div>
+            <div style="font-size:10px; text-transform:uppercase; color:var(--text-dim); margin-bottom:2px;">G4 quote</div>
+            <div style="font-size:12px; font-weight:700; color:var(--accent-cyan);">Fresh L1</div>
+            <div style="font-size:10px; color:var(--text-muted);">Feasibility only</div>
           </div>
         </div>
 
@@ -5492,18 +5510,38 @@ DASHBOARD_HTML = """<!DOCTYPE html>
       }
       paintNseRecommendationBoard();
 
-      // Rejection Breakdown Chips
+      // Rejection Breakdown Chips (includes Coralys input standaside)
       if (chipsContainer && evSummary.rejection_breakdown) {
         const rb = evSummary.rejection_breakdown;
         chipsContainer.innerHTML = `
           <span style="font-weight:700; text-transform:uppercase; letter-spacing:0.5px; color:var(--text-muted); font-size:10px;">Rejection Breakdown:</span>
-          <span class="pill-sm" style="background:rgba(245,158,11,0.1); color:var(--accent-amber); border:1px solid rgba(245,158,11,0.2);">Cold Start (&lt; 5 bars): <b>${rb.COLD_START_INSUFFICIENT_HISTORY || 0}</b></span>
-          <span class="pill-sm" style="background:rgba(148,163,184,0.1); color:var(--text-dim); border:1px solid rgba(148,163,184,0.2);">Sub-Threshold (traj15 &lt; 0.05): <b>${rb.SUB_THRESHOLD_MOMENTUM || 0}</b></span>
-          <span class="pill-sm" style="background:rgba(244,63,94,0.1); color:var(--accent-rose); border:1px solid rgba(244,63,94,0.2);">Boundary (&ge; 15:00): <b>${rb.INTRADAY_BOUNDARY_EXCLUDED || 0}</b></span>
-          <span class="pill-sm" style="background:rgba(6,182,212,0.1); color:var(--accent-cyan); border:1px solid rgba(6,182,212,0.2);">Active Trade: <b>${rb.EXISTING_POSITION_ACTIVE || 0}</b></span>
-          <span class="pill-sm" style="background:rgba(239,68,68,0.1); color:var(--accent-rose); border:1px solid rgba(239,68,68,0.2);">Data Failure: <b>${rb.DATA_QUALITY_FAILURE || 0}</b></span>
+          <span class="pill-sm" style="background:rgba(251,191,36,0.12); color:var(--accent-amber); border:1px solid rgba(251,191,36,0.3);">Coralys input: <b>${rb.STANDASIDE_CORALYS_INPUT_GATE || 0}</b></span>
+          <span class="pill-sm" style="background:rgba(245,158,11,0.1); color:var(--accent-amber); border:1px solid rgba(245,158,11,0.2);">Cold Start: <b>${rb.COLD_START_INSUFFICIENT_HISTORY || 0}</b></span>
+          <span class="pill-sm" style="background:rgba(148,163,184,0.1); color:var(--text-dim); border:1px solid rgba(148,163,184,0.2);">Sub-Threshold: <b>${rb.SUB_THRESHOLD_MOMENTUM || 0}</b></span>
+          <span class="pill-sm" style="background:rgba(244,63,94,0.1); color:var(--accent-rose); border:1px solid rgba(244,63,94,0.2);">Boundary: <b>${rb.INTRADAY_BOUNDARY_EXCLUDED || 0}</b></span>
+          <span class="pill-sm" style="background:rgba(6,182,212,0.1); color:var(--accent-cyan); border:1px solid rgba(6,182,212,0.2);">Active: <b>${rb.EXISTING_POSITION_ACTIVE || 0}</b></span>
+          <span class="pill-sm" style="background:rgba(239,68,68,0.1); color:var(--accent-rose); border:1px solid rgba(239,68,68,0.2);">Quote/Data: <b>${(rb.QUOTE_FEASIBILITY_FAILURE || 0) + (rb.DATA_QUALITY_FAILURE || 0)}</b></span>
         `;
       }
+
+      // Universe strip + Coralys input gate panel
+      const rp607 = nse.rp607_summary || {};
+      const setTxt = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = (v != null && v !== '') ? String(v) : '—'; };
+      setTxt('nse-univ-census', rp607.census_total != null ? rp607.census_total : (nse.coverage && nse.coverage.total_universe));
+      setTxt('nse-univ-classified', rp607.classified_count != null ? rp607.classified_count : rp607.n_classified);
+      setTxt('nse-univ-quarantined', rp607.quarantined_count);
+      const cig = nse.coralys_input_gate || {};
+      const cigPill = document.getElementById('nse-coralys-gate-pill');
+      if (cigPill) {
+        const on = cig.gate_enabled !== false;
+        cigPill.textContent = on ? ('GATE ON · ' + (cig.session_phase || '—')) : 'GATE OFF';
+        cigPill.style.color = on ? 'var(--accent-amber)' : 'var(--text-dim)';
+      }
+      setTxt('nse-coralys-phase', cig.session_phase);
+      setTxt('nse-coralys-prior', (cig.prior_status || '—') + (cig.prior_next_session_date ? (' · ' + cig.prior_next_session_date) : ''));
+      setTxt('nse-coralys-preopen', cig.preopen_status);
+      setTxt('nse-coralys-standaside', cig.n_standaside != null ? cig.n_standaside : 0);
+      setTxt('nse-coralys-qual', cig.n_qualifying != null ? cig.n_qualifying : 0);
 
       // Momentum Census Counts
       allNseScrips = nse.scrips || [];

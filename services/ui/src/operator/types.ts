@@ -211,6 +211,22 @@ export type NextSessionWatch = {
   not_paper_trade_entry?: boolean;
 };
 
+export type CoralysInputGateView = {
+  protocol_id?: string | null;
+  gate_enabled?: boolean;
+  session_phase?: string | null;
+  prior_status?: string | null;
+  prior_next_session_date?: string | null;
+  from_session_date?: string | null;
+  preopen_status?: string | null;
+  preopen_n_records?: number | null;
+  n_standaside?: number | null;
+  n_qualifying?: number | null;
+  total_evaluated?: number | null;
+  baseline_of_inert?: boolean;
+  coralys_crates_untouched?: boolean;
+};
+
 export type NseStatus = {
   available: boolean;
   status?: string | null;
@@ -243,6 +259,8 @@ export type NseStatus = {
     neutral?: number;
     bearish_le_005?: number;
   } | null;
+  coralys_input_gate?: CoralysInputGateView | null;
+  session_phase?: string | null;
   daemon_pid?: number | string | null;
   services?: Record<string, string> | null;
   scrips?: Array<Record<string, unknown>>;

@@ -253,6 +253,8 @@ export function mapNse(raw: Record<string, unknown> | null): NseStatus {
   const evals = asRecord(raw.evaluations_summary) ?? {};
   const rp607 = asRecord(raw.rp607_summary) ?? {};
   const coverage = asRecord(raw.coverage) ?? {};
+  const prod = asRecord(raw.production_session) ?? {};
+  const cig = asRecord(raw.coralys_input_gate) ?? {};
   const mom = asRecord(evals.momentum_distribution);
 
   const classified =
@@ -339,6 +341,25 @@ export function mapNse(raw: Record<string, unknown> | null): NseStatus {
           bullish_ge_005: numOrNull(mom.bullish_ge_005) ?? undefined,
           neutral: numOrNull(mom.neutral) ?? undefined,
           bearish_le_005: numOrNull(mom.bearish_le_005) ?? undefined,
+        }
+      : null,
+    session_phase:
+      (cig.session_phase as string) ?? (prod.session_phase as string) ?? null,
+    coralys_input_gate: Object.keys(cig).length
+      ? {
+          protocol_id: (cig.protocol_id as string) ?? null,
+          gate_enabled: cig.gate_enabled !== false,
+          session_phase: (cig.session_phase as string) ?? null,
+          prior_status: (cig.prior_status as string) ?? null,
+          prior_next_session_date: (cig.prior_next_session_date as string) ?? null,
+          from_session_date: (cig.from_session_date as string) ?? null,
+          preopen_status: (cig.preopen_status as string) ?? null,
+          preopen_n_records: numOrNull(cig.preopen_n_records),
+          n_standaside: numOrNull(cig.n_standaside),
+          n_qualifying: numOrNull(cig.n_qualifying),
+          total_evaluated: numOrNull(cig.total_evaluated),
+          baseline_of_inert: cig.baseline_of_inert !== false,
+          coralys_crates_untouched: cig.coralys_crates_untouched !== false,
         }
       : null,
     daemon_pid: (raw.daemon_pid as number | string) ?? null,
