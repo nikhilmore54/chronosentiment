@@ -141,18 +141,21 @@ class TestTradePlanOverlay(unittest.TestCase):
         self.assertIsNone(mgr.state["active_plan"])
 
     def test_06_ambiguous_crossing_tie_break(self):
-        """Verifies ambiguous crossing resolves conservatively to CLOSED_SL."""
+        """Gate 5 policy G: ambiguous TP∧SL resolves to TP (not conservative SL)."""
         mgr = TradePlanOverlayManager(base_dir=self.test_overlay_dir)
         plan = calculate_trade_plan(self.sample_card_short)
+        tp = plan["profit_target_price"]
         mgr.state["active_plan"] = plan
         mgr._save_state()
 
         quote_ambig = {"best_bid_price": 79700.00, "best_ask_price": 80500.00}
         resolved = mgr.evaluate_market_tick(quote_ambig)
-        
+
         self.assertIsNotNone(resolved)
-        self.assertEqual(resolved["state"], "CLOSED_SL")
-        self.assertEqual(resolved["exit_reason"], "AMBIGUOUS_STOP_TARGET")
+        self.assertEqual(resolved["state"], "CLOSED_TP")
+        self.assertEqual(resolved["exit_reason"], "PROFIT_TARGET_HIT")
+        self.assertEqual(resolved.get("ambiguous_resolved_as"), "TP")
+        self.assertAlmostEqual(float(resolved["exit_price"]), float(tp), places=2)
 
     def test_07_60_minute_time_exit(self):
         """Verifies time exit triggers when 3600 seconds elapse."""

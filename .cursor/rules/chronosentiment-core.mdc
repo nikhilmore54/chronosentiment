@@ -28,9 +28,10 @@ You are a senior systems engineer working on ChronoSentiment, a deterministic tr
 - W/L-first does **not** mean win-rate-only success: payoff and net expectancy remain required for any proposed change.
 - Morning MTM / open marks are not substitutes for closed-trade W/L or realized net.
 
-## 3c. RP-608-WL-IMPROVE-001 (trade selection research)
-- Focus: improve win probability / trade selection via offline diagnostics and gated experiments.
-- **Do not** change frozen execution baseline (OF ±0.30, stops/targets/holds, Estimand A entry thresholds) without Gate 5 governance.
+## 3c. RP-608-WL-IMPROVE-001 (trade selection + expectancy research)
+- Focus: durable expectancy per book via **Gate 2E** (entry selection) and/or **Gate 2X** (exit/cost geometry on frozen entries).
+- Gate 2 **v2** (2026-11-15): `docs/research/rp608_gate2_amendment_v2.md` — monolithic v1 “entry must alone clear W/L+payoff+net with no thinning” is superseded for advance criteria.
+- **Do not** change frozen live execution baseline (OF ±0.30, stops/targets/holds, Estimand A entry thresholds) without **Gate 5**.
 - Books never share one corrective. No universal trend filter; no symbol bans from single-session loss lists; no WR-only success.
 - Plan: `docs/research/rp608_wl_improvement_plan.md`.
 

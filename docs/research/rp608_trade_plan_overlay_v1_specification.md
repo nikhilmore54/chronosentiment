@@ -82,7 +82,7 @@ $$\text{Net R:R} = \frac{\text{Net Target Profit}}{\text{Net Stop Loss}}$$
 ```
 
 ### Critical Edge Cases
-1. **Ambiguous Intra-Observation Crossings:** If a price gap or interval crosses both $SL$ and $TP$, the event is flagged `AMBIGUOUS_STOP_TARGET` and resolved conservatively to `CLOSED_SL` in the primary evaluation.
+1. **Ambiguous Intra-Observation Crossings (Gate 5 policy G, 2026-11-15):** If a price gap or interval crosses both $SL$ and $TP$, the primary evaluation resolves to **`CLOSED_TP` / `PROFIT_TARGET_HIT`** (`ambiguous_tie_break=TP`), with `exit_reason_detail=AMBIGUOUS_RESOLVED_TP_GATE5_G`. Legacy SL resolution remains available only if `ambiguous_tie_break=SL`. Live order authority remains 0%.
 2. **Quote Staleness:** If quote age $> 500\text{ ms}$ at trigger time, mark `EXIT_PENDING_DATA` without fabricating prices.
 3. **Signal Overlap:** If a new Policy B signal arrives while a plan is open, log `SUPPRESSED_OPEN_PLAN` without extending the 60m horizon or modifying levels.
 4. **Zero Order Authority:** No orders, keys, or endpoints exist. All exits are simulated from top-of-book execution quotes.

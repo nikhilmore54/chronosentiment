@@ -388,6 +388,10 @@ CONFIG: Dict[str, Any] = {
     "stop_multiplier": 1.0,
     "target_multiplier": 1.5,
     "max_holding_seconds": 3600,  # 60 minutes
+    # Gate 5 (2026-11-15): ambiguous TP∧SL same observation → TP (policy G).
+    # Prior: conservative SL / AMBIGUOUS_STOP_TARGET. Authority remains 0%.
+    "ambiguous_tie_break": "TP",  # TP | SL
+    "gate5_policy_g": "RP-608-GATE5-CRYPTO-G-001",
     "simulated_notional_usdt": 1000.0,
     "price_tick_size": 0.01,
     "taker_fee_bps": 5.0,
@@ -2330,18 +2334,33 @@ class TradePlanOverlayManager:
                 hit_sl = True
             exit_price = sl if hit_sl else (tp if hit_tp else ask)
 
-        if hit_tp and hit_sl:
-            terminal_state = "CLOSED_SL"
-            exit_reason = "AMBIGUOUS_STOP_TARGET"
+        ambiguous = bool(hit_tp and hit_sl)
+        tie_break = str(CONFIG.get("ambiguous_tie_break") or "TP").upper()
+        if ambiguous:
+            # Gate 5 policy G: prefer TP. Legacy SL retained only if explicitly configured.
             self.state["outcomes_summary"]["ambiguous_hits"] += 1
+            if tie_break == "SL":
+                terminal_state = "CLOSED_SL"
+                exit_reason = "AMBIGUOUS_STOP_TARGET"
+                exit_price = sl
+                self.state["outcomes_summary"]["sl_hits"] += 1
+            else:
+                terminal_state = "CLOSED_TP"
+                exit_reason = "PROFIT_TARGET_HIT"
+                exit_price = tp
+                plan["ambiguous_resolved_as"] = "TP"
+                plan["gate5_policy_g"] = CONFIG.get("gate5_policy_g")
+                self.state["outcomes_summary"]["tp_hits"] += 1
         elif hit_tp:
             terminal_state = "CLOSED_TP"
             exit_reason = "PROFIT_TARGET_HIT"
             self.state["outcomes_summary"]["tp_hits"] += 1
+            exit_price = tp
         elif hit_sl:
             terminal_state = "CLOSED_SL"
             exit_reason = "STOP_LOSS_HIT"
             self.state["outcomes_summary"]["sl_hits"] += 1
+            exit_price = sl
         elif now_ms >= expiry_ms:
             terminal_state = "TIME_EXIT"
             exit_reason = "MAX_HORIZON_60M_EXPIRED"
@@ -2350,6 +2369,8 @@ class TradePlanOverlayManager:
         if terminal_state:
             plan["state"] = terminal_state
             plan["exit_price"] = round_tick(exit_price)
+            if ambiguous and tie_break != "SL":
+                plan["exit_reason_detail"] = "AMBIGUOUS_RESOLVED_TP_GATE5_G"
             plan["exit_time_ms"] = now_ms
             plan["holding_duration_seconds"] = round((now_ms - entry_ms) / 1000.0, 1)
 
