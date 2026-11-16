@@ -1,7 +1,7 @@
 # Canonical Repository Index
 
 **Document ID:** GOV-IDX-001
-**Version:** 2.05
+**Version:** 2.17
 **Status:** Active
 **Created:** 2026-08-01
 
@@ -287,6 +287,9 @@ Documents in this section must not be modified except for typographical correcti
 
 | ID | Path | Title | Status |
 |----|------|-------|--------|
+| RP-002 | `docs/research/rp002_coralys_learning_architecture.md` | Coralys Learning Architecture (CLA) — evolutionary learning + multidimensional feedback foundations; three pillars (acquire / preserve / transfer); authority 0% | REGISTERED 2026-11-16 |
+| RP-002-RRR | `docs/research/rp002/RP002_RESEARCH_READING_REGISTER.md` | RP-002 Research Reading Register v0.1 — AOS/MORL/bandits/meta/continual/eval library by gap; reading batches; RD-1..3; architecture **not** frozen | INITIAL FREEZE 2026-11-16 |
+| RP-002-B1 | `docs/research/rp002/07_research_hypotheses_and_experiments/BATCH1_WITHIN_RUN_LEARNING_NOTES.md` | RP-002 Batch 1 within-run learning notes — FRRMAB/D-MAB/Roijers studied; Lin/Jiao blocked; provisional E0 only; authority 0% | ACTIVE 2026-11-16 |
 | UC-R-001 | `docs/research/UltraCrew_Pairing_Topology_Mutation_Evaluation.md` | Pairing Topology Mutation Evaluation | Section 2 FROZEN; Section 3 active |
 | UC-R-002 | `docs/research/UltraCrew_Coralys_Native_Scheduler_Section3.md` | Coralys Native Scheduler — Section 3 | Active — Experiment 0 spec complete |
 | UC-R-003 | `docs/research/UltraCrew_GENCOL_Pipeline_Divergence_Analysis.md` | GENCOL Pipeline Divergence Analysis | Active |
@@ -342,6 +345,7 @@ Documents in this section must not be modified except for typographical correcti
 | ID | Path | Title |
 |----|------|-------|
 | ARCH-001 | `docs/CORALYS_PLATFORM_ARCHITECTURE.md` | Coralys Platform Architecture |
+| ARCH-001-LI | `docs/CORALYS_LEARNING_INTELLIGENCE_ARCHITECTURE_v1.md` | Coralys Learning Intelligence Architecture v1 — Learning / Optimization / Decision / Execution capability model; CLE vs Learning; MOGA boundary; contract sketch; additive to ARCH-001 |
 | ARCH-002 | `docs/PLATFORM_CRATE_RESPONSIBILITIES.md` | Platform Crate Responsibilities |
 | ARCH-003 | `docs/Service_Boundary_Definition.md` | Service Boundary Definition |
 | ARCH-004 | `docs/Event_Flow_Specification.md` | Event Flow Specification |
@@ -498,6 +502,10 @@ The following documents exist in the repository but have not been confirmed as c
 
 | Version | Date | Change |
 |---------|------|--------|
+| 2.17 | 2026-11-16 | RP-002-B1 Batch 1 notes — Li/DaCosta/Roijers full text studied; Lin/Jiao blocked; E0 design only; architecture unfrozen; authority 0% |
+| 2.16 | 2026-11-16 | RP-002-RRR Research Reading Register initial freeze — 18+ resources by gap; library folders 01–07; architecture remains unfrozen; authority 0% |
+| 2.15 | 2026-11-16 | RP-002 Coralys Learning Architecture registered — Grefenstette (1993) + Schaffer & Grefenstette foundational; multidimensional feedback central; authority 0%; no Gate5/OFX change |
+| 2.14 | 2026-11-16 | ARCH-001-LI Coralys Learning Intelligence Architecture v1 — four-capability model; CLE vs Learning; MOGA boundary; additive to ARCH-001; no Gate5/OFX authority change |
 | 2.13 | 2026-11-04 | RP-608-OFX Stage 2 design/readiness only; mechanism classifier held; Stage 1 DOMINANTLY_FLAT_SHORT_HORIZON locked |
 | 2.12 | 2026-11-04 | RP-608-OFX Stage 1 result-quality audit: flat conclusion preserved; magnitude/baseline/concentration diagnostics; Stage 2 not authorized |
 | 2.11 | 2026-11-04 | RP-608-OFX Stage 1: aggression→response observer authorized+run; short-horizon responses dominantly flat; Stage 2 not authorized |

@@ -17,6 +17,7 @@
 
 **Relationship to other documents:**
 - Informed by: `CORALYS_PLATFORM_ARCHITECTURE.md` (platform architecture — primitives, lifecycle, Continuous Learning Engine)
+- Informed by: `CORALYS_LEARNING_INTELLIGENCE_ARCHITECTURE_v1.md` (Learning Intelligence as platform capability; MOGA remains independent)
 - Informs: `ChronoSentiment_Product_Strategy_v1.md` (ChronoSentiment product positioning)
 - Informs: `PRODUCT_BLUEPRINT.md` (product development strategy)
 - Complementary to: `PRODUCT_STRATEGY.md` (platform positioning, product hierarchy, go-to-market)
@@ -71,6 +72,10 @@ Coralys is never the product the customer sees first. It is the platform that ma
 | **Coralys** | Knowledge Evolution Platform | Platform architects, engineering teams, future solution builders |
 | **Products** | Decision Engines / Knowledge Platform | Customers |
 | **Continuous Learning Engine** | Core computational capability | Engineers and platform developers |
+
+### Platform capabilities (internal)
+
+Coralys additionally defines four interoperable capabilities—**Learning Intelligence**, **Optimization** (including MOGA), **Decision Intelligence**, and **Execution**—documented in [`CORALYS_LEARNING_INTELLIGENCE_ARCHITECTURE_v1.md`](CORALYS_LEARNING_INTELLIGENCE_ARCHITECTURE_v1.md). Commercially, most products still surface as Decision Engines; Learning and Optimization remain enabling platform capabilities unless a product explicitly exposes them (as ChronoSentiment Personal does for knowledge evolution). Learning does not replace Optimization, and learned outputs do not bypass Decision governance or user-controlled execution.
 
 ---
 
@@ -137,6 +142,7 @@ Coralys is primarily an enabling platform today. In the future, if Coralys is li
 ---
 
 *Coralys Platform Strategy v1.1 | July 2026 | Status: Baseline*
+*v1.1+ (2026-11-16): Additive pointer to Learning Intelligence / four-capability model; no change to product commercial identities.*
 *v1.0: Initial document — product portfolio positioning, product identities (UltraCrew, ChronoSentiment Enterprise, ChronoSentiment Personal), platform hierarchy, portfolio principle, licensing considerations.*
 *v1.1: Promoted from Draft to Baseline. Content confirmed against platform architecture review (9.9–10/10). No structural changes — architecture review validated product identities, portfolio principle, and platform/product separation as correct.*
 *Review trigger: Material change in product portfolio; new domain adapter launched; go-to-market strategy revision.*

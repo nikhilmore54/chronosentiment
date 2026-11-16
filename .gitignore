@@ -1,3 +1,10 @@
+# Dependencies
+node_modules/
+
+# Scratch & Temporary analysis scripts
+_tmp*
+**/_tmp*
+
 # Rust
 target/
 **/*.rs.bk

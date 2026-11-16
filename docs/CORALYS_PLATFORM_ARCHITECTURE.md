@@ -21,6 +21,7 @@
 - Realised by: ChronoSentiment Product Blueprint v1.0 (enterprise decision management adapter)
 - Realised by: UltraCrew (workforce scheduling adapter)
 - Informs: ChronoSentiment Product Strategy v1.2 (Section 9 — platform hierarchy)
+- Complementary to: `CORALYS_LEARNING_INTELLIGENCE_ARCHITECTURE_v1.md` (Learning Intelligence capability — ML paradigms, model infrastructure, MOGA boundary; additive to this baseline)
 - Complementary to: `ARCHITECTURE_EVOLUTION.md` (engineering constitution — crate structure, dependency rules, planning capability, invariants). This document operates at the product/strategy layer; `ARCHITECTURE_EVOLUTION.md` operates at the engineering/implementation layer. Neither supersedes the other.
 - Complementary to: `PLATFORM_CRATE_RESPONSIBILITIES.md` (engineering — per-crate responsibility boundaries)
 - Complementary to: `DOMAIN_EXTENSION_GUIDE.md` (engineering — how to add a new domain adapter)
@@ -90,6 +91,23 @@ The distinction matters: if you remove the Continuous Learning Engine, the platf
             Continuous Learning Engine
             (core computational mechanism)
 ```
+
+---
+
+## Platform capability model (additive)
+
+Alongside the Knowledge Evolution lifecycle, Coralys exposes four interoperable **computational capabilities**. Full contracts and the MOGA / Learning boundary are defined in [`CORALYS_LEARNING_INTELLIGENCE_ARCHITECTURE_v1.md`](CORALYS_LEARNING_INTELLIGENCE_ARCHITECTURE_v1.md).
+
+| Capability | Responsibility |
+| ---------- | -------------- |
+| **Learning Intelligence** | Discover patterns, predict outcomes, train models and learn decision policies (pluggable ML paradigms + model lifecycle). |
+| **Optimization** | Explore solution spaces under objectives and constraints (including MOGA / evolutionary computation). Remains independent of ML training. |
+| **Decision Intelligence** | Evaluate alternatives, assess trade-offs and select actions under governance. |
+| **Execution Framework** | Execute decisions, observe outcomes and feed operational feedback. |
+
+**CLE vs Learning Intelligence:** The Continuous Learning Engine (below) owns the **knowledge lifecycle** (Workspace → Evidence → Hypothesis → Review → Outcome → Pattern → Knowledge Graph). Learning Intelligence owns **statistical / policy model infrastructure**. Learning informs Optimization and Decision; it does not replace the CLE, embed training in MOGA, or grant unsupervised authority without Decision governance.
+
+Continuous cycle: **Observe → Learn → Optimize → Decide → Execute →** (feedback to Observe/Learn).
 
 ---
 
@@ -480,5 +498,6 @@ The following observations are recorded as candidates for Coralys v2. They are n
 *v1.3: Product Portfolio Positioning section added (subsequently moved to CORALYS_PLATFORM_STRATEGY.md in v1.4).*
 *v1.4: Platform layering diagram and canonical architecture diagram added; three-part model elevated (Platform governs / Engine drives / Knowledge Graph preserves); "Coralys supplies the lifecycle" refined to "lifecycle, governance, and knowledge evolution capabilities"; Product Portfolio Positioning moved to CORALYS_PLATFORM_STRATEGY.md to keep architecture timeless.*
 *v1.5: Continuous Learning Engine terminology corrected — "first-class platform primitive" replaced with "core computational subsystem"; three v2 candidates added (Observation 7: Knowledge Graph Services; Observation 8: Platform Realisations terminology; Observation 9: Platform Invariants).*
+*v1.5+ (2026-11-16): Additive cross-link — Platform capability model (Learning / Optimization / Decision / Execution) and CLE vs Learning Intelligence clarification; see CORALYS_LEARNING_INTELLIGENCE_ARCHITECTURE_v1.md. No change to Knowledge Evolution identity or CLE lifecycle ownership.*
 *Domain adapters: ChronoSentiment Personal, ChronoSentiment Enterprise, UltraCrew, and future products.*
 *Review trigger: Material change in platform capability; new domain adapter added; Coralys v2 planning begins.*
