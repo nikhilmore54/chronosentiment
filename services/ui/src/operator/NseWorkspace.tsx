@@ -4,7 +4,6 @@ import { chip, labelStyle, op, panelStyle } from './operatorStyles';
 
 type Props = {
   state: OperatorState | null;
-  onBack: () => void;
 };
 
 function formatIst(iso: string | null | undefined): string {
@@ -48,7 +47,7 @@ function formatIstClock(iso: string | null | undefined): string {
   }
 }
 
-export default function NseWorkspace({ state, onBack }: Props) {
+export default function NseWorkspace({ state }: Props) {
   const nse = state?.nse;
   const recommendedAt = nse?.recommended_at_utc ?? nse?.emitted_utc ?? null;
 
@@ -58,17 +57,11 @@ export default function NseWorkspace({ state, onBack }: Props) {
 
   return (
     <div style={{ fontFamily: op.sans, color: op.text }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 16, gap: 12, flexWrap: 'wrap' }}>
-        <div>
-          <button type="button" onClick={onBack} style={backBtn}>
-            ← Overview
-          </button>
-          <h2 style={{ margin: '10px 0 4px', fontSize: 20 }}>NSE workspace</h2>
-          <p style={{ margin: 0, color: op.muted, fontSize: 13 }}>
-            Universe · Coralys input gate (prior + pre-open + phase) · next-session · session board.
-          </p>
-        </div>
-        <span style={chip(op.emerald, '#052e16')}>AUTHORITY 0%</span>
+      <div style={{ marginBottom: 16 }}>
+        <h2 style={{ margin: '0 0 4px', fontSize: 20, fontWeight: 700 }}>NSE</h2>
+        <p style={{ margin: 0, color: op.muted, fontSize: 13 }}>
+          Universe · Coralys input gate · next-session · session board — Pi fields only.
+        </p>
       </div>
 
       {!nse?.available ? (
@@ -136,7 +129,7 @@ export default function NseWorkspace({ state, onBack }: Props) {
                       ? ` · ${nse.coralys_input_gate.prior_next_session_date}`
                       : ''}
                   </span>
-                  <span style={chip('rgba(167,139,250,0.25)', op.violet)}>
+                  <span style={chip('rgba(251,191,36,0.22)', op.amber)}>
                     PREOPEN {nse.coralys_input_gate.preopen_status ?? '—'}
                     {nse.coralys_input_gate.preopen_n_records != null
                       ? ` · n=${nse.coralys_input_gate.preopen_n_records}`
@@ -256,7 +249,7 @@ export default function NseWorkspace({ state, onBack }: Props) {
               <span style={chip('rgba(251,113,133,0.25)', op.rose)}>
                 STANDASIDE {nse.rejection_breakdown?.STANDASIDE_CORALYS_INPUT_GATE ?? nse.coralys_input_gate?.n_standaside ?? 0}
               </span>
-              <span style={chip('rgba(167,139,250,0.25)', op.violet)}>
+              <span style={chip('rgba(148,163,184,0.22)', op.muted)}>
                 HIGH-T {nse.n_high_target ?? 'UNAVAILABLE'}
               </span>
               <span style={chip('rgba(251,191,36,0.3)', op.amber)}>
@@ -291,14 +284,3 @@ export default function NseWorkspace({ state, onBack }: Props) {
     </div>
   );
 }
-
-const backBtn = {
-  background: 'transparent',
-  border: `1px solid ${op.border}`,
-  color: op.muted,
-  borderRadius: 6,
-  padding: '6px 10px',
-  cursor: 'pointer',
-  fontSize: 12,
-};
-

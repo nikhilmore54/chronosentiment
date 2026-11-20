@@ -1,27 +1,27 @@
-/** Shared presentation tokens for Gate5 Operator workspaces. */
+/** Shared presentation tokens for Gate5 Operator. */
 
 import type { CSSProperties } from 'react';
 
 export const op = {
-  bg: '#0b1220',
-  panel: 'rgba(15, 23, 42, 0.85)',
-  border: 'rgba(148, 163, 184, 0.18)',
-  text: '#e2e8f0',
-  muted: '#94a3b8',
-  dim: '#64748b',
-  cyan: '#22d3ee',
+  bg: '#071018',
+  panel: 'rgba(12, 22, 34, 0.92)',
+  border: 'rgba(148, 163, 184, 0.16)',
+  text: '#e8eef4',
+  muted: '#8fa3b5',
+  dim: '#5f7386',
+  cyan: '#2dd4bf',
   emerald: '#34d399',
   rose: '#fb7185',
   amber: '#fbbf24',
-  violet: '#a78bfa',
   mono: "'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace",
   sans: "'IBM Plex Sans', 'Segoe UI', system-ui, sans-serif",
+  display: "'Fraunces', 'IBM Plex Sans', Georgia, serif",
 } as const;
 
 export const panelStyle: CSSProperties = {
   background: op.panel,
   border: `1px solid ${op.border}`,
-  borderRadius: 10,
+  borderRadius: 8,
   padding: '14px 16px',
 };
 
@@ -41,7 +41,7 @@ export const valueStyle: CSSProperties = {
   fontWeight: 600,
 };
 
-export const chip = (bg: string, fg = '#0b1220'): CSSProperties => ({
+export const chip = (bg: string, fg = op.text): CSSProperties => ({
   display: 'inline-flex',
   alignItems: 'center',
   gap: 6,

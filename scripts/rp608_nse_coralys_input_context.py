@@ -3,10 +3,11 @@
 RP-608 NSE — Coralys decision-time input context (adapter-side).
 
 Enriches Estimand A entry decisions with:
-  - session phase (OPEN / EARLY / MID / LATE)
+  - session phase / time-of-action
+    (OPEN / EARLY_JITTER / EARLY / MID / LATE)
   - pre-open gap + imbalance (RP-608-NSE-PREOPEN-OBS-001 snapshots)
   - prior-session watch support (next-session recommendations)
-  - pre-open / open turbulence stand-aside
+  - pre-open / open jitter + trend-alignment stand-aside
 
 Does NOT touch coralys-* crates. Does NOT change OF ±0.30.
 Does NOT change frozen stops/targets/holds (Gate 5).
@@ -19,6 +20,12 @@ Prior freshness (V3):
   STALE_EXPIRED   — lag > STALE_RECENT_MAX_CALENDAR_DAYS
   MISMATCH_FUTURE — next_session_date after session_date
   MISSING         — no file / unreadable
+
+Time-of-action (V6 · IST):
+  OPEN          ≤09:15  — auction / open print (jitter-sensitive)
+  EARLY_JITTER  <09:20  — settle hold after open
+  EARLY         <09:45  — constructive window (trend + gap aligned)
+  MID / LATE    as before
 """
 
 from __future__ import annotations
@@ -33,25 +40,41 @@ from typing import Any, Dict, Optional, Tuple
 IST = timezone(timedelta(hours=5, minutes=30))
 
 PROTOCOL_ID = "RP-608-NSE-CORALYS-INPUT-GATE-001"
-# V3 (2026-11-16): stale ladder + preopen turbulence; continuous V2 floors retained.
-POLICY_ID = "CORALYS_INPUT_GATE_V3"
+# V6 (2026-11-20): time-of-action + trend vs pre-open jitter.
+# Keeps V5: preopen MISSING → always stand aside.
+# Per-symbol session re-entry bans removed — churn is a pattern feature
+# (see rp608_nse_trade_pattern_* / Gate 2E).
+POLICY_ID = "CORALYS_INPUT_GATE_V6"
 
 # Continuous-session traj floors (adapter gate on top of frozen Estimand A ≥0.05).
-CONTINUOUS_TRAJ_FLOOR = 0.08
+CONTINUOUS_TRAJ_FLOOR = 0.10
 CONTINUOUS_TRAJ_FLOOR_PRIOR_WEAK = 0.12
-CONTINUOUS_TRAJ_FLOOR_NONPOSITIVE_GAP = 0.10
-CONTINUOUS_TRAJ_FLOOR_OPPOSED_GAP = 0.12
+CONTINUOUS_TRAJ_FLOOR_NONPOSITIVE_GAP = 0.12
+CONTINUOUS_TRAJ_FLOOR_OPPOSED_GAP = 0.15
+LATE_TRAJ_FLOOR = 0.15
 
 # Prior watch freshness ladder.
 STALE_RECENT_MAX_CALENDAR_DAYS = 6  # weekend + unseen holiday buffer; still STALE_RECENT
 
-# Pre-open / open turbulence thresholds (OPEN + EARLY).
+# Pre-open / open turbulence (hard jitter) thresholds.
 TURBULENCE_ABS_GAP_BPS = 75.0
 TURBULENCE_ABS_IMB = 0.45
 TURBULENCE_COMBO_GAP_BPS = 40.0
 TURBULENCE_OPPOSED_GAP_BPS = 50.0
 TURBULENCE_OPPOSED_IMB = 0.35
-OPEN_EARLY_TURBULENCE_TRAJ_FLOOR = 0.12
+
+# Medium pre-open jitter (OPEN / EARLY_JITTER standaside even without full turbulence).
+JITTER_MED_GAP_BPS = 35.0
+JITTER_MED_IMB = 0.30
+
+# Time-of-action floors / alignment (LONG book).
+OPEN_TRAJ_FLOOR = 0.15
+EARLY_JITTER_TRAJ_FLOOR = 0.18
+EARLY_TRAJ_FLOOR = 0.12
+EARLY_TURBULENT_TRAJ_FLOOR = 0.18
+ALIGN_GAP_BPS = 20.0
+OPPOSED_GAP_BPS = -25.0
+OPPOSED_EARLY_TRAJ_FLOOR = 0.18
 
 
 def gate_enabled() -> bool:
@@ -60,7 +83,7 @@ def gate_enabled() -> bool:
 
 
 def session_phase_ist(ts: datetime) -> str:
-    """Map decision time to session phase."""
+    """Map decision time to time-of-action phase (IST)."""
     if ts.tzinfo is None:
         ts = ts.replace(tzinfo=IST)
     else:
@@ -68,11 +91,54 @@ def session_phase_ist(ts: datetime) -> str:
     hm = ts.hour * 60 + ts.minute
     if hm <= 9 * 60 + 15:
         return "OPEN"
+    if hm < 9 * 60 + 20:
+        return "EARLY_JITTER"
     if hm < 9 * 60 + 45:
         return "EARLY"
     if hm < 11 * 60:
         return "MID"
     return "LATE"
+
+
+def is_preopen_jittery(
+    gap_bps: Optional[float],
+    imbalance_ratio: Optional[float],
+) -> Tuple[bool, str]:
+    """
+    Medium pre-open jitter for LONG book (below full turbulence).
+
+    Clean constructive gap-up + supportive bid is NOT jitter.
+    Flags gap-down noise, gap/imbalance opposition, and gap-up with ask-heavy book.
+    """
+    if gap_bps is None:
+        return False, ""
+    gap = float(gap_bps)
+    imb = float(imbalance_ratio) if imbalance_ratio is not None else None
+    if gap <= -JITTER_MED_GAP_BPS:
+        return True, "MED_GAP_DOWN"
+    if (
+        gap >= JITTER_MED_GAP_BPS
+        and imb is not None
+        and imb <= -JITTER_MED_IMB
+    ):
+        return True, "MED_GAP_UP_ASK_HEAVY"
+    if (
+        imb is not None
+        and abs(imb) >= JITTER_MED_IMB
+        and abs(gap) >= 20.0
+        and (gap * imb) < 0.0
+    ):
+        return True, "MED_GAP_IMB_OPPOSED"
+    return False, ""
+
+
+def long_trend_aligned(gap_bps: float, traj15: float) -> bool:
+    """LONG book: traj and opening gap should not fight."""
+    if gap_bps >= ALIGN_GAP_BPS and traj15 >= OPEN_TRAJ_FLOOR:
+        return True
+    if gap_bps >= 0.0 and traj15 >= EARLY_JITTER_TRAJ_FLOOR:
+        return True
+    return False
 
 
 def _parse_day(s: str) -> Optional[str]:
@@ -290,6 +356,7 @@ class CoralysInputContextStore:
         imb = po.imbalance_ratio if po else None
         preopen_status = "OK" if po is not None else "MISSING"
         turbulent, turb_tag = is_preopen_turbulent(gap, imb)
+        jittery, jitter_tag = is_preopen_jittery(gap, imb)
 
         allow = True
         reason = "PASS_NO_SIGNAL"
@@ -305,6 +372,8 @@ class CoralysInputContextStore:
                 "indicative_source": po.indicative_source if po else None,
                 "preopen_turbulent": bool(turbulent),
                 "preopen_turbulence_tag": turb_tag or None,
+                "preopen_jittery": bool(jittery),
+                "preopen_jitter_tag": jitter_tag or None,
                 "prior_status": prior_status,
                 "prior_support": prior_support,
                 "on_next_session_watch": on_watch,
@@ -321,22 +390,34 @@ class CoralysInputContextStore:
 
         if gate_enabled():
             if preopen_status != "OK" or gap is None:
-                allow = True
-                reason = "PASS_PREOPEN_MISSING_FAIL_OPEN"
-            elif gap <= -75.0 and t < 0.12:
+                # V5 retained: never enter without preopen context.
+                allow = False
+                reason = "STANDASIDE_PREOPEN_MISSING"
+            elif gap <= -75.0:
+                # Large gap-down: hard standaside in all phases (jitter / trend break).
                 allow = False
                 reason = "STANDASIDE_PREOPEN_LARGE_GAP_DOWN"
-            elif phase in {"OPEN", "EARLY"} and turbulent and t < OPEN_EARLY_TURBULENCE_TRAJ_FLOOR:
+            elif phase in {"OPEN", "EARLY_JITTER"} and turbulent:
+                # V6: hard standaside on full turbulence during open/jitter hold.
                 allow = False
                 reason = f"STANDASIDE_PREOPEN_TURBULENCE_{turb_tag}"
+            elif phase in {"OPEN", "EARLY_JITTER"} and jittery:
+                # Medium gap/imbalance jitter — do not chase auction prints.
+                allow = False
+                reason = f"STANDASIDE_PREOPEN_JITTER_{jitter_tag}"
             elif phase == "OPEN":
-                # Open requires constructive pre-open; prior watch OK when available.
-                aligned = gap >= 20.0 and (imb is None or imb >= -0.25)
+                # Auction/open: require constructive gap + trend align + prior.
+                aligned = gap >= ALIGN_GAP_BPS and (imb is None or imb >= -0.25)
                 if not aligned:
                     allow = False
                     reason = "STANDASIDE_OPEN_PREOPEN_NOT_ALIGNED"
+                elif not long_trend_aligned(gap, t):
+                    allow = False
+                    reason = "STANDASIDE_OPEN_TREND_NOT_ALIGNED"
+                elif t < OPEN_TRAJ_FLOOR:
+                    allow = False
+                    reason = "STANDASIDE_OPEN_WEAK_TRAJ"
                 elif prior_status == "STALE_EXPIRED" or prior_status == "MISMATCH_FUTURE":
-                    # Expired prior: do not hard-require membership; require stronger traj.
                     if t < CONTINUOUS_TRAJ_FLOOR_PRIOR_WEAK:
                         allow = False
                         reason = "STANDASIDE_OPEN_PRIOR_EXPIRED_WEAK_TRAJ"
@@ -347,7 +428,7 @@ class CoralysInputContextStore:
                     if prior_support is False and t < CONTINUOUS_TRAJ_FLOOR_PRIOR_WEAK:
                         allow = False
                         reason = "STANDASIDE_OPEN_STALE_PRIOR_NO_WATCH"
-                    elif t < CONTINUOUS_TRAJ_FLOOR:
+                    elif t < OPEN_TRAJ_FLOOR:
                         allow = False
                         reason = "STANDASIDE_OPEN_STALE_PRIOR_WEAK_TRAJ"
                     else:
@@ -359,13 +440,37 @@ class CoralysInputContextStore:
                 else:
                     allow = True
                     reason = "PASS_OPEN_PRIOR_PREOPEN_ALIGN"
+            elif phase == "EARLY_JITTER":
+                # 09:15–09:20 settle hold: only strong, aligned, prior-supported longs.
+                if gap < OPPOSED_GAP_BPS:
+                    allow = False
+                    reason = "STANDASIDE_EARLY_JITTER_GAP_OPPOSED"
+                elif not long_trend_aligned(gap, t) or t < EARLY_JITTER_TRAJ_FLOOR:
+                    allow = False
+                    reason = "STANDASIDE_EARLY_JITTER_WEAK_OR_MISALIGNED"
+                elif prior_support is False:
+                    allow = False
+                    reason = "STANDASIDE_EARLY_JITTER_NO_PRIOR_WATCH"
+                else:
+                    allow = True
+                    reason = "PASS_EARLY_JITTER_ALIGNED"
             elif phase == "EARLY":
-                if gap < -40.0 and t < CONTINUOUS_TRAJ_FLOOR:
+                # 09:20–09:45 constructive window — trend + gap; hard on turbulence.
+                if turbulent and t < EARLY_TURBULENT_TRAJ_FLOOR:
+                    allow = False
+                    reason = f"STANDASIDE_EARLY_TURBULENCE_{turb_tag}"
+                elif gap < OPPOSED_GAP_BPS and t < OPPOSED_EARLY_TRAJ_FLOOR:
                     allow = False
                     reason = "STANDASIDE_EARLY_PREOPEN_OPPOSED_WEAK_TRAJ"
+                elif t < EARLY_TRAJ_FLOOR:
+                    allow = False
+                    reason = "STANDASIDE_EARLY_WEAK_TRAJ"
                 elif prior_status == "STALE_RECENT" and prior_support is False and t < CONTINUOUS_TRAJ_FLOOR_PRIOR_WEAK:
                     allow = False
                     reason = "STANDASIDE_EARLY_STALE_PRIOR_NO_WATCH"
+                elif gap < 0.0 and not long_trend_aligned(gap, t):
+                    allow = False
+                    reason = "STANDASIDE_EARLY_TREND_NOT_ALIGNED"
                 else:
                     allow = True
                     reason = "PASS_EARLY"
@@ -373,9 +478,14 @@ class CoralysInputContextStore:
                 # MID / LATE: raise traj floor; stale prior / non-positive gap need more strength.
                 # Does NOT change frozen stops/targets/holds (Gate 5). Entry selection only.
                 prior_weak = prior_status != "OK"
-                if t < CONTINUOUS_TRAJ_FLOOR:
+                late_floor = LATE_TRAJ_FLOOR if phase == "LATE" else CONTINUOUS_TRAJ_FLOOR
+                if t < late_floor:
                     allow = False
-                    reason = "STANDASIDE_CONTINUOUS_WEAK_TRAJ"
+                    reason = (
+                        "STANDASIDE_LATE_WEAK_TRAJ"
+                        if phase == "LATE"
+                        else "STANDASIDE_CONTINUOUS_WEAK_TRAJ"
+                    )
                 elif prior_weak and t < CONTINUOUS_TRAJ_FLOOR_PRIOR_WEAK:
                     allow = False
                     reason = "STANDASIDE_CONTINUOUS_PRIOR_UNAVAILABLE_WEAK_TRAJ"
@@ -403,6 +513,13 @@ class CoralysInputContextStore:
             "indicative_source": po.indicative_source if po else None,
             "preopen_turbulent": bool(turbulent),
             "preopen_turbulence_tag": turb_tag or None,
+            "preopen_jittery": bool(jittery),
+            "preopen_jitter_tag": jitter_tag or None,
+            "trend_aligned_long": bool(
+                gap is not None and long_trend_aligned(float(gap), t)
+            )
+            if signal_long and gap is not None
+            else None,
             "prior_status": prior_status,
             "prior_support": prior_support,
             "on_next_session_watch": on_watch,

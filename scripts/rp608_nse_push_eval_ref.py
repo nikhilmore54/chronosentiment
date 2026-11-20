@@ -134,7 +134,9 @@ def rank_watchlist(inputs: Sequence[Dict[str, Any]], top_n: int = 20) -> List[Di
         sess = _session_return_bps(closes)
         if traj < TRAJ15_ENTRY_THRESHOLD and sess < 25.0:
             continue
-        score = traj + (sess / 10000.0) * 0.25
+        from scripts.rp608_nse_next_session_recs import SESSION_RETURN_WEIGHT
+
+        score = traj + (sess / 10000.0) * SESSION_RETURN_WEIGHT
         l1 = {
             "bid_qty": inp.get("bid_qty", 0),
             "ask_qty": inp.get("ask_qty", 0),

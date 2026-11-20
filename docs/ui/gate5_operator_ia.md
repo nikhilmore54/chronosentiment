@@ -36,11 +36,15 @@ Operator tab default → Overview:
 
 No 119-row table, hardcoded RP-607 compartment cards, or Sharpe essay in the first viewport.
 
-## App shell (kept)
+## App shell (2026-11-20 restructure)
 
-Operator shell only (Overview · Crypto · NSE).
+Single composition in `OperatorShell`: brand **ChronoSentiment** · top nav Overview / Crypto / NSE · authority + fetch freshness chips · Pi Command Center link.
 
-**Discarded from shell:** Multi-Horizon Books, RP-611 strip, Research & Forensics, Decision Surface, Paper Trading (`Gate5PaperDashboard`), Observatory, Replay Timeline, Trade Inspector, Research Console, RP609 dashboard.
+`App.tsx` is a thin mount — no nested chrome.
+
+**Removed (unused / discarded):** `MultiHorizonBooksPanel`, legacy `src/types.ts` / `money.ts` / `config.ts`, all `public/data/*` static dashboard dumps (RP-605/609/615/forensics tapes), nested App header, per-workspace back buttons / duplicate authority chips.
+
+**Still discarded from shell:** RP-611 strip, Research & Forensics, Decision Surface, Paper Trading, Observatory, Replay Timeline, Trade Inspector, Research Console.
 
 ## Workspaces
 
@@ -74,4 +78,4 @@ Fetch Pi `/api/state` and assert Gate5 mapped DTO equality:
 
 ## Out of scope
 
-Daemon / OF math / NSE rec builder changes; Gate5 paper-trading & forensics tabs unchanged (Operator is additive).
+Daemon / OF math / NSE rec builder changes. Operator is the only Gate5 UI surface.

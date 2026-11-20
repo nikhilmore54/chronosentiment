@@ -1,6 +1,6 @@
 import type { CSSProperties, ReactNode } from 'react';
 import type { OperatorState } from './types';
-import { displayOrUnavailable, formatAgeSec, ageFromMs, staleLabel } from './freshness';
+import { displayOrUnavailable } from './freshness';
 import { chip, labelStyle, op, panelStyle, valueStyle } from './operatorStyles';
 
 export type OperatorWorkspace = 'overview' | 'crypto' | 'nse';
@@ -21,7 +21,7 @@ function Strip({
   accent: string;
 }) {
   return (
-    <section style={{ ...panelStyle, borderTop: `3px solid ${accent}`, minHeight: 160 }}>
+    <section style={{ ...panelStyle, borderTop: `3px solid ${accent}`, minHeight: 148 }}>
       <div style={{ ...labelStyle, color: accent }}>{title}</div>
       {children}
     </section>
@@ -37,15 +37,10 @@ function Kv({ k, v }: { k: string; v: string }) {
   );
 }
 
-export default function OperatorOverview({ state, loading, onNavigate }: Props) {
-  const now = Date.now();
-  const fetchAge = state ? ageFromMs(state.fetched_at_ms, now) : null;
-  const fetchStale = staleLabel(fetchAge, 15, 60);
-
+export default function OperatorOverview({ state, onNavigate }: Props) {
   const crypto = state?.crypto;
   const nse = state?.nse;
   const sys = state?.system;
-  const authority = state?.live_order_authority ?? 0;
 
   const ofActive = crypto?.order_flow?.active;
   const ofLabel = ofActive
@@ -62,52 +57,10 @@ export default function OperatorOverview({ state, loading, onNavigate }: Props) 
       : null;
 
   return (
-    <div style={{ fontFamily: op.sans, color: op.text }}>
-      <div
-        style={{
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'flex-start',
-          gap: 16,
-          marginBottom: 18,
-          flexWrap: 'wrap',
-        }}
-      >
-        <div>
-          <h2 style={{ margin: 0, fontSize: 22, fontWeight: 700, letterSpacing: '-0.02em' }}>
-            Operator Overview
-          </h2>
-          <p style={{ margin: '6px 0 0', color: op.muted, fontSize: 13, maxWidth: 560 }}>
-            Presentation-only surface over Pi telemetry. Same input → same mapped status. No order
-            authority.
-          </p>
-        </div>
-        <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
-          <span style={chip(authority === 0 ? op.emerald : op.rose, '#052e16')}>
-            AUTHORITY {Number(authority).toFixed(0)}%
-          </span>
-          <span
-            style={chip(
-              fetchStale === 'FRESH' ? 'rgba(34,211,238,0.25)' : 'rgba(251,191,36,0.35)',
-              op.text
-            )}
-          >
-            {loading && !state
-              ? 'LOADING'
-              : state?.fetch_status !== 'ok'
-                ? `TELEMETRY ${displayOrUnavailable(state?.fetch_status)}`
-                : `FETCH ${fetchStale} · ${formatAgeSec(fetchAge)}`}
-          </span>
-          <a
-            href="http://192.168.0.9:8765/"
-            target="_blank"
-            rel="noreferrer"
-            style={{ ...chip('rgba(148,163,184,0.2)', op.text), textDecoration: 'none' }}
-          >
-            Pi Command Center ↗
-          </a>
-        </div>
-      </div>
+    <div>
+      <p style={{ margin: '0 0 16px', color: op.muted, fontSize: 14, maxWidth: 560 }}>
+        Live books at a glance. Fail closed on missing Pi fields — no invented healthy defaults.
+      </p>
 
       {state?.fetch_status !== 'ok' && state && (
         <div
@@ -120,8 +73,7 @@ export default function OperatorOverview({ state, loading, onNavigate }: Props) 
             fontSize: 13,
           }}
         >
-          UNAVAILABLE — {displayOrUnavailable(state.fetch_error, 'Pi /api/state unreachable')}. Fail
-          closed; no invented healthy defaults.
+          UNAVAILABLE — {displayOrUnavailable(state.fetch_error, 'Pi /api/state unreachable')}.
         </div>
       )}
 
@@ -133,16 +85,16 @@ export default function OperatorOverview({ state, loading, onNavigate }: Props) 
           marginBottom: 18,
         }}
       >
-        <Strip title="Crypto status" accent={op.cyan}>
+        <Strip title="Crypto" accent={op.cyan}>
           {!crypto?.available ? (
             <div style={{ color: op.rose, fontFamily: op.mono, fontSize: 13 }}>UNAVAILABLE</div>
           ) : (
             <>
               <div style={{ display: 'flex', gap: 8, marginBottom: 10, flexWrap: 'wrap' }}>
-                <span style={chip('rgba(34,211,238,0.2)', op.cyan)}>
+                <span style={chip('rgba(45,212,191,0.2)', op.cyan)}>
                   B {displayOrUnavailable(crypto.policy_b)}
                 </span>
-                <span style={chip('rgba(167,139,250,0.25)', op.violet)}>
+                <span style={chip('rgba(251,191,36,0.22)', op.amber)}>
                   C {displayOrUnavailable(crypto.policy_c)}
                 </span>
               </div>
@@ -162,7 +114,7 @@ export default function OperatorOverview({ state, loading, onNavigate }: Props) 
           )}
         </Strip>
 
-        <Strip title="NSE status" accent={op.violet}>
+        <Strip title="NSE" accent={op.amber}>
           {!nse?.available ? (
             <div style={{ color: op.rose, fontFamily: op.mono, fontSize: 13 }}>UNAVAILABLE</div>
           ) : (
@@ -189,11 +141,7 @@ export default function OperatorOverview({ state, loading, onNavigate }: Props) 
                 k="Next session"
                 v={`${displayOrUnavailable(nse.next_session_date)} · n=${
                   nse.n_recommendations ?? '—'
-                } · OF=${nse.n_order_flow_supported ?? '—'}${
-                  nse.recommended_at_utc || nse.emitted_utc
-                    ? ` · rec ${nse.recommended_at_utc || nse.emitted_utc}`
-                    : ''
-                }`}
+                } · OF=${nse.n_order_flow_supported ?? '—'}`}
               />
               <Kv
                 k="Universe"
@@ -208,7 +156,7 @@ export default function OperatorOverview({ state, loading, onNavigate }: Props) 
           )}
         </Strip>
 
-        <Strip title="System health" accent={op.emerald}>
+        <Strip title="System" accent={op.emerald}>
           {!sys?.available ? (
             <div style={{ color: op.rose, fontFamily: op.mono, fontSize: 13 }}>UNAVAILABLE</div>
           ) : (
@@ -262,10 +210,10 @@ export default function OperatorOverview({ state, loading, onNavigate }: Props) 
 
       <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
         <button type="button" style={ctaStyle} onClick={() => onNavigate('crypto')}>
-          Crypto workspace →
+          Open Crypto →
         </button>
         <button type="button" style={ctaStyle} onClick={() => onNavigate('nse')}>
-          NSE workspace →
+          Open NSE →
         </button>
       </div>
     </div>
@@ -274,10 +222,10 @@ export default function OperatorOverview({ state, loading, onNavigate }: Props) 
 
 const ctaStyle: CSSProperties = {
   padding: '10px 16px',
-  background: 'rgba(34,211,238,0.12)',
+  background: 'rgba(45,212,191,0.1)',
   border: `1px solid ${op.cyan}`,
   color: op.cyan,
-  borderRadius: 8,
+  borderRadius: 6,
   cursor: 'pointer',
   fontWeight: 700,
   fontFamily: op.sans,

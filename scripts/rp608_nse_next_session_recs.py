@@ -37,6 +37,10 @@ MIN_BARS = 5
 LEVELS_POLICY_ID = "RP608_DYNAMIC_OHLCV_STRUCTURE_V1"
 LEVELS_ROLE = "INDICATIVE_WATCHLIST_ONLY"
 DEFAULT_FRICTION_BPS = 12.0
+# Soft weight on session return in rank score (traj primary).
+# Reassigned 0.25 → 0.40 (2026-11-19): keeps top-20 overlap high while
+# tipping ties toward stronger same-day continuation.
+SESSION_RETURN_WEIGHT = 0.40
 # Entry band as fractions of structural risk distance (ref − stop for LONG).
 ENTRY_PULLBACK_FRAC = 0.35
 ENTRY_CHASE_FRAC = 0.25
@@ -640,7 +644,7 @@ def build_next_session_recommendations(
         sess_bps = _session_return_bps(closes)
         # Rank score: emphasize end-of-day traj15 (same family as live entry),
         # with session return as soft tie-break (scaled).
-        score = traj + (sess_bps / 10000.0) * 0.25
+        score = traj + (sess_bps / 10000.0) * SESSION_RETURN_WEIGHT
         if traj < TRAJ15_ENTRY_THRESHOLD and sess_bps < 25.0:
             continue
         side = "LONG"

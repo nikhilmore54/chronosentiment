@@ -199,6 +199,19 @@ from scripts.rp608_nse_coralys_input_context import (  # noqa: E402
     decision_ts_from_bar_ms,
     gate_enabled as coralys_input_gate_enabled,
 )
+from scripts.rp608_nse_trade_pattern_match import (  # noqa: E402
+    entry_gate_enabled as pattern_entry_gate_enabled,
+    exit_gate_enabled as pattern_exit_gate_enabled,
+    features_from_coralys_and_candles,
+    load_library as load_trade_pattern_library,
+    match_entry as match_trade_pattern_entry,
+    match_exit as match_trade_pattern_exit,
+)
+from scripts.rp608_nse_trade_pattern_library import (  # noqa: E402
+    default_library_path as trade_pattern_library_path,
+    session_phase_ist as _pattern_session_phase_ist,
+    traj15_bucket as _pattern_traj15_bucket,
+)
 
 G3_WARMUP_POLICY = DEFAULT_G3_WARMUP_POLICY
 
@@ -966,6 +979,11 @@ class RP608NSEShadowDaemon:
         self._coralys_prior_logged_for: Optional[str] = None
         # Closed Estimand A trade_ids already journaled (prevents midbar re-entry churn).
         self._journaled_trade_ids: set[str] = set()
+        # Pattern gate: session-level "prior stop in similar ToA/traj family" (NOT symbol bans).
+        self._pattern_session_date: Optional[str] = None
+        self._pattern_session_stop_families: set[str] = set()
+        self._trade_pattern_library: Optional[Dict[str, Any]] = None
+        self._trade_pattern_library_mtime: float = 0.0
         # TICK_PATH: durable close arms signal_bar; fills happen on WS L1 ticks (not batch-at-close).
         self._estimand_a_lock = threading.Lock()
         self._estimand_a_armed_signal_bar: int = 0
@@ -996,6 +1014,7 @@ class RP608NSEShadowDaemon:
         # Forward outcome pending queue and active trades restored from durable storage across restarts:
         self.pending_directional_evals, self.active_trades = self.load_pending_evaluations()
         self._journaled_trade_ids = self._load_journaled_trade_ids()
+        self._bootstrap_pattern_session_stop_families()
         # Scrip-level decision ledger cache: {symbol: evaluation_record}
         self.last_evaluations: Dict[str, Dict[str, Any]] = {}
         # ATR/structure feature bars (may include prior sessions). Never used for traj15.
@@ -1337,6 +1356,180 @@ class RP608NSEShadowDaemon:
             print(f"[!] Warning: Failed to load trade_ids from {path}: {e}", file=sys.stderr)
         return ids
 
+    def _ist_session_date_str(self, ts_ms: Optional[int] = None) -> str:
+        ist = timezone(timedelta(hours=5, minutes=30))
+        if ts_ms is not None and int(ts_ms) > 0:
+            return datetime.fromtimestamp(int(ts_ms) / 1000.0, tz=timezone.utc).astimezone(ist).date().isoformat()
+        return datetime.now(timezone.utc).astimezone(ist).date().isoformat()
+
+    def _bootstrap_pattern_session_stop_families(self) -> None:
+        """Rebuild today's ToA|traj stop families (NOT symbol bans) from journal."""
+        today = self._ist_session_date_str()
+        self._pattern_session_date = today
+        self._pattern_session_stop_families = set()
+        path = getattr(self, "trade_journal_path", None)
+        if path is None or not Path(path).exists():
+            return
+        try:
+            with open(path, "r", encoding="utf-8") as f:
+                for line in f:
+                    line = line.strip()
+                    if not line:
+                        continue
+                    try:
+                        r = json.loads(line)
+                    except json.JSONDecodeError:
+                        continue
+                    if str(r.get("estimand") or "ESTIMAND_A") not in ("ESTIMAND_A", "A"):
+                        continue
+                    if str(r.get("exit_reason") or "") != "STOP_LOSS":
+                        continue
+                    et_ms = r.get("entry_timestamp_utc_ms")
+                    if et_ms is None or self._ist_session_date_str(int(et_ms)) != today:
+                        continue
+                    phase = None
+                    traj_b = "UNK"
+                    ctx = r.get("coralys_input_context") or {}
+                    if isinstance(ctx, dict):
+                        phase = ctx.get("session_phase")
+                        if ctx.get("traj15") is not None:
+                            traj_b = _pattern_traj15_bucket(float(ctx["traj15"]))
+                    if not phase:
+                        phase = _pattern_session_phase_ist(
+                            datetime.fromtimestamp(int(et_ms) / 1000.0, tz=timezone.utc).astimezone(
+                                timezone(timedelta(hours=5, minutes=30))
+                            )
+                        )
+                    if r.get("traj15_at_entry") is not None:
+                        traj_b = _pattern_traj15_bucket(float(r["traj15_at_entry"]))
+                    self._pattern_session_stop_families.add(f"{phase}|{traj_b}")
+        except OSError as e:
+            print(f"[!] Warning: Failed to bootstrap pattern stop families: {e}", file=sys.stderr)
+
+    def _refresh_pattern_session_day(self) -> None:
+        today = self._ist_session_date_str()
+        if self._pattern_session_date != today:
+            self._bootstrap_pattern_session_stop_families()
+
+    def _note_pattern_session_stop(self, *, trade: Dict[str, Any], exit_reason: str) -> None:
+        if str(exit_reason) != "STOP_LOSS":
+            return
+        self._refresh_pattern_session_day()
+        ctx = trade.get("coralys_input_context") or {}
+        phase = ctx.get("session_phase") if isinstance(ctx, dict) else None
+        traj = None
+        if isinstance(ctx, dict) and ctx.get("traj15") is not None:
+            traj = float(ctx["traj15"])
+        if traj is None and trade.get("traj15_at_entry") is not None:
+            traj = float(trade["traj15_at_entry"])
+        et_ms = trade.get("entry_timestamp_utc_ms")
+        if not phase and et_ms:
+            phase = _pattern_session_phase_ist(
+                datetime.fromtimestamp(int(et_ms) / 1000.0, tz=timezone.utc).astimezone(
+                    timezone(timedelta(hours=5, minutes=30))
+                )
+            )
+        family = f"{phase or 'UNK'}|{_pattern_traj15_bucket(traj)}"
+        self._pattern_session_stop_families.add(family)
+
+    def _load_trade_pattern_library(self) -> Dict[str, Any]:
+        path = trade_pattern_library_path(self.output_dir)
+        if not path.exists():
+            path = trade_pattern_library_path(self.output_dir.parent)
+        try:
+            mtime = path.stat().st_mtime if path.exists() else 0.0
+        except OSError:
+            mtime = 0.0
+        if self._trade_pattern_library is not None and mtime == self._trade_pattern_library_mtime:
+            return self._trade_pattern_library
+        lib = load_trade_pattern_library(path)
+        self._trade_pattern_library = lib
+        self._trade_pattern_library_mtime = mtime
+        return lib
+
+    def _bars_dict_for_pattern(self, symbol: str) -> Dict[int, Dict[str, float]]:
+        """Map session bar_idx → OHLCV for candle-path features."""
+        history = self.price_history.get(symbol) or []
+        out: Dict[int, Dict[str, float]] = {}
+        ist = timezone(timedelta(hours=5, minutes=30))
+        for b in history:
+            try:
+                dt = datetime.fromtimestamp(int(b.timestamp_utc_ms) / 1000.0, tz=timezone.utc)
+                # Daemon IST convention: wall = UTC+5h30 via replace after offset add in places;
+                # use astimezone for pattern bar grid.
+                dt_ist = dt.astimezone(ist)
+                open_ist = dt_ist.replace(hour=9, minute=15, second=0, microsecond=0)
+                el_min = (dt_ist - open_ist).total_seconds() / 60.0
+                bar_idx = int(el_min // 15) + 1
+                if not (1 <= bar_idx <= 25):
+                    continue
+                out[bar_idx] = {
+                    "open": float(b.open),
+                    "high": float(b.high),
+                    "low": float(b.low),
+                    "close": float(b.close),
+                    "volume": float(b.volume),
+                }
+            except Exception:
+                continue
+        return out
+
+    def _match_trade_pattern(
+        self,
+        *,
+        input_ctx: Optional[Dict[str, Any]],
+        traj15: float,
+        bar_idx: int,
+        decision_ts_ist: Optional[datetime],
+        symbol: Optional[str] = None,
+    ) -> Dict[str, Any]:
+        self._refresh_pattern_session_day()
+        phase = (input_ctx or {}).get("session_phase") or "UNK"
+        traj_b = _pattern_traj15_bucket(float(traj15))
+        family = f"{phase}|{traj_b}"
+        prior_stop = family in self._pattern_session_stop_families
+        bars = self._bars_dict_for_pattern(symbol) if symbol else {}
+        feats = features_from_coralys_and_candles(
+            input_ctx=input_ctx,
+            traj15=float(traj15),
+            bar_idx=int(bar_idx),
+            decision_ts_ist=decision_ts_ist,
+            same_session_prior_stop=prior_stop,
+            bars_for_symbol_session=bars or None,
+        )
+        lib = self._load_trade_pattern_library()
+        return match_trade_pattern_entry(library=lib, feats=feats)
+
+    def _match_exit_pattern_for_trade(
+        self,
+        *,
+        symbol: str,
+        trade: Dict[str, Any],
+        bar_idx: int,
+    ) -> Dict[str, Any]:
+        ctx = trade.get("coralys_input_context") or {}
+        phase = ctx.get("session_phase") if isinstance(ctx, dict) else None
+        traj = None
+        if isinstance(ctx, dict) and ctx.get("traj15") is not None:
+            traj = float(ctx["traj15"])
+        if traj is None and trade.get("traj15_at_entry") is not None:
+            traj = float(trade["traj15_at_entry"])
+        if traj is None:
+            traj = 0.05
+        if not phase:
+            phase = "UNK"
+        bars = self._bars_dict_for_pattern(symbol)
+        lib = self._load_trade_pattern_library()
+        return match_trade_pattern_exit(
+            library=lib,
+            session_phase=str(phase),
+            traj15=float(traj),
+            bars_dict=bars,
+            entry_bar_idx=int(trade.get("entry_bar_idx") or bar_idx),
+            current_bar_idx=int(bar_idx),
+            entry_price=float(trade.get("entry_price") or 0) or 1.0,
+        )
+
     def save_pending_evaluations(self):
         """Atomically persists pending directional evaluations and active trades to durable storage."""
         payload = {
@@ -1347,6 +1540,103 @@ class RP608NSEShadowDaemon:
         }
         self.atomic_commit_json(self.pending_evaluations_path, payload)
 
+    @staticmethod
+    def _ist_naive(dt: datetime) -> datetime:
+        """
+        Normalize to naive IST wall-clock for candle-grid arithmetic.
+
+        Daemon convention: IST wall = UTC datetime + 5h30m timedelta (tzinfo may
+        still say UTC). Strip tzinfo only — do NOT astimezone(IST) or the wall
+        clock shifts by another +5h30m.
+        """
+        return dt.replace(tzinfo=None)
+
+    def _expected_session_candle_starts_ms(
+        self,
+        *,
+        open_time_ist: datetime,
+        completed_bars: int,
+        ist_offset: timedelta,
+    ) -> List[int]:
+        """UTC-ms candle starts for completed bars 1..N (excludes forming candle)."""
+        if completed_bars <= 0:
+            return []
+        open_n = self._ist_naive(open_time_ist)
+        out: List[int] = []
+        for i in range(int(completed_bars)):
+            c_start_ist = open_n + timedelta(minutes=i * 15)
+            # Interpret naive IST as UTC+05:30 when converting to epoch ms.
+            c_start_utc = c_start_ist - ist_offset
+            out.append(
+                int(
+                    c_start_utc.replace(tzinfo=timezone.utc).timestamp() * 1000
+                )
+            )
+        return out
+
+    def _session_candle_index_map(
+        self,
+        symbol: str,
+        *,
+        open_time_ist: datetime,
+        session_date,
+        ist_offset: timedelta,
+    ) -> Dict[int, Any]:
+        """Map today's durable candle-start ms → bar (quote-snapshot spam excluded)."""
+        existing_by_start: Dict[int, Any] = {}
+        open_n = self._ist_naive(open_time_ist)
+        for b in self.price_history.get(symbol) or []:
+            try:
+                if not bool(getattr(b, "is_completed", True)):
+                    continue
+                if str(getattr(b, "source", "") or "") == "kite_quote_snapshot":
+                    continue
+                b_ist = self._ist_naive(
+                    datetime.fromtimestamp(
+                        int(b.timestamp_utc_ms) / 1000.0, tz=timezone.utc
+                    )
+                    + ist_offset
+                )
+                if b_ist.date() != session_date:
+                    continue
+                el_min = (b_ist - open_n).total_seconds() / 60.0
+                if el_min < 0:
+                    continue
+                c_idx = int(el_min // 15)
+                c_start_ist = open_n + timedelta(minutes=c_idx * 15)
+                c_start_utc = c_start_ist - ist_offset
+                c_start_ms = int(
+                    c_start_utc.replace(tzinfo=timezone.utc).timestamp() * 1000
+                )
+                if c_start_ms not in existing_by_start:
+                    existing_by_start[c_start_ms] = b
+            except Exception:
+                continue
+        return existing_by_start
+
+    def _missing_session_candle_starts(
+        self,
+        symbol: str,
+        *,
+        open_time_ist: datetime,
+        completed_bars: int,
+        session_date,
+        ist_offset: timedelta,
+    ) -> List[int]:
+        """Return expected candle-start ms that are absent for this symbol today."""
+        expected = self._expected_session_candle_starts_ms(
+            open_time_ist=open_time_ist,
+            completed_bars=completed_bars,
+            ist_offset=ist_offset,
+        )
+        have = self._session_candle_index_map(
+            symbol,
+            open_time_ist=open_time_ist,
+            session_date=session_date,
+            ist_offset=ist_offset,
+        )
+        return [ms for ms in expected if ms not in have]
+
     def bootstrap_same_day_history(
         self,
         now_utc: Optional[datetime] = None,
@@ -1356,11 +1646,12 @@ class RP608NSEShadowDaemon:
         Recovers completed 15m bars for today's session from Kite historical data.
         Requirements:
         1. Only current trading session completed bars are fetched.
-        2. No bootstrap at opening (< 5 completed bars).
+        2. No bootstrap at opening (< warmup completed bars).
         3. Excludes forming/incomplete candle.
         4. Non-destructive merge: preserves live observations over historical duplicates.
         5. Fails closed on API failure without crashing or manufacturing eligibility.
-        6. Per-symbol recovery: queries only deficient symbols and throttles polling per bar.
+        6. Per-symbol recovery: queries deficient symbols OR any with gaps in the
+           completed session candle grid, then fetches missing candles in code.
         """
         if now_utc is None:
             now_utc = datetime.now(timezone.utc)
@@ -1421,16 +1712,43 @@ class RP608NSEShadowDaemon:
                 and str(getattr(b, "source", "") or "") != "kite_quote_snapshot"
             )
 
-        # Determine symbols that actually need recovery
+        def _needs_fetch(sym: str) -> bool:
+            missing = self._missing_session_candle_starts(
+                sym,
+                open_time_ist=open_time_ist,
+                completed_bars=completed_bars,
+                session_date=now_ist.date(),
+                ist_offset=ist_offset,
+            )
+            if missing:
+                return True
+            if _durable_bar_count(sym) < need_n:
+                return True
+            return False
+
+        # Determine symbols that actually need recovery (warmup shortfall OR any gap).
         if target_symbols is not None:
             symbols_to_query = list(target_symbols)
         else:
             symbols_to_query = []
             for s in self.symbols:
-                if _durable_bar_count(s) >= need_n:
+                if not _needs_fetch(s):
+                    # Grid complete for this completed_bars level.
+                    self._symbol_last_bootstrap_bar[s] = completed_bars
                     continue
-                # Successful empty/complete attempt for this bar: wait for next completed bar.
-                if self._symbol_last_bootstrap_bar.get(s, 0) >= completed_bars:
+                # Successful empty/complete attempt for this bar: wait for next completed bar
+                # only when there are no detected gaps (gap detection forces retry).
+                missing = self._missing_session_candle_starts(
+                    s,
+                    open_time_ist=open_time_ist,
+                    completed_bars=completed_bars,
+                    session_date=now_ist.date(),
+                    ist_offset=ist_offset,
+                )
+                if (
+                    not missing
+                    and self._symbol_last_bootstrap_bar.get(s, 0) >= completed_bars
+                ):
                     continue
                 # Transient failure: short cooldown then retry within the same bar.
                 fail_at = float(self._symbol_bootstrap_fail_mono.get(s, 0.0) or 0.0)
@@ -1443,7 +1761,8 @@ class RP608NSEShadowDaemon:
                 "status": "ALREADY_UP_TO_DATE",
                 "completed_bars_today": completed_bars,
                 "recovered_symbols": 0,
-                "total_backfilled_bars": 0
+                "total_backfilled_bars": 0,
+                "missing_candle_symbols": 0,
             }
 
         # Determine exact from and to boundaries for historical API
@@ -1462,8 +1781,18 @@ class RP608NSEShadowDaemon:
         total_backfilled_bars = 0
         transient_failures = 0
         auth_reloaded = False
+        gap_symbols = 0
 
         for sym in symbols_to_query:
+            missing_before = self._missing_session_candle_starts(
+                sym,
+                open_time_ist=open_time_ist,
+                completed_bars=completed_bars,
+                session_date=now_ist.date(),
+                ist_offset=ist_offset,
+            )
+            if missing_before:
+                gap_symbols += 1
             try:
                 hist_bars = self.feed_adapter.fetch_historical_15m_bars(sym, from_utc, to_utc)
             except KiteAuthError as e:
@@ -1490,8 +1819,11 @@ class RP608NSEShadowDaemon:
             self._symbol_bootstrap_fail_mono.pop(sym, None)
 
             if not hist_bars:
-                # Definitive empty range for this bar — do not re-poll until next completed bar.
-                self._symbol_last_bootstrap_bar[sym] = completed_bars
+                # Empty hist with remaining gaps → retry later; only mark complete if grid full.
+                if not missing_before:
+                    self._symbol_last_bootstrap_bar[sym] = completed_bars
+                else:
+                    self._symbol_bootstrap_fail_mono[sym] = time.monotonic()
                 continue
 
             # Filter hist_bars strictly:
@@ -1514,38 +1846,47 @@ class RP608NSEShadowDaemon:
                 valid_hist.append(b)
 
             if not valid_hist:
+                if missing_before:
+                    self._symbol_bootstrap_fail_mono[sym] = time.monotonic()
                 continue
 
             # Non-destructive merge with existing price_history:
             # Preserve existing live observations, backfill missing bars
-            current_bars = self.price_history.get(sym, [])
-
-            # Map existing bars by their candle start timestamp in UTC ms
-            existing_by_start: Dict[int, BarOHLCV] = {}
-            for b in current_bars:
+            existing_by_start = self._session_candle_index_map(
+                sym,
+                open_time_ist=open_time_ist,
+                session_date=now_ist.date(),
+                ist_offset=ist_offset,
+            )
+            # Keep non-today bars from the ring buffer.
+            prior_bars = []
+            for b in self.price_history.get(sym) or []:
                 try:
-                    b_ist = datetime.fromtimestamp(b.timestamp_utc_ms / 1000.0, tz=timezone.utc) + ist_offset
+                    b_ist = datetime.fromtimestamp(
+                        int(b.timestamp_utc_ms) / 1000.0, tz=timezone.utc
+                    ) + ist_offset
                     if b_ist.date() != now_ist.date():
-                        continue
-                    el_min = (b_ist - open_time_ist).total_seconds() / 60.0
-                    if el_min < 0:
-                        continue
-                    c_idx = int(el_min // 15)
-                    c_start_ist = open_time_ist + timedelta(minutes=c_idx * 15)
-                    c_start_ms = int((c_start_ist - ist_offset).timestamp() * 1000)
-                    if c_start_ms not in existing_by_start:
-                        existing_by_start[c_start_ms] = b
+                        prior_bars.append(b)
                 except Exception:
-                    continue
+                    prior_bars.append(b)
 
             added_for_sym = 0
+            open_n = self._ist_naive(open_time_ist)
             for hb in valid_hist:
                 try:
-                    hb_ist = datetime.fromtimestamp(hb.timestamp_utc_ms / 1000.0, tz=timezone.utc) + ist_offset
-                    el_min = (hb_ist - open_time_ist).total_seconds() / 60.0
+                    hb_ist = self._ist_naive(
+                        datetime.fromtimestamp(
+                            hb.timestamp_utc_ms / 1000.0, tz=timezone.utc
+                        )
+                        + ist_offset
+                    )
+                    el_min = (hb_ist - open_n).total_seconds() / 60.0
                     c_idx = int(el_min // 15)
-                    c_start_ist = open_time_ist + timedelta(minutes=c_idx * 15)
-                    c_start_ms = int((c_start_ist - ist_offset).timestamp() * 1000)
+                    c_start_ist = open_n + timedelta(minutes=c_idx * 15)
+                    c_start_utc = c_start_ist - ist_offset
+                    c_start_ms = int(
+                        c_start_utc.replace(tzinfo=timezone.utc).timestamp() * 1000
+                    )
 
                     if c_start_ms not in existing_by_start:
                         existing_by_start[c_start_ms] = hb
@@ -1553,8 +1894,9 @@ class RP608NSEShadowDaemon:
                 except Exception:
                     continue
 
-            # Reconstruct sorted price_history for symbol
-            merged = [existing_by_start[k] for k in sorted(existing_by_start.keys())]
+            # Reconstruct sorted price_history for symbol (prior sessions + today grid).
+            today_merged = [existing_by_start[k] for k in sorted(existing_by_start.keys())]
+            merged = list(prior_bars) + today_merged
             if len(merged) > 60:
                 merged = merged[-60:]
             self.price_history[sym] = merged
@@ -1563,9 +1905,15 @@ class RP608NSEShadowDaemon:
                 recovered_count += 1
                 total_backfilled_bars += added_for_sym
 
-            # Mark bar complete only once warm enough; otherwise retry within cooldown/next pass
-            # (covers filtered-empty responses without consuming the bar slot forever).
-            if _durable_bar_count(sym) >= need_n:
+            missing_after = self._missing_session_candle_starts(
+                sym,
+                open_time_ist=open_time_ist,
+                completed_bars=completed_bars,
+                session_date=now_ist.date(),
+                ist_offset=ist_offset,
+            )
+            # Mark complete only when the full completed-bar grid is present.
+            if not missing_after and _durable_bar_count(sym) >= need_n:
                 self._symbol_last_bootstrap_bar[sym] = completed_bars
             else:
                 self._symbol_bootstrap_fail_mono[sym] = time.monotonic()
@@ -1576,6 +1924,12 @@ class RP608NSEShadowDaemon:
                 f"{len(symbols_to_query)} (will retry after {BOOTSTRAP_FAIL_COOLDOWN_SEC:.0f}s cooldown)",
                 flush=True,
             )
+        if total_backfilled_bars > 0 or gap_symbols > 0:
+            print(
+                f"[bootstrap] gap_symbols={gap_symbols} recovered={recovered_count} "
+                f"backfilled_bars={total_backfilled_bars} completed_bars={completed_bars}",
+                flush=True,
+            )
 
         return {
             "status": "BOOTSTRAP_SUCCESS",
@@ -1584,6 +1938,7 @@ class RP608NSEShadowDaemon:
             "total_backfilled_bars": total_backfilled_bars,
             "transient_failures": transient_failures,
             "queried_symbols": len(symbols_to_query),
+            "missing_candle_symbols": gap_symbols,
         }
 
     def append_jsonl(self, path: Path, record: Dict[str, Any]):
@@ -1953,11 +2308,22 @@ class RP608NSEShadowDaemon:
             traj15=traj15,
             signal_long=bool(signal_entry),
         )
-        input_gate_blocks = bool(
+        pattern_stamp = self._match_trade_pattern(
+            input_ctx=input_ctx,
+            traj15=traj15,
+            bar_idx=bar_idx,
+            decision_ts_ist=_decision_ts_ist,
+            symbol=symbol,
+        )
+        pattern_blocks = bool(
+            signal_entry and pattern_stamp.get("blocks_entry")
+        )
+        coralys_blocks = bool(
             signal_entry
             and coralys_input_gate_enabled()
             and not bool(input_ctx.get("allow_long_entry"))
         )
+        input_gate_blocks = bool(coralys_blocks or pattern_blocks)
 
         # Gate G4 Quote Validation (Freshness, Non-Zero, Uncrossed Top-of-Book)
         MAX_QUOTE_AGE_MS = 60000  # 60s max permitted age
@@ -2136,6 +2502,30 @@ class RP608NSEShadowDaemon:
                             exit_path="BAR_CLOSE",
                             exit_mark_source="BAR_CLOSE",
                         )
+                    else:
+                        # Gate 2X observational exit-pattern stamp; optional paper early exit.
+                        try:
+                            exit_stamp = self._match_exit_pattern_for_trade(
+                                symbol=symbol,
+                                trade=trade,
+                                bar_idx=bar_idx,
+                            )
+                            trade["trade_pattern_exit"] = exit_stamp
+                            if (
+                                bars_held >= 1
+                                and exit_stamp.get("apply_early_exit")
+                                and pattern_exit_gate_enabled()
+                            ):
+                                self._close_trade(
+                                    self.active_trades.pop(symbol),
+                                    exit_price=p_ref,
+                                    exit_bar=bar_idx,
+                                    exit_reason="PATTERN_REVERSE",
+                                    exit_path="BAR_CLOSE_PATTERN",
+                                    exit_mark_source="BAR_CLOSE",
+                                )
+                        except Exception:
+                            pass
 
         # Entry on durable bar close only when ENTRY_PATH=BAR_CLOSE (legacy).
         # TICK_PATH fills on each WS L1 tick after durable arms signal_bar (not here).
@@ -2148,7 +2538,10 @@ class RP608NSEShadowDaemon:
         ):
             trade_id = f"nse_trade_{self.state.session_idx}_{bar_idx}_{symbol}"
             with self._estimand_a_lock:
-                if trade_id not in self._journaled_trade_ids and symbol not in self.active_trades:
+                if (
+                    trade_id not in self._journaled_trade_ids
+                    and symbol not in self.active_trades
+                ):
                     qty = max(1.0, math.floor(DEFAULT_NOTIONAL_PER_TRADE_INR / p_ref))
                     half_spread = quote.half_spread_bps if (quote and quote.half_spread_bps > 0) else 2.5
                     friction_proxy_bps = max(9.0, float(half_spread) * 2.0 + 8.0)
@@ -2181,6 +2574,7 @@ class RP608NSEShadowDaemon:
                         "entry_path": "BAR_CLOSE",
                         "management_path": "TICK_PATH",
                         "coralys_input_context": input_ctx,
+                        "trade_pattern_match": pattern_stamp,
                     }
 
         self.state.active_positions_count = len(self.active_trades)
@@ -2231,13 +2625,21 @@ class RP608NSEShadowDaemon:
                 explanation = "Invalid top-of-book quote fails Gate G4 execution feasibility"
             decision = "NO_TRADE"
         elif input_gate_blocks:
-            # Estimand A signal fired, but Coralys adapter inputs stand aside (observational gate).
-            decision_code = "STANDASIDE_CORALYS_INPUT_GATE"
-            explanation = (
-                f"Coralys input gate blocks long entry "
-                f"(phase={input_ctx.get('session_phase')}; "
-                f"reason={input_ctx.get('standaside_reason')})"
-            )
+            if pattern_blocks and not coralys_blocks:
+                decision_code = "STANDASIDE_TRADE_PATTERN"
+                explanation = (
+                    f"Past-trade entry pattern standaside "
+                    f"(pattern_id={pattern_stamp.get('pattern_id')}; "
+                    f"hist_wr={pattern_stamp.get('hist_wr')}; "
+                    f"n={pattern_stamp.get('cohort_n')})"
+                )
+            else:
+                decision_code = "STANDASIDE_CORALYS_INPUT_GATE"
+                explanation = (
+                    f"Coralys input gate blocks long entry "
+                    f"(phase={input_ctx.get('session_phase')}; "
+                    f"reason={input_ctx.get('standaside_reason')})"
+                )
             decision = "NO_TRADE"
         else:
             decision_code = "QUALIFIED_MOMENTUM_BREAKOUT"
@@ -2387,7 +2789,10 @@ class RP608NSEShadowDaemon:
             "mandatory_square_off_bar": MANDATORY_SQUARE_OFF_BAR,
             "coralys_input_context": input_ctx,
             "coralys_input_gate_enabled": coralys_input_gate_enabled(),
-            "coralys_input_gate_blocks": bool(input_gate_blocks),
+            "coralys_input_gate_blocks": bool(coralys_blocks),
+            "trade_pattern_match": pattern_stamp,
+            "trade_pattern_gate_enabled": pattern_entry_gate_enabled(),
+            "trade_pattern_gate_blocks": bool(pattern_blocks),
         }
         # Observational regime telemetry on completed-bar history only (Phase 1–2).
         # Must not alter decision / entry / exit / cost fields above.
@@ -2697,7 +3102,16 @@ class RP608NSEShadowDaemon:
             traj15=traj15,
             signal_long=True,
         )
+        pattern_stamp = self._match_trade_pattern(
+            input_ctx=input_ctx,
+            traj15=traj15,
+            bar_idx=int(signal_bar_idx),
+            decision_ts_ist=decision_ts_ist,
+            symbol=symbol,
+        )
         if coralys_input_gate_enabled() and not bool(input_ctx.get("allow_long_entry")):
+            return False
+        if pattern_stamp.get("blocks_entry"):
             return False
 
         half_spread = float(getattr(quote, "half_spread_bps", 0) or 0) or 2.5
@@ -2735,6 +3149,7 @@ class RP608NSEShadowDaemon:
             "management_path": "TICK_PATH",
             "traj15_at_entry": round(traj15, 6),
             "coralys_input_context": input_ctx,
+            "trade_pattern_match": pattern_stamp,
             "entry_trade_like": True,
         }
         return True
@@ -2805,6 +3220,26 @@ class RP608NSEShadowDaemon:
                 exit_mark_source=mark_src,
             )
             return True
+        # Observational exit-pattern stamp on tick manage; optional paper reverse exit.
+        try:
+            exit_stamp = self._match_exit_pattern_for_trade(
+                symbol=symbol,
+                trade=trade,
+                bar_idx=bar_idx,
+            )
+            trade["trade_pattern_exit"] = exit_stamp
+            if exit_stamp.get("apply_early_exit") and pattern_exit_gate_enabled():
+                self._close_trade(
+                    self.active_trades.pop(symbol),
+                    exit_price=float(mark),
+                    exit_bar=bar_idx,
+                    exit_reason="PATTERN_REVERSE",
+                    exit_path="TICK_PATH_PATTERN",
+                    exit_mark_source=mark_src,
+                )
+                return True
+        except Exception:
+            pass
         return False
 
     def _on_estimand_a_ws_tick(self, tick: Dict[str, Any]) -> None:
@@ -3168,6 +3603,10 @@ class RP608NSEShadowDaemon:
         self.append_jsonl(self.trade_journal_path, record)
         if tid:
             self._journaled_trade_ids.add(tid)
+        try:
+            self._note_pattern_session_stop(trade=record, exit_reason=str(exit_reason or ""))
+        except Exception:
+            pass
         self.state.completed_trades_count += 1
         try:
             prospective_v1_append_nse_trade_closed(trade=record)

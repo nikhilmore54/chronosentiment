@@ -35,6 +35,18 @@ from scripts.rp608_order_flow_mark import (
     l1_from_book_ticker,
     l1_from_tick_features,
 )
+from scripts.rp608_crypto_trade_pattern_match import (
+    entry_gate_enabled as crypto_pattern_entry_gate_enabled,
+    exit_gate_enabled as crypto_pattern_exit_gate_enabled,
+    features_from_card_or_plan as crypto_pattern_features,
+    load_library as load_crypto_pattern_library,
+    match_entry as match_crypto_pattern_entry,
+    match_exit as match_crypto_pattern_exit,
+)
+from scripts.rp608_crypto_trade_pattern_library import (
+    default_library_path as crypto_pattern_library_path,
+    session_date_utc as crypto_pattern_session_date_utc,
+)
 
 CANDLE_15M_MS = 900_000
 
@@ -672,6 +684,82 @@ class TradePlanOverlayManager:
         # Entry-quality gates apply only at activate-time. Never scrub a booked
         # PAPER open on load (that orphaned OF ENTRY #664 / painted OF EXIT #—).
         self._restore_scrubbed_open_from_journal(persist=True)
+        # Past-trade pattern library (Gate 2E entry / Gate 2X exit observational).
+        self._pattern_library: Optional[Dict[str, Any]] = None
+        self._pattern_library_mtime: float = 0.0
+        self._pattern_stop_dirs_by_day: Dict[str, set] = {}
+        self._bootstrap_pattern_stop_dirs()
+
+    def _crypto_pattern_lib(self) -> Dict[str, Any]:
+        path = crypto_pattern_library_path(self.base_dir.parent)
+        try:
+            mtime = path.stat().st_mtime if path.exists() else 0.0
+        except OSError:
+            mtime = 0.0
+        if self._pattern_library is not None and mtime == self._pattern_library_mtime:
+            return self._pattern_library
+        lib = load_crypto_pattern_library(path)
+        self._pattern_library = lib
+        self._pattern_library_mtime = mtime
+        return lib
+
+    def _bootstrap_pattern_stop_dirs(self) -> None:
+        """UTC-day × direction stop families (not symbol bans)."""
+        self._pattern_stop_dirs_by_day = {}
+        if not self.outcomes_file.exists():
+            return
+        try:
+            with open(self.outcomes_file, "r", encoding="utf-8") as f:
+                for line in f:
+                    line = line.strip()
+                    if not line:
+                        continue
+                    try:
+                        r = json.loads(line)
+                    except json.JSONDecodeError:
+                        continue
+                    if "STOP" not in str(r.get("exit_reason") or ""):
+                        continue
+                    et = r.get("entry_time_ms")
+                    if not et:
+                        continue
+                    day = crypto_pattern_session_date_utc(int(et))
+                    d = str(r.get("direction") or "UNK").upper()
+                    self._pattern_stop_dirs_by_day.setdefault(day, set()).add(d)
+        except OSError:
+            pass
+
+    def _note_pattern_stop(self, plan: Dict[str, Any]) -> None:
+        if "STOP" not in str(plan.get("exit_reason") or ""):
+            return
+        et = plan.get("entry_time_ms")
+        if not et:
+            return
+        day = crypto_pattern_session_date_utc(int(et))
+        d = str(plan.get("direction") or "UNK").upper()
+        self._pattern_stop_dirs_by_day.setdefault(day, set()).add(d)
+
+    def _match_entry_pattern(
+        self, card: Dict[str, Any], plan_preview: Optional[Dict[str, Any]] = None
+    ) -> Dict[str, Any]:
+        et = int(
+            (plan_preview or {}).get("entry_time_ms")
+            or card.get("close_time_ms")
+            or time.time() * 1000
+        )
+        day = crypto_pattern_session_date_utc(et)
+        direction = str(
+            (plan_preview or {}).get("direction")
+            or card.get("policy_b_action")
+            or "UNK"
+        ).upper()
+        prior = direction in self._pattern_stop_dirs_by_day.get(day, set())
+        feats = crypto_pattern_features(
+            card=card,
+            plan=plan_preview,
+            prior_stop_same_utc_day_dir=prior,
+        )
+        return match_crypto_pattern_entry(library=self._crypto_pattern_lib(), feats=feats)
 
     def _save_config_if_missing(self):
         if not self.config_file.exists():
@@ -2083,6 +2171,30 @@ class TradePlanOverlayManager:
         if not plan:
             return None
 
+        # Gate 2E observational entry pattern (env-gated standaside; no symbol bans).
+        try:
+            pattern_stamp = self._match_entry_pattern(card, plan)
+            plan["trade_pattern_match"] = pattern_stamp
+            card["trade_pattern_match"] = pattern_stamp
+            if pattern_stamp.get("blocks_entry"):
+                self.state["suppressed_signals_count"] = int(
+                    self.state.get("suppressed_signals_count") or 0
+                ) + 1
+                self._log_event(
+                    "SUPPRESSED_TRADE_PATTERN",
+                    plan,
+                    {
+                        "pattern_id": pattern_stamp.get("pattern_id"),
+                        "hist_wr": pattern_stamp.get("hist_wr"),
+                        "cohort_n": pattern_stamp.get("cohort_n"),
+                        "gate_enabled": crypto_pattern_entry_gate_enabled(),
+                    },
+                )
+                self._save_state()
+                return None
+        except Exception as pat_exc:
+            print(f"[crypto_pattern] entry match skipped: {pat_exc}")
+
         self.state["active_plan"] = plan
         self.state["total_plans_created"] += 1
         self._log_event(
@@ -2091,6 +2203,7 @@ class TradePlanOverlayManager:
             {
                 "order_flow_supported": plan.get("order_flow_supported"),
                 "order_flow_imbalance": plan.get("order_flow_imbalance"),
+                "trade_pattern_match": plan.get("trade_pattern_match"),
             },
         )
         # OF recommendation: activate on OF entry; independent of 60m plan clock
@@ -2336,6 +2449,54 @@ class TradePlanOverlayManager:
         if path_stamp_flipped:
             self._save_state()
 
+        # Gate 2X observational exit-pattern stamp; optional paper reverse exit.
+        try:
+            exit_stamp = match_crypto_pattern_exit(
+                library=self._crypto_pattern_lib(), plan=plan
+            )
+            plan["trade_pattern_exit"] = exit_stamp
+            self.state["active_plan"] = plan
+            if exit_stamp.get("apply_early_exit") and crypto_pattern_exit_gate_enabled():
+                terminal_state = "CLOSED_PATTERN"
+                exit_reason = "PATTERN_REVERSE"
+                exit_price = exec_px
+                plan["state"] = terminal_state
+                plan["exit_price"] = round_tick(exit_price)
+                plan["exit_time_ms"] = now_ms
+                plan["holding_duration_seconds"] = round((now_ms - entry_ms) / 1000.0, 1)
+                if direction == "LONG":
+                    gross_pnl = (plan["exit_price"] - entry_price) * qty
+                else:
+                    gross_pnl = (entry_price - plan["exit_price"]) * qty
+                friction = (plan["simulated_notional_usdt"] + (plan["exit_price"] * qty)) * (
+                    6.0 / 10000.0
+                )
+                net_pnl = round(gross_pnl - friction, 2)
+                plan["gross_pnl_usdt"] = round(gross_pnl, 2)
+                plan["friction_usdt"] = round(friction, 4)
+                plan["net_pnl_usdt"] = net_pnl
+                plan["exit_reason"] = exit_reason
+                self.state["closed_plans_count"] += 1
+                self.state["outcomes_summary"]["cumulative_net_pnl_usdt"] += net_pnl
+                self.state["last_closed_plan"] = dict(plan)
+                self.state["active_plan"] = None
+                self._log_event(
+                    terminal_state,
+                    plan,
+                    {
+                        "exit_price": plan["exit_price"],
+                        "net_pnl": net_pnl,
+                        "reason": exit_reason,
+                        "trade_pattern_exit": exit_stamp,
+                    },
+                )
+                self._log_outcome(plan)
+                self._note_pattern_stop(plan)
+                self._save_state()
+                return plan
+        except Exception as pat_exc:
+            print(f"[crypto_pattern] exit match skipped: {pat_exc}")
+
         # OF exit is L1 reverse-flow only — independent of plan TP/SL/60m
         if evaluate_of:
             self.evaluate_order_flow_tick(
@@ -2453,6 +2614,10 @@ class TradePlanOverlayManager:
                 },
             )
             self._log_outcome(plan)
+            try:
+                self._note_pattern_stop(plan)
+            except Exception:
+                pass
             self._save_state()
             return plan
 

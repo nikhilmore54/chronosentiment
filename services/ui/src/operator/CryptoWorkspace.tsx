@@ -4,7 +4,6 @@ import { chip, labelStyle, op, panelStyle, valueStyle } from './operatorStyles';
 
 type Props = {
   state: OperatorState | null;
-  onBack: () => void;
 };
 
 function candleLine(label: string, c: OfCandleMark | null | undefined) {
@@ -39,7 +38,7 @@ function markHitsCard(
   return false;
 }
 
-export default function CryptoWorkspace({ state, onBack }: Props) {
+export default function CryptoWorkspace({ state }: Props) {
   const crypto = state?.crypto;
   const plan = crypto?.trade_plan;
   const ofRec = crypto?.order_flow;
@@ -52,17 +51,11 @@ export default function CryptoWorkspace({ state, onBack }: Props) {
 
   return (
     <div style={{ fontFamily: op.sans, color: op.text }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 16, gap: 12, flexWrap: 'wrap' }}>
-        <div>
-          <button type="button" onClick={onBack} style={backBtn}>
-            ← Overview
-          </button>
-          <h2 style={{ margin: '10px 0 4px', fontSize: 20 }}>Crypto workspace</h2>
-          <p style={{ margin: 0, color: op.muted, fontSize: 13 }}>
-            Policy B/C · 60m trade plan · OF latch/exit (independent) · candle marks — Pi fields only.
-          </p>
-        </div>
-        <span style={chip(op.emerald, '#052e16')}>AUTHORITY 0%</span>
+      <div style={{ marginBottom: 16 }}>
+        <h2 style={{ margin: '0 0 4px', fontSize: 20, fontWeight: 700 }}>Crypto</h2>
+        <p style={{ margin: 0, color: op.muted, fontSize: 13 }}>
+          Policy B/C · 60m trade plan · OF latch/exit (independent) · candle marks — Pi fields only.
+        </p>
       </div>
 
       {!crypto?.available ? (
@@ -75,7 +68,7 @@ export default function CryptoWorkspace({ state, onBack }: Props) {
               <span style={chip('rgba(34,211,238,0.22)', op.cyan)}>
                 B {displayOrUnavailable(crypto.policy_b)}
               </span>
-              <span style={chip('rgba(167,139,250,0.25)', op.violet)}>
+              <span style={chip('rgba(251,191,36,0.22)', op.amber)}>
                 C {displayOrUnavailable(crypto.policy_c)}
               </span>
             </div>
@@ -380,16 +373,6 @@ export default function CryptoWorkspace({ state, onBack }: Props) {
     </div>
   );
 }
-
-const backBtn = {
-  background: 'transparent',
-  border: `1px solid ${op.border}`,
-  color: op.muted,
-  borderRadius: 6,
-  padding: '6px 10px',
-  cursor: 'pointer',
-  fontSize: 12,
-};
 
 const th = { padding: '6px 8px', fontWeight: 600, borderBottom: `1px solid ${op.border}` };
 const td = { padding: '6px 8px', borderBottom: `1px solid rgba(148,163,184,0.08)`, color: op.text };

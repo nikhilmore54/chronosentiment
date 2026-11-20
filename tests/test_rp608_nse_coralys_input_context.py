@@ -15,6 +15,7 @@ from scripts.rp608_nse_coralys_input_context import (
     IST,
     classify_prior_watch_status,
     gate_enabled,
+    is_preopen_jittery,
     is_preopen_turbulent,
     session_phase_ist,
 )
@@ -23,9 +24,27 @@ from scripts.rp608_nse_coralys_input_context import (
 class TestSessionPhase(unittest.TestCase):
     def test_phases(self):
         self.assertEqual(session_phase_ist(datetime(2026, 11, 16, 9, 15, tzinfo=IST)), "OPEN")
+        self.assertEqual(session_phase_ist(datetime(2026, 11, 16, 9, 18, tzinfo=IST)), "EARLY_JITTER")
         self.assertEqual(session_phase_ist(datetime(2026, 11, 16, 9, 30, tzinfo=IST)), "EARLY")
         self.assertEqual(session_phase_ist(datetime(2026, 11, 16, 10, 45, tzinfo=IST)), "MID")
         self.assertEqual(session_phase_ist(datetime(2026, 11, 16, 13, 0, tzinfo=IST)), "LATE")
+
+
+class TestPreopenJitter(unittest.TestCase):
+    def test_gap_down_jitter(self):
+        ok, tag = is_preopen_jittery(-40.0, 0.1)
+        self.assertTrue(ok)
+        self.assertEqual(tag, "MED_GAP_DOWN")
+
+    def test_clean_gap_up_not_jitter(self):
+        ok, tag = is_preopen_jittery(40.0, 0.1)
+        self.assertFalse(ok)
+        self.assertEqual(tag, "")
+
+    def test_gap_up_ask_heavy_jitter(self):
+        ok, tag = is_preopen_jittery(40.0, -0.35)
+        self.assertTrue(ok)
+        self.assertEqual(tag, "MED_GAP_UP_ASK_HEAVY")
 
 
 class TestPriorStaleLadder(unittest.TestCase):
@@ -125,13 +144,51 @@ class TestCoralysInputGate(unittest.TestCase):
             symbol="AAA.NS",
             session_date="2026-11-16",
             decision_ts_ist=datetime(2026, 11, 16, 9, 15, tzinfo=IST),
-            traj15=0.06,
+            traj15=0.15,
             signal_long=True,
         )
         self.assertTrue(ctx["allow_long_entry"])
         self.assertEqual(ctx["session_phase"], "OPEN")
         self.assertIn("PASS_OPEN", ctx["standaside_reason"])
-        self.assertEqual(ctx["policy_id"], "CORALYS_INPUT_GATE_V3")
+        self.assertEqual(ctx["policy_id"], "CORALYS_INPUT_GATE_V6")
+
+    def test_open_aligned_weak_traj_standaside(self):
+        ctx = self.store.evaluate(
+            symbol="AAA.NS",
+            session_date="2026-11-16",
+            decision_ts_ist=datetime(2026, 11, 16, 9, 15, tzinfo=IST),
+            traj15=0.10,
+            signal_long=True,
+        )
+        self.assertFalse(ctx["allow_long_entry"])
+        self.assertIn(ctx["standaside_reason"], {
+            "STANDASIDE_OPEN_WEAK_TRAJ",
+            "STANDASIDE_OPEN_TREND_NOT_ALIGNED",
+        })
+
+    def test_preopen_missing_always_standaside_v5(self):
+        ctx = self.store.evaluate(
+            symbol="ZZZ.NS",  # no preopen row
+            session_date="2026-11-16",
+            decision_ts_ist=datetime(2026, 11, 16, 10, 45, tzinfo=IST),
+            traj15=0.50,
+            signal_long=True,
+        )
+        self.assertFalse(ctx["allow_long_entry"])
+        self.assertEqual(ctx["standaside_reason"], "STANDASIDE_PREOPEN_MISSING")
+
+    def test_preopen_missing_prior_strong_traj_blocked_v5(self):
+        # V5: prior watch + strong traj must NOT bypass missing preopen.
+        self.store._preopen_by_day["2026-11-16"] = {}
+        ctx = self.store.evaluate(
+            symbol="AAA.NS",
+            session_date="2026-11-16",
+            decision_ts_ist=datetime(2026, 11, 16, 10, 45, tzinfo=IST),
+            traj15=0.25,
+            signal_long=True,
+        )
+        self.assertFalse(ctx["allow_long_entry"])
+        self.assertEqual(ctx["standaside_reason"], "STANDASIDE_PREOPEN_MISSING")
 
     def test_open_gap_down_standaside(self):
         ctx = self.store.evaluate(
@@ -143,29 +200,46 @@ class TestCoralysInputGate(unittest.TestCase):
         )
         self.assertFalse(ctx["allow_long_entry"])
 
-    def test_open_turbulence_weak_traj_standaside(self):
+    def test_open_turbulence_hard_standaside(self):
+        # DDD: gap +55 / imb +0.50 → full turbulence; V6 hard-blocks OPEN/EARLY_JITTER.
         ctx = self.store.evaluate(
             symbol="DDD.NS",
             session_date="2026-11-16",
-            decision_ts_ist=datetime(2026, 11, 16, 9, 20, tzinfo=IST),
-            traj15=0.06,
+            decision_ts_ist=datetime(2026, 11, 16, 9, 15, tzinfo=IST),
+            traj15=0.25,
             signal_long=True,
         )
         self.assertFalse(ctx["allow_long_entry"])
         self.assertTrue(str(ctx["standaside_reason"]).startswith("STANDASIDE_PREOPEN_TURBULENCE_"))
 
-    def test_open_turbulence_strong_traj_may_pass_alignment(self):
-        # Turbulent but strong traj — still needs OPEN alignment; DDD gap+imb not aligned for longs.
+    def test_early_jitter_hold_standaside(self):
+        # CCC gap -30 → medium gap-down jitter in EARLY_JITTER window.
         ctx = self.store.evaluate(
-            symbol="DDD.NS",
+            symbol="CCC.NS",
             session_date="2026-11-16",
-            decision_ts_ist=datetime(2026, 11, 16, 9, 15, tzinfo=IST),
-            traj15=0.15,
+            decision_ts_ist=datetime(2026, 11, 16, 9, 18, tzinfo=IST),
+            traj15=0.25,
             signal_long=True,
         )
-        # gap 55 aligned (>=20), imb 0.5 ok; not on watch → OPEN_NO_PRIOR_WATCH
+        self.assertEqual(ctx["session_phase"], "EARLY_JITTER")
         self.assertFalse(ctx["allow_long_entry"])
-        self.assertEqual(ctx["standaside_reason"], "STANDASIDE_OPEN_NO_PRIOR_WATCH")
+        self.assertTrue(
+            str(ctx["standaside_reason"]).startswith("STANDASIDE_PREOPEN_JITTER_")
+            or "EARLY_JITTER" in str(ctx["standaside_reason"])
+        )
+
+    def test_early_constructive_pass(self):
+        # AAA on watch, gap +40, EARLY 09:30 — constructive window.
+        ctx = self.store.evaluate(
+            symbol="AAA.NS",
+            session_date="2026-11-16",
+            decision_ts_ist=datetime(2026, 11, 16, 9, 30, tzinfo=IST),
+            traj15=0.12,
+            signal_long=True,
+        )
+        self.assertEqual(ctx["session_phase"], "EARLY")
+        self.assertTrue(ctx["allow_long_entry"])
+        self.assertEqual(ctx["standaside_reason"], "PASS_EARLY")
 
     def test_mid_opposed_weak_traj_standaside(self):
         ctx = self.store.evaluate(
@@ -195,7 +269,7 @@ class TestCoralysInputGate(unittest.TestCase):
             symbol="CCC.NS",
             session_date="2026-11-16",
             decision_ts_ist=datetime(2026, 11, 16, 10, 45, tzinfo=IST),
-            traj15=0.12,
+            traj15=0.15,
             signal_long=True,
         )
         self.assertTrue(ctx["allow_long_entry"])
@@ -205,7 +279,7 @@ class TestCoralysInputGate(unittest.TestCase):
             symbol="AAA.NS",
             session_date="2026-11-16",
             decision_ts_ist=datetime(2026, 11, 16, 10, 45, tzinfo=IST),
-            traj15=0.06,
+            traj15=0.08,
             signal_long=True,
         )
         self.assertFalse(ctx_fail["allow_long_entry"])
@@ -213,7 +287,26 @@ class TestCoralysInputGate(unittest.TestCase):
             symbol="AAA.NS",
             session_date="2026-11-16",
             decision_ts_ist=datetime(2026, 11, 16, 10, 45, tzinfo=IST),
-            traj15=0.08,
+            traj15=0.10,
+            signal_long=True,
+        )
+        self.assertTrue(ctx_pass["allow_long_entry"])
+
+    def test_late_needs_late_floor(self):
+        ctx_fail = self.store.evaluate(
+            symbol="AAA.NS",
+            session_date="2026-11-16",
+            decision_ts_ist=datetime(2026, 11, 16, 13, 0, tzinfo=IST),
+            traj15=0.12,
+            signal_long=True,
+        )
+        self.assertFalse(ctx_fail["allow_long_entry"])
+        self.assertEqual(ctx_fail["standaside_reason"], "STANDASIDE_LATE_WEAK_TRAJ")
+        ctx_pass = self.store.evaluate(
+            symbol="AAA.NS",
+            session_date="2026-11-16",
+            decision_ts_ist=datetime(2026, 11, 16, 13, 0, tzinfo=IST),
+            traj15=0.15,
             signal_long=True,
         )
         self.assertTrue(ctx_pass["allow_long_entry"])
