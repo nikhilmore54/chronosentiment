@@ -195,7 +195,6 @@ from scripts.rp608_nse_g3_warmup import (  # noqa: E402
 )
 from scripts.rp608_nse_coralys_input_context import (  # noqa: E402
     CoralysInputContextStore,
-    classify_prior_watch_status,
     decision_ts_from_bar_ms,
     gate_enabled as coralys_input_gate_enabled,
 )

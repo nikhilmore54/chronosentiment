@@ -17,7 +17,7 @@ from __future__ import annotations
 import json
 import os
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Sequence
+from typing import Any, Dict, List, Optional
 
 from scripts.rp608_crypto_trade_pattern_library import (
     ENTRY_BACKOFF_DROP_ORDER,

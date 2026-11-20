@@ -21,7 +21,7 @@ import json
 import os
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Sequence, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 
 from scripts.rp608_nse_trade_pattern_library import (
     ENTRY_BACKOFF_DROP_ORDER,
