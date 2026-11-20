@@ -239,6 +239,7 @@ def match_exit(
         "exit_path3": path.get("exit_path3") or "UNK",
         "mfe_bucket": path.get("mfe_bucket") or "UNK",
         "first_reverse": path.get("first_reverse") or "UNK",
+        "exit_vol_surge": path.get("exit_vol_surge") or "UNK",
     }
     pid = build_exit_pattern_key(feats)
     patterns = library.get("exit_patterns") or {}

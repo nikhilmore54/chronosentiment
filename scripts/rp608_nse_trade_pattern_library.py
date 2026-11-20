@@ -36,7 +36,7 @@ from scripts.rp608_nse_coralys_input_context import (  # noqa: E402
 )
 
 PROTOCOL_ID = "RP-608-NSE-A-TRADE-PATTERN-V1"
-LIBRARY_SCHEMA = "nse_a_trade_pattern_library_v1"
+LIBRARY_SCHEMA = "nse_a_trade_pattern_library_v2"
 
 ADVERSE_MIN_N = 30
 ADVERSE_MAX_WR = 0.35
@@ -291,6 +291,23 @@ def extract_pre_entry_candle_feats(
     }
 
 
+def _vol_surge_at_bar(
+    bars_dict: Dict[int, Dict[str, float]], bar_idx: int
+) -> str:
+    """Candle volume at bar_idx vs mean of prior 5 completed bars (same buckets as entry)."""
+    bi = int(bar_idx)
+    bar = bars_dict.get(bi)
+    if not bar:
+        return "UNK"
+    prior = sorted(i for i in bars_dict.keys() if i < bi)[-5:]
+    if len(prior) < 5:
+        return "UNK"
+    avg = sum(float(bars_dict[i].get("volume") or 0) for i in prior) / 5.0
+    if avg <= 0:
+        return "UNK"
+    return _vol_surge_bucket(float(bar.get("volume") or 0) / avg)
+
+
 def extract_exit_path_feats(
     bars_dict: Dict[int, Dict[str, float]],
     entry_bar_idx: int,
@@ -299,7 +316,8 @@ def extract_exit_path_feats(
 ) -> Dict[str, Any]:
     """
     Post-entry path (Gate 2X diagnostic). Not used as entry cause.
-    Captures early path + first reverse candle after a green excursion.
+    Captures early path + first reverse candle after a green excursion +
+    volume surge on the reverse (or latest) path bar.
     """
     e = int(entry_bar_idx)
     x = int(exit_bar_idx) if exit_bar_idx is not None else e
@@ -307,10 +325,12 @@ def extract_exit_path_feats(
     first_reverse_bar: Optional[int] = None
     peak_mfe_bps = 0.0
     saw_green = False
+    last_path_bar: Optional[int] = None
     for bi in range(e, min(x, e + 8) + 1):
         bar = bars_dict.get(bi)
         if not bar:
             continue
+        last_path_bar = bi
         d = _candle_dir(bar)
         path_dirs.append(d)
         mfe = max(0.0, (float(bar["high"]) - entry_price) / entry_price * 10000.0)
@@ -344,10 +364,17 @@ def extract_exit_path_feats(
         rev = "REV_B3_4"
     else:
         rev = "REV_LATE"
+    vol_bar = (
+        (e + first_reverse_bar)
+        if first_reverse_bar is not None
+        else (last_path_bar if last_path_bar is not None else e)
+    )
+    exit_vol_surge = _vol_surge_at_bar(bars_dict, vol_bar)
     return {
         "exit_path3": path3 if path3 else "UNK",
         "mfe_bucket": mfe_bucket,
         "first_reverse": rev,
+        "exit_vol_surge": exit_vol_surge,
         "peak_mfe_bps": round(peak_mfe_bps, 2),
         "first_reverse_bar_offset": first_reverse_bar,
     }
@@ -377,13 +404,14 @@ def build_entry_pattern_key(feats: Dict[str, Any]) -> str:
 
 
 def build_exit_pattern_key(feats: Dict[str, Any]) -> str:
-    """Exit/reverse cohort key — path geometry only; no symbol."""
+    """Exit/reverse cohort key — path geometry + path volume; no symbol."""
     parts = [
         str(feats.get("session_phase") or "UNK"),
         str(feats.get("traj15_bucket") or "UNK"),
         str(feats.get("exit_path3") or "UNK"),
         str(feats.get("mfe_bucket") or "UNK"),
         str(feats.get("first_reverse") or "UNK"),
+        "V" + str(feats.get("exit_vol_surge") or "UNK"),
     ]
     return "|".join(parts)
 
@@ -566,6 +594,7 @@ def enrich_trade_features(
         "exit_path3": exit_path.get("exit_path3") or "UNK",
         "mfe_bucket": exit_path.get("mfe_bucket") or "UNK",
         "first_reverse": exit_path.get("first_reverse") or "UNK",
+        "exit_vol_surge": exit_path.get("exit_vol_surge") or "UNK",
         "peak_mfe_bps": exit_path.get("peak_mfe_bps"),
         "first_reverse_bar_offset": exit_path.get("first_reverse_bar_offset"),
         "win": win,
@@ -741,6 +770,7 @@ def mine_library(
                 "exit_path3": "UNK",
                 "mfe_bucket": mfe_bucket,
                 "first_reverse": rev,
+                "exit_vol_surge": "UNK",
                 "peak_mfe_bps": round(mfe_f, 2) if mfe_f is not None else None,
                 "first_reverse_bar_offset": None,
             }

@@ -10,6 +10,7 @@ from scripts.rp608_nse_trade_pattern_library import (
     build_entry_pattern_key,
     build_exit_pattern_key,
     classify_entry_label,
+    extract_exit_path_feats,
     mine_library,
 )
 from scripts.rp608_nse_trade_pattern_match import (
@@ -53,11 +54,13 @@ class TestKeyExcludesSymbol(unittest.TestCase):
                 "exit_path3": "UDD",
                 "mfe_bucket": "MFE_40_80",
                 "first_reverse": "REV_B2",
+                "exit_vol_surge": "HIGH",
                 "symbol": "RELIANCE.NS",
             }
         )
         self.assertNotIn("RELIANCE", key)
         self.assertIn("REV_B2", key)
+        self.assertIn("VHIGH", key)
 
 
 class TestAdverseVsAbstain(unittest.TestCase):
@@ -127,6 +130,33 @@ class TestAdverseVsAbstain(unittest.TestCase):
             classify_entry_label({"n": 40, "wr": 0.50}),
             "NEUTRAL",
         )
+
+
+class TestExitVolSurge(unittest.TestCase):
+    def test_exit_path_includes_vol_surge(self):
+        bars = {
+            i: {
+                "open": 100.0,
+                "high": 100.5,
+                "low": 99.5,
+                "close": 100.2,
+                "volume": 1e5,
+            }
+            for i in range(1, 6)
+        }
+        # Path: green then strong down on high volume
+        bars[5] = {"open": 100.0, "high": 102.0, "low": 99.8, "close": 101.5, "volume": 1e5}
+        bars[6] = {"open": 101.5, "high": 101.6, "low": 98.0, "close": 98.5, "volume": 3e5}
+        path = extract_exit_path_feats(bars, 5, 6, 100.0)
+        self.assertEqual(path["exit_vol_surge"], "HIGH")
+        self.assertIn("VHIGH", build_exit_pattern_key({
+            "session_phase": "MID",
+            "traj15_bucket": "0_10_0_15",
+            "exit_path3": path["exit_path3"],
+            "mfe_bucket": path["mfe_bucket"],
+            "first_reverse": path["first_reverse"],
+            "exit_vol_surge": path["exit_vol_surge"],
+        }))
 
 
 class TestExitReverse(unittest.TestCase):

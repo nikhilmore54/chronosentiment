@@ -46,9 +46,33 @@ from scripts.rp608_crypto_trade_pattern_match import (
 from scripts.rp608_crypto_trade_pattern_library import (
     default_library_path as crypto_pattern_library_path,
     session_date_utc as crypto_pattern_session_date_utc,
+    vol_surge_bucket as crypto_vol_surge_bucket,
 )
 
 CANDLE_15M_MS = 900_000
+
+
+def _plan_volume_fields(decision_card: Dict[str, Any]) -> Dict[str, Any]:
+    """Latch candle OHLCV surge for Gate 2E/2X patterns (not OFX aggression)."""
+    burst = decision_card.get("vol_burst_20")
+    surge = decision_card.get("vol_surge")
+    if surge not in {"LOW", "MED", "HIGH", "UNK"}:
+        try:
+            surge = crypto_vol_surge_bucket(float(burst) if burst is not None else None)
+        except (TypeError, ValueError):
+            surge = "UNK"
+    burst_f = None
+    if burst is not None:
+        try:
+            burst_f = float(burst)
+        except (TypeError, ValueError):
+            burst_f = None
+    return {
+        "vol_burst_20": burst_f,
+        "vol_surge": str(surge or "UNK"),
+        "exit_vol_burst_20": burst_f,
+        "exit_vol_surge": str(surge or "UNK"),
+    }
 
 
 def build_of_candle_mark(
@@ -645,6 +669,8 @@ def calculate_trade_plan(
         # Gate 5 H120_PATH live path stamps (L1 mid)
         "path_h_adverse_seen": False,
         "path_h_revisit_seen": False,
+        # Candle OHLCV volume surge (pattern Gate 2E/2X; not OFX aggression)
+        **_plan_volume_fields(decision_card),
     }
 
 
@@ -2423,6 +2449,17 @@ class TradePlanOverlayManager:
         plan["last_mark_price"] = round_tick(exec_px)
         plan["last_mark_time_ms"] = now_ms
         plan["lifecycle_monitor"] = CONFIG.get("lifecycle_monitor", "continuous_l1_bookTicker")
+
+        # Refresh exit volume surge from forming/completed candle burst when present.
+        if q.get("vol_burst_20") is not None:
+            try:
+                burst = float(q["vol_burst_20"])
+                plan["exit_vol_burst_20"] = burst
+                plan["exit_vol_surge"] = crypto_vol_surge_bucket(burst)
+            except (TypeError, ValueError):
+                pass
+        elif q.get("vol_surge") in {"LOW", "MED", "HIGH", "UNK"}:
+            plan["exit_vol_surge"] = str(q["vol_surge"])
 
         # Gate 5 H120_PATH: track L1 mid adverse → revisit around entry (±side friction bps)
         mid = 0.5 * (bid + ask)

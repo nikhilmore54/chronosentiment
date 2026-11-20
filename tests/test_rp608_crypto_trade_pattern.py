@@ -11,6 +11,7 @@ from scripts.rp608_crypto_trade_pattern_library import (
     build_exit_pattern_key,
     classify_entry_label,
     mine_library,
+    vol_surge_bucket,
 )
 from scripts.rp608_crypto_trade_pattern_match import (
     entry_gate_enabled,
@@ -18,6 +19,14 @@ from scripts.rp608_crypto_trade_pattern_match import (
     match_entry,
     match_exit,
 )
+
+
+class TestVolSurgeBucket(unittest.TestCase):
+    def test_buckets(self):
+        self.assertEqual(vol_surge_bucket(None), "UNK")
+        self.assertEqual(vol_surge_bucket(0.5), "LOW")
+        self.assertEqual(vol_surge_bucket(1.0), "MED")
+        self.assertEqual(vol_surge_bucket(2.0), "HIGH")
 
 
 class TestKeyExcludesSymbol(unittest.TestCase):
@@ -32,11 +41,13 @@ class TestKeyExcludesSymbol(unittest.TestCase):
             "target_dist_bucket": "GE_150",
             "gross_rr_bucket": "RR_1_5_2",
             "prior_stop_same_utc_day_dir": False,
+            "vol_surge": "HIGH",
             "symbol": "BTCUSDT",
         }
         key = build_entry_pattern_key(feats)
         self.assertNotIn("BTC", key.upper())
         self.assertNotIn("symbol", key.lower())
+        self.assertIn("VHIGH", key)
 
     def test_exit_key(self):
         key = build_exit_pattern_key(
@@ -46,10 +57,12 @@ class TestKeyExcludesSymbol(unittest.TestCase):
                 "mfe_bucket": "MFE_40_80",
                 "first_reverse": "REV_AFTER_GREEN",
                 "hold_bucket": "H_10_30M",
+                "exit_vol_surge": "MED",
                 "symbol": "BTCUSDT",
             }
         )
         self.assertNotIn("BTC", key.upper())
+        self.assertIn("VMED", key)
 
 
 class TestAdverseVsAbstain(unittest.TestCase):

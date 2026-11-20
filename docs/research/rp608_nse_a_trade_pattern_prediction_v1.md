@@ -32,7 +32,7 @@ Two uses of the same past-trade memory — **not** scrip ban lists:
 | `prior_support` | next-session watch |
 | `same_session_prior_stop_in_similar_context` | ToA\|traj family stop earlier today (**not** symbol) |
 | `bar_tertile` | entry bar index |
-| `candle_path3` / `signal_body` / `runup_3b` / `vol_surge` | last ≤3 completed 15m candles before entry |
+| `candle_path3` / `signal_body` / `runup_3b` / `vol_surge` | last ≤3 completed 15m candles before entry (`vol_surge` = signal-bar volume vs mean of prior 5) |
 
 **Excluded from key:** `symbol`, tradingsymbol, sector.
 
@@ -43,6 +43,9 @@ Two uses of the same past-trade memory — **not** scrip ban lists:
 | `exit_path3` | first ≤3 post-entry candle directions |
 | `mfe_bucket` | peak favorable excursion class |
 | `first_reverse` | first strong down candle after green vs entry |
+| `exit_vol_surge` | volume on reverse bar (else latest path bar) vs mean of prior 5 (`LOW`/`MED`/`HIGH`/`UNK`) |
+
+Library schema: `nse_a_trade_pattern_library_v2` (remine required after volume-on-exit). Candle OHLCV only — not OFX tick aggression (`.cursor/rules/rp608-ofx.mdc`).
 
 ## Mining
 

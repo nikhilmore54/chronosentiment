@@ -5,12 +5,13 @@ RP-608 Crypto recommendation-plan — past-trade pattern library miner.
 Book: crypto trade-plan overlay (BTCUSDT plan) only — never pooled with NSE/OF/OFX.
 
 Two uses:
-  1) ENTRY (Gate 2E): decision-time OF/ATR/session/direction features →
+  1) ENTRY (Gate 2E): decision-time OF/ATR/session/direction + candle vol_surge →
      ALLOW / STANDASIDE_ADVERSE / ABSTAIN from historical W/L.
-  2) EXIT  (Gate 2X observational): MFE + reverse-after-green cohorts →
+  2) EXIT  (Gate 2X observational): MFE + reverse-after-green + exit_vol_surge →
      HOLD / EXIT_REVERSE stamps (frozen TP/SL/60m unless Gate 5).
 
-No symbol in keys. Authority 0%. OF ±0.30 unchanged; OFX inert here.
+Volume = 15m OHLCV burst vs SMA20 (not OFX aggression). No symbol in keys.
+Authority 0%. OF ±0.30 unchanged; OFX inert here.
 """
 
 from __future__ import annotations
@@ -25,13 +26,14 @@ from typing import Any, Dict, List, Optional, Sequence
 WORKSPACE = Path(__file__).resolve().parent.parent
 
 PROTOCOL_ID = "RP-608-CRYPTO-PLAN-TRADE-PATTERN-V1"
-LIBRARY_SCHEMA = "crypto_plan_trade_pattern_library_v1"
+LIBRARY_SCHEMA = "crypto_plan_trade_pattern_library_v2"
 ADVERSE_MIN_N = 30
 ADVERSE_MAX_WR = 0.35
 EXIT_REVERSE_MIN_N = 20
 HOLDOUT_SESSIONS = 2
 
 ENTRY_BACKOFF_DROP_ORDER = (
+    "vol_surge",
     "gross_rr_bucket",
     "target_dist_bucket",
     "stop_dist_bucket",
@@ -148,6 +150,18 @@ def hold_bucket(seconds: Optional[float]) -> str:
     return "H_GE_60M"
 
 
+def vol_surge_bucket(ratio: Optional[float]) -> str:
+    """Candle volume vs prior SMA — same buckets as NSE A (not OFX aggression)."""
+    if ratio is None:
+        return "UNK"
+    r = float(ratio)
+    if r < 0.8:
+        return "LOW"
+    if r < 1.5:
+        return "MED"
+    return "HIGH"
+
+
 def bool_token(v: Any) -> str:
     return "T" if bool(v) else "F"
 
@@ -163,6 +177,7 @@ def build_entry_pattern_key(feats: Dict[str, Any]) -> str:
         "T" + str(feats.get("target_dist_bucket") or "UNK"),
         "R" + str(feats.get("gross_rr_bucket") or "UNK"),
         "P" + bool_token(feats.get("prior_stop_same_utc_day_dir")),
+        "V" + str(feats.get("vol_surge") or "UNK"),
     ]
     key = "|".join(parts)
     assert "symbol" not in key.lower()
@@ -177,6 +192,7 @@ def build_exit_pattern_key(feats: Dict[str, Any]) -> str:
         str(feats.get("mfe_bucket") or "UNK"),
         str(feats.get("first_reverse") or "UNK"),
         str(feats.get("hold_bucket") or "UNK"),
+        "V" + str(feats.get("exit_vol_surge") or "UNK"),
     ]
     return "|".join(parts)
 
@@ -190,6 +206,7 @@ def entry_key_softened(feats: Dict[str, Any], dropped: Sequence[str]) -> str:
             "stop_dist_bucket",
             "imb_bucket",
             "atr_bucket",
+            "vol_surge",
         }:
             f[ax] = "UNK"
         elif ax == "of_supported":
@@ -250,6 +267,17 @@ def enrich_plan(
         rev = "TIME"
     else:
         rev = "UNK"
+    entry_vol = plan.get("vol_surge")
+    if entry_vol not in {"LOW", "MED", "HIGH", "UNK"}:
+        raw = plan.get("vol_burst_20")
+        entry_vol = vol_surge_bucket(float(raw) if raw is not None else None)
+    exit_vol = plan.get("exit_vol_surge")
+    if exit_vol not in {"LOW", "MED", "HIGH", "UNK"}:
+        raw_x = plan.get("exit_vol_burst_20")
+        if raw_x is not None:
+            exit_vol = vol_surge_bucket(float(raw_x))
+        else:
+            exit_vol = entry_vol if entry_vol else "UNK"
     feats = {
         "utc_session_phase": utc_session_phase(et) if et else "UNK",
         "direction": direction,
@@ -263,6 +291,7 @@ def enrich_plan(
         "target_dist_bucket": dist_bps_bucket(entry, float(tp) if tp is not None else None),
         "gross_rr_bucket": rr_bucket(float(rr) if rr is not None else None),
         "prior_stop_same_utc_day_dir": bool(prior_stop),
+        "vol_surge": str(entry_vol or "UNK"),
         "mfe_bucket": mfe_bucket(mfe_bps),
         "first_reverse": rev,
         "hold_bucket": hold_bucket(
@@ -270,6 +299,7 @@ def enrich_plan(
             if plan.get("holding_duration_seconds") is not None
             else None
         ),
+        "exit_vol_surge": str(exit_vol or "UNK"),
         "win": plan_win(plan),
         "net_pnl_usdt": float(plan.get("net_pnl_usdt") or plan.get("net_pnl") or 0.0),
         "gross_pnl_usdt": float(plan.get("gross_pnl_usdt") or 0.0),

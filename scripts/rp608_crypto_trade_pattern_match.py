@@ -33,6 +33,7 @@ from scripts.rp608_crypto_trade_pattern_library import (
     mfe_bucket,
     rr_bucket,
     utc_session_phase,
+    vol_surge_bucket,
 )
 
 
@@ -59,6 +60,49 @@ def load_library(path: Optional[Path] = None) -> Dict[str, Any]:
     return doc
 
 
+def _resolve_vol_surge(
+    *,
+    card: Optional[Dict[str, Any]] = None,
+    plan: Optional[Dict[str, Any]] = None,
+    prefer_exit: bool = False,
+) -> str:
+    """Candle OHLCV surge bucket (not OFX aggression). Prefer latched plan stamps."""
+    src_plan = plan or {}
+    src_card = card or {}
+    if prefer_exit:
+        for raw in (
+            src_plan.get("exit_vol_surge"),
+            src_plan.get("exit_vol_burst_20"),
+            src_card.get("exit_vol_burst_20"),
+            src_card.get("vol_burst_20"),
+            src_plan.get("vol_surge"),
+            src_plan.get("vol_burst_20"),
+            src_card.get("vol_burst_20"),
+        ):
+            if raw in {"LOW", "MED", "HIGH", "UNK"}:
+                return str(raw)
+            if raw is not None:
+                try:
+                    return vol_surge_bucket(float(raw))
+                except (TypeError, ValueError):
+                    continue
+        return "UNK"
+    for raw in (
+        src_plan.get("vol_surge"),
+        src_plan.get("vol_burst_20"),
+        src_card.get("vol_surge"),
+        src_card.get("vol_burst_20"),
+    ):
+        if raw in {"LOW", "MED", "HIGH", "UNK"}:
+            return str(raw)
+        if raw is not None:
+            try:
+                return vol_surge_bucket(float(raw))
+            except (TypeError, ValueError):
+                continue
+    return "UNK"
+
+
 def features_from_card_or_plan(
     *,
     card: Optional[Dict[str, Any]] = None,
@@ -81,6 +125,8 @@ def features_from_card_or_plan(
             "gross_rr_ratio",
             "entry_price",
             "entry_time_ms",
+            "vol_burst_20",
+            "vol_surge",
         ):
             if card.get(k) is not None and src.get(k) is None:
                 src[k] = card[k]
@@ -112,6 +158,7 @@ def features_from_card_or_plan(
             float(src["gross_rr_ratio"]) if src.get("gross_rr_ratio") is not None else None
         ),
         "prior_stop_same_utc_day_dir": bool(prior_stop_same_utc_day_dir),
+        "vol_surge": _resolve_vol_surge(card=card, plan=plan, prefer_exit=False),
     }
 
 
@@ -236,6 +283,7 @@ def match_exit(
         "mfe_bucket": mfe_bucket(mfe_bps),
         "first_reverse": first_reverse,
         "hold_bucket": hold_bucket(float(hold_s) if hold_s is not None else None),
+        "exit_vol_surge": _resolve_vol_surge(plan=plan, prefer_exit=True),
     }
     pid = build_exit_pattern_key(feats)
     patterns = library.get("exit_patterns") or {}

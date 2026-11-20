@@ -8,14 +8,17 @@
 
 ## Two uses
 
-1. **ENTRY (Gate 2E):** match decision-time direction / UTC session / OF support / imbalance / ATR / stop-target geometry to past cohorts → ALLOW / STANDASIDE / ABSTAIN (W/L-first; payoff+net disclosed).
-2. **EXIT (Gate 2X observational):** match MFE + reverse-after-green / hold buckets → HOLD / EXIT_REVERSE stamps. Frozen TP/SL/60m unchanged unless Gate 5; optional paper `RP608_CRYPTO_PATTERN_EXIT_GATE=1`.
+1. **ENTRY (Gate 2E):** match decision-time direction / UTC session / OF support / imbalance / ATR / stop-target geometry / **candle `vol_surge`** (15m volume vs SMA20) to past cohorts → ALLOW / STANDASIDE / ABSTAIN (W/L-first; payoff+net disclosed).
+2. **EXIT (Gate 2X observational):** match MFE + reverse-after-green / hold / **`exit_vol_surge`** (forming/completed 15m volume vs SMA20) → HOLD / EXIT_REVERSE stamps. Frozen TP/SL/60m unchanged unless Gate 5; optional paper `RP608_CRYPTO_PATTERN_EXIT_GATE=1`.
+
+Library schema: `crypto_plan_trade_pattern_library_v2` (remine required). Volume = Binance 15m OHLCV burst — **not** OFX aggTrade aggression (`.cursor/rules/rp608-ofx.mdc`).
 
 ## Non-goals
 
 - No symbol bans (even though the live plan is BTCUSDT-centric).
 - No OF ±0.30 change; OFX remains independent / 0% authority.
 - No pooling with NSE A pattern library.
+- No substituting OFX 3× tick surge for plan-pattern candle volume.
 
 ## Mine
 

@@ -920,6 +920,25 @@ class RP608ShadowDaemon:
         feat = compute_causal_features(self.recent_candles, len(self.recent_candles) - 1)
         return None if feat is None else float(feat.atr_14)
 
+    def _vol_burst_20(
+        self, *, forming_volume: Optional[float] = None
+    ) -> Optional[float]:
+        """
+        Candle OHLCV volume / SMA20 of prior completed 15m bars.
+        Used by plan pattern Gate 2E/2X only — not OFX aggression surge.
+        """
+        if len(self.recent_candles) < 20:
+            return None
+        prior = self.recent_candles[-20:]
+        sma = sum(float(c.volume) for c in prior) / 20.0
+        if sma <= 0:
+            return None
+        if forming_volume is not None:
+            return float(forming_volume) / sma
+        # Last completed bar vs prior 20 ending at that bar
+        feat = compute_causal_features(self.recent_candles, len(self.recent_candles) - 1)
+        return None if feat is None else feat.vol_burst_20
+
     def _completed_closes(self) -> List[float]:
         return [c.close for c in self.recent_candles]
 
@@ -1134,6 +1153,7 @@ class RP608ShadowDaemon:
         drop_reason = None
         quote_age_ms = float(snap.quote_age_ms)
         candidate_quote = self.latest_book_ticker
+        vol_burst_20 = self._vol_burst_20()
 
         if action_b in ("LONG", "SHORT") or action_c in ("LONG", "SHORT"):
             self.opportunity_registry.record_executed()
@@ -1171,6 +1191,7 @@ class RP608ShadowDaemon:
             "reference_price": snap.mid_price,
             "ret_15m_bps": snap.macro_trend_16_bps if snap.macro_trend_16_bps is not None else 0.0,
             "atr_14": atr_14 if atr_14 is not None else 0.0,
+            "vol_burst_20": vol_burst_20,
             "features_tick": self._last_tick_features,
             "policy_b_action": action_b,
             "policy_c_action": action_c,
@@ -1368,6 +1389,13 @@ class RP608ShadowDaemon:
                                     forming_q["low_price"] = float(k["l"])
                                     forming_q["high_price"] = float(k["h"])
                                     forming_q["quote_source"] = "binance_ws_forming_kline_15m"
+                                    try:
+                                        fv = float(k.get("v")) if k.get("v") is not None else None
+                                    except (TypeError, ValueError):
+                                        fv = None
+                                    burst = self._vol_burst_20(forming_volume=fv)
+                                    if burst is not None:
+                                        forming_q["vol_burst_20"] = burst
                                     resolved = self.trade_plan_overlay.evaluate_market_tick(
                                         forming_q,
                                         reload_state=False,
