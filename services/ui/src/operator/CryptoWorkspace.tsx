@@ -124,6 +124,97 @@ export default function CryptoWorkspace({ state }: Props) {
           </section>
 
           <section style={panelStyle}>
+            <div style={labelStyle}>Crypto trade plan ledger (CRYPTO_PLAN · W/L-first)</div>
+            {crypto.trade_plan_pnl?.summary ? (
+              <>
+                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 8 }}>
+                  <span style={chip('rgba(167,139,250,0.25)', '#c4b5fd')}>
+                    n {crypto.trade_plan_pnl.summary.n_trades ?? 0}
+                  </span>
+                  <span style={chip('rgba(52,211,153,0.25)', op.emerald)}>
+                    W {crypto.trade_plan_pnl.summary.n_wins ?? 0}
+                  </span>
+                  <span style={chip('rgba(251,113,133,0.3)', op.rose)}>
+                    L {crypto.trade_plan_pnl.summary.n_losses ?? 0}
+                  </span>
+                  <span style={chip('rgba(148,163,184,0.2)', op.text)}>
+                    cum net{' '}
+                    {crypto.trade_plan_pnl.summary.cumulative_net_pnl_usdt != null
+                      ? `${crypto.trade_plan_pnl.summary.cumulative_net_pnl_usdt.toFixed(2)} USDT`
+                      : 'UNAVAILABLE'}
+                  </span>
+                  <span style={chip('rgba(45,212,191,0.25)', op.emerald)}>
+                    cum{' '}
+                    {crypto.trade_plan_pnl.summary.cumulative_net_return_bps != null
+                      ? `${crypto.trade_plan_pnl.summary.cumulative_net_return_bps.toFixed(1)} bps`
+                      : '—'}
+                  </span>
+                  <span style={chip('rgba(251,191,36,0.2)', op.amber)}>
+                    GB {crypto.trade_plan_pnl.summary.giveback_exits ?? 0}
+                  </span>
+                  <span style={chip('rgba(245,158,11,0.2)', op.amber)}>PAPER · 0%</span>
+                </div>
+                <div style={{ overflowX: 'auto' }}>
+                  <table
+                    style={{
+                      width: '100%',
+                      borderCollapse: 'collapse',
+                      fontFamily: op.mono,
+                      fontSize: 11,
+                    }}
+                  >
+                    <thead>
+                      <tr style={{ color: op.dim, textAlign: 'left' }}>
+                        <th style={th}>open_ist</th>
+                        <th style={th}>close_ist</th>
+                        <th style={th}>hold</th>
+                        <th style={th}>dir</th>
+                        <th style={th}>entry</th>
+                        <th style={th}>exit</th>
+                        <th style={th}>net USDT</th>
+                        <th style={th}>net bps</th>
+                        <th style={th}>state</th>
+                        <th style={th}>reason</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {(crypto.trade_plan_pnl.recent ?? []).slice(0, 24).map((t, i) => (
+                        <tr key={`${t.plan_id ?? i}`}>
+                          <td style={td}>{t.open_time_ist ?? t.entry_time_ms ?? '—'}</td>
+                          <td style={td}>{t.close_time_ist ?? t.exit_time_ms ?? '—'}</td>
+                          <td style={td}>
+                            {t.holding_duration_seconds != null
+                              ? `${t.holding_duration_seconds.toFixed(1)}s`
+                              : '—'}
+                          </td>
+                          <td style={td}>{t.direction ?? '—'}</td>
+                          <td style={td}>{t.entry_price ?? '—'}</td>
+                          <td style={td}>{t.exit_price ?? '—'}</td>
+                          <td style={td}>
+                            {t.net_pnl_usdt != null ? t.net_pnl_usdt.toFixed(2) : '—'}
+                          </td>
+                          <td style={td}>
+                            {t.net_return_bps != null ? t.net_return_bps.toFixed(1) : '—'}
+                          </td>
+                          <td style={td}>{t.state ?? '—'}</td>
+                          <td style={td}>{t.exit_reason ?? '—'}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                  {(crypto.trade_plan_pnl.recent?.length ?? 0) === 0 && (
+                    <div style={{ color: op.dim, marginTop: 8, fontFamily: op.mono, fontSize: 12 }}>
+                      No closed crypto trade-plan outcomes yet.
+                    </div>
+                  )}
+                </div>
+              </>
+            ) : (
+              <div style={{ color: op.dim, fontFamily: op.mono, fontSize: 13 }}>UNAVAILABLE</div>
+            )}
+          </section>
+
+          <section style={panelStyle}>
             <div style={labelStyle}>OF paper trade (open · PAPER · 0% authority)</div>
             {ofShadow?.open ? (
               <>

@@ -146,6 +146,49 @@ export type OfTradePnl = {
   recent?: OfTradeOutcome[];
 };
 
+export type TradePlanOutcome = {
+  plan_id?: string | null;
+  direction?: string | null;
+  entry_price?: number | null;
+  exit_price?: number | null;
+  net_pnl_usdt?: number | null;
+  net_return_bps?: number | null;
+  gross_pnl_usdt?: number | null;
+  friction_usdt?: number | null;
+  holding_duration_seconds?: number | null;
+  exit_reason?: string | null;
+  state?: string | null;
+  entry_time_ms?: number | null;
+  exit_time_ms?: number | null;
+  open_time_ist?: string | null;
+  close_time_ist?: string | null;
+  open_time_utc?: string | null;
+  close_time_utc?: string | null;
+  plan_lifecycle_authority?: string | null;
+  tp_level?: number | null;
+};
+
+export type TradePlanPnl = {
+  protocol_id?: string | null;
+  book?: string | null;
+  execution_mode?: string | null;
+  live_order_authority?: number | null;
+  summary?: {
+    n_trades?: number;
+    n_wins?: number;
+    n_losses?: number;
+    cumulative_gross_pnl_usdt?: number;
+    cumulative_net_pnl_usdt?: number;
+    cumulative_net_return_bps?: number;
+    cumulative_friction_usdt?: number;
+    tp_hits?: number;
+    sl_hits?: number;
+    time_exits?: number;
+    giveback_exits?: number;
+  } | null;
+  recent?: TradePlanOutcome[];
+};
+
 export type CryptoStatus = {
   available: boolean;
   policy_b?: string | null;
@@ -163,6 +206,7 @@ export type CryptoStatus = {
     exit?: OfCandleMark | null;
     active?: boolean;
   } | null;
+  trade_plan_pnl?: TradePlanPnl | null;
   of_trade_pnl?: OfTradePnl | null;
   of_shadow_trade?: OfShadowTrade | null;
   recent_cards?: DecisionCardView[];

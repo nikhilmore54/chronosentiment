@@ -123,6 +123,9 @@ export function mapCrypto(raw: Record<string, unknown>): CryptoStatus {
   const ofActive = asRecord(raw.order_flow_recommendation);
   const ofExit = asRecord(raw.order_flow_last_exit);
   const markers = asRecord(raw.of_candle_markers);
+  const planPnlRaw = asRecord(raw.trade_plan_pnl);
+  const planPnlSummary = asRecord(planPnlRaw?.summary);
+  const planPnlRecent = Array.isArray(planPnlRaw?.recent) ? planPnlRaw!.recent : [];
   const ofPnlRaw = asRecord(raw.of_trade_pnl);
   const ofPnlSummary = asRecord(ofPnlRaw?.summary);
   const ofPnlRecent = Array.isArray(ofPnlRaw?.recent) ? ofPnlRaw!.recent : [];
@@ -157,6 +160,57 @@ export function mapCrypto(raw: Record<string, unknown>): CryptoStatus {
             active: ofRec.active,
           }
         : null,
+    trade_plan_pnl: planPnlRaw
+      ? {
+          protocol_id: (planPnlRaw.protocol_id as string) ?? null,
+          book: (planPnlRaw.book as string) ?? null,
+          execution_mode: (planPnlRaw.execution_mode as string) ?? null,
+          live_order_authority: numOrNull(planPnlRaw.live_order_authority),
+          summary: planPnlSummary
+            ? {
+                n_trades: numOrNull(planPnlSummary.n_trades) ?? undefined,
+                n_wins: numOrNull(planPnlSummary.n_wins) ?? undefined,
+                n_losses: numOrNull(planPnlSummary.n_losses) ?? undefined,
+                cumulative_gross_pnl_usdt:
+                  numOrNull(planPnlSummary.cumulative_gross_pnl_usdt) ?? undefined,
+                cumulative_net_pnl_usdt:
+                  numOrNull(planPnlSummary.cumulative_net_pnl_usdt) ?? undefined,
+                cumulative_net_return_bps:
+                  numOrNull(planPnlSummary.cumulative_net_return_bps) ?? undefined,
+                cumulative_friction_usdt:
+                  numOrNull(planPnlSummary.cumulative_friction_usdt) ?? undefined,
+                tp_hits: numOrNull(planPnlSummary.tp_hits) ?? undefined,
+                sl_hits: numOrNull(planPnlSummary.sl_hits) ?? undefined,
+                time_exits: numOrNull(planPnlSummary.time_exits) ?? undefined,
+                giveback_exits: numOrNull(planPnlSummary.giveback_exits) ?? undefined,
+              }
+            : null,
+          recent: planPnlRecent.map((r) => {
+            const o = asRecord(r) ?? {};
+            return {
+              plan_id: (o.plan_id as string) ?? null,
+              direction: (o.direction as string) ?? null,
+              entry_price: numOrNull(o.entry_price),
+              exit_price: numOrNull(o.exit_price),
+              net_pnl_usdt: numOrNull(o.net_pnl_usdt),
+              net_return_bps: numOrNull(o.net_return_bps),
+              gross_pnl_usdt: numOrNull(o.gross_pnl_usdt),
+              friction_usdt: numOrNull(o.friction_usdt),
+              holding_duration_seconds: numOrNull(o.holding_duration_seconds),
+              exit_reason: (o.exit_reason as string) ?? null,
+              state: (o.state as string) ?? null,
+              entry_time_ms: numOrNull(o.entry_time_ms),
+              exit_time_ms: numOrNull(o.exit_time_ms),
+              open_time_ist: (o.open_time_ist as string) ?? null,
+              close_time_ist: (o.close_time_ist as string) ?? null,
+              open_time_utc: (o.open_time_utc as string) ?? null,
+              close_time_utc: (o.close_time_utc as string) ?? null,
+              plan_lifecycle_authority: (o.plan_lifecycle_authority as string) ?? null,
+              tp_level: numOrNull(o.tp_level),
+            };
+          }),
+        }
+      : null,
     of_trade_pnl: ofPnlRaw
       ? {
           protocol_id: (ofPnlRaw.protocol_id as string) ?? null,

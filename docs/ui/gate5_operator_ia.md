@@ -62,6 +62,7 @@ Fetch Pi `/api/state` and assert Gate5 mapped DTO equality:
 | Authority | `order_authority` / implied 0 | `live_order_authority === 0` |
 | Policy B/C | `latest_card.policy_b_action` / `policy_c_action` | `crypto.policy_b` / `policy_c` |
 | Plan | `trade_plan.plan_id`, `state`, `is_active` | `crypto.trade_plan.*` |
+| Crypto trade ledger | `trade_plan_pnl.summary` / `recent` | `crypto.trade_plan_pnl.*` |
 | OF active | `order_flow_recommendation.active` | `crypto.order_flow.active` |
 | OF exit | `order_flow_last_exit` | `crypto.order_flow_last_exit` |
 | OF candles | `of_candle_markers.entry/exit` | `crypto.of_candle_markers.*` |

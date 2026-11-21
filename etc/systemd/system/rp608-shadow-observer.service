@@ -11,7 +11,9 @@ Type=simple
 User=ultraspeed
 Group=ultraspeed
 WorkingDirectory=/home/ultraspeed/ChronoSentiment_MEGA_FINAL
-ExecStart=/usr/bin/python3 scripts/run_rp608_shadow_daemon.py
+# Sole live launcher for crypto shadow. Do NOT also nohup this script —
+# run_rp608_shadow_daemon acquires rp608_crypto_shadow.singleton.lock (exit 3 if held).
+ExecStart=/usr/bin/python3 -u scripts/run_rp608_shadow_daemon.py
 Restart=always
 RestartSec=10s
 TimeoutStopSec=15s
@@ -19,6 +21,10 @@ KillSignal=SIGTERM
 UMask=0077
 LimitNOFILE=65536
 Environment=PYTHONUNBUFFERED=1
+# Absolute paths — systemd PATH has no ~/bin; stale unsuffixed bin must not win.
+Environment=RP608_POSITION_DECIDE_BIN=/home/ultraspeed/ChronoSentiment_MEGA_FINAL/adapters/chronosentiment/bin/rp608_position_decide.aarch64-linux
+Environment=RP608_GATE2X_MANAGE_BIN=/home/ultraspeed/ChronoSentiment_MEGA_FINAL/adapters/chronosentiment/bin/rp608_position_decide.aarch64-linux
+Environment=RP608_CRYPTO_REC001H_DIR=/home/ultraspeed/ChronoSentiment_MEGA_FINAL/datasets/recommendation/historical_crypto
 
 [Install]
 WantedBy=multi-user.target

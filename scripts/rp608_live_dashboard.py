@@ -1724,7 +1724,11 @@ def get_nse_dashboard_state() -> Dict[str, Any]:
         },
         "auth_user_id": readiness_data.get("user_id", creds_obj.get("user_id", "TJ6378")),
         "auth_user_name": readiness_data.get("user_name", "Nikhil Tanaji More"),
-        "api_key": creds_obj.get("api_key", ""),
+        # Never expose api_key/api_secret to the browser. Login uses /api/kite/login (server redirect).
+        "kite_login_ready": (
+            bool(str(creds_obj.get("api_key") or "").strip())
+            and bool(str(creds_obj.get("api_secret") or "").strip())
+        ),
         "coverage": {
             "reconciled": readiness_data.get("symbols_reconciled", 119),
             "total_universe": 119,
@@ -2181,6 +2185,7 @@ def load_live_state() -> Dict[str, Any]:
             latest_exec_quote if isinstance(latest_exec_quote, dict) else None,
             now_ms=now_utc_ms,
         ),
+        "trade_plan_pnl": overlay_mgr.build_trade_plan_pnl_payload(24),
         "of_trade_pnl": {
             "protocol_id": "RP-608-OF-PAPER-TRADE-001",
             "execution_mode": "PAPER",
@@ -3135,6 +3140,39 @@ DASHBOARD_HTML = """<!DOCTYPE html>
         <span id="crypto-ofx-vol-banner-text" style="margin-left:8px; color:#94a3b8;"></span>
       </div>
 
+      <!-- Crypto Trade Plan ledger (60m Adaptive TP / Gate2X / SL·TP) -->
+      <div id="crypto-trade-panel" style="margin:0 0 18px 0; padding:14px; background:rgba(139,92,246,0.08); border:1px solid rgba(167,139,250,0.35); border-radius:10px;">
+        <div style="display:flex; justify-content:space-between; align-items:center; gap:10px; flex-wrap:wrap; margin-bottom:10px;">
+          <div>
+            <div style="font-size:13px; font-weight:800; color:#c4b5fd;">Crypto Trade Plan</div>
+            <div style="font-size:11px; color:var(--text-dim); margin-top:2px;">RP-608-CRYPTO-TRADE-PLAN-001 · CRYPTO_PLAN book · W/L-first · never pooled with OF</div>
+          </div>
+          <span class="pill-sm" style="background:rgba(245,158,11,0.15); color:var(--accent-amber); border:1px solid rgba(245,158,11,0.3);">0.0% · PAPER</span>
+        </div>
+        <div style="display:flex; gap:8px; flex-wrap:wrap; margin-bottom:8px;" id="crypto-trade-summary-chips"></div>
+        <div style="overflow-x:auto;">
+          <table style="width:100%; border-collapse:collapse; font-family:'JetBrains Mono',monospace; font-size:11px;">
+            <thead>
+              <tr style="color:var(--text-dim); text-align:left;">
+                <th style="padding:4px 6px;">open_ist</th>
+                <th style="padding:4px 6px;">close_ist</th>
+                <th style="padding:4px 6px;">hold</th>
+                <th style="padding:4px 6px;">dir</th>
+                <th style="padding:4px 6px;">entry</th>
+                <th style="padding:4px 6px;">exit</th>
+                <th style="padding:4px 6px;">net USDT</th>
+                <th style="padding:4px 6px;">net bps</th>
+                <th style="padding:4px 6px;">state</th>
+                <th style="padding:4px 6px;">reason</th>
+              </tr>
+            </thead>
+            <tbody id="crypto-trade-ledger-body">
+              <tr><td colspan="10" style="padding:8px 6px; color:var(--text-dim);">No closed crypto trade-plan outcomes yet</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
       <!-- OF Paper Trades (RP-608-OF-PAPER-TRADE-001) — independent of 60m plan -->
       <div id="of-paper-trades-panel" style="margin:0 0 18px 0; padding:14px; background:rgba(45,212,191,0.06); border:1px solid rgba(45,212,191,0.28); border-radius:10px;">
         <div style="display:flex; justify-content:space-between; align-items:center; gap:10px; flex-wrap:wrap; margin-bottom:10px;">
@@ -3746,6 +3784,47 @@ DASHBOARD_HTML = """<!DOCTYPE html>
       if (s < 3600) return (s / 60).toFixed(1) + 'm';
       return (s / 3600).toFixed(2) + 'h';
     }
+    function updateCryptoTradeUI(data) {
+      const chipsEl = document.getElementById('crypto-trade-summary-chips');
+      const bodyEl = document.getElementById('crypto-trade-ledger-body');
+      if (!chipsEl || !bodyEl) return;
+      const pnl = data.trade_plan_pnl || {};
+      const sum = pnl.summary || {};
+      chipsEl.innerHTML =
+        '<span class="pill-sm" style="background:rgba(167,139,250,0.2); color:#c4b5fd;">n ' + (sum.n_trades || 0) + '</span>' +
+        '<span class="pill-sm" style="background:rgba(52,211,153,0.15); color:var(--accent-emerald);">W ' + (sum.n_wins || 0) + '</span>' +
+        '<span class="pill-sm" style="background:rgba(251,113,133,0.15); color:var(--accent-rose);">L ' + (sum.n_losses || 0) + '</span>' +
+        '<span class="pill-sm" style="background:rgba(255,255,255,0.06); color:#e2e8f0;">cum net ' +
+          (sum.cumulative_net_pnl_usdt != null ? Number(sum.cumulative_net_pnl_usdt).toFixed(2) + ' USDT' : '—') + '</span>' +
+        '<span class="pill-sm" style="background:rgba(45,212,191,0.15); color:#5eead4;">cum ' +
+          (sum.cumulative_net_return_bps != null ? Number(sum.cumulative_net_return_bps).toFixed(1) + ' bps' : '—') + '</span>' +
+        '<span class="pill-sm" style="background:rgba(251,191,36,0.12); color:var(--accent-amber);">GB ' + (sum.giveback_exits || 0) + '</span>';
+      const recent = Array.isArray(pnl.recent) ? pnl.recent : [];
+      if (!recent.length) {
+        bodyEl.innerHTML = '<tr><td colspan="10" style="padding:8px 6px; color:var(--text-dim);">No closed crypto trade-plan outcomes yet</td></tr>';
+        return;
+      }
+      bodyEl.innerHTML = recent.slice(0, 24).map(function (t) {
+        const openT = t.open_time_ist || ofPaperFmtUtc(t.entry_time_ms) || '—';
+        const closeT = t.close_time_ist || ofPaperFmtUtc(t.exit_time_ms) || '—';
+        const hold = t.holding_duration_seconds != null
+          ? ofPaperFmtHold(t.holding_duration_seconds)
+          : '—';
+        return '<tr>' +
+          '<td style="padding:4px 6px; white-space:nowrap;">' + openT + '</td>' +
+          '<td style="padding:4px 6px; white-space:nowrap;">' + closeT + '</td>' +
+          '<td style="padding:4px 6px;">' + hold + '</td>' +
+          '<td style="padding:4px 6px;">' + (t.direction || '—') + '</td>' +
+          '<td style="padding:4px 6px;">' + (t.entry_price != null ? Number(t.entry_price).toFixed(2) : '—') + '</td>' +
+          '<td style="padding:4px 6px;">' + (t.exit_price != null ? Number(t.exit_price).toFixed(2) : '—') + '</td>' +
+          '<td style="padding:4px 6px;">' + (t.net_pnl_usdt != null ? Number(t.net_pnl_usdt).toFixed(2) : '—') + '</td>' +
+          '<td style="padding:4px 6px;">' + (t.net_return_bps != null ? Number(t.net_return_bps).toFixed(1) : '—') + '</td>' +
+          '<td style="padding:4px 6px;">' + (t.state || '—') + '</td>' +
+          '<td style="padding:4px 6px;">' + (t.exit_reason || '—') + '</td>' +
+          '</tr>';
+      }).join('');
+    }
+
     function updateOfPaperTradesUI(data) {
       const openEl = document.getElementById('of-paper-open');
       const chipsEl = document.getElementById('of-paper-summary-chips');
@@ -4075,6 +4154,7 @@ DASHBOARD_HTML = """<!DOCTYPE html>
         if (!resp.ok) return;
         const data = await resp.json();
 
+        updateCryptoTradeUI(data);
         updateOfPaperTradesUI(data);
 
         // Update Clocks
@@ -4666,11 +4746,19 @@ DASHBOARD_HTML = """<!DOCTYPE html>
         ofpNote.textContent = (ofp.protocol_id || 'RP-608-NSE-OF-PAPER-TRADE-001') +
           ' · reverse OF / square-off · 0% authority';
       }
-      if (nse.api_key) {
-        currentApiKey = nse.api_key;
-        const link = document.getElementById('kite-login-link');
-        if (link) {
-          link.href = `https://kite.zerodha.com/connect/login?v=3&api_key=${encodeURIComponent(nse.api_key)}`;
+      kiteLoginReady = !!nse.kite_login_ready;
+      const link = document.getElementById('kite-login-link');
+      if (link) {
+        if (kiteLoginReady) {
+          link.href = '/api/kite/login';
+          link.style.opacity = '1';
+          link.style.pointerEvents = 'auto';
+          link.textContent = 'Open Kite Login Window ↗';
+        } else {
+          link.removeAttribute('href');
+          link.style.opacity = '0.45';
+          link.style.pointerEvents = 'none';
+          link.textContent = 'Kite Login blocked — credentials incomplete on host';
         }
       }
       const foot = document.getElementById('nse-footer-daemon');
@@ -5421,14 +5509,34 @@ DASHBOARD_HTML = """<!DOCTYPE html>
       });
     }
 
-    let currentApiKey = '';
+    let kiteLoginReady = false;
 
     function openKiteAuthModal() {
       const modal = document.getElementById('kite-auth-modal');
       const input = document.getElementById('kite-token-input');
       const msg = document.getElementById('kite-auth-msg');
+      const link = document.getElementById('kite-login-link');
       if (input) input.value = '';
       if (msg) { msg.style.display = 'none'; msg.textContent = ''; }
+      if (!kiteLoginReady) {
+        if (msg) {
+          msg.style.display = 'block';
+          msg.style.color = '#ef4444';
+          msg.textContent = 'Host credentials incomplete (~/.kite_credentials.json missing api_key/api_secret). Nothing is sent to the browser — restore secrets on the dashboard host, then retry.';
+        }
+        if (link) {
+          link.removeAttribute('href');
+          link.style.opacity = '0.45';
+          link.style.pointerEvents = 'none';
+          link.textContent = 'Kite Login blocked — credentials incomplete on host';
+        }
+      } else if (link) {
+        // Opaque same-origin redirect; api_key never enters the page DOM/JS.
+        link.href = '/api/kite/login';
+        link.style.opacity = '1';
+        link.style.pointerEvents = 'auto';
+        link.textContent = 'Open Kite Login Window ↗';
+      }
       if (modal) modal.style.display = 'flex';
     }
 
@@ -5536,7 +5644,7 @@ DASHBOARD_HTML = """<!DOCTYPE html>
       </p>
       <div style="margin-bottom:16px; padding:12px; background:rgba(255,255,255,0.03); border:1px solid var(--card-border); border-radius:8px;">
         <div style="font-size:11px; font-weight:600; color:var(--text-dim); text-transform:uppercase; margin-bottom:6px;">Step 1: Open Login in Zerodha</div>
-        <a id="kite-login-link" href="https://kite.zerodha.com/connect/login?v=3&api_key=" target="_blank" style="display:inline-block; background:rgba(59,130,246,0.2); border:1px solid var(--accent-blue); color:#60a5fa; font-size:12px; padding:6px 14px; border-radius:6px; text-decoration:none; font-weight:600;">Open Kite Login Window ↗</a>
+        <a id="kite-login-link" href="/api/kite/login" target="_blank" rel="noopener noreferrer" style="display:inline-block; background:rgba(59,130,246,0.2); border:1px solid var(--accent-blue); color:#60a5fa; font-size:12px; padding:6px 14px; border-radius:6px; text-decoration:none; font-weight:600;">Open Kite Login Window ↗</a>
       </div>
       <div style="margin-bottom:16px;">
         <div style="font-size:11px; font-weight:600; color:var(--text-dim); text-transform:uppercase; margin-bottom:6px;">Step 2: Paste Callback URL or Request Token</div>
@@ -5582,10 +5690,14 @@ class DashboardHTTPRequestHandler(http.server.BaseHTTPRequestHandler):
             raise RuntimeError("Kite credentials module not available")
 
         creds = load_credentials()
-        api_key = creds.get("api_key")
-        api_secret = creds.get("api_secret")
+        api_key = str(creds.get("api_key") or "").strip()
+        api_secret = str(creds.get("api_secret") or "").strip()
         if not api_key or not api_secret:
-            raise ValueError("api_key or api_secret missing in credentials")
+            raise ValueError(
+                "api_key or api_secret missing/empty in ~/.kite_credentials.json "
+                "(Kite InputException: Missing or empty field `api_key`). "
+                "Restore both fields on the dashboard host, then retry login."
+            )
 
         access_token = exchange_request_token(api_key, api_secret, request_token)
         creds["access_token"] = access_token
@@ -5673,6 +5785,36 @@ class DashboardHTTPRequestHandler(http.server.BaseHTTPRequestHandler):
                 except Exception as e:
                     self._send_json(400, {"status": "error", "error": str(e)})
                     return
+
+        if parsed.path == "/api/kite/login":
+            # Server-side redirect only — api_key never shipped to the frontend.
+            try:
+                if not load_credentials:
+                    raise RuntimeError("Kite credentials module not available")
+                creds = load_credentials()
+                api_key = str(creds.get("api_key") or "").strip()
+                if not api_key:
+                    self._send_json(
+                        400,
+                        {
+                            "status": "error",
+                            "error": (
+                                "api_key missing/empty in ~/.kite_credentials.json on dashboard host"
+                            ),
+                        },
+                    )
+                    return
+                loc = (
+                    "https://kite.zerodha.com/connect/login?v=3&api_key="
+                    + urllib.parse.quote(api_key, safe="")
+                )
+                self.send_response(302)
+                self.send_header("Location", loc)
+                self.send_header("Cache-Control", "no-store")
+                self.end_headers()
+            except Exception as e:
+                self._send_json(400, {"status": "error", "error": str(e)})
+            return
 
         if self.path == "/api/state":
             try:

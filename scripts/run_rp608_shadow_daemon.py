@@ -87,6 +87,7 @@ from scripts.rp608_ofx_crypto_aggtrade_journal import (
 )
 from scripts.rp608_ofx_crypto_volume_flow_mark import refresh_ofx_volume_flow_mark
 from scripts.rp608_ofx_volume_paper_trades import OfxVolumePaperManager
+from scripts.rp608_singleton_lock import acquire_or_exit
 
 # RP-608-REGIME-BREAKOUT-001 — Arm A freeze + observational regime telemetry
 # Policy B actions / costs / horizons MUST remain unchanged while ARM_A_FROZEN.
@@ -118,7 +119,10 @@ BASE_TAKER_FEE_RATE = 0.0005        # 5.0 bps
 BASE_SLIPPAGE_RATE = 0.0001         # 1.0 bp
 
 DEFAULT_OUTPUT_DIR = WORKSPACE_DIR / "live_capture" / "shadow_validation" / "crypto"
+DEFAULT_SINGLETON_LOCK_PATH = DEFAULT_OUTPUT_DIR / "rp608_crypto_shadow.singleton.lock"
 DEFAULT_CHECKPOINT_PATH = DEFAULT_OUTPUT_DIR / "rp608_checkpoint.json"
+# Kept alive for process lifetime so flock is held.
+_CRYPTO_SHADOW_LOCK_HOLD: list = []
 DEFAULT_TELEMETRY_LOG_PATH = DEFAULT_OUTPUT_DIR / "rp608_shadow_telemetry.jsonl"
 DEFAULT_DECISION_CARDS_PATH = DEFAULT_OUTPUT_DIR / "rp608_decision_cards.jsonl"
 DEFAULT_TRADE_JOURNAL_PATH = DEFAULT_OUTPUT_DIR / "rp608_trade_journal.jsonl"
@@ -647,6 +651,8 @@ class RP608ShadowDaemon:
         self.state: Dict[str, Any] = {}
         self.recent_candles: List[Candle15m] = []
         self.latest_book_ticker: Optional[Dict[str, Any]] = None
+        # Forming 15m kline extremes for Gate 2E pre-entry path-invalid checks.
+        self.latest_forming_kline: Optional[Dict[str, Any]] = None
         self.last_ticker_sequence_u: int = 0
         self.sequence_inversions: int = 0
         # Tick decision clock (RP-608-SHADOW-TICK-001)
@@ -655,9 +661,26 @@ class RP608ShadowDaemon:
         self._last_tick_features: Optional[Dict[str, Any]] = None
         # Trade-plan overlay: open on tick Policy B; TP/SL via continuous L1 (0.0% authority).
         # ATR geometry still frozen from completed 15m buffer at plan open.
-        self.trade_plan_overlay = TradePlanOverlayManager()
+        # Primary = volume-pattern axes (v2). Parallel twin = pre-volume baseline book
+        # (OF paper inert on twin; books never pooled).
+        self.trade_plan_overlay = TradePlanOverlayManager(
+            book_id="CRYPTO_PLAN",
+            of_paper_enabled=True,
+            volume_pattern_axes=True,
+        )
+        twin_dir = self.output_dir / "trade_plan_overlay_baseline_parallel_v1"
+        self.trade_plan_overlay_baseline = TradePlanOverlayManager(
+            base_dir=twin_dir,
+            book_id="CRYPTO_PLAN_BASELINE_PARALLEL",
+            of_paper_enabled=False,
+            volume_pattern_axes=False,
+        )
         self._last_overlay_reload_ms: int = 0
         self._overlay_reload_interval_ms: int = 5000
+        print(
+            "[trade_plan_overlay] parallel twin armed → "
+            f"{twin_dir} (book=CRYPTO_PLAN_BASELINE_PARALLEL; OF inert; no volume axes)"
+        )
 
         # OFX research-only: durable Binance aggTrade journal (separate WS; baseline OF inert)
         self.ofx_aggtrade_dir = self.output_dir / "ofx_aggtrade_capture_v1"
@@ -1048,52 +1071,74 @@ class RP608ShadowDaemon:
                             if recv_wall_ms - self._last_overlay_reload_ms >= self._overlay_reload_interval_ms:
                                 self._last_overlay_reload_ms = recv_wall_ms
                                 self.trade_plan_overlay.state = self.trade_plan_overlay._load_state()
-                            active = (self.trade_plan_overlay.state or {}).get("active_plan")
+                                self.trade_plan_overlay_baseline.state = (
+                                    self.trade_plan_overlay_baseline._load_state()
+                                )
+                            for overlay, tag in (
+                                (self.trade_plan_overlay, "trade_plan_overlay"),
+                                (
+                                    self.trade_plan_overlay_baseline,
+                                    "trade_plan_overlay_baseline",
+                                ),
+                            ):
+                                active = (overlay.state or {}).get("active_plan")
+                                if active and active.get("state") == "OPEN":
+                                    resolved = overlay.evaluate_market_tick(
+                                        self.latest_book_ticker,
+                                        reload_state=False,
+                                        now_ms=recv_wall_ms,
+                                    )
+                                    if resolved and resolved.get("state") != "OPEN":
+                                        print(
+                                            f"[{tag}] {resolved.get('plan_id')} → {resolved.get('state')} "
+                                            f"book={resolved.get('book_id')} "
+                                            f"reason={resolved.get('exit_reason')} "
+                                            f"exit={resolved.get('exit_price')} "
+                                            f"net={resolved.get('net_pnl_usdt')} "
+                                            f"(continuous L1; not 15m-gated)"
+                                        )
+                                        if overlay is self.trade_plan_overlay:
+                                            try:
+                                                prospective_v1_append_trade_closed(
+                                                    market=ProspectiveMarket.CRYPTO,
+                                                    outcome=resolved,
+                                                )
+                                            except Exception as link_exc:
+                                                print(
+                                                    f"[prospective_v1] trade_closed link skipped: {link_exc}"
+                                                )
                             of_active = (self.trade_plan_overlay.state or {}).get(
                                 "active_order_flow_recommendation"
                             )
-                            if active and active.get("state") == "OPEN":
-                                resolved = self.trade_plan_overlay.evaluate_market_tick(
-                                    self.latest_book_ticker,
-                                    reload_state=False,
-                                    now_ms=recv_wall_ms,
+                            if of_active and of_active.get("active"):
+                                # Only primary book owns L1 OF paper.
+                                active_primary = (self.trade_plan_overlay.state or {}).get(
+                                    "active_plan"
                                 )
-                                if resolved and resolved.get("state") != "OPEN":
-                                    print(
-                                        f"[trade_plan_overlay] {resolved.get('plan_id')} → {resolved.get('state')} "
-                                        f"reason={resolved.get('exit_reason')} exit={resolved.get('exit_price')} "
-                                        f"net={resolved.get('net_pnl_usdt')} "
-                                        f"(continuous L1; not 15m-gated)"
+                                if not (
+                                    active_primary and active_primary.get("state") == "OPEN"
+                                ):
+                                    prev_of = True
+                                    of_now = self.trade_plan_overlay.evaluate_order_flow_tick(
+                                        self.latest_book_ticker,
+                                        now_ms=recv_wall_ms,
+                                        persist=True,
+                                        candle_ctx={
+                                            "bar_idx": self.state.get("last_durable_bar_idx"),
+                                            "close_time_ms": int(
+                                                (self.latest_book_ticker or {}).get(
+                                                    "exchange_event_time_ms"
+                                                )
+                                                or event_ms
+                                                or recv_wall_ms
+                                            ),
+                                        },
                                     )
-                                    try:
-                                        prospective_v1_append_trade_closed(
-                                            market=ProspectiveMarket.CRYPTO,
-                                            outcome=resolved,
+                                    if prev_of and of_now is None:
+                                        print(
+                                            "[order_flow] ORDER_FLOW_EXIT "
+                                            "(opposite-side L1 confirm; not 60m-gated)"
                                         )
-                                    except Exception as link_exc:
-                                        print(f"[prospective_v1] trade_closed link skipped: {link_exc}")
-                            elif of_active and of_active.get("active"):
-                                prev_of = True
-                                of_now = self.trade_plan_overlay.evaluate_order_flow_tick(
-                                    self.latest_book_ticker,
-                                    now_ms=recv_wall_ms,
-                                    persist=True,
-                                    candle_ctx={
-                                        "bar_idx": self.state.get("last_durable_bar_idx"),
-                                        "close_time_ms": int(
-                                            (self.latest_book_ticker or {}).get(
-                                                "exchange_event_time_ms"
-                                            )
-                                            or event_ms
-                                            or recv_wall_ms
-                                        ),
-                                    },
-                                )
-                                if prev_of and of_now is None:
-                                    print(
-                                        "[order_flow] ORDER_FLOW_EXIT "
-                                        "(opposite-side L1 confirm; not 60m-gated)"
-                                    )
                         except Exception as overlay_exc:
                             print(f"[trade_plan_overlay] tick skipped: {overlay_exc}")
             except asyncio.CancelledError:
@@ -1219,13 +1264,31 @@ class RP608ShadowDaemon:
         self.update_heartbeat()
 
         plan_result = None
+        q = candidate_quote if valid_execution_quote else None
+        # Attach forming 15m high/low so Gate 2E can refuse opens already through stop.
+        if isinstance(q, dict) and isinstance(self.latest_forming_kline, dict):
+            q = dict(q)
+            for k in ("high_price", "low_price", "vol_burst_20"):
+                if self.latest_forming_kline.get(k) is not None and q.get(k) is None:
+                    q[k] = self.latest_forming_kline.get(k)
+            q.setdefault(
+                "forming_kline_source",
+                self.latest_forming_kline.get("quote_source") or "binance_ws_forming_kline_15m",
+            )
         try:
             plan_result = self.trade_plan_overlay.process_decision_card(
                 decision_card,
-                current_quote=candidate_quote if valid_execution_quote else None,
+                current_quote=q,
             )
         except Exception as plan_exc:
             print(f"[trade_plan_overlay] process_decision_card skipped: {plan_exc}")
+        try:
+            self.trade_plan_overlay_baseline.process_decision_card(
+                dict(decision_card),
+                current_quote=q,
+            )
+        except Exception as twin_exc:
+            print(f"[trade_plan_overlay_baseline] process_decision_card skipped: {twin_exc}")
 
         # Parallel OFX volume PAPER book (research-only; baseline L1 OF paper untouched)
         if action_b in ("LONG", "SHORT"):
@@ -1383,8 +1446,7 @@ class RP608ShadowDaemon:
                         # (covers TP touch that reverses before the 15m close).
                         if not is_candle_closed:
                             try:
-                                active = (self.trade_plan_overlay.state or {}).get("active_plan")
-                                if active and active.get("state") == "OPEN" and self.latest_book_ticker:
+                                if self.latest_book_ticker:
                                     forming_q = dict(self.latest_book_ticker)
                                     forming_q["low_price"] = float(k["l"])
                                     forming_q["high_price"] = float(k["h"])
@@ -1396,24 +1458,46 @@ class RP608ShadowDaemon:
                                     burst = self._vol_burst_20(forming_volume=fv)
                                     if burst is not None:
                                         forming_q["vol_burst_20"] = burst
-                                    resolved = self.trade_plan_overlay.evaluate_market_tick(
-                                        forming_q,
-                                        reload_state=False,
-                                        now_ms=int(time.time() * 1000),
-                                    )
-                                    if resolved and resolved.get("state") != "OPEN":
-                                        print(
-                                            f"[trade_plan_overlay] forming-kline path-through "
-                                            f"{resolved.get('plan_id')} → {resolved.get('state')} "
-                                            f"reason={resolved.get('exit_reason')}"
+                                    self.latest_forming_kline = {
+                                        "high_price": forming_q.get("high_price"),
+                                        "low_price": forming_q.get("low_price"),
+                                        "vol_burst_20": forming_q.get("vol_burst_20"),
+                                        "quote_source": forming_q.get("quote_source"),
+                                        "kline_start_ms": k.get("t"),
+                                    }
+                                    now_ms = int(time.time() * 1000)
+                                    for overlay, tag in (
+                                        (self.trade_plan_overlay, "trade_plan_overlay"),
+                                        (
+                                            self.trade_plan_overlay_baseline,
+                                            "trade_plan_overlay_baseline",
+                                        ),
+                                    ):
+                                        active = (overlay.state or {}).get("active_plan")
+                                        if not (active and active.get("state") == "OPEN"):
+                                            continue
+                                        resolved = overlay.evaluate_market_tick(
+                                            forming_q,
+                                            reload_state=False,
+                                            now_ms=now_ms,
                                         )
-                                        try:
-                                            prospective_v1_append_trade_closed(
-                                                market=ProspectiveMarket.CRYPTO,
-                                                outcome=resolved,
+                                        if resolved and resolved.get("state") != "OPEN":
+                                            print(
+                                                f"[{tag}] forming-kline path-through "
+                                                f"{resolved.get('plan_id')} → {resolved.get('state')} "
+                                                f"book={resolved.get('book_id')} "
+                                                f"reason={resolved.get('exit_reason')}"
                                             )
-                                        except Exception as link_exc:
-                                            print(f"[prospective_v1] trade_closed link skipped: {link_exc}")
+                                            if overlay is self.trade_plan_overlay:
+                                                try:
+                                                    prospective_v1_append_trade_closed(
+                                                        market=ProspectiveMarket.CRYPTO,
+                                                        outcome=resolved,
+                                                    )
+                                                except Exception as link_exc:
+                                                    print(
+                                                        f"[prospective_v1] trade_closed link skipped: {link_exc}"
+                                                    )
                             except Exception as form_exc:
                                 print(f"[trade_plan_overlay] forming-kline skipped: {form_exc}")
 
@@ -1542,6 +1626,11 @@ def main():
     parser.add_argument("--dry-run", action="store_true", help="Run preflight and exit without opening sockets.")
     parser.add_argument("--test-resumption", action="store_true", help="Test recovery and downtime accounting from existing checkpoint.")
     parser.add_argument("--single-candle-test", action="store_true", help="Run until first actionable tick Policy B emit and exit.")
+    parser.add_argument(
+        "--allow-multiple",
+        action="store_true",
+        help="Skip singleton flock (tests only). Live Pi must not use this.",
+    )
     args = parser.parse_args()
 
     daemon = RP608ShadowDaemon(
@@ -1566,6 +1655,20 @@ def main():
         daemon.initialize_or_resume_state()
         print("[Test Resumption] Resumption logic executed cleanly.")
         return
+
+    # Live path: one crypto shadow only (systemd OR manual — never both).
+    if not args.allow_multiple:
+        out = Path(args.output_dir) if args.output_dir else DEFAULT_OUTPUT_DIR
+        lock_path = out / "rp608_crypto_shadow.singleton.lock"
+        acquire_or_exit(
+            lock_path,
+            label="RP-608-SHADOW-TICK-001",
+            hold=_CRYPTO_SHADOW_LOCK_HOLD,
+        )
+        print(
+            f"[RP-608] Singleton lock acquired → {lock_path} (pid={os.getpid()})",
+            flush=True,
+        )
 
     asyncio.run(daemon.run())
 

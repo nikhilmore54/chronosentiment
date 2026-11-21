@@ -77,6 +77,19 @@ from scripts.rp608_order_flow_mark import (
     l1_from_nse_quote,
 )
 from scripts.rp608_nse_of_paper_ledger import NseOfPaperLedger
+from scripts.rp608_gate2x_adapter_client import (
+    DEFAULT_NSE_EVIDENCE,
+    apply_soft_breach_to_trade,
+    build_snapshot as gate2x_build_snapshot,
+    decide as gate2x_adapter_decide,
+)
+from scripts.rp608_plan_lifecycle_client import (
+    get_session as plan_lifecycle_session,
+    lifecycle_enabled as plan_lifecycle_enabled,
+    map_lifecycle_close,
+    merge_lifecycle_into_plan,
+    plan_from_overlay,
+)
 from scripts.rp608_nse_muhurat_session import (
     completed_bars_since_open,
     resolve_session_window,
@@ -216,6 +229,72 @@ G3_WARMUP_POLICY = DEFAULT_G3_WARMUP_POLICY
 
 # Cost schedule constants re-exported from scripts.rp608_nse_equity_costs
 DEFAULT_NOTIONAL_PER_TRADE_INR = 100_000.0  # ₹100,000 INR reference notional
+
+# Gate 2X (2026-11-21): MFE give-back protect — port of crypto v1.1+.
+# Arm after peak tp_frac + MFE clears cost/floor; exit at cost-clear floor.
+# v1.4 Adaptive TP may extend post-touch TP / lock SL; OF ±0.30 / traj15 unchanged.
+GATE2X_MFE_GIVEBACK_ENABLED = os.environ.get(
+    "RP608_NSE_GATE2X_MFE_GIVEBACK", "1"
+).strip().lower() not in {"0", "false", "no", "off"}
+GATE2X_ARM_MIN_TP_FRAC = float(os.environ.get("RP608_NSE_GATE2X_ARM_MIN_TP_FRAC", "0.40"))
+GATE2X_MIN_HOLD_S_BEFORE_EXIT = float(
+    os.environ.get("RP608_NSE_GATE2X_MIN_HOLD_S", "120")
+)
+GATE2X_MEANINGFUL_FLOOR_BPS = float(
+    os.environ.get("RP608_NSE_GATE2X_FLOOR_BPS", "5.0")
+)
+GATE2X_PROTECT_FLOOR_MODE = os.environ.get(
+    "RP608_NSE_GATE2X_PROTECT_FLOOR", "COST_CLEAR"
+).strip().upper()  # COST_CLEAR | ENTRY
+# v1.2: volume-confirm reversal (HIGH immediate; MED/LOW/UNK dwell).
+GATE2X_REVERSAL_VOLUME_CONFIRM = os.environ.get(
+    "RP608_NSE_GATE2X_VOL_CONFIRM", "1"
+).strip().lower() not in {"0", "false", "no", "off"}
+GATE2X_REVERSAL_MED_VOL_DWELL_MS = int(
+    float(os.environ.get("RP608_NSE_GATE2X_MED_VOL_DWELL_MS", "40000"))
+)
+GATE2X_REVERSAL_LOW_VOL_DWELL_MS = int(
+    float(os.environ.get("RP608_NSE_GATE2X_LOW_VOL_DWELL_MS", "90000"))
+)
+GATE2X_REVERSAL_IMMEDIATE_SURGES = {
+    s.strip().upper()
+    for s in os.environ.get("RP608_NSE_GATE2X_IMMEDIATE_VOL", "HIGH").split(",")
+    if s.strip()
+} or {"HIGH"}
+# v1.3: ratchet floor + deep-giveback dwell scale.
+GATE2X_RATCHET_PEAK_FRAC = float(os.environ.get("RP608_NSE_GATE2X_RATCHET_FRAC", "0.30"))
+GATE2X_DEEP_GIVEBACK_FRAC = float(os.environ.get("RP608_NSE_GATE2X_DEEP_GB_FRAC", "0.50"))
+GATE2X_DEEP_GIVEBACK_DWELL_SCALE = float(
+    os.environ.get("RP608_NSE_GATE2X_DEEP_GB_DWELL_SCALE", "0.40")
+)
+GATE2X_MFE_GIVEBACK_PROTOCOL = "RP-608-GATE2X-NSE-MFE-GIVEBACK-001"
+# Gate 5 Adaptive TP (2026-11-21): match crypto — first TP frozen at entry;
+# on touch extend +0.5×ATR (or +0.5% entry if ATR cold), lock SL to prior TP.
+# Gate 2X Hold/Protect/Exit decides continue vs take profit. Env kill-switch.
+ADAPTIVE_TP_ENABLED = os.environ.get("RP608_NSE_ADAPTIVE_TP", "1").strip().lower() not in {
+    "0",
+    "false",
+    "no",
+    "off",
+}
+ADAPTIVE_TP_EXTEND_ATR_MULT = float(os.environ.get("RP608_NSE_ADAPTIVE_TP_ATR_MULT", "0.5"))
+ADAPTIVE_TP_MAX_EXTENSIONS = int(float(os.environ.get("RP608_NSE_ADAPTIVE_TP_MAX_EXT", "3")))
+ADAPTIVE_TP_EXTEND_PCT = float(
+    os.environ.get("RP608_NSE_ADAPTIVE_TP_PCT", "0.005")
+)  # fallback step when atr_14 missing (0.5% of entry)
+ADAPTIVE_TP_PROTOCOL = "RP-608-GATE5-NSE-ADAPTIVE-TP-001"
+
+
+def _nse_vol_surge_bucket(ratio: Optional[float]) -> str:
+    """Same candle burst buckets as crypto/NSE pattern library (not OFX)."""
+    if ratio is None:
+        return "UNK"
+    r = float(ratio)
+    if r < 0.8:
+        return "LOW"
+    if r < 1.5:
+        return "MED"
+    return "HIGH"
 
 # Brier References & Forecasts
 ESTIMAND_A_TRAIN_PREVALENCE = 0.58
@@ -1497,7 +1576,16 @@ class RP608NSEShadowDaemon:
             bars_for_symbol_session=bars or None,
         )
         lib = self._load_trade_pattern_library()
-        return match_trade_pattern_entry(library=lib, feats=feats)
+        # Primary = volume axes; parallel baseline stamp = pre-volume key (never pooled).
+        primary = match_trade_pattern_entry(
+            library=lib, feats=feats, include_volume=True
+        )
+        baseline = match_trade_pattern_entry(
+            library=lib, feats=feats, include_volume=False
+        )
+        primary["baseline_parallel"] = baseline
+        primary["twin_book"] = "NSE_A_PATTERN_BASELINE_PARALLEL"
+        return primary
 
     def _match_exit_pattern_for_trade(
         self,
@@ -1519,7 +1607,7 @@ class RP608NSEShadowDaemon:
             phase = "UNK"
         bars = self._bars_dict_for_pattern(symbol)
         lib = self._load_trade_pattern_library()
-        return match_trade_pattern_exit(
+        primary = match_trade_pattern_exit(
             library=lib,
             session_phase=str(phase),
             traj15=float(traj),
@@ -1527,7 +1615,21 @@ class RP608NSEShadowDaemon:
             entry_bar_idx=int(trade.get("entry_bar_idx") or bar_idx),
             current_bar_idx=int(bar_idx),
             entry_price=float(trade.get("entry_price") or 0) or 1.0,
+            include_volume=True,
         )
+        baseline = match_trade_pattern_exit(
+            library=lib,
+            session_phase=str(phase),
+            traj15=float(traj),
+            bars_dict=bars,
+            entry_bar_idx=int(trade.get("entry_bar_idx") or bar_idx),
+            current_bar_idx=int(bar_idx),
+            entry_price=float(trade.get("entry_price") or 0) or 1.0,
+            include_volume=False,
+        )
+        primary["baseline_parallel"] = baseline
+        primary["twin_book"] = "NSE_A_PATTERN_BASELINE_PARALLEL"
+        return primary
 
     def save_pending_evaluations(self):
         """Atomically persists pending directional evaluations and active trades to durable storage."""
@@ -2459,72 +2561,168 @@ class RP608NSEShadowDaemon:
                         trade["exit_fallback_reason"] = ub.get("fallback_reason")
                         trade["bounds_upgraded_at_bar"] = bar_idx
                     # Prefer entry-frozen dynamic bounds; Arm A % only if still unset.
-                    sl_price = float(trade.get("stop_loss_price") or (entry_p * ARM_A_STOP_MULT))
-                    tp_price = float(trade.get("target_price") or (entry_p * ARM_A_TARGET_MULT))
-
-                    # Path-through only after entry bar (entry-bar H/L is not post-entry path).
-                    # Same-bar OHLC + provisional day-OHLC caused trade_id re-entry churn.
+                    # Gate 5 Adaptive TP: extend + lock SL on path-through TP before exits.
                     allow_ohlc_path = bars_held >= 1
-                    if allow_ohlc_path and bar_lo <= sl_price:
-                        self._close_trade(
-                            self.active_trades.pop(symbol),
-                            exit_price=sl_price,
-                            exit_bar=bar_idx,
-                            exit_reason="STOP_LOSS",
-                            exit_path="BAR_OHLC_PATH",
-                            exit_mark_source="BAR_LOW",
+                    try:
+                        self._latch_nse_gate2x_bar_volume(trade, history)
+                    except Exception:
+                        pass
+
+                    rust_bar = None
+                    if allow_ohlc_path:
+                        rust_bar = self._try_rust_nse_plan_lifecycle(
+                            trade,
+                            mark=float(p_ref),
+                            path_high=float(bar_hi),
+                            path_low=float(bar_lo),
+                            now_ms=int(t_decision),
                         )
-                    elif allow_ohlc_path and bar_hi >= tp_price:
-                        self._close_trade(
-                            self.active_trades.pop(symbol),
-                            exit_price=tp_price,
-                            exit_bar=bar_idx,
-                            exit_reason="TAKE_PROFIT",
-                            exit_path="BAR_OHLC_PATH",
-                            exit_mark_source="BAR_HIGH",
+                    closed_this_bar = False
+                    if rust_bar is not None and rust_bar.get("closed"):
+                        _term, exit_reason = map_lifecycle_close(rust_bar, book="nse")
+                        closed = self.active_trades.pop(symbol)
+                        if rust_bar.get("exit_reason_detail"):
+                            closed["exit_reason_detail"] = rust_bar["exit_reason_detail"]
+                        exit_px = float(
+                            rust_bar["exit_price"]
+                            if rust_bar.get("exit_price") is not None
+                            else p_ref
                         )
-                    elif bars_held >= 12:
+                        if exit_reason == "STOP_LOSS":
+                            path, src = "BAR_OHLC_PATH", "BAR_LOW"
+                        elif exit_reason == "TAKE_PROFIT":
+                            path, src = "BAR_OHLC_PATH", "BAR_HIGH"
+                        elif exit_reason == "GATE2X_MFE_GIVEBACK_PROTECT":
+                            path, src = "BAR_CLOSE_GATE2X", "BAR_CLOSE"
+                        else:
+                            path, src = "BAR_CLOSE", "BAR_CLOSE"
                         self._close_trade(
-                            self.active_trades.pop(symbol),
-                            exit_price=p_ref,
+                            closed,
+                            exit_price=exit_px,
                             exit_bar=bar_idx,
-                            exit_reason="MAX_HOLD_HORIZON_180M",
-                            exit_path="BAR_CLOSE",
-                            exit_mark_source="BAR_CLOSE",
+                            exit_reason=exit_reason,
+                            exit_path=path,
+                            exit_mark_source=src,
                         )
-                    elif bars_held >= 4 and p_ref > entry_p:
-                        self._close_trade(
-                            self.active_trades.pop(symbol),
-                            exit_price=p_ref,
-                            exit_bar=bar_idx,
-                            exit_reason="TARGET_HORIZON_60M",
-                            exit_path="BAR_CLOSE",
-                            exit_mark_source="BAR_CLOSE",
-                        )
-                    else:
-                        # Gate 2X observational exit-pattern stamp; optional paper early exit.
-                        try:
-                            exit_stamp = self._match_exit_pattern_for_trade(
-                                symbol=symbol,
-                                trade=trade,
-                                bar_idx=bar_idx,
+                        closed_this_bar = True
+                    elif rust_bar is None:
+                        if allow_ohlc_path:
+                            self._adaptive_tp_nse_try_extend(
+                                trade,
+                                mark=float(p_ref),
+                                path_high=float(bar_hi),
+                                now_ms=int(t_decision),
                             )
-                            trade["trade_pattern_exit"] = exit_stamp
-                            if (
-                                bars_held >= 1
-                                and exit_stamp.get("apply_early_exit")
-                                and pattern_exit_gate_enabled()
-                            ):
-                                self._close_trade(
-                                    self.active_trades.pop(symbol),
-                                    exit_price=p_ref,
-                                    exit_bar=bar_idx,
-                                    exit_reason="PATTERN_REVERSE",
-                                    exit_path="BAR_CLOSE_PATTERN",
-                                    exit_mark_source="BAR_CLOSE",
-                                )
+                        sl_price = float(
+                            trade.get("stop_loss_price") or (entry_p * ARM_A_STOP_MULT)
+                        )
+                        tp_price = float(
+                            trade.get("target_price") or (entry_p * ARM_A_TARGET_MULT)
+                        )
+                        try:
+                            tp_level = int(trade.get("tp_level") or 0)
+                        except (TypeError, ValueError):
+                            tp_level = 0
+
+                        # Path-through only after entry bar (entry-bar H/L is not post-entry path).
+                        hit_sl = allow_ohlc_path and bar_lo <= sl_price
+                        hit_tp = allow_ohlc_path and bar_hi >= tp_price
+                        if (
+                            ADAPTIVE_TP_ENABLED
+                            and hit_tp
+                            and not hit_sl
+                            and tp_level < ADAPTIVE_TP_MAX_EXTENSIONS
+                        ):
+                            hit_tp = False
+                        if hit_sl and hit_tp and tp_level >= 1:
+                            hit_tp = False
+                            trade["ambiguous_resolved_as"] = "SL_ADAPTIVE_LOCK"
+                        try:
+                            giveback = self._gate2x_nse_update_mfe_giveback(
+                                trade, mark=float(p_ref), now_ms=int(t_decision)
+                            )
                         except Exception:
-                            pass
+                            giveback = None
+                        if giveback and not (hit_sl or hit_tp):
+                            self._close_trade(
+                                self.active_trades.pop(symbol),
+                                exit_price=float(p_ref),
+                                exit_bar=bar_idx,
+                                exit_reason="GATE2X_MFE_GIVEBACK_PROTECT",
+                                exit_path="BAR_CLOSE_GATE2X",
+                                exit_mark_source="BAR_CLOSE",
+                            )
+                            closed_this_bar = True
+                        elif hit_sl:
+                            self._close_trade(
+                                self.active_trades.pop(symbol),
+                                exit_price=sl_price,
+                                exit_bar=bar_idx,
+                                exit_reason="STOP_LOSS",
+                                exit_path="BAR_OHLC_PATH",
+                                exit_mark_source="BAR_LOW",
+                            )
+                            closed_this_bar = True
+                        elif hit_tp:
+                            closed = self.active_trades.pop(symbol)
+                            if (
+                                ADAPTIVE_TP_ENABLED
+                                and tp_level >= ADAPTIVE_TP_MAX_EXTENSIONS
+                            ):
+                                closed["exit_reason_detail"] = "ADAPTIVE_TP_MAX_EXTENSIONS"
+                            self._close_trade(
+                                closed,
+                                exit_price=tp_price,
+                                exit_bar=bar_idx,
+                                exit_reason="TAKE_PROFIT",
+                                exit_path="BAR_OHLC_PATH",
+                                exit_mark_source="BAR_HIGH",
+                            )
+                            closed_this_bar = True
+
+                    if not closed_this_bar and symbol in self.active_trades:
+                        if bars_held >= 12:
+                            self._close_trade(
+                                self.active_trades.pop(symbol),
+                                exit_price=p_ref,
+                                exit_bar=bar_idx,
+                                exit_reason="MAX_HOLD_HORIZON_180M",
+                                exit_path="BAR_CLOSE",
+                                exit_mark_source="BAR_CLOSE",
+                            )
+                        elif bars_held >= 4 and p_ref > entry_p:
+                            self._close_trade(
+                                self.active_trades.pop(symbol),
+                                exit_price=p_ref,
+                                exit_bar=bar_idx,
+                                exit_reason="TARGET_HORIZON_60M",
+                                exit_path="BAR_CLOSE",
+                                exit_mark_source="BAR_CLOSE",
+                            )
+                        else:
+                            # Gate 2X observational exit-pattern stamp; optional paper early exit.
+                            try:
+                                exit_stamp = self._match_exit_pattern_for_trade(
+                                    symbol=symbol,
+                                    trade=trade,
+                                    bar_idx=bar_idx,
+                                )
+                                trade["trade_pattern_exit"] = exit_stamp
+                                if (
+                                    bars_held >= 1
+                                    and exit_stamp.get("apply_early_exit")
+                                    and pattern_exit_gate_enabled()
+                                ):
+                                    self._close_trade(
+                                        self.active_trades.pop(symbol),
+                                        exit_price=p_ref,
+                                        exit_bar=bar_idx,
+                                        exit_reason="PATTERN_REVERSE",
+                                        exit_path="BAR_CLOSE_PATTERN",
+                                        exit_mark_source="BAR_CLOSE",
+                                    )
+                            except Exception:
+                                pass
 
         # Entry on durable bar close only when ENTRY_PATH=BAR_CLOSE (legacy).
         # TICK_PATH fills on each WS L1 tick after durable arms signal_bar (not here).
@@ -2567,6 +2765,9 @@ class RP608NSEShadowDaemon:
                         "stop_loss_bps": bounds["stop_bps"],
                         "target_bps": bounds["target_bps"],
                         "atr_14": bounds.get("atr_14"),
+                        "tp_level": 0,
+                        "adaptive_tp_armed": False,
+                        "adaptive_tp_protocol": ADAPTIVE_TP_PROTOCOL,
                         "exit_policy": bounds.get("policy_id"),
                         "exit_trend_label": bounds.get("trend_label"),
                         "exit_fallback_reason": bounds.get("fallback_reason"),
@@ -3140,6 +3341,9 @@ class RP608NSEShadowDaemon:
             "stop_loss_bps": bounds["stop_bps"],
             "target_bps": bounds["target_bps"],
             "atr_14": bounds.get("atr_14"),
+            "tp_level": 0,
+            "adaptive_tp_armed": False,
+            "adaptive_tp_protocol": ADAPTIVE_TP_PROTOCOL,
             "exit_policy": bounds.get("policy_id"),
             "exit_trend_label": bounds.get("trend_label"),
             "exit_fallback_reason": bounds.get("fallback_reason"),
@@ -3176,6 +3380,280 @@ class RP608NSEShadowDaemon:
         except Exception as exc:
             print(f"[estimand_a_tick] persist skipped: {exc}")
 
+    @staticmethod
+    def _gate2x_nse_friction_proxy_bps(trade: Dict[str, Any]) -> float:
+        half = float(trade.get("half_spread_bps") or 2.5)
+        return max(9.0, half * 2.0 + 8.0)
+
+    def _adaptive_tp_nse_try_extend(
+        self,
+        trade: Dict[str, Any],
+        *,
+        mark: float,
+        path_high: Optional[float] = None,
+        now_ms: Optional[int] = None,
+    ) -> bool:
+        """
+        Gate 5 Adaptive TP (NSE Estimand A LONG): on TP touch, extend + lock SL.
+
+        Same geometry as crypto: +0.5×ATR per level (max 3); never loosen SL.
+        Falls back to +0.5% of entry when atr_14 is unavailable (Arm A fixed).
+        Returns True if at least one extension was applied.
+        """
+        if not ADAPTIVE_TP_ENABLED:
+            return False
+        try:
+            entry_p = float(trade.get("entry_price") or 0.0)
+            tp = float(
+                trade.get("target_price")
+                or (entry_p * ARM_A_TARGET_MULT if entry_p else 0.0)
+            )
+            sl = float(
+                trade.get("stop_loss_price")
+                or (entry_p * ARM_A_STOP_MULT if entry_p else 0.0)
+            )
+            level = int(trade.get("tp_level") or 0)
+            atr = float(trade.get("atr_14") or 0.0)
+            mfe_px = float(trade.get("mfe_price") or mark or 0.0)
+        except (TypeError, ValueError):
+            return False
+        if entry_p <= 0 or tp <= 0 or level >= ADAPTIVE_TP_MAX_EXTENSIONS:
+            return False
+
+        step = (
+            ADAPTIVE_TP_EXTEND_ATR_MULT * atr
+            if atr > 0
+            else ADAPTIVE_TP_EXTEND_PCT * entry_p
+        )
+        if step <= 0:
+            return False
+
+        hi = float(path_high) if path_high is not None else float(mark)
+        extended = False
+        ts = int(now_ms if now_ms is not None else time.time() * 1000)
+
+        while level < ADAPTIVE_TP_MAX_EXTENSIONS:
+            still_hit = float(mark) >= tp or hi >= tp or mfe_px >= tp
+            if not still_hit:
+                break
+            prior_tp = tp
+            new_tp = round(prior_tp + step, 2)
+            new_sl = round(prior_tp, 2)
+            # Never loosen: SL only rises for LONG
+            if new_sl < sl:
+                new_sl = sl
+            level += 1
+            tp = new_tp
+            sl = new_sl
+            trade["target_price"] = tp
+            trade["stop_loss_price"] = sl
+            trade["tp_level"] = level
+            trade["adaptive_tp_armed"] = True
+            trade["adaptive_tp_touch_ms"] = ts
+            trade["adaptive_tp_protocol"] = ADAPTIVE_TP_PROTOCOL
+            trade["adaptive_tp_last_locked_tp"] = prior_tp
+            # Refresh bps vs entry for telemetry (observational).
+            if entry_p > 0:
+                trade["target_bps"] = round((tp / entry_p - 1.0) * 10000.0, 2)
+                trade["stop_loss_bps"] = round((1.0 - sl / entry_p) * 10000.0, 2)
+            extended = True
+        return extended
+
+    def _gate2x_nse_arm_threshold_inr(self, trade: Dict[str, Any]) -> float:
+        entry_p = float(trade.get("entry_price") or 0.0)
+        qty = float(trade.get("quantity") or 0.0)
+        notional = entry_p * qty if entry_p > 0 and qty > 0 else DEFAULT_NOTIONAL_PER_TRADE_INR
+        fric_bps = self._gate2x_nse_friction_proxy_bps(trade)
+        floor_bps = float(GATE2X_MEANINGFUL_FLOOR_BPS)
+        return notional * (max(fric_bps, floor_bps) / 10000.0)
+
+    def _gate2x_nse_update_mfe_giveback(
+        self,
+        trade: Dict[str, Any],
+        *,
+        mark: float,
+        now_ms: int,
+    ) -> Optional[str]:
+        """
+        Gate 2X NSE feature construction + adapter decide (Coralys).
+
+        Peak MFE/tp_frac tracked locally; Protect/Exit only from
+        `rp608_position_decide` → `gate2x_decide` → RecommendationEngineV1.
+        """
+        if not GATE2X_MFE_GIVEBACK_ENABLED:
+            return None
+        try:
+            entry_p = float(trade.get("entry_price") or 0.0)
+            qty = float(trade.get("quantity") or 0.0)
+            mfe_px = float(trade.get("mfe_price") or entry_p)
+            tp_price = float(
+                trade.get("target_price") or (entry_p * ARM_A_TARGET_MULT if entry_p else 0.0)
+            )
+        except (TypeError, ValueError):
+            return None
+        if entry_p <= 0 or qty <= 0 or mark <= 0:
+            return None
+
+        # Estimand A is LONG-only — feature construction only.
+        peak_mfe_inr = (mfe_px - entry_p) * qty
+        prev_peak = trade.get("gate2x_peak_mfe_inr")
+        try:
+            prev_peak_f = float(prev_peak) if prev_peak is not None else None
+        except (TypeError, ValueError):
+            prev_peak_f = None
+        if prev_peak_f is None or peak_mfe_inr > prev_peak_f:
+            trade["gate2x_peak_mfe_inr"] = round(peak_mfe_inr, 4)
+
+        tp_span = tp_price - entry_p
+        tp_frac = ((mfe_px - entry_p) / tp_span) if tp_span > 0 else None
+        if tp_frac is not None:
+            prev_tf = trade.get("gate2x_peak_tp_frac")
+            try:
+                prev_tf_f = float(prev_tf) if prev_tf is not None else None
+            except (TypeError, ValueError):
+                prev_tf_f = None
+            if prev_tf_f is None or tp_frac > prev_tf_f:
+                trade["gate2x_peak_tp_frac"] = round(tp_frac, 4)
+
+        threshold = self._gate2x_nse_arm_threshold_inr(trade)
+        try:
+            entry_ms = int(trade.get("entry_timestamp_utc_ms") or 0)
+            hold_s = (int(now_ms) - entry_ms) / 1000.0 if entry_ms > 0 else 0.0
+        except (TypeError, ValueError):
+            hold_s = 0.0
+
+        cur_mfe_inr = (float(mark) - entry_p) * qty
+        trade["gate2x_current_mfe_inr"] = round(cur_mfe_inr, 4)
+
+        since = trade.get("gate2x_soft_breach_since_ms")
+        try:
+            since_i = int(since) if since is not None else None
+        except (TypeError, ValueError):
+            since_i = None
+
+        instrument = str(
+            trade.get("tradingsymbol")
+            or trade.get("symbol")
+            or trade.get("instrument")
+            or "RELIANCE.NS"
+        )
+        try:
+            tp_level_i = int(trade.get("tp_level") or 0)
+        except (TypeError, ValueError):
+            tp_level_i = 0
+        snap = gate2x_build_snapshot(
+            decision_id=str(trade.get("trade_id") or trade.get("decision_id") or "NSE"),
+            instrument=instrument,
+            direction="LONG",
+            reference_price=entry_p,
+            peak_mfe=float(trade.get("gate2x_peak_mfe_inr") or peak_mfe_inr),
+            current_mfe=float(cur_mfe_inr),
+            peak_tp_frac=float(trade.get("gate2x_peak_tp_frac") or 0.0),
+            hold_s=hold_s,
+            arm_threshold=threshold,
+            already_armed=bool(trade.get("gate2x_mfe_armed")),
+            vol_surge=str(
+                trade.get("gate2x_exit_vol_surge")
+                or trade.get("exit_vol_surge")
+                or "UNK"
+            ),
+            soft_breach_since_ms=since_i,
+            now_ms=int(now_ms),
+            protocol=GATE2X_MFE_GIVEBACK_PROTOCOL,
+            tp_level=tp_level_i,
+            adaptive_armed=bool(trade.get("adaptive_tp_armed")) or tp_level_i >= 1,
+            params={
+                "enabled": True,
+                "arm_min_tp_frac": float(GATE2X_ARM_MIN_TP_FRAC),
+                "min_hold_s_before_exit": float(GATE2X_MIN_HOLD_S_BEFORE_EXIT),
+                "meaningful_floor_bps": float(GATE2X_MEANINGFUL_FLOOR_BPS),
+                "protect_floor": GATE2X_PROTECT_FLOOR_MODE,
+                "reversal_volume_confirm": bool(GATE2X_REVERSAL_VOLUME_CONFIRM),
+                "immediate_vol_surges": sorted(GATE2X_REVERSAL_IMMEDIATE_SURGES),
+                "med_vol_dwell_ms": int(GATE2X_REVERSAL_MED_VOL_DWELL_MS),
+                "low_vol_dwell_ms": int(GATE2X_REVERSAL_LOW_VOL_DWELL_MS),
+                "ratchet_peak_frac": float(GATE2X_RATCHET_PEAK_FRAC),
+                "deep_giveback_frac": float(GATE2X_DEEP_GIVEBACK_FRAC),
+                "deep_giveback_dwell_scale": float(GATE2X_DEEP_GIVEBACK_DWELL_SCALE),
+            },
+        )
+        evidence = os.environ.get("RP608_NSE_REC001H_DIR", DEFAULT_NSE_EVIDENCE)
+        action, reason, soft = gate2x_adapter_decide(snap, evidence_dir=evidence)
+        apply_soft_breach_to_trade(trade, soft)
+        if soft.get("protect_floor") is not None:
+            trade["gate2x_protect_floor_inr"] = round(float(soft["protect_floor"]), 4)
+        if soft.get("ratchet_floor") is not None:
+            trade["gate2x_ratchet_floor_inr"] = round(float(soft["ratchet_floor"]), 4)
+        if soft.get("armed") and not trade.get("gate2x_mfe_armed"):
+            trade["gate2x_mfe_armed"] = True
+            trade["gate2x_mfe_armed_threshold_inr"] = round(threshold, 4)
+            trade["gate2x_mfe_armed_tp_frac"] = round(
+                float(trade.get("gate2x_peak_tp_frac") or 0.0), 4
+            )
+            trade["gate2x_protocol"] = GATE2X_MFE_GIVEBACK_PROTOCOL
+
+        if action in ("Protect", "Exit"):
+            detail = reason or "MFE_GIVEBACK_TO_COST_CLEAR"
+            trade["exit_reason_detail"] = detail
+            trade["gate2x_adapter_action"] = action
+            trade["gate2x_adapter_authority"] = "chronosentiment_adapter+coralys"
+            return detail
+        return None
+
+    def _latch_nse_gate2x_bar_volume(
+        self, trade: Dict[str, Any], history: List[Any]
+    ) -> None:
+        """Latch 15m volume burst vs SMA20 onto trade for Gate 2X confirm."""
+        try:
+            vols = [float(getattr(b, "volume", 0.0) or 0.0) for b in (history or [])]
+            vols = [v for v in vols if v > 0]
+            if len(vols) < 2:
+                trade["gate2x_exit_vol_surge"] = "UNK"
+                return
+            cur = vols[-1]
+            prior = vols[-21:-1] if len(vols) > 21 else vols[:-1]
+            if not prior:
+                trade["gate2x_exit_vol_surge"] = "UNK"
+                return
+            sma = sum(prior) / len(prior)
+            burst = (cur / sma) if sma > 0 else None
+            trade["gate2x_exit_vol_burst_20"] = round(float(burst), 6) if burst else None
+            trade["gate2x_exit_vol_surge"] = _nse_vol_surge_bucket(burst)
+        except Exception:
+            trade["gate2x_exit_vol_surge"] = trade.get("gate2x_exit_vol_surge") or "UNK"
+
+    def _try_rust_nse_plan_lifecycle(
+        self,
+        trade: Dict[str, Any],
+        *,
+        mark: float,
+        path_high: Optional[float],
+        path_low: Optional[float],
+        now_ms: int,
+    ) -> Optional[Dict[str, Any]]:
+        """Rust Adaptive TP + Gate 2X + SL/TP for NSE. Returns result or None (fallback)."""
+        if not plan_lifecycle_enabled():
+            return None
+        sess = plan_lifecycle_session(book="nse", evidence_dir=DEFAULT_NSE_EVIDENCE)
+        if sess is None:
+            return None
+        rust_plan = plan_from_overlay(trade, book="nse")
+        hi = float(path_high) if path_high is not None else mark
+        lo = float(path_low) if path_low is not None else mark
+        quote = {
+            "best_bid_price": mark,
+            "best_ask_price": mark,
+            "low_price": lo,
+            "high_price": hi,
+            "now_ms": int(now_ms),
+            "vol_surge": trade.get("gate2x_exit_vol_surge") or trade.get("vol_surge"),
+        }
+        result = sess.tick(rust_plan, quote)
+        if not result or not isinstance(result, dict):
+            return None
+        merge_lifecycle_into_plan(trade, result, book="nse")
+        return result
+
     def _manage_estimand_a_open_on_mark(
         self,
         *,
@@ -3197,28 +3675,101 @@ class RP608NSEShadowDaemon:
         trade["last_tick_mark"] = mark
         trade["last_tick_mark_source"] = mark_src
         trade["last_tick_utc_ms"] = now_ms
-        sl_price = float(trade.get("stop_loss_price") or (entry_p * ARM_A_STOP_MULT))
-        tp_price = float(trade.get("target_price") or (entry_p * ARM_A_TARGET_MULT))
-        if mark <= sl_price:
-            self._close_trade(
-                self.active_trades.pop(symbol),
-                exit_price=sl_price,
-                exit_bar=bar_idx,
-                exit_reason="STOP_LOSS",
-                exit_path="TICK_PATH",
-                exit_mark_source=mark_src,
+
+        rust = self._try_rust_nse_plan_lifecycle(
+            trade, mark=float(mark), path_high=mark, path_low=mark, now_ms=int(now_ms)
+        )
+        if rust is not None:
+            if rust.get("closed"):
+                _term, exit_reason = map_lifecycle_close(rust, book="nse")
+                closed = self.active_trades.pop(symbol)
+                if rust.get("exit_reason_detail"):
+                    closed["exit_reason_detail"] = rust["exit_reason_detail"]
+                exit_px = float(
+                    rust["exit_price"]
+                    if rust.get("exit_price") is not None
+                    else mark
+                )
+                path = (
+                    "TICK_PATH_GATE2X"
+                    if exit_reason == "GATE2X_MFE_GIVEBACK_PROTECT"
+                    else "TICK_PATH"
+                )
+                self._close_trade(
+                    closed,
+                    exit_price=exit_px,
+                    exit_bar=bar_idx,
+                    exit_reason=exit_reason,
+                    exit_path=path,
+                    exit_mark_source=mark_src,
+                )
+                return True
+            # Rust hold — skip Python Adaptive/Gate2X/hard exits; pattern below.
+        else:
+            # Gate 5 Adaptive TP: extend + lock SL before hard SL/TP / Gate 2X.
+            self._adaptive_tp_nse_try_extend(
+                trade, mark=float(mark), path_high=float(mark), now_ms=int(now_ms)
             )
-            return True
-        if mark >= tp_price:
-            self._close_trade(
-                self.active_trades.pop(symbol),
-                exit_price=tp_price,
-                exit_bar=bar_idx,
-                exit_reason="TAKE_PROFIT",
-                exit_path="TICK_PATH",
-                exit_mark_source=mark_src,
-            )
-            return True
+            sl_price = float(trade.get("stop_loss_price") or (entry_p * ARM_A_STOP_MULT))
+            tp_price = float(trade.get("target_price") or (entry_p * ARM_A_TARGET_MULT))
+            try:
+                tp_level = int(trade.get("tp_level") or 0)
+            except (TypeError, ValueError):
+                tp_level = 0
+            hit_sl = mark <= sl_price
+            hit_tp = mark >= tp_price
+            # Adaptive runner below max: TP touch already extended — do not hard-close.
+            if (
+                ADAPTIVE_TP_ENABLED
+                and hit_tp
+                and not hit_sl
+                and tp_level < ADAPTIVE_TP_MAX_EXTENSIONS
+            ):
+                hit_tp = False
+            if hit_sl and hit_tp and tp_level >= 1:
+                # Ambiguous after adaptive arm → prefer locked SL (crypto parity).
+                hit_tp = False
+                trade["ambiguous_resolved_as"] = "SL_ADAPTIVE_LOCK"
+            if hit_sl:
+                self._close_trade(
+                    self.active_trades.pop(symbol),
+                    exit_price=sl_price,
+                    exit_bar=bar_idx,
+                    exit_reason="STOP_LOSS",
+                    exit_path="TICK_PATH",
+                    exit_mark_source=mark_src,
+                )
+                return True
+            if hit_tp:
+                closed = self.active_trades.pop(symbol)
+                if ADAPTIVE_TP_ENABLED and tp_level >= ADAPTIVE_TP_MAX_EXTENSIONS:
+                    closed["exit_reason_detail"] = "ADAPTIVE_TP_MAX_EXTENSIONS"
+                self._close_trade(
+                    closed,
+                    exit_price=tp_price,
+                    exit_bar=bar_idx,
+                    exit_reason="TAKE_PROFIT",
+                    exit_path="TICK_PATH",
+                    exit_mark_source=mark_src,
+                )
+                return True
+            # Gate 2X: quality-path MFE give-back protect (after hard SL/TP).
+            try:
+                giveback = self._gate2x_nse_update_mfe_giveback(
+                    trade, mark=float(mark), now_ms=int(now_ms)
+                )
+            except Exception:
+                giveback = None
+            if giveback:
+                self._close_trade(
+                    self.active_trades.pop(symbol),
+                    exit_price=float(mark),
+                    exit_bar=bar_idx,
+                    exit_reason="GATE2X_MFE_GIVEBACK_PROTECT",
+                    exit_path="TICK_PATH_GATE2X",
+                    exit_mark_source=mark_src,
+                )
+                return True
         # Observational exit-pattern stamp on tick manage; optional paper reverse exit.
         try:
             exit_stamp = self._match_exit_pattern_for_trade(

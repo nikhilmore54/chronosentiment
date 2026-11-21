@@ -21,6 +21,7 @@ import hashlib
 import json
 import math
 import os
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 import sys
 import time
@@ -44,9 +45,23 @@ from scripts.rp608_crypto_trade_pattern_match import (
     match_exit as match_crypto_pattern_exit,
 )
 from scripts.rp608_crypto_trade_pattern_library import (
+    default_baseline_library_path as crypto_baseline_pattern_library_path,
     default_library_path as crypto_pattern_library_path,
     session_date_utc as crypto_pattern_session_date_utc,
     vol_surge_bucket as crypto_vol_surge_bucket,
+)
+from scripts.rp608_gate2x_adapter_client import (
+    DEFAULT_CRYPTO_EVIDENCE,
+    apply_soft_breach_to_trade,
+    build_snapshot as gate2x_build_snapshot,
+    decide as gate2x_adapter_decide,
+)
+from scripts.rp608_plan_lifecycle_client import (
+    get_session as plan_lifecycle_session,
+    lifecycle_enabled as plan_lifecycle_enabled,
+    map_lifecycle_close,
+    merge_lifecycle_into_plan,
+    plan_from_overlay,
 )
 
 CANDLE_15M_MS = 900_000
@@ -412,7 +427,7 @@ def compute_of_paper_cost_breakdown(
 # Fixed Governance Parameters (Protocol RP-608-TRADE-PLAN-OVERLAY-001)
 CONFIG: Dict[str, Any] = {
     "protocol_id": "RP-608-TRADE-PLAN-OVERLAY-001",
-    "version": "1.2.4",
+    "version": "1.2.6",
     "instrument": "BTC/USDT",
     "signal_policy": "B",
     # Signals open on tick bookTicker decisions (RP-608-SHADOW-TICK-001);
@@ -423,6 +438,12 @@ CONFIG: Dict[str, Any] = {
     "atr_geometry_source": "completed_15m_atr14",
     "stop_multiplier": 1.0,
     "target_multiplier": 1.5,
+    # Gate 5 Adaptive TP (2026-11-21): first TP still 1.5×ATR; on touch extend
+    # +0.5×ATR and lock SL to prior TP (Gate 2X continue-vs-exit). Crypto twins.
+    "adaptive_tp_enabled": True,
+    "adaptive_tp_extend_atr_mult": 0.5,
+    "adaptive_tp_max_extensions": 3,
+    "adaptive_tp_protocol": "RP-608-GATE5-CRYPTO-ADAPTIVE-TP-001",
     "max_holding_seconds": 3600,  # 60 minutes
     # Gate 5 (2026-11-15): ambiguous TP∧SL same observation → TP (policy G).
     # Prior: conservative SL / AMBIGUOUS_STOP_TARGET. Authority remains 0%.
@@ -434,6 +455,38 @@ CONFIG: Dict[str, Any] = {
     "early_sl_path_scratch_enabled": True,
     "early_sl_path_scratch_max_hold_s": 120.0,
     "early_sl_path_friction_bps_side": 6.0,
+    # Gate 2E (2026-11-20): twin ABSTAIN study — W/L damage was re-entry after
+    # instant SL / path-through stop, not TP/SL geometry (Gate 5 frozen).
+    # Empty book > churn. Does not change OF ±0.30 / ATR stops / targets.
+    "gate2e_post_fast_sl_cooldown_enabled": True,
+    "gate2e_post_fast_sl_max_hold_s": 120.0,  # arm cooldown only after fast SL/scratch
+    "gate2e_post_fast_sl_cooldown_ms": 300_000,  # 5m same-direction standaside
+    "gate2e_preentry_path_invalid_enabled": True,
+    # Observational dual-stamp (2026-11-21): compare forming 15m H/L path-invalid
+    # vs tick/last mid. Live open authority stays forming-H/L only (no Gate 5).
+    "gate2e_path_dual_stamp_observational": True,
+    # Gate 2X (2026-11-21): promote quality path toward TP — arm only after peak
+    # tp_frac clears arm_min (default 0.40) AND MFE clears cost+floor; then lock a
+    # cost-clear floor (exit when cur_mfe <= threshold). Instant <30s TP cascade is
+    # observational non-promote (not suppressed — path-through, not entry alpha).
+    # v1.4: after adaptive TP arm, Hold|Protect|Exit decides continue vs take profit.
+    # Does not change OF ±0.30 / initial ATR open multipliers.
+    "gate2x_mfe_giveback_protect_enabled": True,
+    "gate2x_mfe_meaningful_floor_bps": 5.0,
+    "gate2x_arm_min_tp_frac": 0.40,  # quality progress toward TP before arm
+    "gate2x_min_hold_s_before_exit": 120.0,  # avoid wick giveback exits
+    "gate2x_protect_floor": "COST_CLEAR",  # COST_CLEAR | ENTRY (cur_mfe<=0)
+    # v1.2: fake/small reversal guard — HIGH candle surge confirms exit now;
+    # LOW/MED/UNK soft-breach must dwell before protect fires.
+    "gate2x_reversal_volume_confirm_enabled": True,
+    "gate2x_reversal_immediate_vol_surges": ["HIGH"],
+    "gate2x_reversal_med_vol_dwell_ms": 40_000,
+    "gate2x_reversal_low_vol_dwell_ms": 90_000,  # LOW + UNK
+    # v1.3: ratchet floor with peak MFE; shorten dwell on deep giveback.
+    "gate2x_ratchet_peak_frac": 0.30,  # floor = max(cost_clear, 0.30×peak_mfe)
+    "gate2x_deep_giveback_frac": 0.50,  # (peak-cur)/peak
+    "gate2x_deep_giveback_dwell_scale": 0.40,  # multiply dwell when deep
+    "gate2x_mfe_giveback_protocol": "RP-608-GATE2X-CRYPTO-MFE-GIVEBACK-001",
     "simulated_notional_usdt": 1000.0,
     "price_tick_size": 0.01,
     "taker_fee_bps": 5.0,
@@ -638,6 +691,9 @@ def calculate_trade_plan(
         "entry_price": entry_price,
         "stop_loss_price": stop_price,
         "profit_target_price": target_price,
+        "tp_level": 0,
+        "adaptive_tp_armed": False,
+        "adaptive_tp_protocol": CONFIG.get("adaptive_tp_protocol"),
         "invalidation_price": invalidation_price,
         "simulated_quantity": qty,
         "simulated_notional_usdt": notional_usdt,
@@ -677,9 +733,23 @@ def calculate_trade_plan(
 class TradePlanOverlayManager:
     """Manages lifecycle states, state persistence, and outcome recording."""
 
-    def __init__(self, base_dir: Optional[Path] = None):
+    def __init__(
+        self,
+        base_dir: Optional[Path] = None,
+        *,
+        book_id: str = "CRYPTO_PLAN",
+        of_paper_enabled: bool = True,
+        volume_pattern_axes: bool = True,
+        pattern_library_path: Optional[Path] = None,
+    ):
         self.base_dir = Path(base_dir) if base_dir else OVERLAY_DIR
         self.base_dir.mkdir(parents=True, exist_ok=True)
+        self.book_id = str(book_id)
+        self.of_paper_enabled = bool(of_paper_enabled)
+        self.volume_pattern_axes = bool(volume_pattern_axes)
+        self._pattern_library_path_override = (
+            Path(pattern_library_path) if pattern_library_path else None
+        )
         self.state_file = self.base_dir / "overlay_state.json"
         self.events_file = self.base_dir / "trade_plan_events.jsonl"
         self.outcomes_file = self.base_dir / "trade_plan_outcomes.jsonl"
@@ -704,12 +774,13 @@ class TradePlanOverlayManager:
             }
         elif "cumulative_net_return_bps" not in self.state["of_outcomes_summary"]:
             self.state["of_outcomes_summary"]["cumulative_net_return_bps"] = 0.0
-        self._reconstruct_open_of_paper_trade()
-        self.reconcile_of_paper_already_closed(persist=True)
-        self._repair_last_closed_from_ledger(persist=True)
-        # Entry-quality gates apply only at activate-time. Never scrub a booked
-        # PAPER open on load (that orphaned OF ENTRY #664 / painted OF EXIT #—).
-        self._restore_scrubbed_open_from_journal(persist=True)
+        if self.of_paper_enabled:
+            self._reconstruct_open_of_paper_trade()
+            self.reconcile_of_paper_already_closed(persist=True)
+            self._repair_last_closed_from_ledger(persist=True)
+            # Entry-quality gates apply only at activate-time. Never scrub a booked
+            # PAPER open on load (that orphaned OF ENTRY #664 / painted OF EXIT #—).
+            self._restore_scrubbed_open_from_journal(persist=True)
         # Past-trade pattern library (Gate 2E entry / Gate 2X exit observational).
         self._pattern_library: Optional[Dict[str, Any]] = None
         self._pattern_library_mtime: float = 0.0
@@ -717,7 +788,12 @@ class TradePlanOverlayManager:
         self._bootstrap_pattern_stop_dirs()
 
     def _crypto_pattern_lib(self) -> Dict[str, Any]:
-        path = crypto_pattern_library_path(self.base_dir.parent)
+        if self._pattern_library_path_override is not None:
+            path = self._pattern_library_path_override
+        elif self.volume_pattern_axes:
+            path = crypto_pattern_library_path(self.base_dir.parent)
+        else:
+            path = crypto_baseline_pattern_library_path(self.base_dir.parent)
         try:
             mtime = path.stat().st_mtime if path.exists() else 0.0
         except OSError:
@@ -765,6 +841,586 @@ class TradePlanOverlayManager:
         d = str(plan.get("direction") or "UNK").upper()
         self._pattern_stop_dirs_by_day.setdefault(day, set()).add(d)
 
+    def _note_gate2e_fast_sl_cooldown(self, plan: Dict[str, Any]) -> None:
+        """Arm same-direction cooldown after fast SL / path-scratch (Gate 2E)."""
+        if not bool(CONFIG.get("gate2e_post_fast_sl_cooldown_enabled")):
+            return
+        reason = str(plan.get("exit_reason") or "")
+        if reason not in ("STOP_LOSS_HIT", "EARLY_SL_PATH_SCRATCH"):
+            return
+        hold_s = float(plan.get("holding_duration_seconds") or 0.0)
+        max_hold = float(CONFIG.get("gate2e_post_fast_sl_max_hold_s") or 120.0)
+        if hold_s >= max_hold:
+            return
+        direction = str(plan.get("direction") or "").upper()
+        if direction not in ("LONG", "SHORT"):
+            return
+        exit_ms = int(plan.get("exit_time_ms") or time.time() * 1000)
+        cool_ms = int(CONFIG.get("gate2e_post_fast_sl_cooldown_ms") or 300_000)
+        self.state["gate2e_cooldown"] = {
+            "direction": direction,
+            "armed_ms": exit_ms,
+            "until_ms": exit_ms + cool_ms,
+            "from_plan_id": plan.get("plan_id"),
+            "from_exit_reason": reason,
+            "from_hold_s": hold_s,
+            "protocol": "RP-608-GATE2E-CRYPTO-FAST-SL-COOLDOWN-001",
+        }
+
+    def _gate2e_cooldown_blocks(self, direction: str, now_ms: int) -> Optional[Dict[str, Any]]:
+        if not bool(CONFIG.get("gate2e_post_fast_sl_cooldown_enabled")):
+            return None
+        cool = self.state.get("gate2e_cooldown")
+        if not isinstance(cool, dict):
+            return None
+        until = int(cool.get("until_ms") or 0)
+        if until <= 0 or now_ms >= until:
+            if cool:
+                self.state["gate2e_cooldown"] = None
+            return None
+        if str(cool.get("direction") or "").upper() != str(direction or "").upper():
+            return None
+        return cool
+
+    @staticmethod
+    def _gate2e_quote_last_px(quote: Optional[Dict[str, Any]]) -> Optional[float]:
+        """Tick/last mark for observational path stamp (not forming candle extremes)."""
+        q = quote or {}
+        for key in ("last_price", "last_trade_price", "mid_price", "price"):
+            v = q.get(key)
+            if v is not None:
+                try:
+                    px = float(v)
+                except (TypeError, ValueError):
+                    continue
+                if px > 0:
+                    return px
+        try:
+            bid = q.get("best_bid_price")
+            ask = q.get("best_ask_price")
+            if bid is not None and ask is not None:
+                b = float(bid)
+                a = float(ask)
+                if b > 0 and a > 0:
+                    return (b + a) / 2.0
+            if bid is not None and float(bid) > 0:
+                return float(bid)
+            if ask is not None and float(ask) > 0:
+                return float(ask)
+        except (TypeError, ValueError):
+            return None
+        return None
+
+    def _gate2e_path_already_invalid(
+        self, plan: Dict[str, Any], quote: Optional[Dict[str, Any]]
+    ) -> Optional[str]:
+        """Reject open if forming/path extremes already through proposed stop."""
+        if not bool(CONFIG.get("gate2e_preentry_path_invalid_enabled")):
+            return None
+        q = quote or {}
+        direction = str(plan.get("direction") or "")
+        try:
+            stop = float(plan.get("stop_loss_price") or plan.get("invalidation_price") or 0.0)
+        except (TypeError, ValueError):
+            return None
+        if stop <= 0:
+            return None
+        high = q.get("high_price")
+        low = q.get("low_price")
+        try:
+            if direction == "SHORT" and high is not None and float(high) >= stop:
+                return "FORMING_HIGH_THROUGH_STOP"
+            if direction == "LONG" and low is not None and float(low) <= stop:
+                return "FORMING_LOW_THROUGH_STOP"
+        except (TypeError, ValueError):
+            return None
+        return None
+
+    def _gate2e_tick_last_path_invalid(
+        self, plan: Dict[str, Any], quote: Optional[Dict[str, Any]]
+    ) -> Optional[str]:
+        """Observational: would tick/last mark alone be through proposed stop?"""
+        direction = str(plan.get("direction") or "")
+        try:
+            stop = float(plan.get("stop_loss_price") or plan.get("invalidation_price") or 0.0)
+        except (TypeError, ValueError):
+            return None
+        if stop <= 0:
+            return None
+        last_px = self._gate2e_quote_last_px(quote)
+        if last_px is None:
+            return None
+        try:
+            if direction == "SHORT" and last_px >= stop:
+                return "TICK_LAST_THROUGH_STOP"
+            if direction == "LONG" and last_px <= stop:
+                return "TICK_LAST_THROUGH_STOP"
+        except (TypeError, ValueError):
+            return None
+        return None
+
+    def _gate2e_path_dual_stamp(
+        self, plan: Dict[str, Any], quote: Optional[Dict[str, Any]]
+    ) -> Dict[str, Any]:
+        """
+        Compare forming-H/L (live authority) vs tick/last path.
+        Observational only — does not change open/suppress authority.
+        """
+        forming = self._gate2e_path_already_invalid(plan, quote)
+        tick = self._gate2e_tick_last_path_invalid(plan, quote)
+        forming_blocks = forming is not None
+        tick_blocks = tick is not None
+        diverge = forming_blocks != tick_blocks
+        if forming_blocks and not tick_blocks:
+            diverge_kind = "FORMING_BLOCKS_TICK_ALLOWS"
+        elif tick_blocks and not forming_blocks:
+            diverge_kind = "TICK_BLOCKS_FORMING_ALLOWS"
+        else:
+            diverge_kind = None
+        q = quote or {}
+        return {
+            "protocol_id": "RP-608-GATE2E-PATH-DUAL-STAMP-001",
+            "live_authority": "FORMING_HL",
+            "observational": True,
+            "live_order_authority": 0.0,
+            "forming_path_invalid": forming,
+            "tick_path_invalid": tick,
+            "forming_blocks": forming_blocks,
+            "tick_blocks": tick_blocks,
+            "diverge": diverge,
+            "diverge_kind": diverge_kind,
+            "tick_last_px": self._gate2e_quote_last_px(quote),
+            "high_price": q.get("high_price"),
+            "low_price": q.get("low_price"),
+            "stop_loss_price": plan.get("stop_loss_price"),
+            "book_id": self.book_id,
+        }
+
+    def _maybe_log_gate2e_path_dual_stamp(
+        self, plan: Dict[str, Any], quote: Optional[Dict[str, Any]]
+    ) -> Dict[str, Any]:
+        stamp = self._gate2e_path_dual_stamp(plan, quote)
+        if not bool(CONFIG.get("gate2e_path_dual_stamp_observational")):
+            return stamp
+        if stamp.get("diverge"):
+            summ = self.state.setdefault("outcomes_summary", {})
+            summ["gate2e_path_dual_stamp_divergences"] = int(
+                summ.get("gate2e_path_dual_stamp_divergences") or 0
+            ) + 1
+            self._log_event("GATE2E_PATH_DUAL_STAMP", plan, stamp)
+        return stamp
+
+    @staticmethod
+    def _favorable_excursion_usdt(
+        direction: str, entry_price: float, qty: float, fav_exec_px: Optional[float]
+    ) -> Optional[float]:
+        if fav_exec_px is None or qty <= 0:
+            return None
+        try:
+            e = float(entry_price)
+            px = float(fav_exec_px)
+        except (TypeError, ValueError):
+            return None
+        if direction == "LONG":
+            return (px - e) * qty
+        return (e - px) * qty
+
+    def _gate2x_mfe_arm_threshold_usdt(self, plan: Dict[str, Any]) -> float:
+        """Peak MFE must clear round-trip friction + meaningful-movement floor."""
+        notional = float(
+            plan.get("simulated_notional_usdt") or CONFIG.get("simulated_notional_usdt") or 1000.0
+        )
+        rt_bps = float(CONFIG.get("round_trip_friction_bps") or 12.0)
+        floor_bps = float(CONFIG.get("gate2x_mfe_meaningful_floor_bps") or 5.0)
+        friction = notional * (rt_bps / 10000.0)
+        floor = notional * (floor_bps / 10000.0)
+        return max(friction, floor)
+
+    @staticmethod
+    def _gate2x_peak_tp_frac(
+        direction: str, entry_price: float, tp_price: Optional[float], mfe_exec_px: Optional[float]
+    ) -> Optional[float]:
+        if tp_price is None or mfe_exec_px is None:
+            return None
+        try:
+            e = float(entry_price)
+            tp = float(tp_price)
+            mfe_px = float(mfe_exec_px)
+        except (TypeError, ValueError):
+            return None
+        if direction == "SHORT":
+            denom = e - tp
+            if denom <= 0:
+                return None
+            return (e - mfe_px) / denom
+        denom = tp - e
+        if denom <= 0:
+            return None
+        return (mfe_px - e) / denom
+
+    def _try_rust_plan_lifecycle(
+        self,
+        plan: Dict[str, Any],
+        q: Dict[str, Any],
+        *,
+        now_ms: int,
+        bid: float,
+        ask: float,
+        low: float,
+        high: float,
+    ) -> Optional[Dict[str, Any]]:
+        """Rust Adaptive TP + Gate 2X + SL/TP authority. Returns closed plan or None."""
+        if not plan_lifecycle_enabled():
+            return None
+        sess = plan_lifecycle_session(book="crypto")
+        if sess is None:
+            return None
+        rust_plan = plan_from_overlay(plan, book="crypto")
+        quote = {
+            "best_bid_price": bid,
+            "best_ask_price": ask,
+            "low_price": low,
+            "high_price": high,
+            "now_ms": now_ms,
+            "vol_surge": plan.get("exit_vol_surge") or plan.get("vol_surge"),
+        }
+        result = sess.tick(rust_plan, quote)
+        if not result or not isinstance(result, dict):
+            return None
+        merged = merge_lifecycle_into_plan(plan, result, book="crypto")
+        self.state["active_plan"] = merged
+        if not result.get("closed"):
+            # Persist Adaptive TP / Gate2X latch fields from Rust hold ticks.
+            if (
+                merged.get("tp_level") != plan.get("tp_level")
+                or merged.get("stop_loss_price") != plan.get("stop_loss_price")
+                or merged.get("profit_target_price") != plan.get("profit_target_price")
+                or merged.get("gate2x_mfe_armed") != plan.get("gate2x_mfe_armed")
+            ):
+                self._save_state()
+            return None  # hold — caller skips Python lifecycle when authority set
+
+        direction = str(merged.get("direction") or "SHORT").upper()
+        entry_price = float(merged["entry_price"])
+        qty = float(merged["simulated_quantity"])
+        entry_ms = int(merged.get("entry_time_ms") or 0)
+        terminal_state, exit_reason = map_lifecycle_close(result)
+        _fallback_px = ask if direction == "SHORT" else bid
+        exit_price = float(
+            result["exit_price"] if result.get("exit_price") is not None else _fallback_px
+        )
+        merged["state"] = terminal_state
+        merged["exit_price"] = round_tick(exit_price)
+        merged["exit_time_ms"] = now_ms
+        merged["holding_duration_seconds"] = round((now_ms - entry_ms) / 1000.0, 1)
+        if result.get("exit_reason_detail"):
+            merged["exit_reason_detail"] = result["exit_reason_detail"]
+        if terminal_state == "CLOSED_GIVEBACK":
+            merged["gate2x_protocol"] = CONFIG.get("gate2x_mfe_giveback_protocol")
+        net_pnl = result.get("net_pnl")
+        if net_pnl is None:
+            if direction == "LONG":
+                gross_pnl = (merged["exit_price"] - entry_price) * qty
+            else:
+                gross_pnl = (entry_price - merged["exit_price"]) * qty
+            friction = (merged["simulated_notional_usdt"] + (merged["exit_price"] * qty)) * (
+                6.0 / 10000.0
+            )
+            net_pnl = round(gross_pnl - friction, 2)
+            merged["gross_pnl_usdt"] = round(gross_pnl, 2)
+            merged["friction_usdt"] = round(friction, 4)
+        else:
+            net_pnl = round(float(net_pnl), 2)
+            if direction == "LONG":
+                gross_pnl = (merged["exit_price"] - entry_price) * qty
+            else:
+                gross_pnl = (entry_price - merged["exit_price"]) * qty
+            merged["gross_pnl_usdt"] = round(gross_pnl, 2)
+            friction = (merged["simulated_notional_usdt"] + (merged["exit_price"] * qty)) * (
+                6.0 / 10000.0
+            )
+            merged["friction_usdt"] = round(friction, 4)
+        merged["net_pnl_usdt"] = net_pnl
+        merged["exit_reason"] = exit_reason
+
+        self.state["closed_plans_count"] += 1
+        summ = self.state.setdefault("outcomes_summary", {})
+        summ["cumulative_net_pnl_usdt"] = float(
+            summ.get("cumulative_net_pnl_usdt") or 0.0
+        ) + net_pnl
+        if terminal_state == "CLOSED_TP":
+            summ["tp_hits"] = int(summ.get("tp_hits") or 0) + 1
+        elif terminal_state == "CLOSED_SL":
+            summ["sl_hits"] = int(summ.get("sl_hits") or 0) + 1
+        elif terminal_state == "TIME_EXIT":
+            summ["time_exits"] = int(summ.get("time_exits") or 0) + 1
+        elif terminal_state == "CLOSED_GIVEBACK":
+            summ["gate2x_mfe_giveback_exits"] = int(
+                summ.get("gate2x_mfe_giveback_exits") or 0
+            ) + 1
+        elif terminal_state == "CLOSED_SCRATCH":
+            summ["early_sl_path_scratches"] = int(
+                summ.get("early_sl_path_scratches") or 0
+            ) + 1
+        self.state["last_closed_plan"] = dict(merged)
+        self.state["active_plan"] = None
+        self._log_event(
+            terminal_state,
+            merged,
+            {
+                "exit_price": merged["exit_price"],
+                "net_pnl": net_pnl,
+                "reason": exit_reason,
+                "authority": "rust_rp608_plan_lifecycle",
+            },
+        )
+        self._log_outcome(merged)
+        try:
+            self._note_pattern_stop(merged)
+        except Exception:
+            pass
+        try:
+            self._note_gate2e_fast_sl_cooldown(merged)
+        except Exception:
+            pass
+        self._save_state()
+        return merged
+
+    def _adaptive_tp_try_extend(
+        self,
+        plan: Dict[str, Any],
+        *,
+        direction: str,
+        hit_tp: bool,
+        now_ms: int,
+        bid: float,
+        ask: float,
+        low: float,
+        high: float,
+    ) -> bool:
+        """
+        Gate 5 Adaptive TP: on TP touch, extend target + lock SL (no close).
+
+        Returns True if at least one extension was applied. Mutates plan in place.
+        Ratchets multiple levels in one tick while path still tags the new TP,
+        up to adaptive_tp_max_extensions.
+        """
+        if not hit_tp or not bool(CONFIG.get("adaptive_tp_enabled")):
+            return False
+        try:
+            atr = float(plan.get("atr_14") or 0.0)
+            tp = float(plan["profit_target_price"])
+            sl = float(plan["stop_loss_price"])
+            level = int(plan.get("tp_level") or 0)
+        except (TypeError, ValueError, KeyError):
+            return False
+        max_ext = int(CONFIG.get("adaptive_tp_max_extensions") or 3)
+        step_mult = float(CONFIG.get("adaptive_tp_extend_atr_mult") or 0.5)
+        if atr <= 0 or step_mult <= 0 or level >= max_ext:
+            return False
+
+        step = step_mult * atr
+        extended = False
+        mfe_px = plan.get("mfe_exec_price")
+        try:
+            mfe_f = float(mfe_px) if mfe_px is not None else None
+        except (TypeError, ValueError):
+            mfe_f = None
+
+        while level < max_ext:
+            still_hit = False
+            if direction == "LONG":
+                still_hit = bid >= tp or high >= tp or (
+                    mfe_f is not None and mfe_f >= tp
+                )
+            else:
+                still_hit = ask <= tp or low <= tp or (
+                    mfe_f is not None and mfe_f <= tp
+                )
+            if not still_hit:
+                break
+
+            prior_tp = tp
+            if direction == "LONG":
+                new_tp = round_tick(prior_tp + step)
+                new_sl = round_tick(prior_tp)
+                # Never loosen: SL only rises for LONG
+                if new_sl < sl:
+                    new_sl = sl
+            else:
+                new_tp = round_tick(prior_tp - step)
+                new_sl = round_tick(prior_tp)
+                # Never loosen: SL only falls for SHORT
+                if new_sl > sl:
+                    new_sl = sl
+
+            level += 1
+            tp = new_tp
+            sl = new_sl
+            plan["profit_target_price"] = tp
+            plan["stop_loss_price"] = sl
+            plan["tp_level"] = level
+            plan["adaptive_tp_armed"] = True
+            plan["adaptive_tp_touch_ms"] = now_ms
+            plan["adaptive_tp_protocol"] = CONFIG.get("adaptive_tp_protocol")
+            plan["adaptive_tp_last_locked_tp"] = prior_tp
+            extended = True
+
+        if extended:
+            self.state["active_plan"] = plan
+            self._save_state()
+        return extended
+
+    def _gate2x_update_mfe_giveback(
+        self, plan: Dict[str, Any], *, exec_px: float, now_ms: Optional[int] = None
+    ) -> Optional[str]:
+        """
+        Gate 2X feature construction + adapter decide (Coralys via chronosentiment).
+
+        Python tracks peak MFE / tp_frac only; Hold|Protect|Exit comes from
+        `rp608_position_decide` → `gate2x_decide` → RecommendationEngineV1.
+        """
+        if not bool(CONFIG.get("gate2x_mfe_giveback_protect_enabled")):
+            return None
+        direction = str(plan.get("direction") or "")
+        try:
+            entry_price = float(plan.get("entry_price") or 0.0)
+            qty = float(plan.get("simulated_quantity") or 0.0)
+        except (TypeError, ValueError):
+            return None
+        if entry_price <= 0 or qty <= 0 or direction not in ("LONG", "SHORT"):
+            return None
+
+        peak_mfe = self._favorable_excursion_usdt(
+            direction, entry_price, qty, plan.get("mfe_exec_price")
+        )
+        if peak_mfe is None:
+            return None
+        prev_peak = plan.get("gate2x_peak_mfe_usdt")
+        try:
+            prev_peak_f = float(prev_peak) if prev_peak is not None else None
+        except (TypeError, ValueError):
+            prev_peak_f = None
+        if prev_peak_f is None or peak_mfe > prev_peak_f:
+            plan["gate2x_peak_mfe_usdt"] = round(peak_mfe, 4)
+
+        tp_frac = self._gate2x_peak_tp_frac(
+            direction,
+            entry_price,
+            plan.get("profit_target_price"),
+            plan.get("mfe_exec_price"),
+        )
+        if tp_frac is not None:
+            prev_tf = plan.get("gate2x_peak_tp_frac")
+            try:
+                prev_tf_f = float(prev_tf) if prev_tf is not None else None
+            except (TypeError, ValueError):
+                prev_tf_f = None
+            if prev_tf_f is None or tp_frac > prev_tf_f:
+                plan["gate2x_peak_tp_frac"] = round(tp_frac, 4)
+
+        threshold = self._gate2x_mfe_arm_threshold_usdt(plan)
+        plan.setdefault("gate2x_mfe_armed_threshold_usdt", round(threshold, 4))
+
+        try:
+            entry_ms = int(plan.get("entry_time_ms") or 0)
+            ts = int(now_ms if now_ms is not None else time.time() * 1000)
+            hold_s = (ts - entry_ms) / 1000.0 if entry_ms > 0 else 0.0
+        except (TypeError, ValueError):
+            hold_s = 0.0
+            ts = int(time.time() * 1000)
+
+        cur_mfe = self._favorable_excursion_usdt(direction, entry_price, qty, exec_px)
+        if cur_mfe is None:
+            return None
+        plan["gate2x_current_mfe_usdt"] = round(cur_mfe, 4)
+
+        since = plan.get("gate2x_soft_breach_since_ms")
+        try:
+            since_i = int(since) if since is not None else None
+        except (TypeError, ValueError):
+            since_i = None
+
+        protocol = str(
+            CONFIG.get("gate2x_mfe_giveback_protocol")
+            or "RP-608-GATE2X-CRYPTO-MFE-GIVEBACK-001"
+        )
+        try:
+            tp_level_i = int(plan.get("tp_level") or 0)
+        except (TypeError, ValueError):
+            tp_level_i = 0
+        snap = gate2x_build_snapshot(
+            decision_id=str(plan.get("plan_id") or plan.get("decision_id") or "CRYPTO"),
+            instrument=str(plan.get("symbol") or plan.get("instrument") or "BTCUSDT"),
+            direction=direction,
+            reference_price=entry_price,
+            peak_mfe=float(plan.get("gate2x_peak_mfe_usdt") or peak_mfe),
+            current_mfe=float(cur_mfe),
+            peak_tp_frac=float(plan.get("gate2x_peak_tp_frac") or 0.0),
+            hold_s=hold_s,
+            arm_threshold=threshold,
+            already_armed=bool(plan.get("gate2x_mfe_armed")),
+            vol_surge=str(
+                plan.get("exit_vol_surge") or plan.get("vol_surge") or "UNK"
+            ),
+            soft_breach_since_ms=since_i,
+            now_ms=ts,
+            protocol=protocol,
+            tp_level=tp_level_i,
+            adaptive_armed=bool(plan.get("adaptive_tp_armed")) or tp_level_i >= 1,
+            params={
+                "enabled": True,
+                "arm_min_tp_frac": float(CONFIG.get("gate2x_arm_min_tp_frac") or 0.40),
+                "min_hold_s_before_exit": float(
+                    CONFIG.get("gate2x_min_hold_s_before_exit") or 120.0
+                ),
+                "meaningful_floor_bps": float(
+                    CONFIG.get("gate2x_mfe_meaningful_floor_bps") or 5.0
+                ),
+                "protect_floor": str(CONFIG.get("gate2x_protect_floor") or "COST_CLEAR"),
+                "reversal_volume_confirm": bool(
+                    CONFIG.get("gate2x_reversal_volume_confirm_enabled")
+                ),
+                "immediate_vol_surges": list(
+                    CONFIG.get("gate2x_reversal_immediate_vol_surges") or ["HIGH"]
+                ),
+                "med_vol_dwell_ms": int(
+                    CONFIG.get("gate2x_reversal_med_vol_dwell_ms") or 40_000
+                ),
+                "low_vol_dwell_ms": int(
+                    CONFIG.get("gate2x_reversal_low_vol_dwell_ms") or 90_000
+                ),
+                "ratchet_peak_frac": float(CONFIG.get("gate2x_ratchet_peak_frac") or 0.30),
+                "deep_giveback_frac": float(CONFIG.get("gate2x_deep_giveback_frac") or 0.50),
+                "deep_giveback_dwell_scale": float(
+                    CONFIG.get("gate2x_deep_giveback_dwell_scale") or 0.40
+                ),
+            },
+        )
+        evidence = os.environ.get(
+            "RP608_CRYPTO_REC001H_DIR", DEFAULT_CRYPTO_EVIDENCE
+        )
+        action, reason, soft = gate2x_adapter_decide(snap, evidence_dir=evidence)
+        apply_soft_breach_to_trade(plan, soft)
+        if soft.get("protect_floor") is not None:
+            plan["gate2x_protect_floor_usdt"] = round(float(soft["protect_floor"]), 4)
+        if soft.get("ratchet_floor") is not None:
+            plan["gate2x_ratchet_floor_usdt"] = round(float(soft["ratchet_floor"]), 4)
+        if soft.get("armed") and not plan.get("gate2x_mfe_armed"):
+            plan["gate2x_mfe_armed"] = True
+            plan["gate2x_mfe_armed_threshold_usdt"] = round(threshold, 4)
+            plan["gate2x_mfe_armed_tp_frac"] = round(
+                float(plan.get("gate2x_peak_tp_frac") or 0.0), 4
+            )
+
+        if action in ("Protect", "Exit"):
+            detail = reason or "MFE_GIVEBACK_TO_COST_CLEAR"
+            plan["exit_reason_detail"] = detail
+            plan["gate2x_adapter_action"] = action
+            plan["gate2x_adapter_authority"] = "chronosentiment_adapter+coralys"
+            return detail
+        return None
+
     def _match_entry_pattern(
         self, card: Dict[str, Any], plan_preview: Optional[Dict[str, Any]] = None
     ) -> Dict[str, Any]:
@@ -785,7 +1441,11 @@ class TradePlanOverlayManager:
             plan=plan_preview,
             prior_stop_same_utc_day_dir=prior,
         )
-        return match_crypto_pattern_entry(library=self._crypto_pattern_lib(), feats=feats)
+        return match_crypto_pattern_entry(
+            library=self._crypto_pattern_lib(),
+            feats=feats,
+            include_volume=self.volume_pattern_axes,
+        )
 
     def _save_config_if_missing(self):
         if not self.config_file.exists():
@@ -806,12 +1466,17 @@ class TradePlanOverlayManager:
             "total_plans_created": 0,
             "closed_plans_count": 0,
             "suppressed_signals_count": 0,
+            "gate2e_cooldown": None,
             "outcomes_summary": {
                 "tp_hits": 0,
                 "sl_hits": 0,
                 "time_exits": 0,
                 "ambiguous_hits": 0,
                 "early_sl_path_scratches": 0,
+                "gate2e_cooldown_suppressions": 0,
+                "gate2e_path_invalid_suppressions": 0,
+                "gate2e_path_dual_stamp_divergences": 0,
+                "gate2x_mfe_giveback_exits": 0,
                 "cumulative_net_pnl_usdt": 0.0
             },
             "of_outcomes_summary": {
@@ -1958,12 +2623,23 @@ class TradePlanOverlayManager:
         return None
 
     def _save_state(self):
-        tmp_file = self.state_file.with_suffix(".tmp")
-        with open(tmp_file, "w", encoding="utf-8") as f:
-            json.dump(self.state, f, indent=2)
-            f.flush()
-            os.fsync(f.fileno())
-        tmp_file.replace(self.state_file)
+        # Unique tmp — fixed overlay_state.tmp races when duplicate daemons
+        # (or dashboard) write the same book dir (Errno 2 on replace).
+        tmp_file = self.state_file.parent / (
+            f"{self.state_file.stem}.{os.getpid()}.{time.time_ns()}.tmp"
+        )
+        try:
+            with open(tmp_file, "w", encoding="utf-8") as f:
+                json.dump(self.state, f, indent=2)
+                f.flush()
+                os.fsync(f.fileno())
+            os.replace(str(tmp_file), str(self.state_file))
+        finally:
+            if tmp_file.exists():
+                try:
+                    tmp_file.unlink()
+                except OSError:
+                    pass
 
     def _log_event(self, event_type: str, plan_data: Dict[str, Any], extra: Optional[Dict[str, Any]] = None):
         evt = {
@@ -2156,6 +2832,161 @@ class TradePlanOverlayManager:
         uniq = self._dedupe_of_outcomes_keep_first(rows)
         return list(reversed(uniq[-n:]))
 
+    @staticmethod
+    def _plan_outcome_net_bps(row: Dict[str, Any]) -> Optional[float]:
+        if row.get("net_return_bps") is not None:
+            try:
+                return float(row["net_return_bps"])
+            except (TypeError, ValueError):
+                pass
+        try:
+            net = float(row.get("net_pnl_usdt") or 0.0)
+            notional = float(row.get("simulated_notional_usdt") or 1000.0)
+            if notional <= 0:
+                return None
+            return round((net / notional) * 10000.0, 4)
+        except (TypeError, ValueError):
+            return None
+
+    def load_recent_plan_outcomes(self, n: int = 24) -> List[Dict[str, Any]]:
+        """Newest-first closed 60m trade-plan outcomes (deduped by plan_id, last wins)."""
+        if n <= 0 or not self.outcomes_file.exists():
+            return []
+        by_id: Dict[str, Dict[str, Any]] = {}
+        order: List[str] = []
+        try:
+            with open(self.outcomes_file, "r", encoding="utf-8") as f:
+                for line in f:
+                    line = line.strip()
+                    if not line:
+                        continue
+                    try:
+                        row = json.loads(line)
+                    except Exception:
+                        continue
+                    pid = str(row.get("plan_id") or "")
+                    if not pid:
+                        continue
+                    if pid not in by_id:
+                        order.append(pid)
+                    by_id[pid] = row
+        except Exception:
+            return []
+        uniq = [by_id[pid] for pid in order]
+        recent = list(reversed(uniq[-n:]))
+        out: List[Dict[str, Any]] = []
+        for row in recent:
+            r = dict(row)
+            bps = self._plan_outcome_net_bps(r)
+            if bps is not None:
+                r["net_return_bps"] = bps
+            # Display helpers for UI (IST open/close)
+            et = r.get("entry_time_ms")
+            xt = r.get("exit_time_ms")
+            try:
+                if et is not None:
+                    r["open_time_ist"] = datetime.fromtimestamp(
+                        int(et) / 1000.0, tz=timezone.utc
+                    ).astimezone(timezone(timedelta(hours=5, minutes=30))).strftime(
+                        "%Y-%m-%d %H:%M:%S IST"
+                    )
+                    r["open_time_utc"] = datetime.fromtimestamp(
+                        int(et) / 1000.0, tz=timezone.utc
+                    ).strftime("%Y-%m-%d %H:%M:%S UTC")
+            except Exception:
+                pass
+            try:
+                if xt is not None:
+                    r["close_time_ist"] = datetime.fromtimestamp(
+                        int(xt) / 1000.0, tz=timezone.utc
+                    ).astimezone(timezone(timedelta(hours=5, minutes=30))).strftime(
+                        "%Y-%m-%d %H:%M:%S IST"
+                    )
+                    r["close_time_utc"] = datetime.fromtimestamp(
+                        int(xt) / 1000.0, tz=timezone.utc
+                    ).strftime("%Y-%m-%d %H:%M:%S UTC")
+            except Exception:
+                pass
+            out.append(r)
+        return out
+
+    def build_plan_trade_pnl_summary(self) -> Dict[str, Any]:
+        """W/L-first summary from trade_plan_outcomes.jsonl (books never pooled)."""
+        summary = {
+            "n_trades": 0,
+            "n_wins": 0,
+            "n_losses": 0,
+            "cumulative_gross_pnl_usdt": 0.0,
+            "cumulative_net_pnl_usdt": 0.0,
+            "cumulative_net_return_bps": 0.0,
+            "cumulative_friction_usdt": 0.0,
+            "tp_hits": 0,
+            "sl_hits": 0,
+            "time_exits": 0,
+            "giveback_exits": 0,
+        }
+        if not self.outcomes_file.exists():
+            return summary
+        by_id: Dict[str, Dict[str, Any]] = {}
+        try:
+            with open(self.outcomes_file, "r", encoding="utf-8") as f:
+                for line in f:
+                    line = line.strip()
+                    if not line:
+                        continue
+                    try:
+                        row = json.loads(line)
+                    except Exception:
+                        continue
+                    pid = str(row.get("plan_id") or "")
+                    if pid:
+                        by_id[pid] = row
+        except Exception:
+            return summary
+        for row in by_id.values():
+            net = float(row.get("net_pnl_usdt") or 0.0)
+            gross = float(row.get("gross_pnl_usdt") or 0.0)
+            fric = float(row.get("friction_usdt") or 0.0)
+            bps = self._plan_outcome_net_bps(row) or 0.0
+            summary["n_trades"] += 1
+            if net > 0:
+                summary["n_wins"] += 1
+            else:
+                summary["n_losses"] += 1
+            summary["cumulative_net_pnl_usdt"] += net
+            summary["cumulative_gross_pnl_usdt"] += gross
+            summary["cumulative_friction_usdt"] += fric
+            summary["cumulative_net_return_bps"] += bps
+            reason = str(row.get("exit_reason") or "")
+            state = str(row.get("state") or "")
+            if "PROFIT_TARGET" in reason or state == "CLOSED_TP":
+                summary["tp_hits"] += 1
+            elif "STOP_LOSS" in reason or "AMBIGUOUS" in reason or state == "CLOSED_SL":
+                summary["sl_hits"] += 1
+            elif "TIME" in reason or "HORIZON" in reason or state == "TIME_EXIT":
+                summary["time_exits"] += 1
+            elif "GIVEBACK" in reason or state == "CLOSED_GIVEBACK":
+                summary["giveback_exits"] += 1
+        for k in (
+            "cumulative_net_pnl_usdt",
+            "cumulative_gross_pnl_usdt",
+            "cumulative_friction_usdt",
+            "cumulative_net_return_bps",
+        ):
+            summary[k] = round(float(summary[k]), 4)
+        return summary
+
+    def build_trade_plan_pnl_payload(self, n: int = 24) -> Dict[str, Any]:
+        """API payload for Crypto trade plan ledger (independent of OF paper)."""
+        return {
+            "protocol_id": "RP-608-CRYPTO-TRADE-PLAN-001",
+            "book": "CRYPTO_PLAN",
+            "execution_mode": "PAPER",
+            "live_order_authority": 0.0,
+            "summary": self.build_plan_trade_pnl_summary(),
+            "recent": self.load_recent_plan_outcomes(n),
+        }
+
     def process_decision_card(self, card: Dict[str, Any], current_quote: Optional[Dict[str, Any]] = None) -> Optional[Dict[str, Any]]:
         """Evaluates a new decision card for Trade Plan creation or suppression."""
         # Strict Boundary Check: Exclude pre-window startup cards (< 05:30 IST / 1792972800000 ms)
@@ -2181,20 +3012,87 @@ class TradePlanOverlayManager:
                     "suppressed_direction": direction
                 })
                 # Plan suppressed, but OF recommendation can still activate / refresh / exit
-                self.ingest_order_flow_signal(
-                    direction=str(direction),
-                    card=card,
-                    quote=current_quote,
-                    plan_id=active.get("plan_id"),
-                    entry_price=active.get("entry_price"),
-                    entry_time_ms=active.get("entry_time_ms"),
-                    persist=True,
-                )
+                if self.of_paper_enabled:
+                    self.ingest_order_flow_signal(
+                        direction=str(direction),
+                        card=card,
+                        quote=current_quote,
+                        plan_id=active.get("plan_id"),
+                        entry_price=active.get("entry_price"),
+                        entry_time_ms=active.get("entry_time_ms"),
+                        persist=True,
+                    )
                 return active
+
+        # Gate 2E: same-direction cooldown after fast SL / path-scratch.
+        now_ms = int(
+            (current_quote or {}).get("exchange_event_time_ms")
+            or card.get("close_time_ms")
+            or time.time() * 1000
+        )
+        cool = self._gate2e_cooldown_blocks(str(direction), now_ms)
+        if cool:
+            self.state["suppressed_signals_count"] = int(
+                self.state.get("suppressed_signals_count") or 0
+            ) + 1
+            summ = self.state.setdefault("outcomes_summary", {})
+            summ["gate2e_cooldown_suppressions"] = int(
+                summ.get("gate2e_cooldown_suppressions") or 0
+            ) + 1
+            self._log_event(
+                "SUPPRESSED_GATE2E_FAST_SL_COOLDOWN",
+                {"direction": direction, "book_id": self.book_id},
+                {
+                    "cooldown": cool,
+                    "now_ms": now_ms,
+                    "card_bar_idx": card.get("bar_idx"),
+                },
+            )
+            self._save_state()
+            return None
 
         # Create new plan
         plan = calculate_trade_plan(card, quote=current_quote)
         if not plan:
+            return None
+        plan["book_id"] = self.book_id
+        plan["volume_pattern_axes"] = bool(self.volume_pattern_axes)
+        if not self.volume_pattern_axes:
+            # Baseline twin: keep pre-volume plan geometry; no OHLCV surge latch.
+            plan["vol_burst_20"] = None
+            plan["vol_surge"] = "UNK"
+            plan["exit_vol_burst_20"] = None
+            plan["exit_vol_surge"] = "UNK"
+
+        # Gate 2E: do not open if forming path already through proposed stop.
+        # Observational dual-stamp (tick/last vs forming H/L) — live authority unchanged.
+        dual = self._maybe_log_gate2e_path_dual_stamp(plan, current_quote)
+        path_invalid = dual.get("forming_path_invalid")
+        if path_invalid:
+            self.state["suppressed_signals_count"] = int(
+                self.state.get("suppressed_signals_count") or 0
+            ) + 1
+            summ = self.state.setdefault("outcomes_summary", {})
+            summ["gate2e_path_invalid_suppressions"] = int(
+                summ.get("gate2e_path_invalid_suppressions") or 0
+            ) + 1
+            self._log_event(
+                "SUPPRESSED_GATE2E_PATH_INVALID",
+                plan,
+                {
+                    "reason": path_invalid,
+                    "stop_loss_price": plan.get("stop_loss_price"),
+                    "high_price": (current_quote or {}).get("high_price"),
+                    "low_price": (current_quote or {}).get("low_price"),
+                    "book_id": self.book_id,
+                    "tick_path_invalid": dual.get("tick_path_invalid"),
+                    "tick_last_px": dual.get("tick_last_px"),
+                    "diverge": dual.get("diverge"),
+                    "diverge_kind": dual.get("diverge_kind"),
+                    "path_dual_stamp_protocol": dual.get("protocol_id"),
+                },
+            )
+            self._save_state()
             return None
 
         # Gate 2E observational entry pattern (env-gated standaside; no symbol bans).
@@ -2214,6 +3112,7 @@ class TradePlanOverlayManager:
                         "hist_wr": pattern_stamp.get("hist_wr"),
                         "cohort_n": pattern_stamp.get("cohort_n"),
                         "gate_enabled": crypto_pattern_entry_gate_enabled(),
+                        "book_id": self.book_id,
                     },
                 )
                 self._save_state()
@@ -2230,22 +3129,25 @@ class TradePlanOverlayManager:
                 "order_flow_supported": plan.get("order_flow_supported"),
                 "order_flow_imbalance": plan.get("order_flow_imbalance"),
                 "trade_pattern_match": plan.get("trade_pattern_match"),
+                "book_id": self.book_id,
             },
         )
         # OF recommendation: activate on OF entry; independent of 60m plan clock
-        self.ingest_order_flow_signal(
-            direction=str(direction),
-            card=card,
-            quote=(
-                current_quote
-                or (card.get("execution_quote") if isinstance(card.get("execution_quote"), dict) else None)
-                or plan.get("execution_quote")
-            ),
-            plan_id=plan.get("plan_id"),
-            entry_price=plan.get("entry_price"),
-            entry_time_ms=plan.get("entry_time_ms"),
-            persist=False,
-        )
+        # Baseline parallel twin keeps OF inert (primary book owns L1 OF paper).
+        if self.of_paper_enabled:
+            self.ingest_order_flow_signal(
+                direction=str(direction),
+                card=card,
+                quote=(
+                    current_quote
+                    or (card.get("execution_quote") if isinstance(card.get("execution_quote"), dict) else None)
+                    or plan.get("execution_quote")
+                ),
+                plan_id=plan.get("plan_id"),
+                entry_price=plan.get("entry_price"),
+                entry_time_ms=plan.get("entry_time_ms"),
+                persist=False,
+            )
         self._save_state()
         return plan
 
@@ -2451,15 +3353,16 @@ class TradePlanOverlayManager:
         plan["lifecycle_monitor"] = CONFIG.get("lifecycle_monitor", "continuous_l1_bookTicker")
 
         # Refresh exit volume surge from forming/completed candle burst when present.
-        if q.get("vol_burst_20") is not None:
-            try:
-                burst = float(q["vol_burst_20"])
-                plan["exit_vol_burst_20"] = burst
-                plan["exit_vol_surge"] = crypto_vol_surge_bucket(burst)
-            except (TypeError, ValueError):
-                pass
-        elif q.get("vol_surge") in {"LOW", "MED", "HIGH", "UNK"}:
-            plan["exit_vol_surge"] = str(q["vol_surge"])
+        if self.volume_pattern_axes:
+            if q.get("vol_burst_20") is not None:
+                try:
+                    burst = float(q["vol_burst_20"])
+                    plan["exit_vol_burst_20"] = burst
+                    plan["exit_vol_surge"] = crypto_vol_surge_bucket(burst)
+                except (TypeError, ValueError):
+                    pass
+            elif q.get("vol_surge") in {"LOW", "MED", "HIGH", "UNK"}:
+                plan["exit_vol_surge"] = str(q["vol_surge"])
 
         # Gate 5 H120_PATH: track L1 mid adverse → revisit around entry (±side friction bps)
         mid = 0.5 * (bid + ask)
@@ -2486,10 +3389,115 @@ class TradePlanOverlayManager:
         if path_stamp_flipped:
             self._save_state()
 
+        # Rust cutover: plan lifecycle (Adaptive TP + SL/TP + Gate 2X) in-process.
+        rust_closed = self._try_rust_plan_lifecycle(
+            plan, q, now_ms=now_ms, bid=bid, ask=ask, low=low, high=high
+        )
+        if rust_closed is not None:
+            return rust_closed
+        plan = self.state.get("active_plan") or plan
+        _rust_hold = plan.get("plan_lifecycle_authority") == "rust_rp608_plan_lifecycle"
+
+        giveback_reason = None
+        if not _rust_hold:
+            # Gate 5 Adaptive TP: extend target + lock SL before Gate 2X decide.
+            # Re-read TP/SL after ratchet so protect geometry sees the runner.
+            _tp0 = float(plan["profit_target_price"])
+            _hit_tp0 = False
+            if direction == "LONG":
+                _hit_tp0 = (
+                    bid >= _tp0
+                    or high >= _tp0
+                    or float(plan["mfe_exec_price"]) >= _tp0
+                )
+            else:
+                _hit_tp0 = (
+                    ask <= _tp0
+                    or low <= _tp0
+                    or float(plan["mfe_exec_price"]) <= _tp0
+                )
+            if _hit_tp0:
+                self._adaptive_tp_try_extend(
+                    plan,
+                    direction=direction,
+                    hit_tp=True,
+                    now_ms=now_ms,
+                    bid=bid,
+                    ask=ask,
+                    low=low,
+                    high=high,
+                )
+                plan = self.state.get("active_plan") or plan
+                sl = float(plan["stop_loss_price"])
+                tp = float(plan["profit_target_price"])
+
+            # Gate 2X: quality-path protect (arm at tp_frac+cost; exit at cost-clear floor).
+            giveback_reason = self._gate2x_update_mfe_giveback(
+                plan, exec_px=exec_px, now_ms=now_ms
+            )
+            self.state["active_plan"] = plan
+        if giveback_reason:
+            terminal_state = "CLOSED_GIVEBACK"
+            exit_reason = "GATE2X_MFE_GIVEBACK_PROTECT"
+            exit_price = exec_px
+            plan["state"] = terminal_state
+            plan["exit_price"] = round_tick(exit_price)
+            plan["exit_time_ms"] = now_ms
+            plan["holding_duration_seconds"] = round((now_ms - entry_ms) / 1000.0, 1)
+            plan["exit_reason_detail"] = giveback_reason
+            plan["gate2x_protocol"] = CONFIG.get("gate2x_mfe_giveback_protocol")
+            if direction == "LONG":
+                gross_pnl = (plan["exit_price"] - entry_price) * qty
+            else:
+                gross_pnl = (entry_price - plan["exit_price"]) * qty
+            friction = (plan["simulated_notional_usdt"] + (plan["exit_price"] * qty)) * (
+                6.0 / 10000.0
+            )
+            net_pnl = round(gross_pnl - friction, 2)
+            plan["gross_pnl_usdt"] = round(gross_pnl, 2)
+            plan["friction_usdt"] = round(friction, 4)
+            plan["net_pnl_usdt"] = net_pnl
+            plan["exit_reason"] = exit_reason
+            self.state["closed_plans_count"] += 1
+            summ = self.state.setdefault("outcomes_summary", {})
+            summ["cumulative_net_pnl_usdt"] = float(
+                summ.get("cumulative_net_pnl_usdt") or 0.0
+            ) + net_pnl
+            summ["gate2x_mfe_giveback_exits"] = int(
+                summ.get("gate2x_mfe_giveback_exits") or 0
+            ) + 1
+            self.state["last_closed_plan"] = dict(plan)
+            self.state["active_plan"] = None
+            self._log_event(
+                terminal_state,
+                plan,
+                {
+                    "exit_price": plan["exit_price"],
+                    "net_pnl": net_pnl,
+                    "reason": exit_reason,
+                    "detail": giveback_reason,
+                    "peak_mfe_usdt": plan.get("gate2x_peak_mfe_usdt"),
+                    "armed_threshold_usdt": plan.get("gate2x_mfe_armed_threshold_usdt"),
+                },
+            )
+            self._log_outcome(plan)
+            try:
+                self._note_pattern_stop(plan)
+            except Exception:
+                pass
+            try:
+                self._note_gate2e_fast_sl_cooldown(plan)
+            except Exception:
+                pass
+            self._save_state()
+            return plan
+
         # Gate 2X observational exit-pattern stamp; optional paper reverse exit.
         try:
             exit_stamp = match_crypto_pattern_exit(
-                library=self._crypto_pattern_lib(), plan=plan
+                library=self._crypto_pattern_lib(),
+                plan=plan,
+                include_volume=self.volume_pattern_axes,
             )
             plan["trade_pattern_exit"] = exit_stamp
             self.state["active_plan"] = plan
@@ -2535,7 +3543,7 @@ class TradePlanOverlayManager:
             print(f"[crypto_pattern] exit match skipped: {pat_exc}")
 
         # OF exit is L1 reverse-flow only — independent of plan TP/SL/60m
-        if evaluate_of:
+        if evaluate_of and self.of_paper_enabled:
             self.evaluate_order_flow_tick(
                 q,
                 now_ms=now_ms,
@@ -2547,70 +3555,102 @@ class TradePlanOverlayManager:
                 },
             )
 
-        hit_tp = False
-        hit_sl = False
-        exit_price = 0.0
+        # Refresh TP/SL after possible adaptive ratchet earlier in this tick.
+        # Skipped when Rust plan-lifecycle already owned Adaptive/Gate2X/SL/TP.
         terminal_state = None
         exit_reason = None
+        exit_price = 0.0
+        ambiguous = False
+        tie_break = "TP"
 
-        if direction == "LONG":
-            if bid >= tp or high >= tp or float(plan["mfe_exec_price"]) >= tp:
-                hit_tp = True
-            if bid <= sl or low <= sl or float(plan["mae_exec_price"]) <= sl:
-                hit_sl = True
-            exit_price = sl if hit_sl else (tp if hit_tp else bid)
-        else:  # SHORT — buy-to-cover on ask
-            if ask <= tp or low <= tp or float(plan["mfe_exec_price"]) <= tp:
-                hit_tp = True
-            if ask >= sl or high >= sl or float(plan["mae_exec_price"]) >= sl:
-                hit_sl = True
-            exit_price = sl if hit_sl else (tp if hit_tp else ask)
+        if not _rust_hold:
+            sl = float(plan["stop_loss_price"])
+            tp = float(plan["profit_target_price"])
+            try:
+                tp_level = int(plan.get("tp_level") or 0)
+            except (TypeError, ValueError):
+                tp_level = 0
+            adaptive_on = bool(CONFIG.get("adaptive_tp_enabled"))
+            max_ext = int(CONFIG.get("adaptive_tp_max_extensions") or 3)
 
-        ambiguous = bool(hit_tp and hit_sl)
-        tie_break = str(CONFIG.get("ambiguous_tie_break") or "TP").upper()
-        if ambiguous:
-            # Gate 5 policy G: prefer TP. Legacy SL retained only if explicitly configured.
-            self.state["outcomes_summary"]["ambiguous_hits"] += 1
-            if tie_break == "SL":
-                terminal_state = "CLOSED_SL"
-                exit_reason = "AMBIGUOUS_STOP_TARGET"
-                exit_price = sl
-                self.state["outcomes_summary"]["sl_hits"] += 1
-            else:
+            hit_tp = False
+            hit_sl = False
+
+            if direction == "LONG":
+                if bid >= tp or high >= tp or float(plan["mfe_exec_price"]) >= tp:
+                    hit_tp = True
+                if bid <= sl or low <= sl or float(plan["mae_exec_price"]) <= sl:
+                    hit_sl = True
+                exit_price = sl if hit_sl else (tp if hit_tp else bid)
+            else:  # SHORT — buy-to-cover on ask
+                if ask <= tp or low <= tp or float(plan["mfe_exec_price"]) <= tp:
+                    hit_tp = True
+                if ask >= sl or high >= sl or float(plan["mae_exec_price"]) >= sl:
+                    hit_sl = True
+                exit_price = sl if hit_sl else (tp if hit_tp else ask)
+
+            # Adaptive runner still below max: TP touch already extended — do not close.
+            if (
+                adaptive_on
+                and hit_tp
+                and not hit_sl
+                and tp_level < max_ext
+            ):
+                hit_tp = False
+
+            ambiguous = bool(hit_tp and hit_sl)
+            tie_break = str(CONFIG.get("ambiguous_tie_break") or "TP").upper()
+            # After adaptive arm, prefer locked SL on ambiguous TP∧SL.
+            if ambiguous and tp_level >= 1:
+                tie_break = "SL"
+                plan["ambiguous_resolved_as"] = "SL_ADAPTIVE_LOCK"
+            if ambiguous:
+                # Gate 5 policy G: prefer TP (pre-adaptive). Legacy SL if configured
+                # or adaptive lock armed (tp_level >= 1).
+                self.state["outcomes_summary"]["ambiguous_hits"] += 1
+                if tie_break == "SL":
+                    terminal_state = "CLOSED_SL"
+                    exit_reason = "AMBIGUOUS_STOP_TARGET"
+                    exit_price = sl
+                    self.state["outcomes_summary"]["sl_hits"] += 1
+                else:
+                    terminal_state = "CLOSED_TP"
+                    exit_reason = "PROFIT_TARGET_HIT"
+                    exit_price = tp
+                    plan["ambiguous_resolved_as"] = "TP"
+                    plan["gate5_policy_g"] = CONFIG.get("gate5_policy_g")
+                    self.state["outcomes_summary"]["tp_hits"] += 1
+            elif hit_tp:
+                # Hard TP close: adaptive off, or max extensions exhausted.
                 terminal_state = "CLOSED_TP"
                 exit_reason = "PROFIT_TARGET_HIT"
-                exit_price = tp
-                plan["ambiguous_resolved_as"] = "TP"
-                plan["gate5_policy_g"] = CONFIG.get("gate5_policy_g")
+                if adaptive_on and tp_level >= max_ext:
+                    plan["exit_reason_detail"] = "ADAPTIVE_TP_MAX_EXTENSIONS"
                 self.state["outcomes_summary"]["tp_hits"] += 1
-        elif hit_tp:
-            terminal_state = "CLOSED_TP"
-            exit_reason = "PROFIT_TARGET_HIT"
-            self.state["outcomes_summary"]["tp_hits"] += 1
-            exit_price = tp
-        elif hit_sl:
-            hold_s = (now_ms - entry_ms) / 1000.0
-            h_enabled = bool(CONFIG.get("early_sl_path_scratch_enabled"))
-            h_max = float(CONFIG.get("early_sl_path_scratch_max_hold_s") or 120.0)
-            path_ok = bool(plan.get("path_h_adverse_seen") and plan.get("path_h_revisit_seen"))
-            if h_enabled and hold_s < h_max and path_ok:
-                # Gate 5 H120_PATH: scratch@entry (not optimistic OPT-all early SL)
-                terminal_state = "CLOSED_SCRATCH"
-                exit_reason = "EARLY_SL_PATH_SCRATCH"
-                exit_price = float(entry_price)
-                plan["gate5_policy_h"] = CONFIG.get("gate5_policy_h")
-                plan["exit_reason_detail"] = "EARLY_SL_PATH_SCRATCH_GATE5_H120"
-                summ = self.state.setdefault("outcomes_summary", {})
-                summ["early_sl_path_scratches"] = int(summ.get("early_sl_path_scratches") or 0) + 1
-            else:
-                terminal_state = "CLOSED_SL"
-                exit_reason = "STOP_LOSS_HIT"
-                self.state["outcomes_summary"]["sl_hits"] += 1
-                exit_price = sl
-        elif now_ms >= expiry_ms:
-            terminal_state = "TIME_EXIT"
-            exit_reason = "MAX_HORIZON_60M_EXPIRED"
-            self.state["outcomes_summary"]["time_exits"] += 1
+                exit_price = tp
+            elif hit_sl:
+                hold_s = (now_ms - entry_ms) / 1000.0
+                h_enabled = bool(CONFIG.get("early_sl_path_scratch_enabled"))
+                h_max = float(CONFIG.get("early_sl_path_scratch_max_hold_s") or 120.0)
+                path_ok = bool(plan.get("path_h_adverse_seen") and plan.get("path_h_revisit_seen"))
+                if h_enabled and hold_s < h_max and path_ok:
+                    # Gate 5 H120_PATH: scratch@entry (not optimistic OPT-all early SL)
+                    terminal_state = "CLOSED_SCRATCH"
+                    exit_reason = "EARLY_SL_PATH_SCRATCH"
+                    exit_price = float(entry_price)
+                    plan["gate5_policy_h"] = CONFIG.get("gate5_policy_h")
+                    plan["exit_reason_detail"] = "EARLY_SL_PATH_SCRATCH_GATE5_H120"
+                    summ = self.state.setdefault("outcomes_summary", {})
+                    summ["early_sl_path_scratches"] = int(summ.get("early_sl_path_scratches") or 0) + 1
+                else:
+                    terminal_state = "CLOSED_SL"
+                    exit_reason = "STOP_LOSS_HIT"
+                    self.state["outcomes_summary"]["sl_hits"] += 1
+                    exit_price = sl
+            elif now_ms >= expiry_ms:
+                terminal_state = "TIME_EXIT"
+                exit_reason = "MAX_HORIZON_60M_EXPIRED"
+                self.state["outcomes_summary"]["time_exits"] += 1
 
         if terminal_state:
             plan["state"] = terminal_state
@@ -2653,6 +3693,10 @@ class TradePlanOverlayManager:
             self._log_outcome(plan)
             try:
                 self._note_pattern_stop(plan)
+            except Exception:
+                pass
+            try:
+                self._note_gate2e_fast_sl_cooldown(plan)
             except Exception:
                 pass
             self._save_state()

@@ -19,7 +19,7 @@ In `scripts/rp608_trade_plan_overlay.py`, when `hit_tp and hit_sl`:
 | Host | Pi `ultraspeed@192.168.0.9` |
 | Module | `scripts/rp608_trade_plan_overlay.py` |
 | Unit test | `test_06_ambiguous_crossing_tie_break` PASS on Pi |
-| Daemon | single `run_rp608_shadow_daemon.py` (pid refreshed at deploy) |
+| Daemon | single `run_rp608_shadow_daemon.py` via `rp608-shadow-observer.service` only (fcntl singleton lock; do not also nohup) |
 | Config seen | `ambiguous_tie_break=TP` · authority `0.0` |
 
 ## Scope limits (unchanged)

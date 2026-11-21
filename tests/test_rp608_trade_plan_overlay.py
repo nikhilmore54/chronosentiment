@@ -111,19 +111,129 @@ class TestTradePlanOverlay(unittest.TestCase):
         self.assertGreater(plan["net_rr_ratio"], 0.50)
 
     def test_04_target_hit_resolution(self):
-        """Verifies simulated exit when profit target is hit."""
+        """Hard close on TP when adaptive_tp_enabled=False (legacy Gate 5)."""
         mgr = TradePlanOverlayManager(base_dir=self.test_overlay_dir)
         plan = calculate_trade_plan(self.sample_card_short)
         mgr.state["active_plan"] = plan
         mgr._save_state()
 
         quote_tp = {"best_bid_price": 79769.99, "best_ask_price": 79770.00}
-        resolved = mgr.evaluate_market_tick(quote_tp)
-        
+        with mock.patch.dict(CONFIG, {"adaptive_tp_enabled": False}):
+            resolved = mgr.evaluate_market_tick(quote_tp)
+
         self.assertIsNotNone(resolved)
         self.assertEqual(resolved["state"], "CLOSED_TP")
         self.assertGreater(resolved["net_pnl_usdt"], 0.0)
         self.assertIsNone(mgr.state["active_plan"])
+
+    def test_04b_adaptive_tp_extends_not_closes(self):
+        """Gate 5 Adaptive TP: first TP touch extends + locks SL; plan stays OPEN."""
+        mgr = TradePlanOverlayManager(base_dir=self.test_overlay_dir)
+        plan = calculate_trade_plan(self.sample_card_short)
+        atr = float(plan["atr_14"])
+        tp0 = float(plan["profit_target_price"])
+        t0 = int(time.time() * 1000)
+        plan["entry_time_ms"] = t0
+        plan["expiry_time_ms"] = t0 + 3_600_000
+        mgr.state["active_plan"] = plan
+        mgr._save_state()
+
+        # Ask through first TP but not deep enough for a second extension
+        quote_tp = {
+            "best_bid_price": tp0 - 1.0,
+            "best_ask_price": tp0 - 0.5,
+        }
+        with mock.patch.dict(
+            CONFIG,
+            {
+                "adaptive_tp_enabled": True,
+                "gate2x_mfe_giveback_protect_enabled": False,
+            },
+        ):
+            resolved = mgr.evaluate_market_tick(quote_tp, now_ms=t0 + 5_000)
+
+        self.assertIsNotNone(resolved)
+        self.assertEqual(resolved["state"], "OPEN")
+        active = mgr.state["active_plan"]
+        self.assertIsNotNone(active)
+        self.assertEqual(int(active["tp_level"]), 1)
+        self.assertTrue(active["adaptive_tp_armed"])
+        expected_tp = round_tick(tp0 - 0.5 * atr)
+        self.assertAlmostEqual(float(active["profit_target_price"]), expected_tp, places=2)
+        self.assertAlmostEqual(float(active["stop_loss_price"]), tp0, places=2)
+
+    def test_04c_adaptive_tp_max_extensions_hard_close(self):
+        """After max extensions, further TP touch closes PROFIT_TARGET_HIT."""
+        mgr = TradePlanOverlayManager(base_dir=self.test_overlay_dir)
+        plan = calculate_trade_plan(self.sample_card_short)
+        atr = float(plan["atr_14"])
+        tp0 = float(plan["profit_target_price"])
+        t0 = int(time.time() * 1000)
+        plan["entry_time_ms"] = t0
+        plan["expiry_time_ms"] = t0 + 3_600_000
+        mgr.state["active_plan"] = plan
+        mgr._save_state()
+
+        # Path deep enough to consume all 3 extensions and still tag final TP
+        deep = tp0 - (3 * 0.5 * atr) - 10.0
+        quote = {"best_bid_price": deep - 1.0, "best_ask_price": deep}
+        with mock.patch.dict(
+            CONFIG,
+            {
+                "adaptive_tp_enabled": True,
+                "adaptive_tp_max_extensions": 3,
+                "gate2x_mfe_giveback_protect_enabled": False,
+            },
+        ):
+            resolved = mgr.evaluate_market_tick(quote, now_ms=t0 + 5_000)
+
+        self.assertIsNotNone(resolved)
+        self.assertEqual(resolved["state"], "CLOSED_TP")
+        self.assertEqual(resolved["exit_reason"], "PROFIT_TARGET_HIT")
+        self.assertEqual(resolved.get("exit_reason_detail"), "ADAPTIVE_TP_MAX_EXTENSIONS")
+        self.assertEqual(int(resolved["tp_level"]), 3)
+
+    def test_04d_adaptive_ambiguous_prefers_locked_sl(self):
+        """Once adaptive armed, ambiguous TP∧SL resolves to locked SL."""
+        mgr = TradePlanOverlayManager(base_dir=self.test_overlay_dir)
+        plan = calculate_trade_plan(self.sample_card_short)
+        atr = float(plan["atr_14"])
+        tp0 = float(plan["profit_target_price"])
+        t0 = int(time.time() * 1000)
+        plan["entry_time_ms"] = t0
+        plan["expiry_time_ms"] = t0 + 3_600_000
+        # Pre-arm one extension so tp_level>=1; disable further extend this tick
+        plan["tp_level"] = 1
+        plan["adaptive_tp_armed"] = True
+        plan["profit_target_price"] = round_tick(tp0 - 0.5 * atr)
+        plan["stop_loss_price"] = tp0
+        locked_sl = float(plan["stop_loss_price"])
+        cur_tp = float(plan["profit_target_price"])
+        mgr.state["active_plan"] = plan
+        mgr._save_state()
+
+        # Ask alone tags locked SL; forming low alone tags current TP (ambiguous).
+        # Cap extensions at 1 so ratchet cannot consume the TP side away.
+        quote_ambig = {
+            "best_bid_price": locked_sl - 1.0,
+            "best_ask_price": locked_sl + 1.0,
+            "low_price": cur_tp - 1.0,
+            "high_price": locked_sl + 1.0,
+        }
+        with mock.patch.dict(
+            CONFIG,
+            {
+                "adaptive_tp_enabled": True,
+                "adaptive_tp_max_extensions": 1,
+                "gate2x_mfe_giveback_protect_enabled": False,
+            },
+        ):
+            resolved = mgr.evaluate_market_tick(quote_ambig, now_ms=t0 + 5_000)
+
+        self.assertIsNotNone(resolved)
+        self.assertEqual(resolved["state"], "CLOSED_SL")
+        self.assertEqual(resolved.get("ambiguous_resolved_as"), "SL_ADAPTIVE_LOCK")
+        self.assertAlmostEqual(float(resolved["exit_price"]), locked_sl, places=2)
 
     def test_05_stop_loss_hit_resolution(self):
         """Verifies simulated exit when stop loss is hit."""
@@ -149,7 +259,8 @@ class TestTradePlanOverlay(unittest.TestCase):
         mgr._save_state()
 
         quote_ambig = {"best_bid_price": 79700.00, "best_ask_price": 80500.00}
-        resolved = mgr.evaluate_market_tick(quote_ambig)
+        with mock.patch.dict(CONFIG, {"adaptive_tp_enabled": False}):
+            resolved = mgr.evaluate_market_tick(quote_ambig)
 
         self.assertIsNotNone(resolved)
         self.assertEqual(resolved["state"], "CLOSED_TP")
@@ -325,11 +436,14 @@ class TestTradePlanOverlay(unittest.TestCase):
             "best_ask_price": tp - 49.0,
             "quote_source": "binance_rest_bookTicker",
         }
-        with mock.patch(
-            "scripts.rp608_trade_plan_overlay.fetch_live_btcusdt_book",
-            return_value=live_past_tp,
-        ):
-            status = mgr.sync_lifecycle(current_quote=stale_card_quote, now_ms=int(time.time() * 1000))
+        with mock.patch.dict(CONFIG, {"adaptive_tp_enabled": False}):
+            with mock.patch(
+                "scripts.rp608_trade_plan_overlay.fetch_live_btcusdt_book",
+                return_value=live_past_tp,
+            ):
+                status = mgr.sync_lifecycle(
+                    current_quote=stale_card_quote, now_ms=int(time.time() * 1000)
+                )
 
         self.assertFalse(status["is_active"])
         self.assertEqual(status["state"], "CLOSED_TP")
@@ -349,16 +463,17 @@ class TestTradePlanOverlay(unittest.TestCase):
         mgr._save_state()
         t0 = int(time.time() * 1000)
 
-        # Mid-bar: ask prints through TP
-        hit = mgr.evaluate_market_tick(
-            {
-                "best_bid_price": tp - 20.0,
-                "best_ask_price": tp - 19.0,
-                "quote_source": "binance_ws_bookTicker",
-            },
-            reload_state=False,
-            now_ms=t0 + 30_000,
-        )
+        # Mid-bar: ask prints through TP (legacy hard close)
+        with mock.patch.dict(CONFIG, {"adaptive_tp_enabled": False}):
+            hit = mgr.evaluate_market_tick(
+                {
+                    "best_bid_price": tp - 20.0,
+                    "best_ask_price": tp - 19.0,
+                    "quote_source": "binance_ws_bookTicker",
+                },
+                reload_state=False,
+                now_ms=t0 + 30_000,
+            )
         self.assertEqual(hit["state"], "CLOSED_TP")
         self.assertIsNone(mgr.state["active_plan"])
         closed_id = hit["plan_id"]
@@ -387,16 +502,17 @@ class TestTradePlanOverlay(unittest.TestCase):
         mgr._save_state()
 
         # L1 ask already reversed above TP, but forming candle low printed through TP
-        resolved = mgr.evaluate_market_tick(
-            {
-                "best_bid_price": plan["entry_price"] - 10.0,
-                "best_ask_price": plan["entry_price"] - 9.0,  # not through TP
-                "low_price": tp - 5.0,  # path-through
-                "high_price": plan["entry_price"] + 5.0,
-                "quote_source": "binance_ws_forming_kline_15m",
-            },
-            reload_state=False,
-        )
+        with mock.patch.dict(CONFIG, {"adaptive_tp_enabled": False}):
+            resolved = mgr.evaluate_market_tick(
+                {
+                    "best_bid_price": plan["entry_price"] - 10.0,
+                    "best_ask_price": plan["entry_price"] - 9.0,  # not through TP
+                    "low_price": tp - 5.0,  # path-through
+                    "high_price": plan["entry_price"] + 5.0,
+                    "quote_source": "binance_ws_forming_kline_15m",
+                },
+                reload_state=False,
+            )
         self.assertIsNotNone(resolved)
         self.assertEqual(resolved["state"], "CLOSED_TP")
         self.assertEqual(resolved["exit_reason"], "PROFIT_TARGET_HIT")
@@ -426,6 +542,32 @@ class TestTradePlanOverlay(unittest.TestCase):
         self.assertAlmostEqual(val["unrealized_net_pnl_usdt"], expected_net, places=2)
         self.assertFalse(val["is_expired"])
         self.assertGreater(val["time_remaining_seconds"], 0)
+
+    def test_15_gate2e_path_dual_stamp_forming_blocks_tick_allows(self):
+        """Observational: forming H through stop blocks; tick mid still below stop → diverge."""
+        mgr = TradePlanOverlayManager(base_dir=self.test_overlay_dir)
+        plan = calculate_trade_plan(self.sample_card_short)
+        stop = float(plan["stop_loss_price"])
+        entry = float(plan["entry_price"])
+        quote = {
+            "best_bid_price": entry - 5.0,
+            "best_ask_price": entry - 4.0,
+            "mid_price": entry - 4.5,
+            "high_price": stop + 20.0,  # forming already through stop
+            "low_price": entry - 50.0,
+            "quote_source": "binance_ws_bookTicker",
+        }
+        stamp = mgr._gate2e_path_dual_stamp(plan, quote)
+        self.assertEqual(stamp["forming_path_invalid"], "FORMING_HIGH_THROUGH_STOP")
+        self.assertIsNone(stamp["tick_path_invalid"])
+        self.assertTrue(stamp["diverge"])
+        self.assertEqual(stamp["diverge_kind"], "FORMING_BLOCKS_TICK_ALLOWS")
+        self.assertEqual(stamp["live_authority"], "FORMING_HL")
+        # Live path still suppresses
+        self.assertEqual(
+            mgr._gate2e_path_already_invalid(plan, quote),
+            "FORMING_HIGH_THROUGH_STOP",
+        )
 
 
 if __name__ == "__main__":

@@ -49,6 +49,11 @@
 
 pub mod allocation_engine;
 pub mod coralys_state_bridge;
+pub mod gate2x_causal_map;
+pub mod gate2x_decide;
+pub mod gate2x_features;
+pub mod gate2x_position_manage;
+pub mod rp608_plan_lifecycle;
 pub mod deferred_live;
 pub mod deferred_live_asof_ic;
 pub mod deferred_live_decision_loop;
@@ -73,6 +78,14 @@ pub use decision_tape::DecisionTape;
 
 pub use allocation_engine::{AllocationEngine, ALLOCATION_ENGINE_VERSION};
 pub use coralys_state_bridge::*;
+pub use gate2x_decide::{gate2x_decide, Gate2xDecision};
+pub use gate2x_features::{
+    Gate2xFeatureSnapshot, Gate2xParams, Gate2xSoftBreachState, ProtectFloorMode, VolSurgeBucket,
+};
+pub use gate2x_position_manage::{Gate2xBookKind, Gate2xPositionManager};
+pub use rp608_plan_lifecycle::{
+    OpenPlanState, PlanLifecycleConfig, PlanLifecycleManager, PlanQuote, PLAN_LIFECYCLE_PROTOCOL,
+};
 pub use intraday_decision::{DecisionBrief, ExecutionFacts, load_intraday_briefs};
 pub use deferred_live::{
     overlay_live_quote, DeferredLiveConfig, DeferredLiveDriver, LivePaperAction,
