@@ -551,6 +551,8 @@ fn gerad_coralys_v2_benchmark_run() {
         ("Instance3", "instance3"),
         ("Instance4", "instance4"),
         ("Instance5", "instance5"),
+        ("Instance6", "instance6"),
+        ("Instance7", "instance7"),
     ];
 
     println!(
