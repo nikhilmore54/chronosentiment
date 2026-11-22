@@ -1153,6 +1153,27 @@ Evaluated under `release` mode with population $N=50$, generations $G=200$, cros
 2. **Sublinear Scalability**: Coralys runtime scales gracefully from 3.1s on Instance 1 to 24.5s on Instance 7 (~8× runtime increase for a 10× increase in problem size). In contrast, Greedy runtime explodes from 0.4s to 367.7s (~826× runtime increase) due to $O(P \times R \times \text{legs})$ roster clone re-evaluations.
 3. **Core Engine Promotion**: Based on these verified empirical results, the `EvolutionaryScheduler` was formally promoted into the production search layer of `coralys-airline` at [`adapters/airline/src/optimization/search/evolutionary.rs`](../../adapters/airline/src/optimization/search/evolutionary.rs).
 
+#### 2.19.5 Multi-Dimensional Operational KPIs & Comparative Alignment with GERAD G-2014-22
+
+While the scalar `WorkloadBalanceObjective` evaluates crew workload equity, direct operational alignment with the GERAD G-2014-22 paper requires multi-dimensional operational metrics. The test harness was extended with an operational KPI reporter logging:
+
+1. **Uncovered Flight Legs & Pairings (%)**:
+   - Explicitly accounts for pre-filtered pairings (~3.7% excluded across the dataset due to strict station base constraints).
+   - On Instance 1 (1,013 flights, 172 pairings), Coralys v2.0 leaves **28.83% flights uncovered** (292/1,013), beating Greedy (**38.60% uncovered**, 391/1,013).
+   - On Instance 2 (1,500 flights, 303 pairings), Coralys leaves **34.60% flights uncovered** vs Greedy's **41.80%**.
+   - On Instance 3 (1,855 flights, 274 pairings), Coralys leaves **34.56% flights uncovered** vs Greedy's **35.63%**.
+2. **Credited Flying Time (hrs) vs. 85.0-hour Legal Cap**:
+   - Coralys v2.0 enforces strict adherence to the monthly flying cap:
+     - **Instance 1**: Mean = 40.46 hrs, Min = 31.10 hrs, Max = 53.07 hrs, $\sigma = 4.59$ hrs (strictly $\le 85.0$ hrs).
+     - **Instance 2**: Mean = 35.95 hrs, Min = 32.28 hrs, Max = 41.70 hrs, $\sigma = 2.34$ hrs.
+     - **Instance 3**: Mean = 39.50 hrs, Min = 32.05 hrs, Max = 48.52 hrs, $\sigma = 3.72$ hrs.
+   - In stark contrast, **Greedy violates the 85.0-hour legal cap on Instance 1** (Max = 93.23 hrs, $\sigma = 21.31$ hrs), leaving some crew members with only 5.3 hours and others dangerously overworked.
+3. **Paper Baseline Targets (Kasirzadeh et al., 2014)**:
+   - Overall Reference Mean Flying Time: **75.92 hrs** across all 7 instances.
+   - Reference Vacation Days Granted: **13.76%** (average ~18–20 days off per crew).
+   - Reference Preferred Flights Assigned: **29.09%**.
+   - Uncovered Flight Rate: **0.41%** average (0.00% on I1–I3).
+
 ---
 
 ## 3. Proposed Implementation Plan (Near-Term)
