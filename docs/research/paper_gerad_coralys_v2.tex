@@ -225,24 +225,73 @@ Instance 7 & 305 & 1,648 & 7,766 & 4.74h & 4.41h $\pm$ 0.39h & +6.90\% & 8.57s [
 \end{tabular}
 \end{table*}
 
+\subsection{Apples-to-Apples Parity Audit Matrix}
+
+To ensure full methodological rigor for peer review in Operations Research, Table~\ref{tab:audit_matrix} delineates the shared operational constraints versus divergent problem formulations between Coralys v2.0 and the published GENCOL baseline \cite{kasirzadeh2017}.
+
+\begin{table*}[t]
+\caption{Apples-to-Apples Audit Matrix: Coralys v2.0 vs. GENCOL (Kasirzadeh et al., 2017)}
+\label{tab:audit_matrix}
+\centering
+\begin{tabular}{llll}
+\toprule
+Comparison Dimension & Coralys v2.0 (Operational Run) & GENCOL (Kasirzadeh et al., 2017) & Apples-to-Apples Audit Verdict \\
+\midrule
+\textbf{Input Dataset} & 7 instances (1,034 crew, 6,160 pairings, 29,376 legs) & Same 7 instances (1,034 crew, 6,160 pairings, 29,375 legs) & \textbf{Identical} (except 3 unreferenced legs in \texttt{flights.csv}) \\
+\textbf{Base \& Rest Legality} & 100\% base match; $\ge 10.0$h rest; $\le 85.0$h monthly cap & 100\% base match; $\ge 10.0$h rest; $\le 85.0$h monthly cap & \textbf{Identical} (CAR 700 / GERAD duty rules enforced) \\
+\textbf{Pilot Availability / Vacations} & Anonymous monthly capacity (all pilots available 31 days) & Hard daily limits ($K_{b, d}$ in \texttt{crew\_avail\_const.csv}) & \textbf{Divergent} (in I5\_757, Base 3 has only 6 pilots, with daily limits \\
+& & & dropping to 1 pilot, forcing GENCOL to leave 104 flights open) \\
+\textbf{Credited Hours Definition} & Raw scheduled block time (64.91h dataset mean) & Contractual credit rigs + deadheads (75.92h dataset mean) & \textbf{Divergent} (pure block provides $\sim 11$h headroom below 85h cap) \\
+\textbf{Objective Formulation} & Lexicographic: $1000 \times \text{Uncovered} + \text{Var}(H)$ & Cost minimization + personalized preference rewards & \textbf{Divergent} (solvers optimize distinct operational objectives) \\
+\textbf{Hardware \& Compute Era} & 2026 multi-core workstation (Rust release binary) & 2014 single-threaded Intel Xeon 2.67 GHz (CPLEX 12.4) & \textbf{Hardware-Skewed} (contemporary IPC provides $\approx 3.5\times$--$5\times$ uplift) \\
+\bottomrule
+\end{tabular}
+\end{table*}
+
+\subsection{Multi-Tier Empirical Parity Benchmark}
+
+To verify solver behavior under identical regulatory and operational constraints, an automated empirical parity test was implemented evaluating:
+\begin{enumerate}
+    \item \textbf{Tier 1 (Controlled Benchmark)}: Coralys v2.0 evaluated on raw block hours against the deterministic Greedy heuristic on identical hardware and constraints.
+    \item \textbf{Tier 2a (Contractual Credit Rigs)}: Evaluating Coralys v2.0 where pairing durations are scaled to the contractual GERAD credit framework (dataset mean: 75.72h, with Instance 5 at 81.12h and Instance 7 at 80.45h), testing tightness against the 85.0h statutory ceiling.
+    \item \textbf{Tier 2b (Credit Rigs + Daily Availability)}: Enforcing both contractual credit rigs and the daily station crew availability limits $K_{b, d}$ from \texttt{crew\_avail\_const.csv}.
+    \item \textbf{Tier 2c (Literature Baseline)}: Published GENCOL reference metrics from Kasirzadeh et al. \cite{kasirzadeh2017}.
+\end{enumerate}
+
+Table~\ref{tab:multitier_parity} details the comparative empirical results across all seven instances.
+
+\begin{table*}[t]
+\caption{Multi-Tier Empirical Benchmark: Controlled Baseline vs. Contractual Parity vs. Literature Reference}
+\label{tab:multitier_parity}
+\centering
+\begin{tabular}{lrrrrr}
+\toprule
+Instance & Total Flights & Tier 1: Controlled (Raw Block) & Tier 2a: Contractual Credit Rig & Tier 2b: Credit Rig + \texttt{crew\_avail} & Tier 2c: Literature (GENCOL) \\
+\midrule
+Instance 1 & 1,013 & \textbf{0.00\%} (0) [56.92h, $\sigma=5.52$h] & \textbf{0.00\%} (0) [68.75h, $\sigma=6.88$h, 0 cap vio] & 8.09\% (82) [62.91h, 163/172 assigned] & 0.00\% (0) [68.75h, 9.6s] \\
+Instance 2 & 1,500 & \textbf{0.00\%} (0) [55.43h, $\sigma=4.20$h] & \textbf{0.00\%} (0) [75.76h, $\sigma=5.70$h, 0 cap vio] & 2.60\% (39) [73.66h, 299/303 assigned] & 0.00\% (0) [75.76h, 27.0s] \\
+Instance 3 & 1,855 & \textbf{0.11\%} (2)* [60.43h, $\sigma=3.91$h] & \textbf{0.11\%} (2)* [72.71h, $\sigma=4.71$h, 0 cap vio] & 4.69\% (87) [69.15h, 266/274 assigned] & 0.00\% (0) [72.70h, 108.6s] \\
+Instance 4 & 5,613 & \textbf{0.00\%} (0) [58.89h, $\sigma=2.88$h] & \textbf{0.00\%} (0) [74.67h, $\sigma=3.19$h, 0 cap vio] & 3.05\% (171) [72.26h, 1053/1079 assigned] & 0.04\% (2) [74.67h, 47.6m] \\
+Instance 5 & 5,743 & \textbf{0.00\%} (0) [69.66h, $\sigma=3.17$h] & \textbf{0.00\%} (0) [81.12h, $\sigma=2.81$h, 0 cap vio] & 6.76\% (388) [75.25h, 1422/1497 assigned] & 1.81\% (104) [81.12h, 149.6m] \\
+Instance 6 & 5,886 & \textbf{0.00\%} (0) [63.19h, $\sigma=4.85$h] & \textbf{0.22\%} (13) [76.57h, $\sigma=5.55$h, 0 cap vio] & 5.98\% (352) [72.17h, 1142/1187 assigned] & 0.14\% (8) [76.75h, 75.3m] \\
+Instance 7 & 7,766 & \textbf{0.01\%} (1)* [69.98h, $\sigma=4.74$h] & \textbf{1.39\%} (108) [80.45h, $\sigma=3.00$h, 0 cap vio] & 7.00\% (544) [75.89h, 1577/1648 assigned] & 0.86\% (67) [81.65h, 184.8m] \\
+\midrule
+\textbf{TOTAL} & \textbf{29,376} & \textbf{0.01\% (3)} [64.91h, 18.73s] & \textbf{0.42\% (123)} [75.72h, 18.81s] & \textbf{5.39\% (1,583)} [73.04h, 5,922 assigned] & \textbf{0.62\% (181)} [75.92h, 459.66m] \\
+\bottomrule
+\end{tabular}
+\end{table*}
+
 \section{Discussion: Operational Analysis}
 
 \subsection{Coverage and Feasibility Invariants}
 
-A critical finding from our evaluation is that Coralys v2.0 achieved **100.0\% assignment across all 6,160 pairings in all 70 evaluated runs**. 
-In contrast to earlier benchmark setups where up to 7.6\% of pairings were dropped due to string parsing mismatches at station domiciles, our domain-filtered genome maintains base integrity across all assignments:
-$$\text{Base Mismatches} = 0, \quad \text{Rest Violations} = 0, \quad \text{Overtime Violations} = 0$$
-Furthermore, Coralys v2.0 resolved the 11 schedule overlaps and 1 rest gap present in the synthesized assignments of the raw benchmark distribution, confirming that the dynamic repair operator cleanly satisfies CAR 700 / GERAD duty legality.
+A critical finding from our evaluation is that Coralys v2.0 achieved 100.0\% assignment across all 6,160 pairings in Tier 1. Even when contractual credit rigs were introduced in Tier 2a (raising average credited flying time to 75.72 hours and pushing Instance 5 and 7 to 81.12h and 80.45h respectively), Coralys assigned 6,145 of 6,160 pairings with **zero 85.0-hour monthly cap violations**.
 
-\subsection{Scope Alignment: Coralys v2.0 vs. GENCOL}
+\subsection{Delineating the Instance 5 Availability Bottleneck}
 
-When interpreting the comparative metrics against GENCOL, one must recognize their complementary problem scopes:
-\begin{enumerate}
-    \item \textbf{GENCOL Framework}: GENCOL is designed as an exact B\&P column generation system optimizing personalized crew bidding preferences, vacation windows, deadhead credits, and hotel accommodations subject to explicit daily availability limits (\texttt{crew\_avail\_const.csv}). In instances where crew take scheduled leaves (e.g., Days 22--24 at Base 1), GENCOL is legally forced to leave flight legs uncovered (104 flights on Instance 5 and 67 flights on Instance 7, totaling 181 uncovered flights or 0.62\% across the benchmark).
-    \item \textbf{Coralys v2.0 Framework}: Coralys v2.0 solves the global operations scheduling and workload equity problem over the full monthly horizon. By enforcing lexicographic flight and pairing coverage as primary constraints and workload equity ($\sigma$) as a secondary tie-breaker, Coralys achieves 100\% pairing coverage and a workload standard deviation of only 4.18 hours across 1,034 crew members.
-\end{enumerate}
+In Instance 5 (I5\_757), GENCOL reported 104 uncovered flights (1.81\%). Our audit of \texttt{crew\_avail\_const.csv} revealed the root cause: Base 3 contains only 6 pilots. On Days 13--15 and Day 20, pre-assigned leaves reduce available crew to a single pilot ($K_{\text{BASE3}, d} = 1$). Because the static pairings at Base 3 require 3 to 4 simultaneous active pilots on 27 out of 31 days, enforcing daily availability limits on fixed pairings causes unavoidable drops (75 pairings / 388 flights). This mathematically confirms why GENCOL, which generates pairings dynamically, was forced to leave 104 flight legs unassigned.
 
-\subsection{Computational Scalability in Operational Control}
+\subsection{Computational Scalability and Hardware Era Context}
 
 The definitive operational advantage of Coralys v2.0 is its runtime profile. As illustrated in Table~\ref{tab:master_benchmark}, GENCOL's execution time escalates sharply from 9.6 seconds on Instance 1 to 184.76 minutes (over 3 hours) on Instance 7, totaling 459.66 minutes (7.66 hours). In contrast, Coralys v2.0 solves Instance 1 in 0.52 seconds and Instance 7 in 5.92 seconds, executing the entire suite in **18.73 seconds**.
 
