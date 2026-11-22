@@ -23,6 +23,7 @@ use coralys_airline::domain::flight::{
 
 use chrono::{DateTime, Duration, Utc};
 use rand::prelude::*;
+use rayon::prelude::*;
 use std::collections::{HashMap, HashSet};
 use std::path::Path;
 
@@ -1127,3 +1128,374 @@ fn gerad_coralys_v2_benchmark_run() {
         );
     }
 }
+
+// ── Statistical Helper Functions (Wilcoxon Signed-Rank Test) ─────────────────
+
+fn normal_cdf(z: f64) -> f64 {
+    // Abramowitz & Stegun approximation (formula 26.2.17)
+    let t = 1.0 / (1.0 + 0.2316419 * z.abs());
+    let d = 0.3989422804014327 * (-z * z / 2.0).exp();
+    let poly = d * t * (0.319381530 + t * (-0.356563782 + t * (1.781477937 + t * (-1.821255978 + t * 1.330274429))));
+    if z >= 0.0 {
+        1.0 - poly
+    } else {
+        poly
+    }
+}
+
+fn wilcoxon_signed_rank_test(differences: &[f64]) -> (f64, f64, usize) {
+    let non_zero: Vec<f64> = differences.iter().copied().filter(|&d| d.abs() > 1e-9).collect();
+    let n = non_zero.len();
+    if n == 0 {
+        return (0.0, 1.0, 0);
+    }
+
+    let mut indexed: Vec<(usize, f64, f64)> = non_zero
+        .iter()
+        .enumerate()
+        .map(|(i, &d)| (i, d.abs(), d))
+        .collect();
+    indexed.sort_by(|a, b| a.1.partial_cmp(&b.1).unwrap_or(std::cmp::Ordering::Equal));
+
+    let mut ranks = vec![0.0_f64; n];
+    let mut i = 0;
+    while i < n {
+        let mut j = i;
+        while j < n && (indexed[j].1 - indexed[i].1).abs() < 1e-9 {
+            j += 1;
+        }
+        let avg_rank = (i + 1 + j) as f64 / 2.0;
+        for k in i..j {
+            ranks[indexed[k].0] = avg_rank;
+        }
+        i = j;
+    }
+
+    let mut w_plus = 0.0_f64;
+    let mut w_minus = 0.0_f64;
+    for (idx, &d) in non_zero.iter().enumerate() {
+        if d > 0.0 {
+            w_plus += ranks[idx];
+        } else {
+            w_minus += ranks[idx];
+        }
+    }
+
+    let w = w_plus.min(w_minus);
+
+    if n <= 15 {
+        // Exact p-value when all differences have the same sign (W- = 0)
+        if w_minus == 0.0 || w_plus == 0.0 {
+            let p = 2.0 / (2.0_f64.powi(n as i32));
+            return (w, p, n);
+        }
+    }
+
+    let mean_w = (n * (n + 1)) as f64 / 4.0;
+    let std_w = (((n * (n + 1) * (2 * n + 1)) as f64) / 24.0).sqrt();
+    let z = if std_w > 0.0 {
+        (w_plus - mean_w).abs() / std_w
+    } else {
+        0.0
+    };
+    let p_value = 2.0 * (1.0 - normal_cdf(z));
+    (w, p_value, n)
+}
+
+#[derive(Debug, Clone, serde::Serialize)]
+struct SeedRunResult {
+    seed: u64,
+    score: f64,
+    best_gen: usize,
+    solve_ms: u128,
+    uncovered_flights: usize,
+    uncovered_flights_pct: f64,
+    assigned_pairings: usize,
+    total_pairings: usize,
+    mean_hours: f64,
+    min_hours: f64,
+    max_hours: f64,
+    std_hours: f64,
+    base_mismatches: usize,
+    rest_violations: usize,
+    overtime_violations: usize,
+}
+
+#[derive(Debug, Clone, serde::Serialize)]
+struct InstanceMultiSeedSummary {
+    instance: String,
+    n_crew: usize,
+    n_pairings: usize,
+    n_flights: usize,
+    greedy_score: f64,
+    greedy_std: f64,
+    greedy_ms: u128,
+    mean_score: f64,
+    std_score: f64,
+    min_score: f64,
+    max_score: f64,
+    mean_ea_std: f64,
+    min_ea_std: f64,
+    max_ea_std: f64,
+    mean_solve_ms: f64,
+    std_reduction_pct: f64,
+    wilcoxon_w: f64,
+    wilcoxon_p: f64,
+    seed_results: Vec<SeedRunResult>,
+}
+
+#[test]
+fn gerad_coralys_v2_multiseed_run() {
+    let workspace_root = {
+        let manifest = std::env::var("CARGO_MANIFEST_DIR").unwrap_or_else(|_| ".".to_string());
+        std::path::PathBuf::from(&manifest)
+            .parent()
+            .unwrap()
+            .parent()
+            .unwrap()
+            .to_path_buf()
+    };
+
+    let benchmark_base = workspace_root.join("benchmarks").join("gerad-g2014-22");
+
+    println!();
+    println!("====================================================================================================");
+    println!("GERAD G2014-22 — Coralys v2.0 Multi-Seed Statistical Validation (Seeds 1..10, Full 6,160 Pairings)");
+    println!("====================================================================================================");
+    println!("Rigorous scientific validation under 10 independent random seeds per benchmark instance.");
+    println!("Comparing Coralys v2.0 vs Greedy heuristic with Wilcoxon signed-rank significance testing.");
+    println!();
+
+    let instances = [
+        ("Instance1", "instance1"),
+        ("Instance2", "instance2"),
+        ("Instance3", "instance3"),
+        ("Instance4", "instance4"),
+        ("Instance5", "instance5"),
+        ("Instance6", "instance6"),
+        ("Instance7", "instance7"),
+    ];
+
+    let seeds: Vec<u64> = (1..=10).collect();
+    let mut all_summaries: Vec<InstanceMultiSeedSummary> = Vec::new();
+    let mut global_differences_score: Vec<f64> = Vec::new();
+    let mut global_differences_std: Vec<f64> = Vec::new();
+
+    for (label, dir) in &instances {
+        let instance_dir = benchmark_base.join(dir);
+        let flights_path = instance_dir.join("flights.csv");
+        let crew_path = instance_dir.join("crew.csv");
+
+        if !flights_path.exists() || !crew_path.exists() {
+            println!("{:<12} SKIP (files not found)", label);
+            continue;
+        }
+
+        let flights_map = load_flights(&flights_path);
+        let crew = load_crew(&crew_path);
+        let (pairing_data, total_csv_pairings) =
+            load_benchmark_pairing_data(&instance_dir, &flights_map);
+
+        let n_pairings = pairing_data.len();
+        let n_crew = crew.len();
+        let n_rot = n_crew.min(n_pairings);
+        let total_flights = flights_map.len();
+        let valid_rotations = build_valid_rotations(&pairing_data, &crew, n_rot);
+
+        // Run deterministic greedy baseline
+        let (greedy_score, greedy_seed, greedy_ms) =
+            run_greedy_baseline(&pairing_data, &crew, &valid_rotations, n_rot, total_flights);
+        let greedy_kpi = compute_operational_kpis(
+            &greedy_seed,
+            &pairing_data,
+            &crew,
+            &flights_map,
+            total_csv_pairings,
+        );
+
+        // Parallel execution of seeds 1..10
+        let seed_results: Vec<SeedRunResult> = seeds
+            .par_iter()
+            .map(|&seed| {
+                let mut rng = StdRng::seed_from_u64(seed);
+                let (ea_score, ea_genome, ea_gen, ea_ms) = run_evolutionary(
+                    &pairing_data,
+                    &crew,
+                    &valid_rotations,
+                    n_rot,
+                    total_flights,
+                    &greedy_seed,
+                    &mut rng,
+                );
+                let ea_kpi = compute_operational_kpis(
+                    &ea_genome,
+                    &pairing_data,
+                    &crew,
+                    &flights_map,
+                    total_csv_pairings,
+                );
+
+                SeedRunResult {
+                    seed,
+                    score: ea_score,
+                    best_gen: ea_gen,
+                    solve_ms: ea_ms,
+                    uncovered_flights: ea_kpi.uncovered_flights,
+                    uncovered_flights_pct: ea_kpi.uncovered_flights_pct,
+                    assigned_pairings: ea_kpi.assigned_pairings,
+                    total_pairings: total_csv_pairings,
+                    mean_hours: ea_kpi.mean_credited_hours,
+                    min_hours: ea_kpi.min_credited_hours,
+                    max_hours: ea_kpi.max_credited_hours,
+                    std_hours: ea_kpi.std_credited_hours,
+                    base_mismatches: ea_kpi.base_mismatches,
+                    rest_violations: ea_kpi.rest_violations,
+                    overtime_violations: ea_kpi.overtime_violations,
+                }
+            })
+            .collect();
+
+        // Calculate summary statistics
+        let scores: Vec<f64> = seed_results.iter().map(|r| r.score).collect();
+        let mean_score = scores.iter().sum::<f64>() / scores.len() as f64;
+        let std_score = (scores.iter().map(|s| (s - mean_score).powi(2)).sum::<f64>()
+            / scores.len() as f64)
+            .sqrt();
+        let min_score = scores.iter().cloned().fold(f64::INFINITY, f64::min);
+        let max_score = scores.iter().cloned().fold(0.0_f64, f64::max);
+
+        let ea_stds: Vec<f64> = seed_results.iter().map(|r| r.std_hours).collect();
+        let mean_ea_std = ea_stds.iter().sum::<f64>() / ea_stds.len() as f64;
+        let min_ea_std = ea_stds.iter().cloned().fold(f64::INFINITY, f64::min);
+        let max_ea_std = ea_stds.iter().cloned().fold(0.0_f64, f64::max);
+
+        let times: Vec<f64> = seed_results.iter().map(|r| r.solve_ms as f64).collect();
+        let mean_solve_ms = times.iter().sum::<f64>() / times.len() as f64;
+
+        let std_reduction_pct = (greedy_kpi.std_credited_hours - mean_ea_std)
+            / greedy_kpi.std_credited_hours
+            * 100.0;
+
+        // Instance-level paired differences against Greedy
+        let diffs_score: Vec<f64> = scores.iter().map(|&s| greedy_score - s).collect();
+        let (w_score, p_score, _) = wilcoxon_signed_rank_test(&diffs_score);
+
+        for r in &seed_results {
+            global_differences_score.push(greedy_score - r.score);
+            global_differences_std.push(greedy_kpi.std_credited_hours - r.std_hours);
+        }
+
+        all_summaries.push(InstanceMultiSeedSummary {
+            instance: label.to_string(),
+            n_crew,
+            n_pairings,
+            n_flights: total_flights,
+            greedy_score,
+            greedy_std: greedy_kpi.std_credited_hours,
+            greedy_ms,
+            mean_score,
+            std_score,
+            min_score,
+            max_score,
+            mean_ea_std,
+            min_ea_std,
+            max_ea_std,
+            mean_solve_ms,
+            std_reduction_pct,
+            wilcoxon_w: w_score,
+            wilcoxon_p: p_score,
+            seed_results: seed_results.clone(),
+        });
+
+        // Verification assertions
+        for r in &seed_results {
+            assert_eq!(
+                r.assigned_pairings, total_csv_pairings,
+                "{label} seed {}: 100% pairing assignment invariant violated",
+                r.seed
+            );
+            assert_eq!(
+                r.base_mismatches, 0,
+                "{label} seed {}: Base mismatch invariant violated",
+                r.seed
+            );
+            assert_eq!(
+                r.rest_violations, 0,
+                "{label} seed {}: Rest violation (<10h) invariant violated",
+                r.seed
+            );
+            assert_eq!(
+                r.overtime_violations, 0,
+                "{label} seed {}: Legal cap (>85h) invariant violated",
+                r.seed
+            );
+        }
+
+        println!(
+            "[{label}] ({} Pairings, {} Crew, {} Flights):",
+            n_pairings, n_crew, total_flights
+        );
+        println!(
+            "  • Greedy:     Score={:.4} | StdDev={:.2}h | SolveTime={} ms",
+            greedy_score, greedy_kpi.std_credited_hours, greedy_ms
+        );
+        println!(
+            "  • Coralys v2: Score={:.4} ± {:.4} (min={:.4}, max={:.4})",
+            mean_score, std_score, min_score, max_score
+        );
+        println!(
+            "  • Workload σ: {:.2}h ± {:.2}h (min={:.2}h, max={:.2}h) -> {:+.2}% equity gain vs Greedy",
+            mean_ea_std,
+            (ea_stds.iter().map(|s| (s - mean_ea_std).powi(2)).sum::<f64>() / ea_stds.len() as f64).sqrt(),
+            min_ea_std,
+            max_ea_std,
+            std_reduction_pct
+        );
+        println!(
+            "  • Solve Time: {:.1} ms (range: {:.0} - {:.0} ms)",
+            mean_solve_ms,
+            times.iter().cloned().fold(f64::INFINITY, f64::min),
+            times.iter().cloned().fold(0.0_f64, f64::max)
+        );
+        println!(
+            "  • Wilcoxon Signed-Rank Test vs Greedy: W={:.1}, p-value={:.6e} ({})",
+            w_score,
+            p_score,
+            if p_score < 0.01 {
+                "p < 0.01 *** (Extremely Significant)"
+            } else if p_score < 0.05 {
+                "p < 0.05 * (Statistically Significant)"
+            } else {
+                "Not Significant"
+            }
+        );
+        println!("  • Invariants across all 10 seeds: 100% pairings assigned, 0 base mismatches, 0 rest violations, 0 cap violations.");
+        println!();
+    }
+
+    // Global Wilcoxon Test across all 70 comparisons
+    let (global_w, global_p, global_n) = wilcoxon_signed_rank_test(&global_differences_score);
+    let (std_w, std_p, _) = wilcoxon_signed_rank_test(&global_differences_std);
+
+    println!("====================================================================================================");
+    println!("GLOBAL MULTI-SEED STATISTICAL SUMMARY (N = {} paired evaluations across 7 instances x 10 seeds)", global_n);
+    println!("====================================================================================================");
+    println!(
+        "• Objective Value: Wilcoxon W={:.1}, p={:.6e} (Coralys v2 strictly dominates Greedy on {}/{} runs)",
+        global_w, global_p, global_differences_score.iter().filter(|&&d| d > 0.0).count(), global_n
+    );
+    println!(
+        "• Workload Equity (StdDev σ): Wilcoxon W={:.1}, p={:.6e} (Coralys v2 achieves lower σ on {}/{} runs)",
+        std_w, std_p, global_differences_std.iter().filter(|&&d| d > 0.0).count(), global_n
+    );
+    println!("====================================================================================================");
+
+    // Save JSON report for publication artifact
+    let out_dir = workspace_root.join("target");
+    let out_path = out_dir.join("gerad_coralys_v2_multiseed_report.json");
+    if let Ok(json_str) = serde_json::to_string_pretty(&all_summaries) {
+        let _ = std::fs::write(&out_path, json_str);
+        println!("Exported multi-seed benchmark report to: {}", out_path.display());
+    }
+}
+

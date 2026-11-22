@@ -656,6 +656,7 @@ dependencies = [
  "chrono",
  "csv",
  "rand 0.8.7",
+ "rayon",
  "serde",
  "serde_json",
  "thiserror 1.0.69",

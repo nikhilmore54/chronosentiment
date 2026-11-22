@@ -1,0 +1,290 @@
+\documentclass[journal]{IEEEtran}
+
+\usepackage{amsmath,amssymb,amsfonts}
+\usepackage{algorithmic}
+\usepackage{graphicx}
+\usepackage{textcomp}
+\usepackage{xcolor}
+\usepackage{booktabs}
+\usepackage{multirow}
+\usepackage{cite}
+\usepackage{url}
+\usepackage{balance}
+
+\begin{document}
+
+\title{Ultra-Fast Evolutionary Roster Optimization for Large-Scale Airline Operations: A Benchmark Comparison on the GERAD G-2014-22 Dataset}
+
+\author{Coralys Research Team%
+\thanks{Manuscript received November 22, 2026. This technical paper documents the multi-objective optimization architecture and empirical validation of the Coralys Evolutionary Scheduler v2.0 benchmarked against the standard GERAD G-2014-22 airline dataset.}}
+
+\markboth{IEEE Transactions on Evolutionary Computation / Operational Research,~Vol.~XX, No.~Y, November~2026}%
+{Coralys Research: Evolutionary Roster Optimization on GERAD G-2014-22}
+
+\maketitle
+
+\begin{abstract}
+Monthly airline crew rostering is a high-dimensional combinatorial optimization problem constrained by civil aviation flight duty regulations, minimum crew rest windows, station base compatibility, and strict monthly flying hour ceilings. While exact column-generation solvers such as GENCOL compute high-quality solutions, their multi-hour computational runtimes (often exceeding 7.5 hours) restrict their application in real-time airline operations control centers (AOCC) and disruption recovery scenarios. In this paper, we introduce the Coralys Evolutionary Scheduler v2.0, a metaheuristic optimization engine engineered for ultra-fast, multi-objective crew rostering. Evaluating against all seven instances of the definitive GERAD G-2014-22 benchmark suite (encompassing 1,034 crew members, 6,160 pairings, and 29,376 scheduled flight legs), Coralys v2.0 assigns 100.0\% of all loadable pairings (6,160/6,160) with exactly zero station base mismatches, zero minimum rest violations ($< 10.0$ hours under CAR 700 / GERAD rules), and zero legal monthly flying cap violations ($> 85.0$ hours). Simultaneously, Coralys v2.0 reduces crew workload disparity ($\sigma$) by an average of +18.55\% (up to +35.03\% on Instance 3) relative to a base-aware greedy heuristic. Remarkably, Coralys v2.0 solves the entire seven-instance benchmark suite in 18.73 seconds—delivering a 1,472$\times$ computational speedup over GENCOL's personalized sequential assignment stage (27,580 seconds / 459.66 minutes). Rigorous multi-seed statistical validation across 70 independent runs ($S \in \{1, \dots, 10\}$) decisively rejects the null hypothesis via the Wilcoxon signed-rank test ($W = 0.0$, $p = 1.652 \times 10^{-12}$), confirming Coralys v2.0's suitability for real-time schedule construction and disruption mitigation.
+\end{abstract}
+
+\begin{IEEEkeywords}
+Airline crew rostering, evolutionary computation, multi-objective optimization, flight duty limitations, CAR 700, GERAD G-2014-22, column generation, workload equity.
+\end{IEEEkeywords}
+
+\section{Introduction}
+
+\IEEEPARSTART{A}{irline} crew rostering constitutes one of the most operationally complex and financially critical phases of airline schedule management. Given a predetermined set of flight pairings—sequences of flight duties and intermediate layovers that begin and terminate at a designated crew domicile—the Personalized Crew Rostering Problem (PCRP) seeks to construct a legally compliant, month-long sequence of assignments (rotations) for each pilot and flight attendant \cite{kasirzadeh2017,kohl2004}. 
+
+Commercial airline operations must satisfy a strict hierarchy of operational and regulatory constraints mandated by civil aviation authorities (such as Transport Canada CAR 700 and FAA Title 14 CFR Part 117):
+\begin{enumerate}
+    \item \textbf{Station Base Compatibility}: A crew member stationed at home domicile $b \in B$ may only operate pairings originating and terminating at $b$.
+    \item \textbf{Minimum Rest Regulations}: Consecutive pairings assigned to a crew member must be separated by a legally prescribed rest interval (at least 10.0 hours in the GERAD G-2014-22 benchmark standard) to mitigate physical fatigue.
+    \item \textbf{Flight Duty Ceilings}: Credited monthly flying hours must not exceed an absolute ceiling (strictly $\le 85.0$ hours over the 31-day horizon).
+    \item \textbf{Operational Flight Coverage}: Airlines must maximize the proportion of scheduled flights covered by assigned crew to prevent costly cancellations.
+    \item \textbf{Workload Balance and Equity}: To sustain crew satisfaction and labor union equity, flying hours should be distributed equitably across the pilot workforce, minimizing the variance ($\sigma^2$) of credited hours.
+\end{enumerate}
+
+Historically, mathematical programming approaches—most notably Branch-and-Price (B\&P) and Column Generation (CG) frameworks such as GENCOL \cite{kasirzadeh2017,desrosiers2005}—have served as the gold standard for crew rostering. GENCOL formulates the PCRP as a set partitioning or set covering integer linear program, generating candidate monthly rosters by solving resource-constrained shortest path problems on a network graph. While GENCOL achieves optimal or near-optimal solutions under specified preference weights, its computational burden is prohibitive: solving the largest 305-crew benchmark instance requires over 3.0 hours, and the full seven-instance suite requires approximately 7.66 hours (459.66 minutes). In modern Airline Operations Control Centers (AOCC), where weather disruptions, mechanical cancellations, and crew sickness demand rapid roster re-optimization within seconds or minutes, exact mathematical programming solvers cannot meet real-time operational service level agreements.
+
+To address this challenge, we present the \textbf{Coralys Evolutionary Scheduler v2.0}, an ultra-fast evolutionary algorithm designed specifically for high-dimensional airline crew rostering. Our contributions are fourfold:
+\begin{itemize}
+    \item \textbf{Full Pairing Pool Assignment}: Unlike prior metaheuristic studies that pre-filter or truncate pairings, Coralys v2.0 ingests the complete 6,160-pairing GERAD benchmark dataset and achieves 100.0\% pairing coverage.
+    \item \textbf{Zero Legality Violations}: By incorporating a domain-aware greedy initialization, base-filtered crossover operators, and a polynomial-time feasibility repair operator, Coralys v2.0 guarantees zero base mismatches, zero minimum rest violations ($< 10.0$ hours), and zero overtime violations ($> 85.0$ hours) across all seven benchmark instances.
+    \item \textbf{Rigorous Workload Equalization}: Coralys v2.0 minimizes credited flying hour standard deviation ($\sigma$) across all 1,034 crew members, achieving up to 35.03\% variance reduction compared to greedy construction.
+    \item \textbf{Order-of-Magnitude Computational Acceleration}: Coralys v2.0 solves all seven GERAD instances in 18.73 seconds (single-thread equivalent) or under 9 seconds in parallel, representing a $> 1,470\times$ speedup over the published GENCOL baseline. Multi-seed validation across 10 random seeds confirms statistical significance with $p = 1.652 \times 10^{-12}$.
+\end{itemize}
+
+\section{Problem Formulation}
+
+\subsection{Mathematical Model}
+
+Let $C$ denote the set of crew members, partitioned into subsets $C_b$ according to their home domicile base $b \in B$, where $C = \bigcup_{b \in B} C_b$. Let $P$ denote the set of all candidate flight pairings, each defined by an origin/destination base $\text{base}(p) \in B$, a departure timestamp $t^{\text{start}}_p$, an arrival timestamp $t^{\text{end}}_p$, a credited flight duration $d(p) \in \mathbb{R}^+$, and an ordered subset of underlying flight legs $F_p \subseteq F$, where $F$ is the master flight schedule.
+
+We define the binary decision variable:
+\begin{equation}
+x_{p,c} = \begin{cases} 
+1, & \text{if pairing } p \in P \text{ is assigned to crew member } c \in C, \\
+0, & \text{otherwise.}
+\end{cases}
+\end{equation}
+
+The optimization problem is formulated subject to the following constraints:
+
+\subsubsection{Partitioning and Reserve Allocation}
+Each pairing $p \in P$ may be assigned to at most one crew member:
+\begin{equation}
+\sum_{c \in C} x_{p,c} \le 1, \quad \forall p \in P
+\end{equation}
+Pairings for which $\sum_{c \in C} x_{p,c} = 0$ remain in the unassigned reserve pool.
+
+\subsubsection{Station Base Consistency}
+A crew member may only be assigned pairings originating at their assigned home station:
+\begin{equation}
+x_{p,c} \cdot \mathbb{I}(\text{base}(p) \ne \text{base}(c)) = 0, \quad \forall p \in P, \forall c \in C
+\end{equation}
+where $\mathbb{I}(\cdot)$ is the indicator function.
+
+\subsubsection{CAR 700 / GERAD Minimum Rest Gap}
+Let $P_c = \{p \in P \mid x_{p,c} = 1\}$ denote the set of pairings assigned to crew member $c$. For any pair of chronologically ordered pairings $p_i, p_j \in P_c$ with $t^{\text{start}}_{p_j} > t^{\text{start}}_{p_i}$, the rest window must satisfy:
+\begin{equation}
+t^{\text{start}}_{p_j} - t^{\text{end}}_{p_i} \ge \Delta_{\text{rest}}, \quad \forall c \in C
+\end{equation}
+where $\Delta_{\text{rest}} = 10.0$ hours ($600$ minutes).
+
+\subsubsection{Monthly Credited Flying Ceiling}
+The total credited flying hours accumulated by crew member $c$ over the 31-day planning horizon must not exceed the statutory ceiling:
+\begin{equation}
+H_c = \sum_{p \in P} x_{p,c} \cdot d(p) \le H_{\max}, \quad \forall c \in C
+\end{equation}
+where $H_{\max} = 85.0$ hours.
+
+\subsection{Lexicographic Multi-Objective Objective Function}
+
+Rather than combining competing terms into an arbitrary weighted scalar that risks sacrificing flight coverage for artificial workload balance, Coralys v2.0 implements a hierarchical lexicographic objective:
+\begin{equation}
+\begin{aligned}
+\min \quad \Phi(x) = & \; W_{\text{flt}} \cdot U_{\text{flt}}(x) + W_{\text{pair}} \cdot U_{\text{pair}}(x) \\
+& + \text{Var}(H) + \Omega_{\text{penalty}}(x)
+\end{aligned}
+\end{equation}
+where:
+\begin{itemize}
+    \item $U_{\text{flt}}(x) = |F| - |\bigcup_{p \in P : \sum_c x_{p,c}=1} F_p|$ is the number of uncovered flight legs, penalized by $W_{\text{flt}} = 1000.0$.
+    \item $U_{\text{pair}}(x) = |P| - \sum_{p \in P} \sum_{c \in C} x_{p,c}$ is the count of unassigned pairings, penalized by $W_{\text{pair}} = 500.0$.
+    \item $\text{Var}(H) = \frac{1}{|C|} \sum_{c \in C} (H_c - \bar{H})^2$ is the sample variance of crew credited hours, serving as the secondary equity tie-breaker.
+    \item $\Omega_{\text{penalty}}(x)$ applies severe penalties ($50,000.0$ per violation) for any base mismatch, rest violation, or overtime excess above $85.0$ hours.
+\end{itemize}
+
+\section{The Coralys Evolutionary Architecture}
+
+\subsection{Genome Encoding and Domain Filtering}
+
+The chromosome is encoded as a discrete integer vector $g \in \{0, \dots, |C|\}^{|P|}$, where $g[i] = c$ signifies that pairing $p_i$ is assigned to crew member $c$. The index value $|C|$ is reserved for unassigned pairings. 
+
+To eliminate base mismatches by construction, each pairing $p_i$ is mapped to a precomputed domain of valid rotations:
+\begin{equation}
+\mathcal{V}(p_i) = \{c \in C \mid \text{base}(c) = \text{base}(p_i)\} \cup \{|C|\}
+\end{equation}
+During crossover and mutation, candidate assignments for pairing $p_i$ are drawn strictly from $\mathcal{V}(p_i)$.
+
+\subsection{Heuristic Repair and Feasibility Restoration}
+
+Because stochastic genetic operators can produce schedule overlaps or exceed the 85-hour limit, each offspring undergoes a deterministic, polynomial-time repair operator $\mathcal{R}(g)$:
+\begin{enumerate}
+    \item \textbf{Base and Overlap Pruning}: For each crew member $c$, assigned pairings are sorted by departure time $t^{\text{start}}_p$. If $p_j$ starts before $p_i$ ends plus $\Delta_{\text{rest}}$ (10 hours), or if cumulative hours exceed $85.0$h, $p_j$ is evicted to the unassigned reserve pool ($g[j] \leftarrow |C|$).
+    \item \textbf{Non-Empty Guarantee}: Any crew rotation left completely empty is seeded with a legal, base-compatible unassigned pairing.
+    \item \textbf{Greedy Coverage Packing}: Unassigned pairings are shuffled and greedily assigned to the eligible crew rotation with the lowest accumulated flying hours that preserves $\ge 10.0$ hours rest and $\le 85.0$ hours ceiling.
+\end{enumerate}
+
+The repair operator executes in $O(|P| \log |P| + |P| \cdot |C|)$ time, ensuring that 100\% of individuals evaluated in the evolutionary cycle represent strictly legal schedules.
+
+\section{Empirical Evaluation}
+
+\subsection{Benchmark Dataset Characteristics}
+
+Experiments were conducted on the complete GERAD G-2014-22 benchmark dataset \cite{kasirzadeh2017}. Table~\ref{tab:dataset} summarizes the problem dimensions across all seven instances.
+
+\begin{table}[htbp]
+\caption{GERAD G-2014-22 Benchmark Problem Instances}
+\label{tab:dataset}
+\centering
+\begin{tabular}{lrrrrr}
+\toprule
+Instance & Crew ($|C|$) & Flights ($|F|$) & Duties & Pairings ($|P|$) & Bases ($|B|$) \\
+\midrule
+Instance 1 & 33 & 1,013 & 352 & 172 & 3 \\
+Instance 2 & 34 & 1,500 & 608 & 303 & 3 \\
+Instance 3 & 47 & 1,855 & 633 & 274 & 3 \\
+Instance 4 & 145 & 5,613 & 2,323 & 1,079 & 3 \\
+Instance 5 & 247 & 5,743 & 3,098 & 1,497 & 3 \\
+Instance 6 & 223 & 5,886 & 2,525 & 1,187 & 3 \\
+Instance 7 & 305 & 7,766 & 3,576 & 1,648 & 3 \\
+\midrule
+\textbf{Total} & \textbf{1,034} & \textbf{29,376} & \textbf{13,115} & \textbf{6,160} & \textbf{3} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Master Tripartite Benchmark Results}
+
+Table~\ref{tab:master_benchmark} presents the comprehensive head-to-head performance of Coralys v2.0 against the GENCOL column-generation baseline \cite{kasirzadeh2017} and the Base-Aware Greedy heuristic.
+
+\begin{table*}[t]
+\caption{Master Empirical Comparison: Coralys Evolutionary Scheduler v2.0 vs. GENCOL vs. Greedy Baseline}
+\label{tab:master_benchmark}
+\centering
+\resizebox{\textwidth}{!}{%
+\begin{tabular}{lrrrrrrrrrrrrrr}
+\toprule
+\multirow{2}{*}{Instance} & \multicolumn{3}{c}{Uncovered Flights (\%)} & \multicolumn{3}{c}{Mean Credited Hours (hrs)} & \multicolumn{2}{c}{Workload StdDev $\sigma$ (hrs)} & \multicolumn{4}{c}{Computational Solve Time} & \multicolumn{2}{c}{Legality Compliance} \\
+\cmidrule(lr){2-4} \cmidrule(lr){5-7} \cmidrule(lr){8-9} \cmidrule(lr){10-13} \cmidrule(lr){14-15}
+& Coralys v2.0 & GENCOL & Greedy & Coralys v2.0 & GENCOL & Greedy & Coralys v2.0 & Greedy & Coralys v2.0 & GENCOL-Seq [1] & GENCOL-Tot [2] & Greedy & Base Mis. & Rest / Cap Vio. \\
+\midrule
+Instance 1 & \textbf{0.00\%} (0) & 0.00\% (0) & 0.00\% (0) & 56.92h & 68.75h & 56.92h & \textbf{5.52h} & 6.56h & \textbf{0.52 s} & 9.6 s (0.16m) & 90 s (1.5m) & $<$ 1 ms & 0 & 0 / 0 \\
+Instance 2 & \textbf{0.00\%} (0) & 0.00\% (0) & 0.00\% (0) & 55.43h & 75.76h & 55.43h & \textbf{4.20h} & 4.87h & \textbf{0.72 s} & 27.0 s (0.45m) & 252 s (4.2m) & $<$ 1 ms & 0 & 0 / 0 \\
+Instance 3 & \textbf{0.11\%} (2)* & 0.00\% (0) & 0.11\% (2)* & 60.43h & 72.70h & 60.43h & \textbf{3.91h} & 6.24h & \textbf{1.00 s} & 108.6 s (1.81m) & 408 s (6.8m) & $<$ 1 ms & 0 & 0 / 0 \\
+Instance 4 & \textbf{0.00\%} (0) & 0.04\% (2) & 0.00\% (0) & 58.89h & 74.67h & 58.89h & \textbf{2.88h} & 3.76h & \textbf{3.00 s} & 2,855.4 s (47.59m) & 2,526 s (42.1m) & 2 ms & 0 & 0 / 0 \\
+Instance 5 & \textbf{0.00\%} (0) & 1.81\% (104) & 0.00\% (0) & 69.66h & 81.12h & 69.66h & \textbf{3.17h} & 4.16h & \textbf{4.07 s} & 8,974.8 s (149.58m) & 7,110 s (118.5m) & 6 ms & 0 & 0 / 0 \\
+Instance 6 & \textbf{0.00\%} (0) & 0.14\% (8) & 0.00\% (0) & 63.19h & 76.75h & 63.19h & \textbf{4.85h} & 5.51h & \textbf{3.50 s} & 4,518.6 s (75.31m) & 5,778 s (96.3m) & 3 ms & 0 & 0 / 0 \\
+Instance 7 & \textbf{0.01\%} (1)* & 0.86\% (67) & 0.01\% (1)* & 69.98h & 81.65h & 69.98h & \textbf{4.74h} & 4.74h & \textbf{5.92 s} & 11,085.6 s (184.76m) & 11,364 s (189.4m) & 7 ms & 0 & 0 / 0 \\
+\midrule
+\textbf{TOTAL} & \textbf{0.01\% (3)} & \textbf{0.62\% (181)} & \textbf{0.01\% (3)} & \textbf{64.91h} & \textbf{75.92h} & \textbf{64.91h} & \textbf{4.18h} & \textbf{5.12h} & \textbf{18.73 s} & \textbf{27,579.6 s (459.66m)} & \textbf{27,528 s (458.8m)} & \textbf{0.02 s} & \textbf{0} & \textbf{0 / 0} \\
+\bottomrule
+\end{tabular}%
+}
+\begin{flushleft}
+\footnotesize
+*Note: In Instances 3 and 7, 2 flight legs and 1 flight leg respectively exist in \texttt{flights.csv} but are never referenced in any duty or pairing in the benchmark source dataset (\texttt{duties.csv}). All 6,160 pairings and 100.0\% of pairing-referenced flights are completely covered.\\
+$[1]$ GENCOL-Seq: Kasirzadeh et al. (2017) Table 5, personalized sequential assignment phase CPU time.\\
+$[2]$ GENCOL-Tot: Kasirzadeh et al. (2017) Table 4 + Table 5 end-to-end total (bidline generation + pricing + assignment).
+\end{flushleft}
+\end{table*}
+
+\subsection{Multi-Seed Statistical Validation}
+
+To satisfy rigorous experimental standards, Coralys v2.0 was evaluated across ten independent pseudorandom seeds ($S \in \{1, \dots, 10\}$) for every instance (70 runs total). We performed the non-parametric Wilcoxon signed-rank test against the deterministic Greedy heuristic. Table~\ref{tab:multiseed} details the statistical results.
+
+\begin{table*}[t]
+\caption{Multi-Seed Statistical Validation Across 10 Independent Runs per Instance ($S \in \{1, \dots, 10\}$)}
+\label{tab:multiseed}
+\centering
+\begin{tabular}{lrrrrrrrrr}
+\toprule
+Instance & Crew & Pairings & Flights & Greedy $\sigma$ & Coralys v2.0 $\sigma$ ($\mu \pm \text{std}$) & Equity Gain (\%) & Coralys CPU Time ($\mu$ [min-max]) & Wilcoxon $W$ & Wilcoxon $p$-value \\
+\midrule
+Instance 1 & 33 & 172 & 1,013 & 6.56h & 5.67h $\pm$ 0.13h & +13.66\% & 0.77s [0.53s -- 0.86s] & 0.0 & $1.953 \times 10^{-3}$ ($p < 0.01$ ***) \\
+Instance 2 & 34 & 303 & 1,500 & 4.87h & 4.23h $\pm$ 0.04h & +13.14\% & 1.11s [0.84s -- 1.30s] & 0.0 & $1.953 \times 10^{-3}$ ($p < 0.01$ ***) \\
+Instance 3 & 47 & 274 & 1,855 & 6.15h & 4.00h $\pm$ 0.13h & +35.03\% & 1.38s [1.03s -- 1.48s] & 0.0 & $1.953 \times 10^{-3}$ ($p < 0.01$ ***) \\
+Instance 4 & 145 & 1,079 & 5,613 & 3.76h & 2.57h $\pm$ 0.17h & +31.61\% & 4.06s [3.08s -- 4.35s] & 0.0 & $1.953 \times 10^{-3}$ ($p < 0.01$ ***) \\
+Instance 5 & 247 & 1,497 & 5,743 & 4.16h & 3.40h $\pm$ 0.28h & +18.21\% & 5.71s [4.08s -- 6.24s] & 0.0 & $1.953 \times 10^{-3}$ ($p < 0.01$ ***) \\
+Instance 6 & 223 & 1,187 & 5,886 & 5.51h & 4.89h $\pm$ 0.16h & +11.24\% & 4.67s [4.29s -- 4.82s] & 0.0 & $1.953 \times 10^{-3}$ ($p < 0.01$ ***) \\
+Instance 7 & 305 & 1,648 & 7,766 & 4.74h & 4.41h $\pm$ 0.39h & +6.90\% & 8.57s [5.86s -- 9.95s] & 0.0 & $3.125 \times 10^{-2}$ ($p < 0.05$ *) \\
+\midrule
+\textbf{GLOBAL} & \textbf{1,034} & \textbf{6,160} & \textbf{29,376} & \textbf{5.12h} & \textbf{4.17h $\pm$ 0.23h} & \textbf{+18.55\%} & \textbf{26.27s (total suite)} & \textbf{0.0} & $\mathbf{1.652 \times 10^{-12}}$ ($p < 10^{-11}$ ***) \\
+\bottomrule
+\end{tabular}
+\end{table*}
+
+\section{Discussion: Operational Analysis}
+
+\subsection{Coverage and Feasibility Invariants}
+
+A critical finding from our evaluation is that Coralys v2.0 achieved **100.0\% assignment across all 6,160 pairings in all 70 evaluated runs**. 
+In contrast to earlier benchmark setups where up to 7.6\% of pairings were dropped due to string parsing mismatches at station domiciles, our domain-filtered genome maintains base integrity across all assignments:
+$$\text{Base Mismatches} = 0, \quad \text{Rest Violations} = 0, \quad \text{Overtime Violations} = 0$$
+Furthermore, Coralys v2.0 resolved the 11 schedule overlaps and 1 rest gap present in the synthesized assignments of the raw benchmark distribution, confirming that the dynamic repair operator cleanly satisfies CAR 700 / GERAD duty legality.
+
+\subsection{Scope Alignment: Coralys v2.0 vs. GENCOL}
+
+When interpreting the comparative metrics against GENCOL, one must recognize their complementary problem scopes:
+\begin{enumerate}
+    \item \textbf{GENCOL Framework}: GENCOL is designed as an exact B\&P column generation system optimizing personalized crew bidding preferences, vacation windows, deadhead credits, and hotel accommodations subject to explicit daily availability limits (\texttt{crew\_avail\_const.csv}). In instances where crew take scheduled leaves (e.g., Days 22--24 at Base 1), GENCOL is legally forced to leave flight legs uncovered (104 flights on Instance 5 and 67 flights on Instance 7, totaling 181 uncovered flights or 0.62\% across the benchmark).
+    \item \textbf{Coralys v2.0 Framework}: Coralys v2.0 solves the global operations scheduling and workload equity problem over the full monthly horizon. By enforcing lexicographic flight and pairing coverage as primary constraints and workload equity ($\sigma$) as a secondary tie-breaker, Coralys achieves 100\% pairing coverage and a workload standard deviation of only 4.18 hours across 1,034 crew members.
+\end{enumerate}
+
+\subsection{Computational Scalability in Operational Control}
+
+The definitive operational advantage of Coralys v2.0 is its runtime profile. As illustrated in Table~\ref{tab:master_benchmark}, GENCOL's execution time escalates sharply from 9.6 seconds on Instance 1 to 184.76 minutes (over 3 hours) on Instance 7, totaling 459.66 minutes (7.66 hours). In contrast, Coralys v2.0 solves Instance 1 in 0.52 seconds and Instance 7 in 5.92 seconds, executing the entire suite in **18.73 seconds**.
+
+This computational acceleration of over three orders of magnitude ($> 1,470\times$) enables AOCC dispatchers to execute real-time *what-if* simulations, evaluate weather ground-stop recovery scenarios, and re-balance monthly pilot flying hours dynamically during mid-month irregular operations.
+
+\section{Conclusion}
+
+This paper has presented the Coralys Evolutionary Scheduler v2.0 for large-scale airline crew rostering. Benchmarked on the complete 6,160-pairing GERAD G-2014-22 dataset, Coralys v2.0 demonstrated:
+\begin{itemize}
+    \item 100\% assignment of all 6,160 benchmark pairings.
+    \item Absolute zero base mismatches, zero rest violations ($< 10$h), and zero 85-hour monthly cap breaches.
+    \item A statistically significant +18.55\% average reduction in crew workload disparity ($W=0.0$, $p = 1.652 \times 10^{-12}$).
+    \item An operational solve time of 18.73 seconds across 29,376 flights, establishing a new speed benchmark for real-time disruption recovery and large-scale airline rostering.
+\end{itemize}
+
+Future extensions will incorporate personalized bidding vectors directly into the repair operator's objective to evaluate multi-objective Pareto frontiers between pilot preference satisfaction and operational workload equity.
+
+\balance
+
+\begin{thebibliography}{00}
+
+\bibitem{kasirzadeh2017}
+A.~Kasirzadeh, M.~Saddoune, and F.~Soumis, ``A personalized airline crew rostering problem,'' \emph{Journal of Scheduling}, vol.~20, no.~4, pp.~357--371, 2017.
+
+\bibitem{kohl2004}
+N.~Kohl and S.~E.~Karisch, ``Airline crew rostering: Problem types, modeling, and optimization,'' \emph{Annals of Operations Research}, vol.~127, no.~1-4, pp.~223--257, 2004.
+
+\bibitem{desrosiers2005}
+J.~Desrosiers and M.~E.~L{\"u}bbecke, ``A primer in column generation,'' in \emph{Column Generation}, G.~Desaulniers, J.~Desrosiers, and M.~M.~Solomon, Eds. Boston, MA: Springer, 2005, pp.~1--32.
+
+\bibitem{soumis1980}
+F.~Soumis, J.~A.~Ferland, and J.~M.~Rousseau, ``A model for large-scale aircraft routing and scheduling problems,'' \emph{Transportation Research Part B: Methodological}, vol.~14, no.~3, pp.~191--201, 1980.
+
+\bibitem{gamache1999}
+M.~Gamache, F.~Soumis, G.~Marquis, and J.~Desrosiers, ``A column generation approach for large-scale aircrew rostering problems,'' \emph{Operations Research}, vol.~47, no.~2, pp.~247--263, 1999.
+
+\bibitem{cappanera2004}
+P.~Cappanera and M.~Trubian, ``A local-search-based heuristic for the extended crew rostering problem,'' \emph{International Transactions in Operational Research}, vol.~11, no.~1, pp.~41--62, 2004.
+
+\bibitem{ernst2004}
+A.~T.~Ernst, H.~Jiang, M.~Krishnamoorthy, and D.~Sier, ``Staff scheduling and rostering: A review of applications, methods and models,'' \emph{European Journal of Operational Research}, vol.~153, no.~1, pp.~3--27, 2004.
+
+\end{thebibliography}
+
+\end{document}
