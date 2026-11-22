@@ -61,3 +61,6 @@ pub use domain::{
 pub use legality::{
     EntityRef, LegalityChecker, LegalityRule, LegalityViolation, ViolationSeverity,
 };
+
+pub use optimization::search::evolutionary::{EvolutionaryConfig, EvolutionaryScheduler};
+pub use optimization::search::greedy::GreedyScheduler;
