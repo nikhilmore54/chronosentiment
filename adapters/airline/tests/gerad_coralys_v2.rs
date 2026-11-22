@@ -16,18 +16,11 @@
 
 #![allow(non_snake_case, dead_code)]
 
-use coralys_airline::domain::crew::CrewId;
 use coralys_airline::domain::duty::{Duty, DutyId};
 use coralys_airline::domain::flight::{
     AircraftType, AirportCode, FlightLeg, FlightLegId, FlightNumber,
 };
 use coralys_airline::domain::pairing::{Pairing, PairingId};
-use coralys_airline::domain::roster::{PlanningPeriod, Roster, RosterId};
-use coralys_airline::domain::rotation::{Rotation, RotationId};
-use coralys_airline::optimization::cost::CostEvaluator;
-use coralys_airline::optimization::metrics::OptimizationMetrics;
-use coralys_airline::optimization::objective::{SchedulingObjective, WorkloadBalanceObjective};
-use coralys_airline::optimization::search::greedy::GreedyScheduler;
 
 use chrono::{DateTime, Utc};
 use rand::prelude::*;
@@ -37,7 +30,7 @@ use std::path::Path;
 // ── Evolutionary Algorithm Constants ─────────────────────────────────────────
 
 const POP_SIZE: usize = 50;
-const GENERATIONS: usize = 200;
+const GENERATIONS: usize = 100;
 const CROSSOVER_PROB: f64 = 0.80;
 const TOURNAMENT_K: usize = 3;
 const SEED: u64 = 42;
@@ -58,6 +51,7 @@ struct RawFlight {
 #[derive(Debug, Clone)]
 struct RawCrew {
     crew_id: String,
+    base: String,
 }
 
 fn parse_utc(s: &str) -> DateTime<Utc> {
@@ -122,6 +116,7 @@ fn load_crew(path: &Path) -> Vec<RawCrew> {
         let row = result.expect("CSV parse error in crew.csv");
         crew.push(RawCrew {
             crew_id: row["crew_id"].trim().to_string(),
+            base: row["base"].trim().to_string(),
         });
     }
     crew
@@ -130,7 +125,7 @@ fn load_crew(path: &Path) -> Vec<RawCrew> {
 fn load_benchmark_pairings(
     instance_dir: &Path,
     flights_map: &HashMap<String, FlightLeg>,
-) -> (Vec<FlightLeg>, Vec<Pairing>, usize) {
+) -> (Vec<FlightLeg>, Vec<Pairing>, Vec<String>, usize) {
     let duties_path = instance_dir.join("duties.csv");
     let pairings_path = instance_dir.join("pairings.csv");
 
@@ -158,12 +153,14 @@ fn load_benchmark_pairings(
     // 2. Load pairings
     let mut rdr_p = csv::Reader::from_path(&pairings_path).expect("Cannot open pairings.csv");
     let mut pairings = Vec::new();
+    let mut pairing_bases = Vec::new();
     let mut total_csv_pairings = 0usize;
     for result in rdr_p.deserialize::<HashMap<String, String>>() {
         total_csv_pairings += 1;
         let row = result.expect("CSV parse error in pairings.csv");
         let pid = row["pairing_id"].trim().to_string();
-        let base = pad_airport(row["home_base"].trim());
+        let raw_base = row["home_base"].trim().to_string();
+        let base = pad_airport(&raw_base);
         let dids_raw = row["duty_ids"].trim();
         let dids: Vec<&str> = dids_raw.split(',').map(|s| s.trim()).collect();
 
@@ -181,266 +178,459 @@ fn load_benchmark_pairings(
                 pairing_duties,
             ) {
                 pairings.push(pairing);
+                pairing_bases.push(raw_base);
             }
         }
     }
 
     let all_legs: Vec<FlightLeg> = flights_map.values().cloned().collect();
-    (all_legs, pairings, total_csv_pairings)
+    (all_legs, pairings, pairing_bases, total_csv_pairings)
 }
 
-// ── Genome Decode & Fitness ───────────────────────────────────────────────────
+// ── Precomputed Pairing Data & Constrained Domain ────────────────────────────
 
-fn decode_genome(
-    genome: &[usize],
-    pairings: &[Pairing],
+#[derive(Clone)]
+struct PrecomputedPairingData {
+    base: String,
+    minutes: i64,
+    start: DateTime<Utc>,
+    end: DateTime<Utc>,
+    flight_ids: Vec<String>,
+}
+
+fn precompute_pairing_data(pairings: &[Pairing], bases: &[String]) -> Vec<PrecomputedPairingData> {
+    pairings
+        .iter()
+        .zip(bases.iter())
+        .map(|(p, raw_base)| {
+            let minutes: i64 = p
+                .duties()
+                .iter()
+                .map(|d| d.total_block_time().num_minutes())
+                .sum();
+            let flight_ids: Vec<String> = p
+                .duties()
+                .iter()
+                .flat_map(|d| d.legs().iter().map(|l| l.id.as_str().to_string()))
+                .collect();
+            PrecomputedPairingData {
+                base: raw_base.clone(),
+                minutes,
+                start: p.start(),
+                end: p.end(),
+                flight_ids,
+            }
+        })
+        .collect()
+}
+
+fn build_valid_rotations(
+    pairings_data: &[PrecomputedPairingData],
     crew: &[RawCrew],
-    legs: &[FlightLeg],
-    period_start: DateTime<Utc>,
-    period_end: DateTime<Utc>,
-) -> Option<Roster> {
-    let n_rot = crew.len().min(pairings.len());
-    if n_rot == 0 {
-        return None;
+    n_rot: usize,
+) -> Vec<Vec<usize>> {
+    let mut crew_by_base: HashMap<String, Vec<usize>> = HashMap::new();
+    for (i, c) in crew.iter().take(n_rot).enumerate() {
+        crew_by_base.entry(c.base.clone()).or_default().push(i);
     }
 
-    let mut buckets: Vec<Vec<Pairing>> = vec![Vec::new(); n_rot];
-    for (i, &rot_idx) in genome.iter().enumerate() {
-        if rot_idx < n_rot {
-            buckets[rot_idx].push(pairings[i].clone());
-        }
-    }
-
-    let mut rotations = Vec::with_capacity(n_rot);
-    for (i, mut bucket) in buckets.into_iter().enumerate() {
-        if bucket.is_empty() {
-            return None;
-        }
-        // Crucial: chronological sorting ensures Rotation::new order invariant
-        bucket.sort_by_key(|p| p.start());
-        let rot = Rotation::new(
-            RotationId::new(format!("ROT{}", i + 1)),
-            CrewId::new(&crew[i].crew_id),
-            bucket,
-        )
-        .ok()?;
-        rotations.push(rot);
-    }
-
-    let period = PlanningPeriod::new(period_start, period_end);
-    Roster::new(RosterId::new("CORALYS_V2"), period, legs.to_vec(), rotations).ok()
+    pairings_data
+        .iter()
+        .map(|p| {
+            let mut valid = crew_by_base.get(&p.base).cloned().unwrap_or_default();
+            valid.push(n_rot); // unassigned reserve pool is always permitted
+            valid
+        })
+        .collect()
 }
+
+// ── Multi-Parameter Objective Function ────────────────────────────────────────
 
 fn fitness(
     genome: &[usize],
-    pairings: &[Pairing],
+    data: &[PrecomputedPairingData],
     crew: &[RawCrew],
-    legs: &[FlightLeg],
-    period_start: DateTime<Utc>,
-    period_end: DateTime<Utc>,
-    obj: &WorkloadBalanceObjective,
+    n_rot: usize,
+    total_flights: usize,
 ) -> f64 {
-    let n_rot = crew.len().min(pairings.len());
-    if n_rot == 0 {
-        return f64::INFINITY;
-    }
+    let mut rot_minutes = vec![0i64; n_rot];
+    let mut rot_pairing_indices: Vec<Vec<usize>> = vec![Vec::new(); n_rot];
+    let mut unassigned_count = 0usize;
+    let mut base_mismatches = 0usize;
 
-    let mut buckets: Vec<Vec<&Pairing>> = vec![Vec::new(); n_rot];
-    let mut unassigned = 0usize;
     for (i, &rot_idx) in genome.iter().enumerate() {
         if rot_idx < n_rot {
-            buckets[rot_idx].push(&pairings[i]);
+            rot_pairing_indices[rot_idx].push(i);
+            rot_minutes[rot_idx] += data[i].minutes;
+            if data[i].base != crew[rot_idx].base {
+                base_mismatches += 1;
+            }
         } else {
-            unassigned += 1;
+            unassigned_count += 1;
         }
     }
 
     let mut overlaps = 0usize;
     let mut empty_rotations = 0usize;
+    let mut covered_flights_set = HashSet::new();
 
-    for bucket in buckets.iter_mut() {
-        if bucket.is_empty() {
+    for (_rot_idx, indices) in rot_pairing_indices.iter_mut().enumerate() {
+        if indices.is_empty() {
             empty_rotations += 1;
         } else {
-            bucket.sort_by_key(|p| p.start());
-            for w in bucket.windows(2) {
-                if w[1].start() < w[0].end() {
+            indices.sort_by_key(|&idx| data[idx].start);
+            for w in indices.windows(2) {
+                if data[w[1]].start < data[w[0]].end {
                     overlaps += 1;
+                }
+            }
+            for &idx in indices.iter() {
+                for fid in &data[idx].flight_ids {
+                    covered_flights_set.insert(fid.as_str());
                 }
             }
         }
     }
 
-    if overlaps > 0 || empty_rotations > 0 {
-        return 100_000.0 + (overlaps as f64) * 1_000.0 + (empty_rotations as f64) * 5_000.0;
+    // Hard feasibility constraint 1: Max 85.0 flying hours cap (FAA / GERAD limit)
+    let mut overtime_hours = 0.0_f64;
+    for &mins in &rot_minutes {
+        let hrs = mins as f64 / 60.0;
+        if hrs > 85.0 {
+            overtime_hours += hrs - 85.0;
+        }
     }
 
-    match decode_genome(genome, pairings, crew, legs, period_start, period_end) {
-        Some(roster) => {
-            let base_cost = obj.evaluate(&roster);
-            base_cost + (unassigned as f64) * 0.001
-        }
-        None => f64::INFINITY,
+    // Feasibility penalties
+    if overlaps > 0 || empty_rotations > 0 || base_mismatches > 0 || overtime_hours > 0.0 {
+        return 1_000_000.0
+            + (overlaps as f64) * 20_000.0
+            + (empty_rotations as f64) * 20_000.0
+            + (base_mismatches as f64) * 50_000.0
+            + overtime_hours * 50_000.0
+            + (unassigned_count as f64) * 100.0;
     }
+
+    // Feasible candidate: evaluate Coverage + Workload Balance
+    let uncovered_flights = total_flights.saturating_sub(covered_flights_set.len());
+    let hours: Vec<f64> = rot_minutes.iter().map(|&m| m as f64 / 60.0).collect();
+    let mean_hrs = hours.iter().sum::<f64>() / hours.len() as f64;
+    let variance_hrs =
+        hours.iter().map(|&h| (h - mean_hrs).powi(2)).sum::<f64>() / hours.len() as f64;
+
+    // Parameter Priorities:
+    // 1. Uncovered flight penalty = 1000.0 per uncovered flight (dominant priority)
+    // 2. Unassigned pairing penalty = 500.0 per unassigned pairing
+    // 3. Workload variance = 1.0 (fine-grained equity tie-breaker)
+    (uncovered_flights as f64) * 1000.0 + (unassigned_count as f64) * 500.0 + variance_hrs
 }
 
-fn repair(genome: &mut Vec<usize>, n_rot: usize, rng: &mut impl Rng) {
+// ── Smart Feasibility & Packing Repair ────────────────────────────────────────
+
+fn repair(
+    genome: &mut Vec<usize>,
+    data: &[PrecomputedPairingData],
+    crew: &[RawCrew],
+    valid_rotations: &[Vec<usize>],
+    n_rot: usize,
+    rng: &mut impl Rng,
+) {
     if n_rot == 0 {
         return;
     }
-    loop {
-        let mut counts = vec![0usize; n_rot];
-        for &g in genome.iter() {
-            if g < n_rot {
-                counts[g] += 1;
+
+    // 1. Enforce base matching, non-overlap, and 85.0h cap per rotation
+    let mut rot_intervals: Vec<Vec<(DateTime<Utc>, DateTime<Utc>)>> = vec![Vec::new(); n_rot];
+    let mut rot_minutes: Vec<i64> = vec![0; n_rot];
+
+    let mut rot_pairings: Vec<Vec<usize>> = vec![Vec::new(); n_rot];
+    for p_idx in 0..genome.len() {
+        let r = genome[p_idx];
+        if r < n_rot {
+            if data[p_idx].base == crew[r].base {
+                rot_pairings[r].push(p_idx);
+            } else {
+                genome[p_idx] = n_rot;
             }
         }
-        let empty_idx = match counts.iter().position(|&c| c == 0) {
-            Some(e) => e,
-            None => break,
-        };
+    }
 
-        // Steal first from unassigned pool if available
-        let unassigned: Vec<usize> = genome
-            .iter()
-            .enumerate()
-            .filter(|&(_, &g)| g == n_rot)
-            .map(|(i, _)| i)
-            .collect();
-        if let Some(&victim) = unassigned.choose(rng) {
-            genome[victim] = empty_idx;
-            continue;
+    for r in 0..n_rot {
+        rot_pairings[r].sort_by_key(|&p_idx| data[p_idx].start);
+        let mut last_end = DateTime::<Utc>::MIN_UTC;
+        let mut cum_mins = 0i64;
+
+        for &p_idx in &rot_pairings[r] {
+            let p = &data[p_idx];
+            let overlaps = p.start < last_end;
+            let exceeds_85h = cum_mins + p.minutes > 85 * 60;
+
+            if overlaps || exceeds_85h {
+                genome[p_idx] = n_rot;
+            } else {
+                last_end = p.end;
+                cum_mins += p.minutes;
+                rot_intervals[r].push((p.start, p.end));
+                rot_minutes[r] += p.minutes;
+            }
+        }
+    }
+
+    // 2. Ensure no empty rotations
+    for r in 0..n_rot {
+        if rot_intervals[r].is_empty() {
+            let candidate_unassigned: Vec<usize> = genome
+                .iter()
+                .enumerate()
+                .filter(|&(p_idx, &g)| {
+                    g == n_rot && data[p_idx].base == crew[r].base && data[p_idx].minutes <= 85 * 60
+                })
+                .map(|(p_idx, _)| p_idx)
+                .collect();
+            if let Some(&p_idx) = candidate_unassigned.choose(rng) {
+                genome[p_idx] = r;
+                rot_intervals[r].push((data[p_idx].start, data[p_idx].end));
+                rot_minutes[r] += data[p_idx].minutes;
+            }
+        }
+    }
+
+    // 3. Greedy fill-in of unassigned pairings to maximize coverage
+    let mut unassigned: Vec<usize> = genome
+        .iter()
+        .enumerate()
+        .filter(|&(_, &g)| g == n_rot)
+        .map(|(p_idx, _)| p_idx)
+        .collect();
+    unassigned.shuffle(rng);
+
+    for p_idx in unassigned {
+        let p = &data[p_idx];
+        let mut best_rot = None;
+        let mut min_mins = i64::MAX;
+
+        for &r in &valid_rotations[p_idx] {
+            if r >= n_rot {
+                continue;
+            }
+            if rot_minutes[r] + p.minutes > 85 * 60 {
+                continue;
+            }
+            let mut overlaps = false;
+            for &(s, e) in &rot_intervals[r] {
+                if !(p.end <= s || p.start >= e) {
+                    overlaps = true;
+                    break;
+                }
+            }
+            if !overlaps && rot_minutes[r] < min_mins {
+                min_mins = rot_minutes[r];
+                best_rot = Some(r);
+            }
         }
 
-        let max_rot = counts
-            .iter()
-            .enumerate()
-            .max_by_key(|&(_, &c)| c)
-            .map(|(i, _)| i)
-            .unwrap();
-        if counts[max_rot] <= 1 {
-            break;
-        }
-        let candidates: Vec<usize> = genome
-            .iter()
-            .enumerate()
-            .filter(|&(_, &g)| g == max_rot)
-            .map(|(i, _)| i)
-            .collect();
-        if let Some(&victim) = candidates.choose(rng) {
-            genome[victim] = empty_idx;
-        } else {
-            break;
+        if let Some(r) = best_rot {
+            genome[p_idx] = r;
+            rot_intervals[r].push((p.start, p.end));
+            rot_minutes[r] += p.minutes;
         }
     }
 }
 
-// ── Greedy Baseline & Seeding ─────────────────────────────────────────────────
+// ── Randomized Feasible Individual Generator ──────────────────────────────────
 
-fn run_greedy_baseline(
-    pairings: &[Pairing],
+fn generate_random_greedy(
+    data: &[PrecomputedPairingData],
     crew: &[RawCrew],
-    legs: &[FlightLeg],
-    period_start: DateTime<Utc>,
-    period_end: DateTime<Utc>,
-) -> (f64, Vec<usize>, u128) {
-    let n_rot = crew.len().min(pairings.len());
-    if n_rot == 0 {
-        return (0.0, vec![], 0);
-    }
+    valid_rotations: &[Vec<usize>],
+    n_rot: usize,
+    rng: &mut impl Rng,
+) -> Vec<usize> {
+    let n_pairings = data.len();
+    let mut genome = vec![n_rot; n_pairings];
 
-    let period = PlanningPeriod::new(period_start, period_end);
-    let mut remaining = pairings.to_vec();
-    let seeds: Vec<Pairing> = remaining.drain(..n_rot).collect();
-    let rotations: Vec<Rotation> = crew
-        .iter()
-        .take(n_rot)
-        .enumerate()
-        .map(|(i, c)| {
-            Rotation::new(
-                RotationId::new(format!("ROT{}", i + 1)),
-                CrewId::new(&c.crew_id),
-                vec![seeds[i].clone()],
-            )
-            .expect("Seeded rotation must be valid")
-        })
-        .collect();
-    let baseline = Roster::new(RosterId::new("GERAD"), period, legs.to_vec(), rotations)
-        .expect("Roster construction failed");
+    let mut rot_intervals: Vec<Vec<(DateTime<Utc>, DateTime<Utc>)>> = vec![Vec::new(); n_rot];
+    let mut rot_minutes = vec![0i64; n_rot];
 
-    let mut evaluator = CostEvaluator::new();
-    evaluator.add_objective(Box::new(WorkloadBalanceObjective));
-    let greedy = GreedyScheduler::new(&evaluator, vec![1.0]);
-    let mut metrics = OptimizationMetrics::new();
+    // Seed each rotation with 1 random base-compatible pairing
+    let mut assigned = HashSet::new();
+    let mut crew_indices: Vec<usize> = (0..n_rot).collect();
+    crew_indices.shuffle(rng);
 
-    let t_start = std::time::Instant::now();
-    let after_greedy = greedy.assign(&baseline, remaining, &mut metrics);
-    let elapsed_ms = t_start.elapsed().as_millis();
-
-    let obj = WorkloadBalanceObjective;
-    let score = obj.evaluate(&after_greedy);
-
-    // Extract genome from after_greedy: pairings not in roster receive unassigned index n_rot
-    let mut pairing_to_rot: HashMap<&PairingId, usize> = HashMap::new();
-    for (rot_idx, rot) in after_greedy.rotations().enumerate() {
-        for p in rot.pairings() {
-            pairing_to_rot.insert(&p.id, rot_idx);
+    for &r in &crew_indices {
+        let mut candidates: Vec<usize> = (0..n_pairings)
+            .filter(|&p_idx| {
+                !assigned.contains(&p_idx)
+                    && data[p_idx].base == crew[r].base
+                    && data[p_idx].minutes <= 85 * 60
+            })
+            .collect();
+        candidates.shuffle(rng);
+        if let Some(&p_idx) = candidates.first() {
+            genome[p_idx] = r;
+            assigned.insert(p_idx);
+            rot_intervals[r].push((data[p_idx].start, data[p_idx].end));
+            rot_minutes[r] += data[p_idx].minutes;
         }
     }
-    let genome: Vec<usize> = pairings
-        .iter()
-        .map(|p| pairing_to_rot.get(&p.id).copied().unwrap_or(n_rot))
-        .collect();
 
+    // Consider remaining pairings in random order
+    let mut remaining: Vec<usize> = (0..n_pairings).filter(|p| !assigned.contains(p)).collect();
+    remaining.shuffle(rng);
+
+    for p_idx in remaining {
+        let p = &data[p_idx];
+        let mut eligible_rots: Vec<usize> = Vec::new();
+
+        for &r in &valid_rotations[p_idx] {
+            if r >= n_rot {
+                continue;
+            }
+            if rot_minutes[r] + p.minutes > 85 * 60 {
+                continue;
+            }
+            let mut overlaps = false;
+            for &(s, e) in &rot_intervals[r] {
+                if !(p.end <= s || p.start >= e) {
+                    overlaps = true;
+                    break;
+                }
+            }
+            if !overlaps {
+                eligible_rots.push(r);
+            }
+        }
+
+        if !eligible_rots.is_empty() {
+            eligible_rots.sort_by_key(|&r| rot_minutes[r]);
+            let choice = if eligible_rots.len() > 1 && rng.gen_bool(0.3) {
+                eligible_rots[1]
+            } else {
+                eligible_rots[0]
+            };
+            genome[p_idx] = choice;
+            rot_intervals[choice].push((p.start, p.end));
+            rot_minutes[choice] += p.minutes;
+        }
+    }
+
+    genome
+}
+
+// ── Base-Aware, 85h-Capped Greedy Baseline ────────────────────────────────────
+
+fn run_greedy_baseline(
+    data: &[PrecomputedPairingData],
+    crew: &[RawCrew],
+    valid_rotations: &[Vec<usize>],
+    n_rot: usize,
+    total_flights: usize,
+) -> (f64, Vec<usize>, u128) {
+    let t_start = std::time::Instant::now();
+    let n_pairings = data.len();
+    let mut genome = vec![n_rot; n_pairings];
+
+    let mut assigned_pairings = HashSet::new();
+    let mut rot_intervals: Vec<Vec<(DateTime<Utc>, DateTime<Utc>)>> = vec![Vec::new(); n_rot];
+    let mut rot_minutes = vec![0i64; n_rot];
+
+    let mut sorted_pairing_indices: Vec<usize> = (0..n_pairings).collect();
+    sorted_pairing_indices.sort_by_key(|&i| data[i].start);
+
+    // 1. Seed each crew rotation with one base-compatible pairing
+    for (rot_idx, c) in crew.iter().take(n_rot).enumerate() {
+        for &p_idx in &sorted_pairing_indices {
+            if !assigned_pairings.contains(&p_idx)
+                && data[p_idx].base == c.base
+                && data[p_idx].minutes <= 85 * 60
+            {
+                genome[p_idx] = rot_idx;
+                assigned_pairings.insert(p_idx);
+                rot_intervals[rot_idx].push((data[p_idx].start, data[p_idx].end));
+                rot_minutes[rot_idx] += data[p_idx].minutes;
+                break;
+            }
+        }
+    }
+
+    // 2. Greedily assign remaining pairings to base-compatible, non-overlapping rotations under 85.0h
+    for &p_idx in &sorted_pairing_indices {
+        if assigned_pairings.contains(&p_idx) {
+            continue;
+        }
+        let p = &data[p_idx];
+        let mut best_rot = None;
+        let mut min_resulting_minutes = i64::MAX;
+
+        for &rot_idx in &valid_rotations[p_idx] {
+            if rot_idx >= n_rot {
+                continue;
+            }
+
+            // Check 85.0h cap (85 * 60 = 5100 minutes)
+            if rot_minutes[rot_idx] + p.minutes > 85 * 60 {
+                continue;
+            }
+
+            // Check temporal overlap
+            let mut overlaps = false;
+            for &(s, e) in &rot_intervals[rot_idx] {
+                if !(p.end <= s || p.start >= e) {
+                    overlaps = true;
+                    break;
+                }
+            }
+
+            if !overlaps && rot_minutes[rot_idx] < min_resulting_minutes {
+                min_resulting_minutes = rot_minutes[rot_idx];
+                best_rot = Some(rot_idx);
+            }
+        }
+
+        if let Some(r) = best_rot {
+            genome[p_idx] = r;
+            rot_intervals[r].push((p.start, p.end));
+            rot_minutes[r] += p.minutes;
+            assigned_pairings.insert(p_idx);
+        }
+    }
+
+    let elapsed_ms = t_start.elapsed().as_millis();
+    let score = fitness(&genome, data, crew, n_rot, total_flights);
     (score, genome, elapsed_ms)
 }
 
 // ── Evolutionary Algorithm ────────────────────────────────────────────────────
 
 fn run_evolutionary(
-    pairings: &[Pairing],
+    data: &[PrecomputedPairingData],
     crew: &[RawCrew],
-    legs: &[FlightLeg],
-    period_start: DateTime<Utc>,
-    period_end: DateTime<Utc>,
+    valid_rotations: &[Vec<usize>],
+    n_rot: usize,
+    total_flights: usize,
     greedy_seed: &[usize],
     rng: &mut impl Rng,
 ) -> (f64, Vec<usize>, usize, u128) {
-    let n_pairings = pairings.len();
-    let n_rot = crew.len().min(n_pairings);
-    let obj = WorkloadBalanceObjective;
-
+    let n_pairings = data.len();
     if n_pairings == 0 || n_rot == 0 {
         return (0.0, vec![], 0, 0);
     }
 
     let t_start = std::time::Instant::now();
-
     let mut population: Vec<Vec<usize>> = Vec::with_capacity(POP_SIZE);
 
     if !greedy_seed.is_empty() {
         population.push(greedy_seed.to_vec());
-        for _ in 0..4 {
-            let mut copy = greedy_seed.to_vec();
-            let p1 = rng.gen_range(0..n_pairings);
-            let p2 = rng.gen_range(0..n_pairings);
-            copy.swap(p1, p2);
-            repair(&mut copy, n_rot, rng);
-            population.push(copy);
-        }
     }
 
     while population.len() < POP_SIZE {
-        let mut genome: Vec<usize> = (0..n_pairings)
-            .map(|i| if i < n_rot { i } else { rng.gen_range(0..=n_rot) })
-            .collect();
-        repair(&mut genome, n_rot, rng);
-        population.push(genome);
+        let ind = generate_random_greedy(data, crew, valid_rotations, n_rot, rng);
+        population.push(ind);
     }
 
     let mut fitnesses: Vec<f64> = population
         .iter()
-        .map(|g| fitness(g, pairings, crew, legs, period_start, period_end, &obj))
+        .map(|g| fitness(g, data, crew, n_rot, total_flights))
         .collect();
 
     let mut best_score = fitnesses.iter().cloned().fold(f64::INFINITY, f64::min);
@@ -473,30 +663,23 @@ fn run_evolutionary(
                 population[pa_idx].clone()
             };
 
-            let mut mutated = false;
-            if rng.r#gen::<f64>() < 0.25 {
-                let p1 = rng.gen_range(0..n_pairings);
-                let p2 = rng.gen_range(0..n_pairings);
-                child.swap(p1, p2);
-                mutated = true;
-            } else {
-                for gene in child.iter_mut() {
-                    if rng.r#gen::<f64>() < 1.0 / n_pairings as f64 {
-                        *gene = rng.gen_range(0..=n_rot);
-                        mutated = true;
-                    }
+            // Targeted mutations
+            if rng.r#gen::<f64>() < 0.40 {
+                let n_mut = rng.gen_range(1..=3);
+                for _ in 0..n_mut {
+                    let p1 = rng.gen_range(0..n_pairings);
+                    let valid = &valid_rotations[p1];
+                    child[p1] = *valid.choose(rng).unwrap();
                 }
             }
-            if mutated {
-                repair(&mut child, n_rot, rng);
-            }
 
+            repair(&mut child, data, crew, valid_rotations, n_rot, rng);
             next_pop.push(child);
         }
 
         let next_fitnesses: Vec<f64> = next_pop
             .iter()
-            .map(|g| fitness(g, pairings, crew, legs, period_start, period_end, &obj))
+            .map(|g| fitness(g, data, crew, n_rot, total_flights))
             .collect();
 
         let prev_best_idx = fitnesses
@@ -552,11 +735,14 @@ struct OperationalKpis {
     min_credited_hours: f64,
     max_credited_hours: f64,
     std_credited_hours: f64,
+    base_mismatches: usize,
+    overtime_violations: usize,
 }
 
 fn compute_operational_kpis(
     genome: &[usize],
     pairings: &[Pairing],
+    pairing_bases: &[String],
     crew: &[RawCrew],
     flights_map: &HashMap<String, FlightLeg>,
     total_csv_pairings: usize,
@@ -570,10 +756,14 @@ fn compute_operational_kpis(
     let mut assigned_pairings = 0usize;
     let mut unassigned_loaded = 0usize;
     let mut crew_flight_minutes: Vec<i64> = vec![0; n_rot];
+    let mut base_mismatches = 0usize;
 
     for (i, &rot_idx) in genome.iter().enumerate() {
         if rot_idx < n_rot {
             assigned_pairings += 1;
+            if pairing_bases[i] != crew[rot_idx].base {
+                base_mismatches += 1;
+            }
             let pairing = &pairings[i];
             for duty in pairing.duties() {
                 crew_flight_minutes[rot_idx] += duty.total_block_time().num_minutes();
@@ -632,6 +822,7 @@ fn compute_operational_kpis(
         0.0
     };
     let std_credited_hours = variance.sqrt();
+    let overtime_violations = crew_hours.iter().filter(|&&h| h > 85.0 + 1e-4).count();
 
     OperationalKpis {
         total_flights,
@@ -649,6 +840,8 @@ fn compute_operational_kpis(
         min_credited_hours,
         max_credited_hours,
         std_credited_hours,
+        base_mismatches,
+        overtime_violations,
     }
 }
 
@@ -689,10 +882,13 @@ fn gerad_coralys_v2_benchmark_run() {
     let benchmark_base = workspace_root.join("benchmarks").join("gerad-g2014-22");
 
     println!();
-    println!("GERAD G2014-22 — Coralys Evolutionary Scheduler v2.0 (Full Benchmark Pairings)");
+    println!("GERAD G2014-22 — Coralys Evolutionary Scheduler v2.0 (4-Parameter Multi-Objective)");
     println!("===============================================================================");
-    println!("Dataset: Real multi-duty benchmark pairings (172–1648 pairings)");
-    println!("Fitness: WorkloadBalanceObjective (lower is better)");
+    println!("Optimization Goals:");
+    println!("  1. Flight & Pairing Coverage: maximize coverage (uncovered flights -> 0%)");
+    println!("  2. Legal Cap: strictly <= 85.0 monthly credited flying hours");
+    println!("  3. Base Matching: 100% station base match (pairing.base == crew.base)");
+    println!("  4. Workload Equity: minimize credited hours variance across crew");
     println!("EA params: pop={POP_SIZE} gen={GENERATIONS} xover={CROSSOVER_PROB} seed={SEED}");
     println!();
 
@@ -724,10 +920,8 @@ fn gerad_coralys_v2_benchmark_run() {
 
         let flights_map = load_flights(&flights_path);
         let crew = load_crew(&crew_path);
-        let (legs, pairings, total_csv_pairings) = load_benchmark_pairings(&instance_dir, &flights_map);
-
-        let period_start = legs.iter().map(|f| f.scheduled_departure).min().unwrap_or(Utc::now());
-        let period_end = legs.iter().map(|f| f.scheduled_arrival).max().unwrap_or(Utc::now());
+        let (_legs, pairings, pairing_bases, total_csv_pairings) =
+            load_benchmark_pairings(&instance_dir, &flights_map);
 
         let n_pairings = pairings.len();
         let n_crew = crew.len();
@@ -737,18 +931,23 @@ fn gerad_coralys_v2_benchmark_run() {
             continue;
         }
 
+        let n_rot = n_crew.min(n_pairings);
+        let total_flights = flights_map.len();
+        let pairing_data = precompute_pairing_data(&pairings, &pairing_bases);
+        let valid_rotations = build_valid_rotations(&pairing_data, &crew, n_rot);
+
         // Greedy baseline
         let (greedy_score, greedy_seed, greedy_ms) =
-            run_greedy_baseline(&pairings, &crew, &legs, period_start, period_end);
+            run_greedy_baseline(&pairing_data, &crew, &valid_rotations, n_rot, total_flights);
 
         // Evolutionary — Coralys v2.0
         let mut rng = StdRng::seed_from_u64(SEED);
         let (ea_score, ea_genome, ea_gen, ea_ms) = run_evolutionary(
-            &pairings,
+            &pairing_data,
             &crew,
-            &legs,
-            period_start,
-            period_end,
+            &valid_rotations,
+            n_rot,
+            total_flights,
             &greedy_seed,
             &mut rng,
         );
@@ -768,23 +967,88 @@ fn gerad_coralys_v2_benchmark_run() {
             label, n_pairings, n_crew, greedy_score, greedy_ms, ea_score, ea_ms, adv_str
         );
 
-        let greedy_kpi = compute_operational_kpis(&greedy_seed, &pairings, &crew, &flights_map, total_csv_pairings);
-        let ea_kpi = compute_operational_kpis(&ea_genome, &pairings, &crew, &flights_map, total_csv_pairings);
+        let greedy_kpi = compute_operational_kpis(
+            &greedy_seed,
+            &pairings,
+            &pairing_bases,
+            &crew,
+            &flights_map,
+            total_csv_pairings,
+        );
+        let ea_kpi = compute_operational_kpis(
+            &ea_genome,
+            &pairings,
+            &pairing_bases,
+            &crew,
+            &flights_map,
+            total_csv_pairings,
+        );
         let gerad_ref = get_gerad_ref(label);
 
         println!();
         println!("  ┌── [{label}] Operational KPIs (GERAD G-2014-22 Comparative Alignment) ──");
         println!("  │ • Flight Coverage (Total GERAD Flights: {}):", ea_kpi.total_flights);
-        println!("  │   - Coralys v2.0:  {:>5}/{} uncovered ({:.2}%)", ea_kpi.uncovered_flights, ea_kpi.total_flights, ea_kpi.uncovered_flights_pct);
-        println!("  │   - Greedy:        {:>5}/{} uncovered ({:.2}%)", greedy_kpi.uncovered_flights, greedy_kpi.total_flights, greedy_kpi.uncovered_flights_pct);
-        println!("  │   - GERAD Target:  uncovered target: {:.2}%", gerad_ref.uncovered_flights_pct);
-        println!("  │ • Pairing Coverage (Total CSV Pairings: {}, Pre-filtered: {}):", ea_kpi.total_pairings_csv, ea_kpi.prefiltered_pairings);
-        println!("  │   - Coralys v2.0:  {:>5}/{} uncovered ({:.2}%) [assigned: {}]", ea_kpi.total_uncovered_pairings, ea_kpi.total_pairings_csv, ea_kpi.uncovered_pairings_pct, ea_kpi.assigned_pairings);
-        println!("  │   - Greedy:        {:>5}/{} uncovered ({:.2}%) [assigned: {}]", greedy_kpi.total_uncovered_pairings, greedy_kpi.total_pairings_csv, greedy_kpi.uncovered_pairings_pct, greedy_kpi.assigned_pairings);
-        println!("  │ • Credited Flying Hours across {} Crew (Cap: <= 85.0 hrs):", n_crew);
-        println!("  │   - Coralys v2.0:  Mean={:.2}h | Min={:.2}h | Max={:.2}h | StdDev={:.2}h", ea_kpi.mean_credited_hours, ea_kpi.min_credited_hours, ea_kpi.max_credited_hours, ea_kpi.std_credited_hours);
-        println!("  │   - Greedy:        Mean={:.2}h | Min={:.2}h | Max={:.2}h | StdDev={:.2}h", greedy_kpi.mean_credited_hours, greedy_kpi.min_credited_hours, greedy_kpi.max_credited_hours, greedy_kpi.std_credited_hours);
-        println!("  │   - GERAD Target:  Mean={:.2}h | Min={:.2}h | Max={:.2}h | Overall Target Mean: 75.92h", gerad_ref.avg_hours, gerad_ref.min_hours, gerad_ref.max_hours);
+        println!(
+            "  │   - Coralys v2.0:  {:>5}/{} uncovered ({:.2}%)",
+            ea_kpi.uncovered_flights, ea_kpi.total_flights, ea_kpi.uncovered_flights_pct
+        );
+        println!(
+            "  │   - Greedy:        {:>5}/{} uncovered ({:.2}%)",
+            greedy_kpi.uncovered_flights, greedy_kpi.total_flights, greedy_kpi.uncovered_flights_pct
+        );
+        println!(
+            "  │   - GERAD Target:  uncovered target: {:.2}%",
+            gerad_ref.uncovered_flights_pct
+        );
+        println!(
+            "  │ • Pairing Coverage (Total CSV Pairings: {}, Pre-filtered: {}):",
+            ea_kpi.total_pairings_csv, ea_kpi.prefiltered_pairings
+        );
+        println!(
+            "  │   - Coralys v2.0:  {:>5}/{} uncovered ({:.2}%) [assigned: {}]",
+            ea_kpi.total_uncovered_pairings,
+            ea_kpi.total_pairings_csv,
+            ea_kpi.uncovered_pairings_pct,
+            ea_kpi.assigned_pairings
+        );
+        println!(
+            "  │   - Greedy:        {:>5}/{} uncovered ({:.2}%) [assigned: {}]",
+            greedy_kpi.total_uncovered_pairings,
+            greedy_kpi.total_pairings_csv,
+            greedy_kpi.uncovered_pairings_pct,
+            greedy_kpi.assigned_pairings
+        );
+        println!(
+            "  │ • Credited Flying Hours across {} Crew (Cap: <= 85.0 hrs):",
+            n_crew
+        );
+        println!(
+            "  │   - Coralys v2.0:  Mean={:.2}h | Min={:.2}h | Max={:.2}h | StdDev={:.2}h",
+            ea_kpi.mean_credited_hours,
+            ea_kpi.min_credited_hours,
+            ea_kpi.max_credited_hours,
+            ea_kpi.std_credited_hours
+        );
+        println!(
+            "  │   - Greedy:        Mean={:.2}h | Min={:.2}h | Max={:.2}h | StdDev={:.2}h",
+            greedy_kpi.mean_credited_hours,
+            greedy_kpi.min_credited_hours,
+            greedy_kpi.max_credited_hours,
+            greedy_kpi.std_credited_hours
+        );
+        println!(
+            "  │   - GERAD Target:  Mean={:.2}h | Min={:.2}h | Max={:.2}h | Overall Target Mean: 75.92h",
+            gerad_ref.avg_hours, gerad_ref.min_hours, gerad_ref.max_hours
+        );
+        println!("  │ • Feasibility & Legality Compliance:");
+        println!(
+            "  │   - Base Mismatches: Coralys={} | Greedy={}",
+            ea_kpi.base_mismatches, greedy_kpi.base_mismatches
+        );
+        println!(
+            "  │   - 85.0h Cap Violations: Coralys={} | Greedy={}",
+            ea_kpi.overtime_violations, greedy_kpi.overtime_violations
+        );
         println!("  │ • Preference Satisfaction Targets (Paper G-2014-22 Reference):");
         println!("  │   - Vacation Days Granted Target:  13.76%");
         println!("  │   - Preferred Flights Target:      29.09%");
@@ -796,9 +1060,17 @@ fn gerad_coralys_v2_benchmark_run() {
              greedy_score={greedy_score:.4} greedy_ms={greedy_ms} \
              ea_score={ea_score:.4} ea_gen={ea_gen} ea_ms={ea_ms} advantage={adv_str} \
              coralys_uncovered_pct={:.2}% greedy_uncovered_pct={:.2}% \
-             coralys_mean_hrs={:.2}h greedy_mean_hrs={:.2}h",
-            ea_kpi.uncovered_flights_pct, greedy_kpi.uncovered_flights_pct,
-            ea_kpi.mean_credited_hours, greedy_kpi.mean_credited_hours
+             coralys_mean_hrs={:.2}h greedy_mean_hrs={:.2}h \
+             coralys_base_mismatches={} greedy_base_mismatches={} \
+             coralys_cap_violations={} greedy_cap_violations={}",
+            ea_kpi.uncovered_flights_pct,
+            greedy_kpi.uncovered_flights_pct,
+            ea_kpi.mean_credited_hours,
+            greedy_kpi.mean_credited_hours,
+            ea_kpi.base_mismatches,
+            greedy_kpi.base_mismatches,
+            ea_kpi.overtime_violations,
+            greedy_kpi.overtime_violations
         );
     }
 }
