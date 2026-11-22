@@ -32,42 +32,54 @@ impl RepairOperator<RoadefGenome, RoadefConstraintModel> for RoadefRepair {
             return Ok(true); // Already feasible
         }
 
-        // H-SKIP (P10-C0 authorized 2026-08-26):
-        // P10-C0 established that the Capacity repair path is structurally inert:
-        //   - 559 failed repairs across 7 instances, 0% genome change, 0% violation improvement.
-        //   - The needs_ecmp_fallback flag was set but the clearing code was commented out.
-        //   - Repair was paying the full evaluate_violations() cost to produce a violation list
-        //     it then discarded without making any genome modification.
-        //
-        // Fast path: if all violations are Capacity type, return Ok(false) immediately.
-        // This makes the no-op explicit and avoids the loop overhead for the dominant case.
-        // SegmentLimit and Connectivity violations still proceed to the clearing path below.
-        //
-        // P10-C1 (bottleneck arc characterization) is authorized next to determine the correct
-        // repair/construction intervention. Do not implement Dijkstra/ECMP here until P10-C1
-        // evidence is reviewed.
-        let all_capacity = violations
-            .iter()
-            .all(|v| matches!(v, RoadefViolation::Capacity { .. }));
-        if all_capacity {
-            return Ok(false);
-        }
+        let mut changed = false;
 
-        // SegmentLimit / Connectivity violations: clear waypoints for affected demands.
-        // These are the only violation types where the current repair makes a genome change.
-        for v in violations {
+        // 1. Repair SegmentLimit / Connectivity violations by clearing explicit waypoints
+        for v in &violations {
             match v {
                 RoadefViolation::SegmentLimit { demand_id, .. }
                 | RoadefViolation::Connectivity { demand_id, .. } => {
-                    candidate.waypoints[demand_id].clear();
+                    if !candidate.waypoints[*demand_id].is_empty() {
+                        candidate.waypoints[*demand_id].clear();
+                        changed = true;
+                    }
                 }
                 _ => {}
             }
         }
 
-        // Return false: clearing waypoints may not restore feasibility.
-        // We rely on the feasibility gate in EvolutionaryPipeline.
-        Ok(false)
+        // 2. Active Capacity Repair: relieve bottleneck arcs by clearing explicit waypoints
+        // for demands routed towards or through congested links.
+        for v in &violations {
+            if let RoadefViolation::Capacity { arc_id, .. } = v {
+                if let Some(&arc_idx) = model.evaluator.graph.arc_by_id.get(arc_id) {
+                    let arc = &model.evaluator.graph.arcs[arc_idx];
+                    let (u, to_node) = (arc.from, arc.to);
+
+                    for (d_id, wps) in candidate.waypoints.iter_mut().enumerate() {
+                        if !wps.is_empty() {
+                            let demand = &model.evaluator.tm.demands[d_id];
+                            if wps.contains(&u)
+                                || wps.contains(&to_node)
+                                || demand.s == u
+                                || demand.t == to_node
+                            {
+                                wps.clear();
+                                changed = true;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        if !changed {
+            return Ok(false);
+        }
+
+        // Re-evaluate to verify whether feasibility was restored
+        let post_violations = model.evaluate_violations(candidate);
+        Ok(post_violations.is_empty())
     }
 }
 
@@ -78,12 +90,75 @@ impl ImprovementOperator<RoadefGenome, RoadefConstraintModel> for RoadefImprovem
 
     fn improve(
         &self,
-        _candidate: &mut RoadefGenome,
-        _model: &RoadefConstraintModel,
+        candidate: &mut RoadefGenome,
+        model: &RoadefConstraintModel,
         _budget: &OperatorBudget,
     ) -> Result<bool, Self::Error> {
-        // TODO: Implement bottleneck-relief local search or LNS here.
-        // For now, this is a no-op that just returns true (preserves feasibility).
+        let solution = candidate.to_solution();
+        let eval_res = model.evaluator.evaluate_solution(&solution);
+        if !eval_res.valid {
+            return Ok(true);
+        }
+        let initial_obj = eval_res.obj;
+
+        // Identify highest-saturation arc across time slots
+        let mut max_sat = 0.0;
+        let mut bn_arc = None;
+        let mut bn_ts = 0;
+
+        for ts in 0..model.evaluator.tm.num_time_slots {
+            if let Some(loads) = model.evaluator.compute_loads(ts, &solution) {
+                for (arc_id, sat) in loads.arc_saturations {
+                    if sat > max_sat {
+                        max_sat = sat;
+                        bn_arc = Some(arc_id);
+                        bn_ts = ts;
+                    }
+                }
+            }
+        }
+
+        // Active relief if saturation exceeds 0.85
+        if max_sat >= 0.85 {
+            if let Some(arc_id) = bn_arc {
+                if let Some(&arc_idx) = model.evaluator.graph.arc_by_id.get(&arc_id) {
+                    let arc = &model.evaluator.graph.arcs[arc_idx];
+                    let (u, to_node) = (arc.from, arc.to);
+
+                    let mut best_demand = None;
+                    let mut max_vol = 0.0;
+
+                    for (d_id, demand) in model.evaluator.tm.demands.iter().enumerate() {
+                        let vol = demand.v[bn_ts];
+                        if vol > max_vol && !candidate.waypoints[d_id].is_empty() {
+                            if demand.s == u
+                                || demand.t == to_node
+                                || candidate.waypoints[d_id].contains(&u)
+                                || candidate.waypoints[d_id].contains(&to_node)
+                            {
+                                max_vol = vol;
+                                best_demand = Some(d_id);
+                            }
+                        }
+                    }
+
+                    if let Some(d_id) = best_demand {
+                        let orig_wps = candidate.waypoints[d_id].clone();
+                        candidate.waypoints[d_id].clear();
+
+                        let test_sol = candidate.to_solution();
+                        let test_res = model.evaluator.evaluate_solution(&test_sol);
+                        if test_res.valid && test_res.obj < initial_obj {
+                            return Ok(true);
+                        } else {
+                            // Rollback if no improvement
+                            candidate.waypoints[d_id] = orig_wps;
+                        }
+                    }
+                }
+            }
+        }
+
         Ok(true)
     }
 }
