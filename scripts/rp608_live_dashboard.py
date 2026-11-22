@@ -600,19 +600,87 @@ def get_cached_live_state() -> Dict[str, Any]:
         return state
 
 
+def _resolve_crypto_shadow_pid() -> Optional[int]:
+    """Best-effort BTC crypto shadow PID (excludes ETH twin)."""
+    try:
+        res = subprocess.run(
+            ["pgrep", "-af", "run_rp608_shadow_daemon.py"],
+            capture_output=True,
+            text=True,
+            timeout=1,
+        )
+        for line in (res.stdout or "").splitlines():
+            if "ETHUSDT" in line or "--symbol" in line:
+                continue
+            tok = line.strip().split()
+            if tok and tok[0].isdigit():
+                return int(tok[0])
+    except Exception:
+        pass
+    return None
+
+
+def _crypto_checkpoint_heartbeat_fresh(max_age_sec: int = 120) -> bool:
+    """True when crypto checkpoint heartbeat is recent (wall-clock ISO preferred)."""
+    try:
+        if not CHECKPOINT_FILE.exists():
+            return False
+        data = json.loads(CHECKPOINT_FILE.read_text(encoding="utf-8"))
+        iso = str(data.get("last_heartbeat_utc") or "")
+        if iso:
+            # Accept trailing Z / +00:00
+            ts = iso.replace("Z", "+00:00")
+            hb = datetime.fromisoformat(ts)
+            if hb.tzinfo is None:
+                hb = hb.replace(tzinfo=timezone.utc)
+            age = (datetime.now(timezone.utc) - hb).total_seconds()
+            return 0 <= age <= float(max_age_sec)
+    except Exception:
+        return False
+    return False
+
+
 def get_observer_service_status() -> Dict[str, Any]:
-    """Inspects systemd status of rp608-shadow-observer.service."""
+    """Crypto observer liveness for Command Center badge.
+
+    Prefer systemd ``rp608-shadow-observer.service``. If unit is failed/inactive
+    but the BTC process is alive with a fresh checkpoint heartbeat (e.g. brief
+    nohup/systemd lock race), report active so the UI does not false-flag STOPPED.
+    """
+    status_text = "unknown"
     try:
         res = subprocess.run(
             ["systemctl", "is-active", "rp608-shadow-observer.service"],
             capture_output=True,
             text=True,
-            timeout=2
+            timeout=2,
         )
-        is_active = (res.stdout.strip() == "active")
-        return {"active": is_active, "status_text": res.stdout.strip()}
+        status_text = (res.stdout or "").strip() or (res.stderr or "").strip() or "unknown"
+        if status_text == "active":
+            return {
+                "active": True,
+                "status_text": status_text,
+                "source": "systemd",
+            }
     except Exception as e:
-        return {"active": False, "status_text": f"Error: {e}"}
+        status_text = f"Error: {e}"
+
+    pid = _resolve_crypto_shadow_pid()
+    hb_ok = _crypto_checkpoint_heartbeat_fresh()
+    if pid is not None and hb_ok:
+        return {
+            "active": True,
+            "status_text": f"process+heartbeat (systemd={status_text})",
+            "source": "process_heartbeat",
+            "pid": pid,
+        }
+    return {
+        "active": False,
+        "status_text": status_text,
+        "source": "systemd",
+        "pid": pid,
+        "heartbeat_fresh": hb_ok,
+    }
 
 
 EVENT_DIR = CRYPTO_DIR / "event_driven"
