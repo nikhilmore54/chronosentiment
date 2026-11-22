@@ -31,7 +31,7 @@ use coralys_airline::optimization::search::greedy::GreedyScheduler;
 
 use chrono::{DateTime, Utc};
 use rand::prelude::*;
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::path::Path;
 
 // ── Evolutionary Algorithm Constants ─────────────────────────────────────────
@@ -130,7 +130,7 @@ fn load_crew(path: &Path) -> Vec<RawCrew> {
 fn load_benchmark_pairings(
     instance_dir: &Path,
     flights_map: &HashMap<String, FlightLeg>,
-) -> (Vec<FlightLeg>, Vec<Pairing>) {
+) -> (Vec<FlightLeg>, Vec<Pairing>, usize) {
     let duties_path = instance_dir.join("duties.csv");
     let pairings_path = instance_dir.join("pairings.csv");
 
@@ -158,7 +158,9 @@ fn load_benchmark_pairings(
     // 2. Load pairings
     let mut rdr_p = csv::Reader::from_path(&pairings_path).expect("Cannot open pairings.csv");
     let mut pairings = Vec::new();
+    let mut total_csv_pairings = 0usize;
     for result in rdr_p.deserialize::<HashMap<String, String>>() {
+        total_csv_pairings += 1;
         let row = result.expect("CSV parse error in pairings.csv");
         let pid = row["pairing_id"].trim().to_string();
         let base = pad_airport(row["home_base"].trim());
@@ -184,7 +186,7 @@ fn load_benchmark_pairings(
     }
 
     let all_legs: Vec<FlightLeg> = flights_map.values().cloned().collect();
-    (all_legs, pairings)
+    (all_legs, pairings, total_csv_pairings)
 }
 
 // ── Genome Decode & Fitness ───────────────────────────────────────────────────
@@ -403,13 +405,13 @@ fn run_evolutionary(
     period_end: DateTime<Utc>,
     greedy_seed: &[usize],
     rng: &mut impl Rng,
-) -> (f64, usize, u128) {
+) -> (f64, Vec<usize>, usize, u128) {
     let n_pairings = pairings.len();
     let n_rot = crew.len().min(n_pairings);
     let obj = WorkloadBalanceObjective;
 
     if n_pairings == 0 || n_rot == 0 {
-        return (0.0, 0, 0);
+        return (0.0, vec![], 0, 0);
     }
 
     let t_start = std::time::Instant::now();
@@ -443,6 +445,11 @@ fn run_evolutionary(
 
     let mut best_score = fitnesses.iter().cloned().fold(f64::INFINITY, f64::min);
     let mut best_gen = 0usize;
+    let b_idx = fitnesses
+        .iter()
+        .position(|&s| (s - best_score).abs() < 1e-9)
+        .unwrap_or(0);
+    let mut best_genome = population[b_idx].clone();
 
     for generation in 0..GENERATIONS {
         let mut next_pop: Vec<Vec<usize>> = Vec::with_capacity(POP_SIZE);
@@ -514,11 +521,155 @@ fn run_evolutionary(
         if gen_best < best_score {
             best_score = gen_best;
             best_gen = generation + 1;
+            let b_idx = fitnesses
+                .iter()
+                .position(|&s| (s - gen_best).abs() < 1e-9)
+                .unwrap_or(0);
+            best_genome = population[b_idx].clone();
         }
     }
 
     let elapsed_ms = t_start.elapsed().as_millis();
-    (best_score, best_gen, elapsed_ms)
+    (best_score, best_genome, best_gen, elapsed_ms)
+}
+
+// ── Operational KPIs & GERAD Alignment ────────────────────────────────────────
+
+#[derive(Debug, Clone)]
+struct OperationalKpis {
+    total_flights: usize,
+    covered_flights: usize,
+    uncovered_flights: usize,
+    uncovered_flights_pct: f64,
+    total_pairings_csv: usize,
+    loaded_pairings: usize,
+    prefiltered_pairings: usize,
+    assigned_pairings: usize,
+    unassigned_loaded: usize,
+    total_uncovered_pairings: usize,
+    uncovered_pairings_pct: f64,
+    mean_credited_hours: f64,
+    min_credited_hours: f64,
+    max_credited_hours: f64,
+    std_credited_hours: f64,
+}
+
+fn compute_operational_kpis(
+    genome: &[usize],
+    pairings: &[Pairing],
+    crew: &[RawCrew],
+    flights_map: &HashMap<String, FlightLeg>,
+    total_csv_pairings: usize,
+) -> OperationalKpis {
+    let n_rot = crew.len().min(pairings.len());
+    let total_flights = flights_map.len();
+    let loaded_pairings = pairings.len();
+    let prefiltered_pairings = total_csv_pairings.saturating_sub(loaded_pairings);
+
+    let mut covered_flights_set = HashSet::new();
+    let mut assigned_pairings = 0usize;
+    let mut unassigned_loaded = 0usize;
+    let mut crew_flight_minutes: Vec<i64> = vec![0; n_rot];
+
+    for (i, &rot_idx) in genome.iter().enumerate() {
+        if rot_idx < n_rot {
+            assigned_pairings += 1;
+            let pairing = &pairings[i];
+            for duty in pairing.duties() {
+                crew_flight_minutes[rot_idx] += duty.total_block_time().num_minutes();
+                for leg in duty.legs() {
+                    covered_flights_set.insert(leg.id.as_str().to_string());
+                }
+            }
+        } else {
+            unassigned_loaded += 1;
+        }
+    }
+
+    let covered_flights = covered_flights_set.len();
+    let uncovered_flights = total_flights.saturating_sub(covered_flights);
+    let uncovered_flights_pct = if total_flights > 0 {
+        uncovered_flights as f64 / total_flights as f64 * 100.0
+    } else {
+        0.0
+    };
+
+    let total_uncovered_pairings = unassigned_loaded + prefiltered_pairings;
+    let uncovered_pairings_pct = if total_csv_pairings > 0 {
+        total_uncovered_pairings as f64 / total_csv_pairings as f64 * 100.0
+    } else {
+        0.0
+    };
+
+    let crew_hours: Vec<f64> = crew_flight_minutes
+        .iter()
+        .map(|&m| m as f64 / 60.0)
+        .collect();
+
+    let mean_credited_hours = if !crew_hours.is_empty() {
+        crew_hours.iter().sum::<f64>() / crew_hours.len() as f64
+    } else {
+        0.0
+    };
+
+    let min_credited_hours = crew_hours
+        .iter()
+        .cloned()
+        .fold(f64::INFINITY, f64::min);
+
+    let max_credited_hours = crew_hours
+        .iter()
+        .cloned()
+        .fold(0.0_f64, f64::max);
+
+    let variance = if !crew_hours.is_empty() {
+        crew_hours
+            .iter()
+            .map(|&h| (h - mean_credited_hours).powi(2))
+            .sum::<f64>()
+            / crew_hours.len() as f64
+    } else {
+        0.0
+    };
+    let std_credited_hours = variance.sqrt();
+
+    OperationalKpis {
+        total_flights,
+        covered_flights,
+        uncovered_flights,
+        uncovered_flights_pct,
+        total_pairings_csv: total_csv_pairings,
+        loaded_pairings,
+        prefiltered_pairings,
+        assigned_pairings,
+        unassigned_loaded,
+        total_uncovered_pairings,
+        uncovered_pairings_pct,
+        mean_credited_hours,
+        min_credited_hours,
+        max_credited_hours,
+        std_credited_hours,
+    }
+}
+
+struct GeradRef {
+    avg_hours: f64,
+    min_hours: f64,
+    max_hours: f64,
+    uncovered_flights_pct: f64,
+}
+
+fn get_gerad_ref(label: &str) -> GeradRef {
+    match label {
+        "Instance1" => GeradRef { avg_hours: 68.75, min_hours: 23.67, max_hours: 84.90, uncovered_flights_pct: 0.00 },
+        "Instance2" => GeradRef { avg_hours: 75.76, min_hours: 50.85, max_hours: 84.63, uncovered_flights_pct: 0.00 },
+        "Instance3" => GeradRef { avg_hours: 72.70, min_hours: 20.33, max_hours: 85.00, uncovered_flights_pct: 0.00 },
+        "Instance4" => GeradRef { avg_hours: 74.67, min_hours: 23.68, max_hours: 84.95, uncovered_flights_pct: 0.25 },
+        "Instance5" => GeradRef { avg_hours: 81.12, min_hours: 10.72, max_hours: 85.00, uncovered_flights_pct: 0.64 },
+        "Instance6" => GeradRef { avg_hours: 76.75, min_hours: 21.35, max_hours: 84.98, uncovered_flights_pct: 0.52 },
+        "Instance7" => GeradRef { avg_hours: 81.65, min_hours:  8.88, max_hours: 85.00, uncovered_flights_pct: 1.45 },
+        _ => GeradRef { avg_hours: 75.92, min_hours: 20.0, max_hours: 85.00, uncovered_flights_pct: 0.41 },
+    }
 }
 
 // ── Test Execution ────────────────────────────────────────────────────────────
@@ -573,7 +724,7 @@ fn gerad_coralys_v2_benchmark_run() {
 
         let flights_map = load_flights(&flights_path);
         let crew = load_crew(&crew_path);
-        let (legs, pairings) = load_benchmark_pairings(&instance_dir, &flights_map);
+        let (legs, pairings, total_csv_pairings) = load_benchmark_pairings(&instance_dir, &flights_map);
 
         let period_start = legs.iter().map(|f| f.scheduled_departure).min().unwrap_or(Utc::now());
         let period_end = legs.iter().map(|f| f.scheduled_arrival).max().unwrap_or(Utc::now());
@@ -592,7 +743,7 @@ fn gerad_coralys_v2_benchmark_run() {
 
         // Evolutionary — Coralys v2.0
         let mut rng = StdRng::seed_from_u64(SEED);
-        let (ea_score, ea_gen, ea_ms) = run_evolutionary(
+        let (ea_score, ea_genome, ea_gen, ea_ms) = run_evolutionary(
             &pairings,
             &crew,
             &legs,
@@ -617,10 +768,37 @@ fn gerad_coralys_v2_benchmark_run() {
             label, n_pairings, n_crew, greedy_score, greedy_ms, ea_score, ea_ms, adv_str
         );
 
+        let greedy_kpi = compute_operational_kpis(&greedy_seed, &pairings, &crew, &flights_map, total_csv_pairings);
+        let ea_kpi = compute_operational_kpis(&ea_genome, &pairings, &crew, &flights_map, total_csv_pairings);
+        let gerad_ref = get_gerad_ref(label);
+
+        println!();
+        println!("  ┌── [{label}] Operational KPIs (GERAD G-2014-22 Comparative Alignment) ──");
+        println!("  │ • Flight Coverage (Total GERAD Flights: {}):", ea_kpi.total_flights);
+        println!("  │   - Coralys v2.0:  {:>5}/{} uncovered ({:.2}%)", ea_kpi.uncovered_flights, ea_kpi.total_flights, ea_kpi.uncovered_flights_pct);
+        println!("  │   - Greedy:        {:>5}/{} uncovered ({:.2}%)", greedy_kpi.uncovered_flights, greedy_kpi.total_flights, greedy_kpi.uncovered_flights_pct);
+        println!("  │   - GERAD Target:  uncovered target: {:.2}%", gerad_ref.uncovered_flights_pct);
+        println!("  │ • Pairing Coverage (Total CSV Pairings: {}, Pre-filtered: {}):", ea_kpi.total_pairings_csv, ea_kpi.prefiltered_pairings);
+        println!("  │   - Coralys v2.0:  {:>5}/{} uncovered ({:.2}%) [assigned: {}]", ea_kpi.total_uncovered_pairings, ea_kpi.total_pairings_csv, ea_kpi.uncovered_pairings_pct, ea_kpi.assigned_pairings);
+        println!("  │   - Greedy:        {:>5}/{} uncovered ({:.2}%) [assigned: {}]", greedy_kpi.total_uncovered_pairings, greedy_kpi.total_pairings_csv, greedy_kpi.uncovered_pairings_pct, greedy_kpi.assigned_pairings);
+        println!("  │ • Credited Flying Hours across {} Crew (Cap: <= 85.0 hrs):", n_crew);
+        println!("  │   - Coralys v2.0:  Mean={:.2}h | Min={:.2}h | Max={:.2}h | StdDev={:.2}h", ea_kpi.mean_credited_hours, ea_kpi.min_credited_hours, ea_kpi.max_credited_hours, ea_kpi.std_credited_hours);
+        println!("  │   - Greedy:        Mean={:.2}h | Min={:.2}h | Max={:.2}h | StdDev={:.2}h", greedy_kpi.mean_credited_hours, greedy_kpi.min_credited_hours, greedy_kpi.max_credited_hours, greedy_kpi.std_credited_hours);
+        println!("  │   - GERAD Target:  Mean={:.2}h | Min={:.2}h | Max={:.2}h | Overall Target Mean: 75.92h", gerad_ref.avg_hours, gerad_ref.min_hours, gerad_ref.max_hours);
+        println!("  │ • Preference Satisfaction Targets (Paper G-2014-22 Reference):");
+        println!("  │   - Vacation Days Granted Target:  13.76%");
+        println!("  │   - Preferred Flights Target:      29.09%");
+        println!("  └────────────────────────────────────────────────────────────────────────");
+        println!();
+
         eprintln!(
             "  [v2_result] instance={label} pairings={n_pairings} crew={n_crew} \
              greedy_score={greedy_score:.4} greedy_ms={greedy_ms} \
-             ea_score={ea_score:.4} ea_gen={ea_gen} ea_ms={ea_ms} advantage={adv_str}"
+             ea_score={ea_score:.4} ea_gen={ea_gen} ea_ms={ea_ms} advantage={adv_str} \
+             coralys_uncovered_pct={:.2}% greedy_uncovered_pct={:.2}% \
+             coralys_mean_hrs={:.2}h greedy_mean_hrs={:.2}h",
+            ea_kpi.uncovered_flights_pct, greedy_kpi.uncovered_flights_pct,
+            ea_kpi.mean_credited_hours, greedy_kpi.mean_credited_hours
         );
     }
 }
