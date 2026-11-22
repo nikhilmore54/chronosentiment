@@ -1,6 +1,16 @@
-import type { OperatorState, OfCandleMark, DecisionCardView } from './types';
+import type { CSSProperties } from 'react';
+import type { OperatorState, OfCandleMark, DecisionCardView, TradePlanOutcome } from './types';
 import { displayOrUnavailable } from './freshness';
-import { chip, labelStyle, op, panelStyle, valueStyle } from './operatorStyles';
+import {
+  chip,
+  labelStyle,
+  op,
+  panelStyle,
+  pnlColor,
+  tdStyle,
+  thStyle,
+  valueStyle,
+} from './operatorStyles';
 
 type Props = {
   state: OperatorState | null;
@@ -15,10 +25,9 @@ function candleLine(label: string, c: OfCandleMark | null | undefined) {
 
 function markHitsCard(
   c: DecisionCardView,
-  m: OfCandleMark | null | undefined,
+  m: OfCandleMark | null | undefined
 ): boolean {
   if (!m) return false;
-  // Event-precise only — never whole-bar paint (OF EXIT #— / all #665 rows)
   if (m.decision_event_idx == null && m.bar_idx == null) return false;
   if (
     m.decision_event_idx != null &&
@@ -38,9 +47,41 @@ function markHitsCard(
   return false;
 }
 
+function shortIst(s: string | null | undefined): string {
+  if (!s) return '—';
+  // "2026-11-21 09:55:22 IST" → "09:55:22"
+  const m = s.match(/(\d{2}:\d{2}:\d{2})/);
+  return m ? m[1] : s;
+}
+
+function reasonShort(r: string | null | undefined): string {
+  if (!r) return '—';
+  if (r.includes('GIVEBACK')) return 'GIVEBACK';
+  if (r.includes('PROFIT_TARGET') || r === 'TAKE_PROFIT') return 'TP';
+  if (r.includes('STOP_LOSS') || r === 'STOP_LOSS') return 'SL';
+  if (r.includes('HORIZON') || r.includes('TIME')) return 'TIME';
+  if (r.includes('SCRATCH')) return 'SCRATCH';
+  return r.length > 22 ? `${r.slice(0, 20)}…` : r;
+}
+
+function patternShort(p: string | null | undefined): string {
+  if (!p) return '—';
+  if (p === 'ALLOW') return 'ALLOW';
+  if (p.includes('STANDASIDE')) return 'STANDASIDE';
+  if (p.includes('ABSTAIN')) return 'ABSTAIN';
+  return p.length > 14 ? `${p.slice(0, 12)}…` : p;
+}
+
+function patternChipColor(p: string | null | undefined): { bg: string; fg: string } {
+  if (p === 'ALLOW') return { bg: 'rgba(143,191,159,0.14)', fg: op.signal };
+  if (p && p.includes('STANDASIDE')) return { bg: 'rgba(212,136,138,0.16)', fg: op.loss };
+  return { bg: 'rgba(196,165,116,0.14)', fg: op.warn };
+}
+
 export default function CryptoWorkspace({ state }: Props) {
   const crypto = state?.crypto;
   const plan = crypto?.trade_plan;
+  const book = crypto?.trade_plan_pnl;
   const ofRec = crypto?.order_flow;
   const ofExit = crypto?.order_flow_last_exit;
   const ofShadow = crypto?.of_shadow_trade;
@@ -48,422 +89,446 @@ export default function CryptoWorkspace({ state }: Props) {
   const entryMark =
     marks?.entry ?? ofRec?.entry_candle ?? ofExit?.entry_candle ?? null;
   const exitMark = marks?.exit ?? ofExit?.exit_candle ?? null;
+  const sum = book?.summary;
+  const uPnL = plan?.valuation?.unrealized_net_pnl_usdt ?? null;
 
   return (
     <div style={{ fontFamily: op.sans, color: op.text }}>
-      <div style={{ marginBottom: 16 }}>
-        <h2 style={{ margin: '0 0 4px', fontSize: 20, fontWeight: 700 }}>Crypto</h2>
-        <p style={{ margin: 0, color: op.muted, fontSize: 13 }}>
-          Policy B/C · 60m trade plan · OF latch/exit (independent) · candle marks — Pi fields only.
-        </p>
-      </div>
-
       {!crypto?.available ? (
-        <div style={{ ...panelStyle, color: op.rose, fontFamily: op.mono }}>UNAVAILABLE</div>
+        <div style={{ ...panelStyle, color: op.loss, fontFamily: op.mono }}>UNAVAILABLE</div>
       ) : (
-        <div style={{ display: 'grid', gap: 14 }}>
-          <section style={panelStyle}>
-            <div style={labelStyle}>Policy B / C</div>
-            <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginBottom: 8 }}>
-              <span style={chip('rgba(34,211,238,0.22)', op.cyan)}>
-                B {displayOrUnavailable(crypto.policy_b)}
-              </span>
-              <span style={chip('rgba(251,191,36,0.22)', op.amber)}>
-                C {displayOrUnavailable(crypto.policy_c)}
-              </span>
-            </div>
-            <div style={{ ...valueStyle, fontSize: 13, color: op.muted }}>
-              mid {crypto.reference_price != null ? crypto.reference_price.toFixed(2) : 'UNAVAILABLE'} ·
-              imb{' '}
-              {crypto.imbalance != null ? crypto.imbalance.toFixed(3) : 'UNAVAILABLE'} · quote_age{' '}
-              {crypto.quote_age_ms != null ? `${Math.round(crypto.quote_age_ms)}ms` : 'UNAVAILABLE'} ·
-              ATR {crypto.atr_14 != null ? crypto.atr_14.toFixed(4) : 'UNAVAILABLE'}
-            </div>
-          </section>
-
-          <section style={panelStyle}>
-            <div style={labelStyle}>Trade plan (60m lifecycle)</div>
-            {!plan ? (
-              <div style={{ color: op.dim, fontFamily: op.mono, fontSize: 13 }}>No active/display plan</div>
-            ) : (
-              <>
-                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 8 }}>
-                  <span style={chip(plan.is_active ? 'rgba(52,211,153,0.3)' : 'rgba(148,163,184,0.25)', op.text)}>
-                    {displayOrUnavailable(plan.state)}
-                  </span>
-                  <span style={chip('rgba(34,211,238,0.2)', op.cyan)}>
-                    {displayOrUnavailable(plan.direction)}
-                  </span>
-                  <span style={{ fontFamily: op.mono, fontSize: 12, color: op.dim }}>
-                    {displayOrUnavailable(plan.plan_id)}
-                  </span>
-                </div>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(140px,1fr))', gap: 8, fontFamily: op.mono, fontSize: 12 }}>
-                  <div>entry {plan.entry_price ?? '—'}</div>
-                  <div>SL {plan.stop_loss_price ?? '—'}</div>
-                  <div>TP {plan.profit_target_price ?? '—'}</div>
-                  <div>inv {plan.invalidation_price ?? '—'}</div>
-                  <div>
-                    uPNL{' '}
-                    {plan.valuation?.unrealized_net_pnl_usdt != null
-                      ? plan.valuation.unrealized_net_pnl_usdt.toFixed(4)
-                      : '—'}
-                  </div>
-                  <div>
-                    rem_s{' '}
-                    {plan.valuation?.time_remaining_seconds != null
-                      ? Math.round(plan.valuation.time_remaining_seconds)
-                      : '—'}
-                  </div>
-                </div>
-                <p style={{ margin: '10px 0 0', fontSize: 12, color: op.dim }}>
-                  Plan TTL is independent of order-flow latch/exit.
-                </p>
-              </>
-            )}
-          </section>
-
-          <section style={panelStyle}>
-            <div style={labelStyle}>Crypto trade plan ledger (CRYPTO_PLAN · W/L-first)</div>
-            {crypto.trade_plan_pnl?.summary ? (
-              <>
-                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 8 }}>
-                  <span style={chip('rgba(167,139,250,0.25)', '#c4b5fd')}>
-                    n {crypto.trade_plan_pnl.summary.n_trades ?? 0}
-                  </span>
-                  <span style={chip('rgba(52,211,153,0.25)', op.emerald)}>
-                    W {crypto.trade_plan_pnl.summary.n_wins ?? 0}
-                  </span>
-                  <span style={chip('rgba(251,113,133,0.3)', op.rose)}>
-                    L {crypto.trade_plan_pnl.summary.n_losses ?? 0}
-                  </span>
-                  <span style={chip('rgba(148,163,184,0.2)', op.text)}>
-                    cum net{' '}
-                    {crypto.trade_plan_pnl.summary.cumulative_net_pnl_usdt != null
-                      ? `${crypto.trade_plan_pnl.summary.cumulative_net_pnl_usdt.toFixed(2)} USDT`
-                      : 'UNAVAILABLE'}
-                  </span>
-                  <span style={chip('rgba(45,212,191,0.25)', op.emerald)}>
-                    cum{' '}
-                    {crypto.trade_plan_pnl.summary.cumulative_net_return_bps != null
-                      ? `${crypto.trade_plan_pnl.summary.cumulative_net_return_bps.toFixed(1)} bps`
-                      : '—'}
-                  </span>
-                  <span style={chip('rgba(251,191,36,0.2)', op.amber)}>
-                    GB {crypto.trade_plan_pnl.summary.giveback_exits ?? 0}
-                  </span>
-                  <span style={chip('rgba(245,158,11,0.2)', op.amber)}>PAPER · 0%</span>
-                </div>
-                <div style={{ overflowX: 'auto' }}>
-                  <table
-                    style={{
-                      width: '100%',
-                      borderCollapse: 'collapse',
-                      fontFamily: op.mono,
-                      fontSize: 11,
-                    }}
-                  >
-                    <thead>
-                      <tr style={{ color: op.dim, textAlign: 'left' }}>
-                        <th style={th}>open_ist</th>
-                        <th style={th}>close_ist</th>
-                        <th style={th}>hold</th>
-                        <th style={th}>dir</th>
-                        <th style={th}>entry</th>
-                        <th style={th}>exit</th>
-                        <th style={th}>net USDT</th>
-                        <th style={th}>net bps</th>
-                        <th style={th}>state</th>
-                        <th style={th}>reason</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {(crypto.trade_plan_pnl.recent ?? []).slice(0, 24).map((t, i) => (
-                        <tr key={`${t.plan_id ?? i}`}>
-                          <td style={td}>{t.open_time_ist ?? t.entry_time_ms ?? '—'}</td>
-                          <td style={td}>{t.close_time_ist ?? t.exit_time_ms ?? '—'}</td>
-                          <td style={td}>
-                            {t.holding_duration_seconds != null
-                              ? `${t.holding_duration_seconds.toFixed(1)}s`
-                              : '—'}
-                          </td>
-                          <td style={td}>{t.direction ?? '—'}</td>
-                          <td style={td}>{t.entry_price ?? '—'}</td>
-                          <td style={td}>{t.exit_price ?? '—'}</td>
-                          <td style={td}>
-                            {t.net_pnl_usdt != null ? t.net_pnl_usdt.toFixed(2) : '—'}
-                          </td>
-                          <td style={td}>
-                            {t.net_return_bps != null ? t.net_return_bps.toFixed(1) : '—'}
-                          </td>
-                          <td style={td}>{t.state ?? '—'}</td>
-                          <td style={td}>{t.exit_reason ?? '—'}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                  {(crypto.trade_plan_pnl.recent?.length ?? 0) === 0 && (
-                    <div style={{ color: op.dim, marginTop: 8, fontFamily: op.mono, fontSize: 12 }}>
-                      No closed crypto trade-plan outcomes yet.
-                    </div>
-                  )}
-                </div>
-              </>
-            ) : (
-              <div style={{ color: op.dim, fontFamily: op.mono, fontSize: 13 }}>UNAVAILABLE</div>
-            )}
-          </section>
-
-          <section style={panelStyle}>
-            <div style={labelStyle}>OF paper trade (open · PAPER · 0% authority)</div>
-            {ofShadow?.open ? (
-              <>
-                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 8 }}>
-                  <span style={chip('rgba(45,212,191,0.3)', '#134e4a')}>OPEN PAPER</span>
-                  <span style={chip('rgba(34,211,238,0.2)', op.cyan)}>
-                    {displayOrUnavailable(ofShadow.direction)}
-                  </span>
-                  <span style={chip('rgba(148,163,184,0.2)', op.text)}>
-                    {displayOrUnavailable(ofShadow.of_trade_id)}
-                  </span>
-                </div>
+        <div style={{ display: 'grid', gap: 16 }}>
+          {/* Market + book scoreboard */}
+          <section style={{ ...panelStyle, padding: '18px 20px' }}>
+            <div
+              style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'flex-start',
+                gap: 16,
+                flexWrap: 'wrap',
+              }}
+            >
+              <div>
+                <div style={{ ...labelStyle, marginBottom: 4 }}>BTCUSDT · CRYPTO_PLAN</div>
                 <div
                   style={{
-                    display: 'grid',
-                    gridTemplateColumns: 'repeat(auto-fit,minmax(140px,1fr))',
-                    gap: 8,
-                    fontFamily: op.mono,
-                    fontSize: 12,
+                    fontFamily: op.display,
+                    fontSize: 36,
+                    fontWeight: 600,
+                    letterSpacing: '-0.03em',
+                    lineHeight: 1,
                   }}
                 >
-                  <div>entry {ofShadow.entry_price ?? '—'}</div>
-                  <div>mark {ofShadow.mark_price ?? '—'}</div>
-                  <div>qty {ofShadow.simulated_quantity ?? '—'}</div>
-                  <div>notional {ofShadow.simulated_notional_usdt ?? '—'}</div>
-                  <div>
-                    part{' '}
-                    {ofShadow.participation_pct != null
-                      ? `${(ofShadow.participation_pct * 100).toFixed(0)}%`
-                      : '—'}
-                  </div>
-                  <div>sigQty {ofShadow.entry_signal_qty ?? '—'}</div>
-                  <div>
-                    uPNL{' '}
-                    {ofShadow.unrealized_net_pnl_usdt != null
-                      ? `${ofShadow.unrealized_net_pnl_usdt.toFixed(4)} USDT`
-                      : '—'}
-                  </div>
-                  <div>
-                    uBPS{' '}
-                    {ofShadow.unrealized_net_return_bps != null
-                      ? ofShadow.unrealized_net_return_bps.toFixed(2)
-                      : '—'}
-                  </div>
-                  <div>
-                    hold{' '}
-                    {ofShadow.holding_duration_seconds != null
-                      ? `${ofShadow.holding_duration_seconds.toFixed(1)}s`
-                      : '—'}
-                  </div>
-                  <div>opened {displayOrUnavailable(ofShadow.paper_open_timestamp)}</div>
-                  <div>spread {ofShadow.spread_cost_usdt ?? '—'}</div>
-                  <div>fees {ofShadow.fees_usdt ?? '—'}</div>
+                  {crypto.reference_price != null
+                    ? crypto.reference_price.toLocaleString(undefined, {
+                        minimumFractionDigits: 2,
+                        maximumFractionDigits: 2,
+                      })
+                    : '—'}
                 </div>
-                <p style={{ margin: '10px 0 0', fontSize: 12, color: op.dim }}>
-                  Exit = sustained reverse OF after min hold · not 60m plan TTL
-                </p>
-              </>
+                <div style={{ marginTop: 10, display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                  <span style={chip('rgba(143,191,159,0.12)', op.signal)}>
+                    B {displayOrUnavailable(crypto.policy_b)}
+                  </span>
+                  <span style={chip('rgba(196,165,116,0.14)', op.warn)}>
+                    C {displayOrUnavailable(crypto.policy_c)}
+                  </span>
+                  <span style={{ fontFamily: op.mono, fontSize: 12, color: op.dim }}>
+                    imb{' '}
+                    {crypto.imbalance != null ? crypto.imbalance.toFixed(3) : '—'} · age{' '}
+                    {crypto.quote_age_ms != null
+                      ? `${Math.round(crypto.quote_age_ms)}ms`
+                      : '—'}
+                  </span>
+                </div>
+              </div>
+
+              <div style={scoreboardStyle}>
+                <Score
+                  label="W/L"
+                  value={
+                    sum
+                      ? `${sum.n_wins ?? 0}/${sum.n_losses ?? 0}`
+                      : '—'
+                  }
+                />
+                <Score
+                  label="Cum net"
+                  value={
+                    sum?.cumulative_net_pnl_usdt != null
+                      ? `${sum.cumulative_net_pnl_usdt >= 0 ? '+' : ''}${sum.cumulative_net_pnl_usdt.toFixed(2)}`
+                      : '—'
+                  }
+                  color={pnlColor(sum?.cumulative_net_pnl_usdt)}
+                />
+                <Score
+                  label="Cum bps"
+                  value={
+                    sum?.cumulative_net_return_bps != null
+                      ? `${sum.cumulative_net_return_bps >= 0 ? '+' : ''}${sum.cumulative_net_return_bps.toFixed(0)}`
+                      : '—'
+                  }
+                  color={pnlColor(sum?.cumulative_net_return_bps)}
+                />
+                <Score label="n" value={sum?.n_trades != null ? String(sum.n_trades) : '—'} />
+                <Score
+                  label="GB"
+                  value={sum?.giveback_exits != null ? String(sum.giveback_exits) : '—'}
+                />
+              </div>
+            </div>
+          </section>
+
+          {/* Active plan */}
+          <section style={panelStyle}>
+            <div style={labelStyle}>Open plan</div>
+            {!plan || !plan.is_active ? (
+              <div style={{ display: 'grid', gap: 8 }}>
+                <div style={{ color: op.dim, fontFamily: op.mono, fontSize: 13 }}>FLAT</div>
+                {crypto.gate2e_flat_suppress?.prediction ? (
+                  <div
+                    style={{
+                      display: 'flex',
+                      gap: 8,
+                      flexWrap: 'wrap',
+                      alignItems: 'center',
+                    }}
+                  >
+                    <span
+                      style={chip(
+                        patternChipColor(crypto.gate2e_flat_suppress.prediction).bg,
+                        patternChipColor(crypto.gate2e_flat_suppress.prediction).fg
+                      )}
+                    >
+                      2E suppress {patternShort(crypto.gate2e_flat_suppress.prediction)}
+                      {crypto.gate2e_flat_suppress.gate_mode
+                        ? ` · ${crypto.gate2e_flat_suppress.gate_mode}`
+                        : ''}
+                    </span>
+                    <span style={{ fontFamily: op.mono, fontSize: 11, color: op.dim }}>
+                      {crypto.gate2e_flat_suppress.direction ?? '—'}
+                      {crypto.gate2e_pattern_suppressions != null
+                        ? ` · n_suppress ${crypto.gate2e_pattern_suppressions}`
+                        : ''}
+                    </span>
+                  </div>
+                ) : null}
+              </div>
             ) : (
-              <div style={{ color: op.dim, fontFamily: op.mono, fontSize: 13 }}>
-                No open OF paper trade
+              <div
+                style={{
+                  display: 'grid',
+                  gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))',
+                  gap: 14,
+                }}
+              >
+                <Metric
+                  label="Side"
+                  value={displayOrUnavailable(plan.direction)}
+                />
+                <Metric label="Entry" value={fmtPx(plan.entry_price)} />
+                <Metric label="SL" value={fmtPx(plan.stop_loss_price)} />
+                <Metric label="TP" value={fmtPx(plan.profit_target_price)} />
+                <Metric
+                  label="uPnL"
+                  value={
+                    uPnL != null ? `${uPnL >= 0 ? '+' : ''}${uPnL.toFixed(2)}` : '—'
+                  }
+                  color={pnlColor(uPnL)}
+                />
+                <Metric
+                  label="Rem"
+                  value={
+                    plan.valuation?.time_remaining_seconds != null
+                      ? `${Math.round(plan.valuation.time_remaining_seconds)}s`
+                      : '—'
+                  }
+                />
+                <div style={{ gridColumn: '1 / -1', fontFamily: op.mono, fontSize: 11, color: op.dim }}>
+                  {displayOrUnavailable(plan.plan_id)}
+                  {plan.plan_lifecycle_authority
+                    ? ` · ${plan.plan_lifecycle_authority}`
+                    : ''}
+                </div>
+                {plan.trade_pattern_match?.prediction ? (
+                  <div
+                    style={{
+                      gridColumn: '1 / -1',
+                      display: 'flex',
+                      gap: 8,
+                      flexWrap: 'wrap',
+                      alignItems: 'center',
+                    }}
+                  >
+                    <span
+                      style={chip(
+                        patternChipColor(plan.trade_pattern_match.prediction).bg,
+                        patternChipColor(plan.trade_pattern_match.prediction).fg
+                      )}
+                    >
+                      2E {patternShort(plan.trade_pattern_match.prediction)}
+                      {plan.trade_pattern_match.gate_mode
+                        ? ` · ${plan.trade_pattern_match.gate_mode}`
+                        : plan.trade_pattern_match.gate_enabled
+                          ? ''
+                          : ' · obs'}
+                    </span>
+                    <span style={{ fontFamily: op.mono, fontSize: 11, color: op.dim }}>
+                      n={plan.trade_pattern_match.cohort_n ?? '—'}
+                      {plan.trade_pattern_match.hist_wr != null
+                        ? ` · hist WR ${(plan.trade_pattern_match.hist_wr * 100).toFixed(0)}%`
+                        : ''}
+                      {plan.trade_pattern_match.blocks_entry ? ' · BLOCKS' : ''}
+                    </span>
+                  </div>
+                ) : null}
               </div>
             )}
           </section>
 
+          {/* Primary ledger */}
           <section style={panelStyle}>
-            <div style={labelStyle}>OF P&L ledger (PAPER · independent of 60m plan)</div>
-            {crypto.of_trade_pnl?.summary ? (
-              <>
-                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 8 }}>
-                  <span style={chip('rgba(34,211,238,0.2)', op.cyan)}>
-                    n {crypto.of_trade_pnl.summary.n_trades ?? 0}
-                  </span>
-                  <span style={chip('rgba(52,211,153,0.25)', op.emerald)}>
-                    W {crypto.of_trade_pnl.summary.n_wins ?? 0}
-                  </span>
-                  <span style={chip('rgba(251,113,133,0.3)', op.rose)}>
-                    L {crypto.of_trade_pnl.summary.n_losses ?? 0}
-                  </span>
-                  <span style={chip('rgba(148,163,184,0.2)', op.text)}>
-                    cum net{' '}
-                    {crypto.of_trade_pnl.summary.cumulative_net_pnl_usdt != null
-                      ? `${crypto.of_trade_pnl.summary.cumulative_net_pnl_usdt.toFixed(2)} USDT`
-                      : 'UNAVAILABLE'}
-                  </span>
-                  <span style={chip('rgba(45,212,191,0.25)', op.emerald)}>
-                    cum{' '}
-                    {crypto.of_trade_pnl.summary.cumulative_net_return_bps != null
-                      ? `${crypto.of_trade_pnl.summary.cumulative_net_return_bps.toFixed(2)} bps`
-                      : '—'}
-                  </span>
-                  <span style={chip('rgba(245,158,11,0.2)', op.amber)}>PAPER · 0%</span>
-                </div>
-                <div style={{ overflowX: 'auto' }}>
-                  <table style={{ width: '100%', borderCollapse: 'collapse', fontFamily: op.mono, fontSize: 11 }}>
-                    <thead>
-                      <tr style={{ color: op.dim, textAlign: 'left' }}>
-                        <th style={th}>open_utc</th>
-                        <th style={th}>close_utc</th>
-                        <th style={th}>hold</th>
-                        <th style={th}>dir</th>
-                        <th style={th}>entry</th>
-                        <th style={th}>exit</th>
-                        <th style={th}>net USDT</th>
-                        <th style={th}>net bps</th>
-                        <th style={th}>fees</th>
-                        <th style={th}>reason</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {(crypto.of_trade_pnl.recent ?? []).slice(0, 24).map((t, i) => (
-                        <tr key={`${t.of_trade_id ?? i}`}>
-                          <td style={td}>{t.paper_open_timestamp ?? t.activated_ms ?? '—'}</td>
-                          <td style={td}>
-                            {t.paper_close_timestamp ?? t.signal_exit_timestamp ?? t.exited_ms ?? '—'}
-                          </td>
-                          <td style={td}>
-                            {t.holding_duration_seconds != null
-                              ? `${t.holding_duration_seconds.toFixed(1)}s`
-                              : '—'}
-                          </td>
-                          <td style={td}>{t.direction ?? '—'}</td>
-                          <td style={td}>{t.entry_price ?? '—'}</td>
-                          <td style={td}>{t.exit_price ?? '—'}</td>
-                          <td style={td}>
-                            {t.net_pnl_usdt != null ? t.net_pnl_usdt.toFixed(4) : '—'}
-                          </td>
-                          <td style={td}>
-                            {t.net_return_bps != null ? t.net_return_bps.toFixed(2) : '—'}
-                          </td>
-                          <td style={td}>
-                            {t.fees_usdt != null ? t.fees_usdt.toFixed(4) : '—'}
-                          </td>
-                          <td style={td}>{t.exit_reason ?? '—'}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                  {(crypto.of_trade_pnl.recent?.length ?? 0) === 0 && (
-                    <div style={{ color: op.dim, marginTop: 8, fontFamily: op.mono, fontSize: 12 }}>
-                      No closed OF paper trades yet (ledger updates on reverse-OF exit).
-                    </div>
-                  )}
-                </div>
-              </>
-            ) : (
+            <div
+              style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'baseline',
+                marginBottom: 10,
+                gap: 12,
+                flexWrap: 'wrap',
+              }}
+            >
+              <div style={{ ...labelStyle, marginBottom: 0 }}>Recent trades</div>
+              <div style={{ fontSize: 12, color: op.dim }}>
+                W/L-first · never pooled with OF · PAPER 0%
+              </div>
+            </div>
+            {!book?.summary ? (
               <div style={{ color: op.dim, fontFamily: op.mono, fontSize: 13 }}>UNAVAILABLE</div>
-            )}
-          </section>
-
-          <section style={panelStyle}>
-            <div style={labelStyle}>Order-flow latch / exit (not 60m)</div>
-            {ofRec?.active ? (
-              <>
-                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 8 }}>
-                  <span style={chip('rgba(52,211,153,0.35)', '#052e16')}>OF ACTIVE</span>
-                  <span style={chip('rgba(34,211,238,0.2)', op.cyan)}>
-                    {displayOrUnavailable(ofRec.direction)}
-                  </span>
-                  <span style={chip('rgba(251,191,36,0.25)', op.amber)}>
-                    {displayOrUnavailable(ofRec.order_flow_label)}
-                  </span>
-                </div>
-                <div style={{ fontFamily: op.mono, fontSize: 12, color: op.muted }}>
-                  imb {ofRec.order_flow_imbalance != null ? ofRec.order_flow_imbalance.toFixed(3) : '—'} ·
-                  entry {ofRec.entry_price ?? '—'} · {displayOrUnavailable(ofRec.plan_id)}
-                </div>
-              </>
-            ) : ofExit ? (
-              <>
-                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 8 }}>
-                  <span style={chip('rgba(251,113,133,0.35)', '#450a0a')}>OF EXITED</span>
-                  <span style={chip('rgba(148,163,184,0.2)', op.text)}>
-                    {displayOrUnavailable(ofExit.direction)}
-                  </span>
-                  <span style={{ fontFamily: op.mono, fontSize: 12, color: op.dim }}>
-                    {displayOrUnavailable(ofExit.exit_reason)}
-                  </span>
-                </div>
-                <div style={{ fontFamily: op.mono, fontSize: 12, color: op.muted }}>
-                  exit imb {ofExit.exit_imbalance != null ? ofExit.exit_imbalance.toFixed(3) : '—'} ·
-                  opposite {displayOrUnavailable(ofExit.exit_opposite_side)}
-                </div>
-              </>
             ) : (
-              <div style={{ color: op.dim, fontFamily: op.mono, fontSize: 13 }}>No OF latch</div>
+              <TradeTable rows={(book.recent ?? []).slice(0, 24)} />
             )}
-            <div style={{ marginTop: 10, fontFamily: op.mono, fontSize: 12, color: op.muted }}>
-              <div>{candleLine('ENTRY candle', marks?.entry ?? ofRec?.entry_candle ?? ofExit?.entry_candle)}</div>
-              <div>{candleLine('EXIT candle', marks?.exit ?? ofExit?.exit_candle)}</div>
-            </div>
           </section>
 
-          <section style={panelStyle}>
-            <div style={labelStyle}>Recent cards (ENTRY / EXIT marks)</div>
-            <div style={{ overflowX: 'auto' }}>
-              <table style={{ width: '100%', borderCollapse: 'collapse', fontFamily: op.mono, fontSize: 11 }}>
-                <thead>
-                  <tr style={{ color: op.dim, textAlign: 'left' }}>
-                    <th style={th}>bar</th>
-                    <th style={th}>time</th>
-                    <th style={th}>B</th>
-                    <th style={th}>C</th>
-                    <th style={th}>mid</th>
-                    <th style={th}>OF</th>
-                    <th style={th}>mark</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {(crypto.recent_cards ?? []).slice(0, 24).map((c, i) => {
-                    const isEntry = markHitsCard(c, entryMark);
-                    const isExit = markHitsCard(c, exitMark);
-                    const bg = isEntry
-                      ? 'rgba(52,211,153,0.12)'
-                      : isExit
-                        ? 'rgba(251,113,133,0.12)'
-                        : 'transparent';
-                    return (
-                      <tr key={`${c.bar_idx}-${c.decision_event_idx}-${i}`} style={{ background: bg }}>
-                        <td style={td}>{c.bar_idx ?? '—'}</td>
-                        <td style={td}>{c.timestamp_utc ?? '—'}</td>
-                        <td style={td}>{c.policy_b_action ?? '—'}</td>
-                        <td style={td}>{c.policy_c_action ?? '—'}</td>
-                        <td style={td}>
-                          {c.reference_price != null ? c.reference_price.toFixed(2) : '—'}
-                        </td>
-                        <td style={td}>
-                          {c.order_flow_supported
-                            ? c.order_flow_label || 'OF'
-                            : '—'}
-                        </td>
-                        <td style={td}>
-                          {isEntry && isExit ? 'IN/OUT' : isEntry ? 'ENTRY' : isExit ? 'EXIT' : ''}
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-              {(crypto.recent_cards?.length ?? 0) === 0 && (
-                <div style={{ color: op.dim, marginTop: 8 }}>No recent cards</div>
+          {/* Secondary: OF + cards in two columns */}
+          <div
+            style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
+              gap: 16,
+            }}
+          >
+            <section style={panelStyle}>
+              <div style={labelStyle}>OF paper (independent)</div>
+              {ofShadow?.open ? (
+                <div style={{ fontFamily: op.mono, fontSize: 12, lineHeight: 1.6 }}>
+                  <div>
+                    <span style={chip('rgba(143,191,159,0.15)', op.signal)}>OPEN</span>{' '}
+                    {ofShadow.direction} @{fmtPx(ofShadow.entry_price)}
+                  </div>
+                  <div style={{ color: op.muted, marginTop: 8 }}>
+                    mark {fmtPx(ofShadow.mark_price)} · uPnL{' '}
+                    <span style={{ color: pnlColor(ofShadow.unrealized_net_pnl_usdt) }}>
+                      {ofShadow.unrealized_net_pnl_usdt != null
+                        ? ofShadow.unrealized_net_pnl_usdt.toFixed(2)
+                        : '—'}
+                    </span>
+                  </div>
+                </div>
+              ) : (
+                <div style={{ color: op.dim, fontFamily: op.mono, fontSize: 13 }}>No open OF</div>
               )}
-            </div>
-          </section>
+              <div style={{ marginTop: 12, fontFamily: op.mono, fontSize: 11, color: op.dim }}>
+                {ofRec?.active
+                  ? `Latch ACTIVE ${ofRec.direction ?? ''}`
+                  : ofExit
+                    ? `Last exit ${ofExit.exit_reason ?? '—'}`
+                    : 'No OF latch'}
+              </div>
+              <div style={{ marginTop: 8, fontFamily: op.mono, fontSize: 11, color: op.dim }}>
+                <div>{candleLine('IN', entryMark)}</div>
+                <div>{candleLine('OUT', exitMark)}</div>
+              </div>
+              {crypto.of_trade_pnl?.summary && (
+                <div style={{ marginTop: 12, fontSize: 12, color: op.muted, fontFamily: op.mono }}>
+                  OF ledger W/L {crypto.of_trade_pnl.summary.n_wins ?? 0}/
+                  {crypto.of_trade_pnl.summary.n_losses ?? 0} · cum{' '}
+                  {crypto.of_trade_pnl.summary.cumulative_net_pnl_usdt?.toFixed(2) ?? '—'} USDT
+                </div>
+              )}
+            </section>
+
+            <section style={panelStyle}>
+              <div style={labelStyle}>Recent cards</div>
+              <div style={{ overflowX: 'auto', maxHeight: 280 }}>
+                <table style={{ width: '100%', borderCollapse: 'collapse', fontFamily: op.mono, fontSize: 11 }}>
+                  <thead>
+                    <tr>
+                      <th style={thStyle}>bar</th>
+                      <th style={thStyle}>B</th>
+                      <th style={thStyle}>C</th>
+                      <th style={thStyle}>mid</th>
+                      <th style={thStyle}>mk</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {(crypto.recent_cards ?? []).slice(0, 16).map((c, i) => {
+                      const isEntry = markHitsCard(c, entryMark);
+                      const isExit = markHitsCard(c, exitMark);
+                      return (
+                        <tr
+                          key={`${c.bar_idx}-${c.decision_event_idx}-${i}`}
+                          style={{
+                            background: isEntry
+                              ? 'rgba(143,191,159,0.08)'
+                              : isExit
+                                ? 'rgba(212,136,138,0.08)'
+                                : undefined,
+                          }}
+                        >
+                          <td style={tdStyle}>{c.bar_idx ?? '—'}</td>
+                          <td style={tdStyle}>{c.policy_b_action ?? '—'}</td>
+                          <td style={tdStyle}>{c.policy_c_action ?? '—'}</td>
+                          <td style={tdStyle}>
+                            {c.reference_price != null ? c.reference_price.toFixed(1) : '—'}
+                          </td>
+                          <td style={tdStyle}>
+                            {isEntry && isExit ? 'IO' : isEntry ? 'IN' : isExit ? 'OUT' : ''}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </section>
+          </div>
         </div>
       )}
     </div>
   );
 }
 
-const th = { padding: '6px 8px', fontWeight: 600, borderBottom: `1px solid ${op.border}` };
-const td = { padding: '6px 8px', borderBottom: `1px solid rgba(148,163,184,0.08)`, color: op.text };
+function fmtPx(v: number | null | undefined): string {
+  return v != null ? v.toFixed(2) : '—';
+}
+
+function Score({
+  label,
+  value,
+  color,
+}: {
+  label: string;
+  value: string;
+  color?: string;
+}) {
+  return (
+    <div style={{ textAlign: 'right', minWidth: 72 }}>
+      <div style={{ fontSize: 10, letterSpacing: '0.1em', color: op.dim, textTransform: 'uppercase' }}>
+        {label}
+      </div>
+      <div
+        style={{
+          fontFamily: op.mono,
+          fontSize: 18,
+          fontWeight: 600,
+          color: color ?? op.text,
+          marginTop: 2,
+        }}
+      >
+        {value}
+      </div>
+    </div>
+  );
+}
+
+function Metric({
+  label,
+  value,
+  color,
+}: {
+  label: string;
+  value: string;
+  color?: string;
+}) {
+  return (
+    <div>
+      <div style={{ fontSize: 10, color: op.dim, letterSpacing: '0.08em', textTransform: 'uppercase' }}>
+        {label}
+      </div>
+      <div style={{ ...valueStyle, fontSize: 16, color: color ?? op.text, marginTop: 2 }}>
+        {value}
+      </div>
+    </div>
+  );
+}
+
+function TradeTable({ rows }: { rows: TradePlanOutcome[] }) {
+  if (!rows.length) {
+    return (
+      <div style={{ color: op.dim, fontFamily: op.mono, fontSize: 12 }}>
+        No closed crypto trade-plan outcomes yet.
+      </div>
+    );
+  }
+  return (
+    <div style={{ overflowX: 'auto' }}>
+      <table style={{ width: '100%', borderCollapse: 'collapse', fontFamily: op.mono, fontSize: 12 }}>
+        <thead>
+          <tr>
+            <th style={thStyle}>open</th>
+            <th style={thStyle}>close</th>
+            <th style={thStyle}>dir</th>
+            <th style={{ ...thStyle, textAlign: 'right' }}>entry</th>
+            <th style={{ ...thStyle, textAlign: 'right' }}>exit</th>
+            <th style={{ ...thStyle, textAlign: 'right' }}>net $</th>
+            <th style={{ ...thStyle, textAlign: 'right' }}>bps</th>
+            <th style={thStyle}>exit</th>
+            <th style={thStyle}>2E</th>
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((t, i) => {
+            const net = t.net_pnl_usdt;
+            const pred = t.trade_pattern_match?.prediction;
+            return (
+              <tr key={`${t.plan_id ?? i}`}>
+                <td style={tdStyle}>{shortIst(t.open_time_ist)}</td>
+                <td style={tdStyle}>{shortIst(t.close_time_ist)}</td>
+                <td style={tdStyle}>{t.direction ?? '—'}</td>
+                <td style={{ ...tdStyle, textAlign: 'right' }}>{fmtPx(t.entry_price)}</td>
+                <td style={{ ...tdStyle, textAlign: 'right' }}>{fmtPx(t.exit_price)}</td>
+                <td style={{ ...tdStyle, textAlign: 'right', color: pnlColor(net), fontWeight: 600 }}>
+                  {net != null ? `${net >= 0 ? '+' : ''}${net.toFixed(2)}` : '—'}
+                </td>
+                <td style={{ ...tdStyle, textAlign: 'right', color: pnlColor(t.net_return_bps) }}>
+                  {t.net_return_bps != null
+                    ? `${t.net_return_bps >= 0 ? '+' : ''}${t.net_return_bps.toFixed(1)}`
+                    : '—'}
+                </td>
+                <td style={tdStyle}>{reasonShort(t.exit_reason)}</td>
+                <td
+                  style={{
+                    ...tdStyle,
+                    color: patternChipColor(pred).fg,
+                  }}
+                >
+                  {patternShort(pred)}
+                </td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+const scoreboardStyle: CSSProperties = {
+  display: 'flex',
+  gap: 20,
+  flexWrap: 'wrap',
+  alignItems: 'flex-end',
+  padding: '4px 0',
+};

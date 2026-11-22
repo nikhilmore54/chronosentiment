@@ -86,6 +86,11 @@ def main() -> int:
         default="",
         help="ISO UTC restart cutoff (default: require explicit)",
     )
+    ap.add_argument(
+        "--allow-only-utc",
+        default="2026-11-21T05:34:00Z",
+        help="ISO UTC Gate2E allow_only cut for create/suppress twin (empty to skip)",
+    )
     args = ap.parse_args()
     if not args.restart_utc:
         raise SystemExit("--restart-utc required (e.g. 2026-11-20T13:00:00Z)")
@@ -102,10 +107,61 @@ def main() -> int:
     )
     s1 = summarize("CRYPTO_PLAN", primary)
     s0 = summarize("CRYPTO_PLAN_BASELINE_PARALLEL", baseline)
-    print(json.dumps({"restart_utc": rst.isoformat(), "primary": s1, "baseline": s0}, indent=2))
+    payload: Dict[str, Any] = {
+        "restart_utc": rst.isoformat(),
+        "primary": s1,
+        "baseline": s0,
+    }
+    if args.allow_only_utc:
+        from scripts.research.rp608_gate2e_twin_attribution import (
+            book_open_flat,
+            count_entry_events,
+        )
+
+        since = datetime.fromisoformat(args.allow_only_utc.replace("Z", "+00:00"))
+        if since.tzinfo is None:
+            since = since.replace(tzinfo=timezone.utc)
+        payload["gate2e_allow_only"] = {
+            "since_utc": since.isoformat(),
+            "primary": {
+                **count_entry_events(
+                    root / "trade_plan_overlay_v1" / "trade_plan_events.jsonl", since
+                ),
+                **book_open_flat(
+                    root / "trade_plan_overlay_v1" / "overlay_state.json"
+                ),
+            },
+            "baseline": {
+                **count_entry_events(
+                    root
+                    / "trade_plan_overlay_baseline_parallel_v1"
+                    / "trade_plan_events.jsonl",
+                    since,
+                ),
+                **book_open_flat(
+                    root
+                    / "trade_plan_overlay_baseline_parallel_v1"
+                    / "overlay_state.json"
+                ),
+            },
+        }
+    print(json.dumps(payload, indent=2))
     print("\n# W/L-first (never pooled)")
     print(f"PRIMARY  opened={s1['opened']} closed={s1['closed']} W/L={s1['wl']} net={s1['net_usdt']}")
     print(f"BASELINE opened={s0['opened']} closed={s0['closed']} W/L={s0['wl']} net={s0['net_usdt']}")
+    g2 = payload.get("gate2e_allow_only")
+    if isinstance(g2, dict):
+        p = g2.get("primary") or {}
+        b = g2.get("baseline") or {}
+        print("\n# Gate2E allow_only twin (never pooled)")
+        print(
+            f"PRIMARY  state={p.get('state')} create={p.get('plan_created')} "
+            f"suppress={p.get('suppressed_trade_pattern')}"
+        )
+        print(
+            f"BASELINE state={b.get('state')} create={b.get('plan_created')} "
+            f"suppress={b.get('suppressed_trade_pattern')}"
+        )
     return 0
 
 

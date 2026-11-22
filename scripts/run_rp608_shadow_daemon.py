@@ -6,10 +6,11 @@ RP-608-SHADOW-TICK-001: Prospective Crypto Shadow Observation Daemon (tick decis
 Strictly Read-Only (0.0% Order Authority) with Atomic Durable Checkpointing.
 
 Features:
-  1. Concurrent WebSocket Ingestion:
-     - wss://stream.binance.com:9443/ws/btcusdt@bookTicker → canonical Policy B/C decisions
-     - wss://stream.binance.com:9443/ws/btcusdt@kline_15m → completed-bar buffer for ATR(14) geometry
-     - wss://…/btcusdt@aggTrade → OFX research durable journal only (baseline OF inert; env RP608_OFX_CRYPTO_AGGTRADE_CAPTURE)
+  1. Concurrent WebSocket Ingestion (per --symbol; default BTCUSDT):
+     - wss://stream.binance.com:9443/ws/{symbol}@bookTicker → canonical Policy B/C decisions
+     - wss://stream.binance.com:9443/ws/{symbol}@kline_15m → completed-bar buffer for ATR(14) geometry
+     - wss://…/{symbol}@aggTrade → OFX research durable journal only (baseline OF inert; env RP608_OFX_CRYPTO_AGGTRADE_CAPTURE)
+     ETH/SOL run as separate processes + output dirs (books never pooled; Gate 2E off until symbol library).
   2. Protocol Invariant & Quality Gate Enforcement:
      - Clock offset calibration (|Delta_clock| <= 250 ms, 5-sample NTP minimum RTT)
      - Quote freshness boundary (<= 500 ms); min refractory 1.0s between decision emits
@@ -46,10 +47,15 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
-import websockets
-
 WORKSPACE_DIR = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(WORKSPACE_DIR))
+
+
+def _websockets():
+    """Lazy import so unit tests can load helpers without the live WS dependency."""
+    import websockets  # type: ignore
+
+    return websockets
 
 from scripts.market_regime_classifier import classify_market_regime
 from scripts.rp608_arm_a_baseline import attach_regime_telemetry
@@ -64,6 +70,10 @@ from scripts.rp608_crypto_tick_policy import (
     evaluate_tick_policies,
     snapshot_to_dict,
     validate_tick_quote,
+)
+from scripts.rp608_crypto_tick_policy_client import (
+    resolve_tick_eval_mode,
+    tick_policy_backend,
 )
 from scripts.rp608_prospective_v1 import Market as ProspectiveMarket
 from scripts.rp608_prospective_v1_observer import (
@@ -81,7 +91,6 @@ from scripts.rp608_order_flow_mark import (
 )
 from scripts.rp608_trade_plan_overlay import TradePlanOverlayManager
 from scripts.rp608_ofx_crypto_aggtrade_journal import (
-    DEFAULT_WS_URL as OFX_AGGTRADE_WS_URL,
     OfxCryptoAggTradeJournal,
     ofx_crypto_aggtrade_capture_enabled,
 )
@@ -128,6 +137,11 @@ DEFAULT_DECISION_CARDS_PATH = DEFAULT_OUTPUT_DIR / "rp608_decision_cards.jsonl"
 DEFAULT_TRADE_JOURNAL_PATH = DEFAULT_OUTPUT_DIR / "rp608_trade_journal.jsonl"
 DEFAULT_OPPORTUNITY_LOG_PATH = DEFAULT_OUTPUT_DIR / "rp608_opportunity_registry.jsonl"
 
+# Observational multi-symbol twins (books never pooled; BTC remains live PRIMARY).
+# SOL is allow-listed for later wiring — do not enable until ETH shadow is proven.
+ALLOWED_CRYPTO_SHADOW_SYMBOLS = ("BTCUSDT", "ETHUSDT", "SOLUSDT")
+DEFAULT_CRYPTO_SHADOW_SYMBOL = "BTCUSDT"
+
 # Backwards-compatible aliases
 LOG_DIR = DEFAULT_OUTPUT_DIR
 CHECKPOINT_PATH = DEFAULT_CHECKPOINT_PATH
@@ -135,6 +149,39 @@ TELEMETRY_LOG_PATH = DEFAULT_TELEMETRY_LOG_PATH
 DECISION_CARDS_PATH = DEFAULT_DECISION_CARDS_PATH
 TRADE_JOURNAL_PATH = DEFAULT_TRADE_JOURNAL_PATH
 OPPORTUNITY_LOG_PATH = DEFAULT_OPPORTUNITY_LOG_PATH
+
+
+def normalize_crypto_shadow_symbol(symbol: Optional[str]) -> str:
+    """Canonical Binance spot symbol for a crypto shadow instance."""
+    s = str(symbol or DEFAULT_CRYPTO_SHADOW_SYMBOL).strip().upper()
+    if s not in ALLOWED_CRYPTO_SHADOW_SYMBOLS:
+        raise ValueError(
+            f"FATAL: Unsupported crypto shadow symbol {s!r}. "
+            f"Allowed: {', '.join(ALLOWED_CRYPTO_SHADOW_SYMBOLS)}"
+        )
+    return s
+
+
+def default_output_dir_for_symbol(symbol: str) -> Path:
+    """
+    Per-symbol ledger root so books never share state.
+    BTCUSDT → …/crypto (legacy path locked).
+    ETHUSDT → …/crypto_eth ; SOLUSDT → …/crypto_sol.
+    """
+    sym = normalize_crypto_shadow_symbol(symbol)
+    if sym == DEFAULT_CRYPTO_SHADOW_SYMBOL:
+        return DEFAULT_OUTPUT_DIR
+    base = sym[:-4].lower() if sym.endswith("USDT") else sym.lower()
+    return WORKSPACE_DIR / "live_capture" / "shadow_validation" / f"crypto_{base}"
+
+
+def binance_ws_stream_url(symbol: str, stream: str) -> str:
+    """Binance combined single-stream WS URL for symbol@stream."""
+    sym = normalize_crypto_shadow_symbol(symbol)
+    st = str(stream).strip()
+    if not st:
+        raise ValueError("stream must be non-empty")
+    return f"wss://stream.binance.com:9443/ws/{sym.lower()}@{st}"
 
 
 def resolve_output_dir(output_dir: Optional[str | Path]) -> Path:
@@ -605,7 +652,9 @@ class RP608ShadowDaemon:
         enable_dry_run: bool = False,
         single_candle_test: bool = False,
         window_start_utc_ms: Optional[int] = None,
+        symbol: Optional[str] = None,
     ):
+        self.symbol = normalize_crypto_shadow_symbol(symbol)
         if checkpoint_path is not None and output_dir is None:
             ckpt_p = Path(checkpoint_path)
             if not ckpt_p.is_absolute():
@@ -615,7 +664,10 @@ class RP608ShadowDaemon:
             resolved_output_dir = ckpt_p.parent
             resolved_checkpoint_path = ckpt_p
         else:
-            resolved_output_dir = resolve_output_dir(output_dir)
+            if output_dir is None:
+                resolved_output_dir = resolve_output_dir(default_output_dir_for_symbol(self.symbol))
+            else:
+                resolved_output_dir = resolve_output_dir(output_dir)
             if checkpoint_path is not None:
                 ckpt_p = Path(checkpoint_path)
                 if not ckpt_p.is_absolute():
@@ -663,23 +715,41 @@ class RP608ShadowDaemon:
         # ATR geometry still frozen from completed 15m buffer at plan open.
         # Primary = volume-pattern axes (v2). Parallel twin = pre-volume baseline book
         # (OF paper inert on twin; books never pooled).
+        # Gate 2E: BTC PRIMARY may use allow_only; non-BTC twins force gate=0 until
+        # a symbol-specific pattern library exists (never reuse BTC cohorts).
+        _primary_gate = os.environ.get("RP608_CRYPTO_PATTERN_GATE", "0")
+        _baseline_gate = os.environ.get("RP608_CRYPTO_PATTERN_GATE_BASELINE", "0")
+        if self.symbol != DEFAULT_CRYPTO_SHADOW_SYMBOL:
+            _primary_gate = "0"
+            _baseline_gate = "0"
+        _book_suffix = "" if self.symbol == DEFAULT_CRYPTO_SHADOW_SYMBOL else f"_{self.symbol}"
+        _primary_book = f"CRYPTO_PLAN{_book_suffix}"
+        _baseline_book = f"CRYPTO_PLAN_BASELINE_PARALLEL{_book_suffix}"
+        # Always under this process output_dir (BTC default dir == legacy OVERLAY_DIR parent).
+        _primary_dir = self.output_dir / "trade_plan_overlay_v1"
         self.trade_plan_overlay = TradePlanOverlayManager(
-            book_id="CRYPTO_PLAN",
+            base_dir=_primary_dir,
+            book_id=_primary_book,
+            symbol=self.symbol,
             of_paper_enabled=True,
             volume_pattern_axes=True,
+            pattern_entry_gate_mode=_primary_gate,
         )
         twin_dir = self.output_dir / "trade_plan_overlay_baseline_parallel_v1"
         self.trade_plan_overlay_baseline = TradePlanOverlayManager(
             base_dir=twin_dir,
-            book_id="CRYPTO_PLAN_BASELINE_PARALLEL",
+            book_id=_baseline_book,
+            symbol=self.symbol,
             of_paper_enabled=False,
             volume_pattern_axes=False,
+            pattern_entry_gate_mode=_baseline_gate,
         )
         self._last_overlay_reload_ms: int = 0
         self._overlay_reload_interval_ms: int = 5000
         print(
-            "[trade_plan_overlay] parallel twin armed → "
-            f"{twin_dir} (book=CRYPTO_PLAN_BASELINE_PARALLEL; OF inert; no volume axes)"
+            f"[trade_plan_overlay] symbol={self.symbol} parallel twin armed → "
+            f"{twin_dir} (book={_baseline_book}; OF inert; no volume axes; "
+            f"gate2e primary={_primary_gate!r} baseline={_baseline_gate!r})"
         )
 
         # OFX research-only: durable Binance aggTrade journal (separate WS; baseline OF inert)
@@ -687,7 +757,7 @@ class RP608ShadowDaemon:
         self.ofx_aggtrade_journal = OfxCryptoAggTradeJournal(
             self.ofx_aggtrade_dir,
             enabled=ofx_crypto_aggtrade_capture_enabled(default=True),
-            symbol="BTCUSDT",
+            symbol=self.symbol,
             flush_every=32,
         )
         self._ofx_volume_mark_last_ms: int = 0
@@ -906,7 +976,10 @@ class RP608ShadowDaemon:
 
     def bootstrap_15m_buffer(self, limit: int = 120) -> int:
         """Warm completed 15m buffer from Binance REST so ATR(14) is available immediately."""
-        url = f"https://api.binance.com/api/v3/klines?symbol=BTCUSDT&interval=15m&limit={int(limit)}"
+        url = (
+            f"https://api.binance.com/api/v3/klines?symbol={self.symbol}"
+            f"&interval=15m&limit={int(limit)}"
+        )
         try:
             req = urllib.request.Request(url, headers={"User-Agent": "rp608-shadow-tick/1.0"})
             with urllib.request.urlopen(req, timeout=8.0) as resp:
@@ -974,10 +1047,12 @@ class RP608ShadowDaemon:
         journal = getattr(self, "ofx_aggtrade_journal", None)
         if journal is None or not journal.enabled:
             return
-        ws_url = OFX_AGGTRADE_WS_URL
+        ws_url = getattr(journal, "ws_url", None) or binance_ws_stream_url(
+            self.symbol, "aggTrade"
+        )
         while self.running:
             try:
-                async with websockets.connect(ws_url, ping_interval=20, ping_timeout=10) as ws:
+                async with _websockets().connect(ws_url, ping_interval=20, ping_timeout=10) as ws:
                     async for msg in ws:
                         if not self.running:
                             break
@@ -991,7 +1066,7 @@ class RP608ShadowDaemon:
                                 try:
                                     snap = refresh_ofx_volume_flow_mark(
                                         self.ofx_aggtrade_dir,
-                                        symbol="BTCUSDT",
+                                        symbol=self.symbol,
                                         now_ms=recv_wall_ms,
                                     )
                                     # Parallel OFX volume paper exit eval (never touches L1 OF paper)
@@ -1015,10 +1090,10 @@ class RP608ShadowDaemon:
 
     async def ingest_book_ticker(self):
         """bookTicker path: L1 maintenance, overlay exits, and tick Policy B/C decisions."""
-        ws_url = "wss://stream.binance.com:9443/ws/btcusdt@bookTicker"
+        ws_url = binance_ws_stream_url(self.symbol, "bookTicker")
         while self.running:
             try:
-                async with websockets.connect(ws_url, ping_interval=20, ping_timeout=10) as ws:
+                async with _websockets().connect(ws_url, ping_interval=20, ping_timeout=10) as ws:
                     async for msg in ws:
                         if not self.running:
                             break
@@ -1110,8 +1185,8 @@ class RP608ShadowDaemon:
                             of_active = (self.trade_plan_overlay.state or {}).get(
                                 "active_order_flow_recommendation"
                             )
+                            # Only primary book owns L1 OF paper.
                             if of_active and of_active.get("active"):
-                                # Only primary book owns L1 OF paper.
                                 active_primary = (self.trade_plan_overlay.state or {}).get(
                                     "active_plan"
                                 )
@@ -1139,6 +1214,27 @@ class RP608ShadowDaemon:
                                             "[order_flow] ORDER_FLOW_EXIT "
                                             "(opposite-side L1 confirm; not 60m-gated)"
                                         )
+                            else:
+                                # Entry persist continuation: arm from decision-card OF,
+                                # complete open on sustained same-side L1 (not ±0.30 change).
+                                opened = (
+                                    self.trade_plan_overlay.continue_of_paper_entry_persist(
+                                        quote=self.latest_book_ticker,
+                                        now_ms=recv_wall_ms,
+                                        persist=True,
+                                    )
+                                )
+                                if (
+                                    isinstance(opened, dict)
+                                    and opened.get("active")
+                                    and opened.get("of_trade_id")
+                                ):
+                                    print(
+                                        "[order_flow] OF_PAPER_OPEN "
+                                        f"dir={opened.get('direction')} "
+                                        f"id={opened.get('of_trade_id')} "
+                                        "(entry persist cleared)"
+                                    )
                         except Exception as overlay_exc:
                             print(f"[trade_plan_overlay] tick skipped: {overlay_exc}")
             except asyncio.CancelledError:
@@ -1227,6 +1323,7 @@ class RP608ShadowDaemon:
             "decision_clock": TICK_DECISION_CLOCK,
             "decision_event_idx": decision_event_idx,
             "bar_idx": bar_idx,
+            "symbol": self.symbol,
             "timestamp_utc": datetime.fromtimestamp(
                 quote.event_time_ms / 1000.0, tz=timezone.utc
             ).isoformat(),
@@ -1301,7 +1398,7 @@ class RP608ShadowDaemon:
                         vol_snap = loaded
                 if vol_snap is None:
                     vol_snap = refresh_ofx_volume_flow_mark(
-                        self.ofx_aggtrade_dir, symbol="BTCUSDT", now_ms=quote.receive_time_ms
+                        self.ofx_aggtrade_dir, symbol=self.symbol, now_ms=quote.receive_time_ms
                     )
                 plan_id = None
                 if isinstance(plan_result, dict):
@@ -1335,7 +1432,7 @@ class RP608ShadowDaemon:
             )
             prospective_v1_record_recommendation(
                 market=ProspectiveMarket.CRYPTO,
-                symbol="BTCUSDT",
+                symbol=self.symbol,
                 decision=str(action_b),
                 secondary_decision=str(action_c),
                 session_date=session_date_utc,
@@ -1355,7 +1452,7 @@ class RP608ShadowDaemon:
             )
             prospective_v1_append_rec_trade(
                 market=ProspectiveMarket.CRYPTO,
-                symbol="BTCUSDT",
+                symbol=self.symbol,
                 session_date=session_date_utc,
                 bar_idx=decision_event_idx,
                 decision=str(action_b),
@@ -1381,7 +1478,7 @@ class RP608ShadowDaemon:
                     bid=bid_v,
                     quote_age_ms=age_v,
                     session_date=session_date_utc,
-                    symbol="BTCUSDT",
+                    symbol=self.symbol,
                     bar_idx=decision_event_idx,
                     close_time_ms=int(quote.event_time_ms),
                     arm_a_signal=arm_a,
@@ -1430,11 +1527,11 @@ class RP608ShadowDaemon:
             pass
 
     async def ingest_klines(self):
-        """Subscribes to live Binance btcusdt@kline_15m stream."""
-        ws_url = "wss://stream.binance.com:9443/ws/btcusdt@kline_15m"
+        """Subscribes to live Binance {symbol}@kline_15m stream."""
+        ws_url = binance_ws_stream_url(self.symbol, "kline_15m")
         while self.running:
             try:
-                async with websockets.connect(ws_url, ping_interval=20, ping_timeout=10) as ws:
+                async with _websockets().connect(ws_url, ping_interval=20, ping_timeout=10) as ws:
                     async for msg in ws:
                         if not self.running:
                             break
@@ -1536,8 +1633,15 @@ class RP608ShadowDaemon:
         self.initialize_or_resume_state()
         self.bootstrap_15m_buffer(limit=120)
         print(
-            f"[RP-608] Decision clock={TICK_DECISION_CLOCK} protocol={SHADOW_PROTOCOL_ID} "
-            f"authority={LIVE_ORDER_AUTHORITY_PCT}% (Gate C isolated)."
+            f"[RP-608] symbol={self.symbol} Decision clock={TICK_DECISION_CLOCK} "
+            f"protocol={SHADOW_PROTOCOL_ID} authority={LIVE_ORDER_AUTHORITY_PCT}% "
+            f"(Gate C isolated; books never pooled)."
+        )
+        print(
+            f"[RP-608] tick_policy backend={tick_policy_backend()} "
+            f"mode={resolve_tick_eval_mode()} "
+            f"(Track C: Rust module landed; live eval still Python until tick-loop soak)",
+            flush=True,
         )
 
         # Calibrate Exchange Clock Offset (EBO: survive post-reboot DNS/network lag)
@@ -1622,6 +1726,12 @@ class RP608ShadowDaemon:
 
 def main():
     parser = argparse.ArgumentParser(description="RP-608-SHADOW-TICK-001 Prospective Observation Daemon")
+    parser.add_argument(
+        "--symbol",
+        type=str,
+        default=DEFAULT_CRYPTO_SHADOW_SYMBOL,
+        help="Binance spot symbol (BTCUSDT default; ETHUSDT observational twin; SOLUSDT deferred).",
+    )
     parser.add_argument("--output-dir", type=str, default=None, help="Explicit output directory for isolated checkpoint and ledgers.")
     parser.add_argument("--dry-run", action="store_true", help="Run preflight and exit without opening sockets.")
     parser.add_argument("--test-resumption", action="store_true", help="Test recovery and downtime accounting from existing checkpoint.")
@@ -1632,10 +1742,12 @@ def main():
         help="Skip singleton flock (tests only). Live Pi must not use this.",
     )
     args = parser.parse_args()
+    symbol = normalize_crypto_shadow_symbol(args.symbol)
 
     daemon = RP608ShadowDaemon(
         output_dir=args.output_dir,
         single_candle_test=args.single_candle_test,
+        symbol=symbol,
     )
 
     if args.dry_run:
@@ -1645,7 +1757,10 @@ def main():
         daemon.bootstrap_15m_buffer(limit=30)
         offset, rtt = daemon.clock_filter.sample_offset(samples=3)
         print(f"[Dry Run] Clock Offset: {offset} ms (RTT: {rtt} ms). PASS.")
-        print(f"[Dry Run] protocol={SHADOW_PROTOCOL_ID} decision_clock={TICK_DECISION_CLOCK}.")
+        print(
+            f"[Dry Run] symbol={daemon.symbol} protocol={SHADOW_PROTOCOL_ID} "
+            f"decision_clock={TICK_DECISION_CLOCK}."
+        )
         print("[Dry Run] Preflight verification succeeded cleanly.")
         return
 
@@ -1656,17 +1771,18 @@ def main():
         print("[Test Resumption] Resumption logic executed cleanly.")
         return
 
-    # Live path: one crypto shadow only (systemd OR manual — never both).
+    # Live path: one process per output-dir (BTC and ETH twins may run in parallel).
     if not args.allow_multiple:
-        out = Path(args.output_dir) if args.output_dir else DEFAULT_OUTPUT_DIR
+        out = Path(args.output_dir) if args.output_dir else default_output_dir_for_symbol(symbol)
         lock_path = out / "rp608_crypto_shadow.singleton.lock"
         acquire_or_exit(
             lock_path,
-            label="RP-608-SHADOW-TICK-001",
+            label=f"RP-608-SHADOW-TICK-001/{symbol}",
             hold=_CRYPTO_SHADOW_LOCK_HOLD,
         )
         print(
-            f"[RP-608] Singleton lock acquired → {lock_path} (pid={os.getpid()})",
+            f"[RP-608] Singleton lock acquired → {lock_path} "
+            f"(symbol={symbol} pid={os.getpid()})",
             flush=True,
         )
 

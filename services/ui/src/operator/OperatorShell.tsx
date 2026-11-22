@@ -13,7 +13,7 @@ const NAV: { id: OperatorWorkspace; label: string }[] = [
 ];
 
 export default function OperatorShell() {
-  const [ws, setWs] = useState<OperatorWorkspace>('overview');
+  const [ws, setWs] = useState<OperatorWorkspace>('crypto');
   const { state, loading } = useOperatorState(true);
   const now = Date.now();
   const fetchAge = state ? ageFromMs(state.fetched_at_ms, now) : null;
@@ -25,31 +25,39 @@ export default function OperatorShell() {
       <header style={headerStyle}>
         <div>
           <div style={brandStyle}>ChronoSentiment</div>
-          <p style={taglineStyle}>Gate5 operator · Pi telemetry · 0% authority</p>
+          <p style={taglineStyle}>Gate5 operator · paper books · Pi telemetry</p>
         </div>
         <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
-          <span style={chip(authority === 0 ? 'rgba(52,211,153,0.25)' : 'rgba(251,113,133,0.35)', op.text)}>
-            AUTHORITY {Number(authority).toFixed(0)}%
+          <span
+            style={chip(
+              authority === 0 ? 'rgba(143,191,159,0.14)' : 'rgba(212,136,138,0.2)',
+              authority === 0 ? op.signal : op.loss
+            )}
+          >
+            {Number(authority).toFixed(0)}% AUTH
           </span>
           <span
             style={chip(
-              fetchStale === 'FRESH' ? 'rgba(45,212,191,0.22)' : 'rgba(251,191,36,0.3)',
-              op.text
+              fetchStale === 'FRESH' ? 'rgba(143,191,159,0.12)' : 'rgba(196,165,116,0.18)',
+              fetchStale === 'FRESH' ? op.signal : op.warn
             )}
           >
             {loading && !state
               ? 'LOADING'
               : state?.fetch_status !== 'ok'
                 ? `TELEMETRY ${displayOrUnavailable(state?.fetch_status)}`
-                : `FETCH ${fetchStale} · ${formatAgeSec(fetchAge)}`}
+                : `${fetchStale} · ${formatAgeSec(fetchAge)}`}
           </span>
           <a
             href="http://192.168.0.9:8765/"
             target="_blank"
             rel="noreferrer"
-            style={{ ...chip('rgba(148,163,184,0.18)', op.text), textDecoration: 'none' }}
+            style={{
+              ...chip('transparent', op.muted),
+              textDecoration: 'none',
+            }}
           >
-            Pi Command Center ↗
+            Pi CC ↗
           </a>
         </div>
       </header>
@@ -84,13 +92,12 @@ export default function OperatorShell() {
 const shellStyle: CSSProperties = {
   minHeight: '100vh',
   margin: 0,
-  padding: '28px 28px 40px',
+  padding: '24px 28px 48px',
   boxSizing: 'border-box',
   fontFamily: op.sans,
   color: op.text,
   background: `
-    radial-gradient(ellipse 80% 50% at 10% -10%, rgba(45,212,191,0.12), transparent 55%),
-    radial-gradient(ellipse 60% 40% at 90% 0%, rgba(251,191,36,0.06), transparent 50%),
+    linear-gradient(180deg, #0e1218 0%, ${op.bg} 42%),
     ${op.bg}
   `,
 };
@@ -98,49 +105,53 @@ const shellStyle: CSSProperties = {
 const headerStyle: CSSProperties = {
   display: 'flex',
   justifyContent: 'space-between',
-  alignItems: 'flex-start',
+  alignItems: 'flex-end',
   gap: 16,
   flexWrap: 'wrap',
-  marginBottom: 20,
-  paddingBottom: 18,
+  marginBottom: 18,
+  paddingBottom: 16,
   borderBottom: `1px solid ${op.border}`,
 };
 
 const brandStyle: CSSProperties = {
   margin: 0,
-  fontSize: 28,
-  fontWeight: 700,
-  letterSpacing: '-0.03em',
-  color: op.cyan,
+  fontSize: 32,
+  fontWeight: 600,
+  letterSpacing: '-0.04em',
+  color: op.text,
   fontFamily: op.display,
+  lineHeight: 1.1,
 };
 
 const taglineStyle: CSSProperties = {
-  margin: '6px 0 0',
+  margin: '8px 0 0',
   color: op.muted,
-  fontSize: 14,
+  fontSize: 13,
   maxWidth: 420,
+  letterSpacing: '0.01em',
 };
 
 const navStyle: CSSProperties = {
   display: 'flex',
-  gap: 6,
-  marginBottom: 22,
-  flexWrap: 'wrap',
+  gap: 0,
+  marginBottom: 24,
+  borderBottom: `1px solid ${op.border}`,
 };
 
 const navBtn = (active: boolean): CSSProperties => ({
-  padding: '8px 14px',
-  borderRadius: 6,
-  border: `1px solid ${active ? op.cyan : op.border}`,
-  background: active ? 'rgba(45,212,191,0.14)' : 'transparent',
-  color: active ? op.cyan : op.muted,
+  padding: '10px 16px 12px',
+  borderRadius: 0,
+  border: 'none',
+  borderBottom: active ? `2px solid ${op.signal}` : '2px solid transparent',
+  background: 'transparent',
+  color: active ? op.text : op.muted,
   fontFamily: op.sans,
-  fontWeight: 600,
+  fontWeight: active ? 600 : 500,
   fontSize: 13,
   cursor: 'pointer',
+  marginBottom: -1,
 });
 
 const mainStyle: CSSProperties = {
-  maxWidth: 1200,
+  maxWidth: 1280,
 };

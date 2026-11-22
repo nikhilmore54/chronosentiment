@@ -33,10 +33,15 @@ Frozen defaults in overlay `CONFIG` (PAPER anti-churn / open quality — Stage-1
 
 - `of_paper_min_hold_ms` = 300_000 — reverse OF cannot close before **5m** of paper hold
 - `of_paper_opposite_persist_ms` = 30_000 — opposite OF must persist continuously for **30s**
+- `of_paper_entry_persist_ms` = 30_000 — same-side OF must persist continuously for **30s** before paper open (WS continuation via `continue_of_paper_entry_persist`)
 - `of_paper_one_per_15m_bar` = true — at most one paper open per 15m bar
 - `of_paper_reject_thin_opposite` = true — PAPER open suppressed on hollow opposite (OF ±0.30 mark unchanged)
 - `of_paper_min_entry_signal_qty` = 0.25 — PAPER open needs minimum same-side L1 qty
 - `of_paper_min_same_side_notional_usdt` = 5000 — PAPER open needs minimum same-side notional
+- `of_paper_min_combined_touch_notional_usdt` = 0 — **not raised** (2026-11-21 QUALITY vs WEAK diag: depth floors did not separate; entry persist is the quality lever)
+- `RP608_OF_PAPER_QUALITY_GATE` = `1` suppress open / `0` stamp-only (default **1** on Pi crypto OF)
+
+Open/suppress stamp `of_entry_quality` (`RP-608-OF-PAPER-ENTRY-QUALITY-001`): `{persist_ok, depth_ok, reason}` — paper booking only; L1 ±0.30 classify unchanged.
 
 Close of a LONG is a **paper sell-to-flat**, not a naked short. UI must not imply
 inventory that was never opened.

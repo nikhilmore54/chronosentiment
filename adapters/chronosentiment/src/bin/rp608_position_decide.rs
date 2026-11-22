@@ -13,10 +13,12 @@ use std::io::{self, BufRead, Read, Write};
 use std::process;
 
 use chronosentiment_adapter::product::{
-    Gate2xBookKind, Gate2xFeatureSnapshot, Gate2xPositionManager, OpenPlanState,
-    PlanLifecycleConfig, PlanLifecycleManager, PlanQuote, PLAN_LIFECYCLE_PROTOCOL,
+    build_tick_snapshot, evaluate_tick_policies, Gate2xBookKind, Gate2xFeatureSnapshot,
+    Gate2xPositionManager, OpenPlanState, PlanLifecycleConfig, PlanLifecycleManager, PlanQuote,
+    TickFeatureBuffer, TickQuote, CRYPTO_TICK_PROTOCOL_ID, PLAN_LIFECYCLE_PROTOCOL,
 };
 use serde::Deserialize;
+use serde_json::Value;
 
 const VERSION: &str = "RP-608-POSITION-DECIDE-001";
 const MANAGE_VERSION: &str = "RP-608-GATE2X-POSITION-MANAGE-001";
@@ -47,11 +49,25 @@ struct PlanLifecycleRequest {
     reset_latch: bool,
 }
 
+/// One JSONL line: quote + completed 15m closes + Policy B/C champion genomes.
+#[derive(Debug, Deserialize)]
+struct TickEvalRequest {
+    quote: TickQuote,
+    #[serde(default)]
+    closes: Vec<f64>,
+    policy_b_genome: Value,
+    policy_c_genome: Value,
+    /// Optional stateful buffer mids carried by caller; if absent, single-quote eval.
+    #[serde(default)]
+    buffer_quotes: Vec<TickQuote>,
+}
+
 fn main() {
     let args: Vec<String> = env::args().collect();
     let mut evidence_dir = "datasets/recommendation/historical_crypto".to_string();
     let mut manage_loop = false;
     let mut plan_lifecycle_loop = false;
+    let mut tick_eval_loop = false;
     let mut book_arg: Option<String> = None;
     let mut i = 1;
     while i < args.len() {
@@ -78,16 +94,20 @@ fn main() {
             "--plan-lifecycle-loop" => {
                 plan_lifecycle_loop = true;
             }
+            "--tick-eval-loop" => {
+                tick_eval_loop = true;
+            }
             "--version" => {
                 println!("{VERSION}");
                 process::exit(0);
             }
             "-h" | "--help" => {
                 eprintln!(
-                    "rp608_position_decide ({VERSION} / {MANAGE_VERSION} / {PLAN_LIFECYCLE_PROTOCOL})\n\
+                    "rp608_position_decide ({VERSION} / {MANAGE_VERSION} / {PLAN_LIFECYCLE_PROTOCOL} / {CRYPTO_TICK_PROTOCOL_ID})\n\
                      One-shot:              JSON stdin snapshot → JSON stdout decision\n\
                      Gate2X manage:         --manage-loop  JSONL → JSONL\n\
                      Plan lifecycle manage: --plan-lifecycle-loop  JSONL plan+quote → JSONL result\n\
+                     Crypto tick eval:      --tick-eval-loop  JSONL quote+genomes → B/C actions\n\
                      --evidence-dir DIR   REC001h JSONL directory (crypto or NSE)\n\
                      --book crypto|nse    force book (else inferred from evidence-dir)\n\
                      --version            print protocol id\n\
@@ -104,6 +124,52 @@ fn main() {
     }
 
     let book = detect_book(&evidence_dir, book_arg.as_deref());
+
+    if tick_eval_loop {
+        eprintln!("[{CRYPTO_TICK_PROTOCOL_ID}] tick-eval-loop ready (Track C)");
+        let stdin = io::stdin();
+        let mut stdout = io::stdout();
+        for line in stdin.lock().lines() {
+            let line = match line {
+                Ok(l) => l,
+                Err(e) => {
+                    eprintln!("stdin read: {e}");
+                    process::exit(1);
+                }
+            };
+            if line.trim().is_empty() {
+                continue;
+            }
+            let req: TickEvalRequest = match serde_json::from_str(&line) {
+                Ok(r) => r,
+                Err(e) => {
+                    eprintln!("parse tick-eval request: {e}");
+                    process::exit(1);
+                }
+            };
+            let mut buf = TickFeatureBuffer::default();
+            for q in req.buffer_quotes {
+                buf.append(q);
+            }
+            buf.append(req.quote.clone());
+            let snap = build_tick_snapshot(&req.quote, &buf, &req.closes);
+            let (action_b, action_c, _, _) =
+                evaluate_tick_policies(&snap, &req.policy_b_genome, &req.policy_c_genome);
+            let out = serde_json::json!({
+                "protocol_id": CRYPTO_TICK_PROTOCOL_ID,
+                "policy_b_action": action_b,
+                "policy_c_action": action_c,
+                "update_id": snap.update_id,
+                "mid_price": snap.mid_price,
+                "imbalance": snap.imbalance,
+            });
+            if writeln!(stdout, "{out}").is_err() {
+                process::exit(1);
+            }
+            let _ = stdout.flush();
+        }
+        return;
+    }
 
     if plan_lifecycle_loop {
         let mut mgr = match PlanLifecycleManager::load(

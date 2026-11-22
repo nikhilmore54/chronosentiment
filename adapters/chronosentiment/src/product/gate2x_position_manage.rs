@@ -149,14 +149,18 @@ mod tests {
         let mut mgr =
             Gate2xPositionManager::load(dir.to_str().unwrap(), Gate2xBookKind::Crypto).unwrap();
         let mut snap = base_snap(Gate2xBookKind::Crypto);
-        snap.peak_mfe = 3.0;
-        snap.current_mfe = 1.6;
+        // Mid-band above hard cost-clear: peak 10 → ratchet 3, hard≈friction; cur 2.5.
+        snap.peak_mfe = 10.0;
+        snap.current_mfe = 2.5;
+        snap.peak_tp_frac = 0.55;
+        snap.params.deep_giveback_frac = 0.80; // keep full MED 40s dwell
         let d1 = mgr.manage_tick(snap.clone());
         assert_eq!(d1.reason, "GATE2X_DWELL_START");
         assert!(mgr.last_soft_breach().soft_breach_since_ms.is_some());
 
         // Next tick: omit since_ms — manager must latch from prior soft state.
         snap.soft_breach_since_ms = None;
+        snap.current_mfe = 2.5;
         snap.now_ms = d1.soft_breach.soft_breach_since_ms.unwrap() + 40_000;
         let d2 = mgr.manage_tick(snap);
         assert!(

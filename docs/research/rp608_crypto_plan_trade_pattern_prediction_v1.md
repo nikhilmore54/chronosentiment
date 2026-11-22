@@ -32,10 +32,13 @@ python3 scripts/rp608_crypto_trade_pattern_library.py \
 
 | Env | Default | Effect |
 | --- | --- | --- |
-| `RP608_CRYPTO_PATTERN_GATE` | `0` | ADVERSE entry → suppress plan open |
+| `RP608_CRYPTO_PATTERN_GATE` | `allow_only` (PRIMARY systemd) | `0` off · `1`/`adverse` block STANDASIDE · **`allow_only`/`2` block unless ALLOW** |
+| `RP608_CRYPTO_PATTERN_GATE_BASELINE` | `0` | Twin control — never suppress |
 | `RP608_CRYPTO_PATTERN_EXIT_GATE` | `0` | reverse match → `PATTERN_REVERSE` paper close |
 
-Wired in `scripts/rp608_trade_plan_overlay.py` (`process_decision_card`, `evaluate_market_tick`).
+Wired in `scripts/rp608_trade_plan_overlay.py` (`process_decision_card`, `evaluate_market_tick`). Matcher uses **parent-cell BACKOFF** (`scripts/rp608_crypto_trade_pattern_match.py`).
+
+**2026-11-21:** PRIMARY `allow_only` (no trade > bad trade); BASELINE gate `0`. Sealed: `rp608_gate2e_crypto_pattern_sealed_package_2026_11_21.md`.
 
 ## Code
 

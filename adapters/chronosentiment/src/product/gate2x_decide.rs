@@ -136,7 +136,7 @@ pub fn gate2x_decide(snap: &Gate2xFeatureSnapshot, store: &Rec001hStore) -> Gate
         ProtectFloorMode::CostClear => "MFE_GIVEBACK_TO_COST_CLEAR",
     };
 
-    // Above floor → clear soft-breach; Hold (do not let Coralys invent Protect).
+    // Above ratchet/protect floor → clear soft-breach; Hold.
     if snap.current_mfe > protect_floor {
         soft.soft_breach_since_ms = None;
         soft.soft_breach_vol_surge = None;
@@ -151,6 +151,17 @@ pub fn gate2x_decide(snap: &Gate2xFeatureSnapshot, store: &Rec001hStore) -> Gate
     };
     soft.giveback_frac = Some(giveback_frac);
     soft.soft_breach_vol_surge = Some(snap.vol_surge.as_str().to_string());
+
+    // v1.5 hard floor: ratchet starts dwell for wick filter, but once MFE falls
+    // through cost-clear / entry (base_floor) do not keep dwelling into a loss.
+    // Session 2026-11-21: two SHORT givebacks (peak +$5.9/+13.7) exited −$3.5/−$5
+    // after ~36s LOW deep-GB dwell while still bleeding through cost-clear.
+    let hard_floor = base_floor;
+    if snap.current_mfe <= hard_floor {
+        soft.soft_breach_since_ms = None;
+        let reason = format!("{detail_base}_HARD_FLOOR");
+        return invoke_coralys(snap, store, true, soft, &reason);
+    }
 
     if !snap.params.reversal_volume_confirm {
         // Immediate adverse presentation → Coralys decides Protect/Exit.
@@ -456,7 +467,8 @@ mod tests {
     fn v13_golden_ratchet_floor_stamps() {
         let (_dir, store) = load_store("ratchet");
         // arm_threshold 1.7; peak 10 → ratchet 3.0 → protect_floor 3.0
-        let snap = base_snap(true, 1.0, VolSurgeBucket::High);
+        // Mid-band (above hard 1.7) so HIGH fires before HARD_FLOOR.
+        let snap = base_snap(true, 2.5, VolSurgeBucket::High);
         let d = gate2x_decide(&snap, &store);
         assert!((d.soft_breach.protect_floor.unwrap() - 3.0).abs() < 1e-9);
         assert!((d.soft_breach.ratchet_floor.unwrap() - 3.0).abs() < 1e-9);
@@ -478,7 +490,8 @@ mod tests {
     #[test]
     fn v13_golden_high_vol_immediate() {
         let (_dir, store) = load_store("high_vol");
-        let snap = base_snap(true, 1.0, VolSurgeBucket::High);
+        // Mid-band above hard floor so VOL_HIGH (not HARD_FLOOR) stamps.
+        let snap = base_snap(true, 2.5, VolSurgeBucket::High);
         let d = gate2x_decide(&snap, &store);
         assert!(d.soft_breach.soft_breach_since_ms.is_none());
         assert_adverse_fire(&d, "VOL_HIGH");
@@ -487,9 +500,10 @@ mod tests {
     #[test]
     fn v13_golden_med_dwell_40s() {
         let (_dir, store) = load_store("med_dwell");
-        // Non-deep: peak=3, floor=max(1.7,0.9)=1.7; cur=1.6 → gb≈0.467 < 0.5
-        let mut snap = base_snap(true, 1.6, VolSurgeBucket::Med);
-        snap.peak_mfe = 3.0;
+        // v1.5: non-deep band above hard_floor is empty at ratchet 0.30.
+        // Lower deep_giveback_frac so mid-band (cur=2.5, peak=10) is non-deep.
+        let mut snap = base_snap(true, 2.5, VolSurgeBucket::Med);
+        snap.params.deep_giveback_frac = 0.80; // gb=0.75 < 0.80 → full MED 40s
         let d1 = gate2x_decide(&snap, &store);
         assert_eq!(d1.action, CoralysPositionAction::Hold);
         assert_eq!(d1.reason, "GATE2X_DWELL_START");
@@ -510,32 +524,16 @@ mod tests {
     #[test]
     fn v13_golden_low_dwell_90s() {
         let (_dir, store) = load_store("low_dwell");
-        let mut snap = base_snap(true, 1.0, VolSurgeBucket::Low);
-        // giveback (10-1)/10=0.9 but deep scale only when >=0.50 — still starts 90s then scales
-        // For clean 90s path use shallow giveback: peak 10, cur 6 → gb=0.4 < 0.5
-        snap.current_mfe = 6.0; // still below ratchet 3? 6 > 3 → above floor
-        // need below floor 3.0 with gb < 0.5: cur=5.1 → gb=0.49, but 5.1 > 3 above floor
-        // below floor with gb < 0.5: cur=2.0 → gb=0.8 >= 0.5 (deep). Use peak 20, cur=2, thr=1.7, ratchet=6
-        snap.peak_mfe = 20.0;
-        snap.current_mfe = 10.0; // floor=max(1.7,6)=6; 10>6 above — adjust
-        snap.current_mfe = 5.0; // floor 6; 5 < 6; gb=(20-5)/20=0.75 deep
-        // For non-deep: peak=10, ratchet=3, cur=2.6 → gb=0.74 still deep
-        // peak=10, cur=5.1 impossible below floor 3
-        // Any cur < 3 with peak=10 has gb > 0.7. So LOW non-deep needs lower ratchet or higher floor.
-        // Use ENTRY floor (0) and peak small: peak=4, cur=1 → floor=max(0,1.2)=1.2; gb=0.75 still deep
-        // Non-deep: gb < 0.5 ⇒ cur > 0.5*peak; also cur <= protect_floor.
-        // protect_floor = max(1.7, 0.3*peak). Need 0.5*peak < cur <= max(1.7, 0.3*peak)
-        // ⇒ 0.5*peak < max(1.7, 0.3*peak). If peak large, 0.5p < 0.3p false.
-        // If peak small: peak=3, 0.5*3=1.5; floor=max(1.7,0.9)=1.7; need 1.5 < cur <= 1.7
-        snap.peak_mfe = 3.0;
-        snap.current_mfe = 1.6;
-        snap.arm_threshold = 1.7;
+        // Mid-band above hard 1.7; raise deep threshold so LOW keeps full 90s.
+        let mut snap = base_snap(true, 2.5, VolSurgeBucket::Low);
+        snap.params.deep_giveback_frac = 0.80;
         let d1 = gate2x_decide(&snap, &store);
         assert_eq!(d1.reason, "GATE2X_DWELL_START");
         assert_eq!(d1.soft_breach.soft_breach_dwell_ms, Some(90_000));
         let since = d1.soft_breach.soft_breach_since_ms.unwrap();
         snap.soft_breach_since_ms = Some(since);
         snap.now_ms = since + 90_000;
+        snap.current_mfe = 2.5; // stay above hard floor through dwell end
         let d2 = gate2x_decide(&snap, &store);
         assert_adverse_fire(&d2, "VOL_DWELL_LOW");
     }
@@ -543,14 +541,17 @@ mod tests {
     #[test]
     fn v13_golden_deep_giveback_shortens_dwell() {
         let (_dir, store) = load_store("deep_gb");
-        // MED dwell 40s × 0.40 = 16s when gb >= 0.50
-        let mut snap = base_snap(true, 1.0, VolSurgeBucket::Med); // gb=0.9
+        // MED dwell between ratchet and hard floor: peak=10 → ratchet=3, hard=1.7
+        // cur=2.0 starts dwell (below ratchet, still above hard).
+        let mut snap = base_snap(true, 2.0, VolSurgeBucket::Med); // gb=0.8 deep
         let d1 = gate2x_decide(&snap, &store);
         assert_eq!(d1.reason, "GATE2X_DWELL_START");
         assert_eq!(d1.soft_breach.soft_breach_dwell_ms, Some(16_000));
         let since = d1.soft_breach.soft_breach_since_ms.unwrap();
         snap.soft_breach_since_ms = Some(since);
         snap.now_ms = since + 16_000;
+        // Stay above hard floor so dwell can complete (not HARD_FLOOR).
+        snap.current_mfe = 2.0;
         let d2 = gate2x_decide(&snap, &store);
         assert!(
             d2.reason.contains("DEEP_GB"),
@@ -561,9 +562,31 @@ mod tests {
     }
 
     #[test]
+    fn v15_golden_hard_floor_skips_dwell_bleed() {
+        let (_dir, store) = load_store("hard_floor");
+        // peak 10 → ratchet 3.0; arm_threshold/hard 1.7
+        // Soft-breach mid-band then bleed through hard floor → immediate Exit.
+        let mut snap = base_snap(true, 2.5, VolSurgeBucket::Low);
+        let d1 = gate2x_decide(&snap, &store);
+        assert_eq!(d1.reason, "GATE2X_DWELL_START");
+        let since = d1.soft_breach.soft_breach_since_ms.unwrap();
+        snap.soft_breach_since_ms = Some(since);
+        snap.now_ms = since + 5_000; // still inside LOW dwell
+        snap.current_mfe = 0.5; // through hard floor (1.7) into loss territory
+        let d2 = gate2x_decide(&snap, &store);
+        assert!(
+            d2.reason.contains("HARD_FLOOR"),
+            "expected HARD_FLOOR, got {}",
+            d2.reason
+        );
+        assert_adverse_fire(&d2, "HARD_FLOOR");
+    }
+
+    #[test]
     fn v13_golden_vol_confirm_off_fires_without_dwell() {
         let (_dir, store) = load_store("vol_off");
-        let mut snap = base_snap(true, 1.0, VolSurgeBucket::Low);
+        // Mid-band: vol_confirm off → immediate (not HARD_FLOOR, not dwell).
+        let mut snap = base_snap(true, 2.5, VolSurgeBucket::Low);
         snap.params.reversal_volume_confirm = false;
         let d = gate2x_decide(&snap, &store);
         assert!(d.soft_breach.soft_breach_since_ms.is_none());
@@ -573,14 +596,16 @@ mod tests {
             d.reason
         );
         assert!(!d.reason.contains("DWELL"), "got {}", d.reason);
+        assert!(!d.reason.contains("HARD_FLOOR"), "got {}", d.reason);
     }
 
     #[test]
     fn v13_golden_entry_floor_mode() {
         let (_dir, store) = load_store("entry_floor");
-        let mut snap = base_snap(true, -0.5, VolSurgeBucket::High);
+        // ENTRY hard_floor=0; mid-band cur=2.5 with HIGH → VOL_HIGH (not hard).
+        let mut snap = base_snap(true, 2.5, VolSurgeBucket::High);
         snap.params.protect_floor = ProtectFloorMode::Entry;
-        // peak 10 → ratchet 3; protect = max(0, 3)=3; cur -0.5 below
+        // peak 10 → ratchet 3; protect = max(0, 3)=3; cur 2.5 below protect
         let d = gate2x_decide(&snap, &store);
         assert_adverse_fire(&d, "MFE_GIVEBACK_TO_ENTRY");
         assert_adverse_fire(&d, "VOL_HIGH");
@@ -643,7 +668,7 @@ mod tests {
         std::fs::create_dir_all(&dir).unwrap();
         write_long_store(&dir, "RELIANCE_NS", 40);
         let store = Rec001hStore::load_from_dir(dir.to_str().unwrap()).unwrap();
-        let mut snap = base_snap(true, 1.0, VolSurgeBucket::High);
+        let mut snap = base_snap(true, 2.5, VolSurgeBucket::High);
         snap.instrument = "RELIANCE.NS".into();
         snap.direction = "LONG".into();
         snap.params = Gate2xParams::nse_defaults();

@@ -63,9 +63,13 @@ PROTOCOL_ID = "RP-608-OFX-VOLUME-PAPER-001"
 DEFAULT_NOTIONAL = 100.0
 MIN_HOLD_MS = 300_000
 OPPOSITE_PERSIST_MS = 30_000
+# Paper safety: tiny surge stamps can leave opposing qty forever past ±10%/1.5× band.
+OFX_MAX_HOLD_MS = 6 * 60 * 60 * 1000  # 6h
 FEE_BPS_PER_LEG = 6.0
 EXIT_REASON_MATCH = "OPPOSING_VOLUME_MATCH"
 EXIT_REASON_CLUBBED = OFX_CLUBBED_OPPOSING_EXIT_REASON
+EXIT_REASON_OVERSHOOT = "OPPOSING_VOLUME_OVERSHOOT_EXHAUSTED"
+EXIT_REASON_MAX_HOLD = "RECONCILED_MAX_HOLD"
 
 
 def _iso(ms: int) -> str:
@@ -611,6 +615,22 @@ class OfxVolumePaperManager:
             if age >= OFX_EARLY_ADVERSE_WINDOW_MS:
                 self.active["early_adverse_checked"] = True
 
+        # Absolute paper max-hold — unblocks geometric exit traps (tiny entry stamp).
+        age_ms = now - activated
+        if age_ms >= int(OFX_MAX_HOLD_MS):
+            return self._close(
+                reason=EXIT_REASON_MAX_HOLD,
+                exit_meta={
+                    "max_hold_ms": int(OFX_MAX_HOLD_MS),
+                    "held_ms": age_ms,
+                    "reconcile": True,
+                    "note": "PAPER max-hold reconcile — opposing match band missed",
+                },
+                quote=quote,
+                now_ms=now,
+                volume_snapshot=volume_snapshot or {},
+            )
+
         symbol = str(self.active.get("symbol") or volume_snapshot.get("symbol") or "BTCUSDT")
         cum_opp = self._sum_opposite_aggressor_since_entry(
             direction=direction,
@@ -676,6 +696,25 @@ class OfxVolumePaperManager:
                     }
                     exit_reason = EXIT_REASON_CLUBBED
                     break
+        # Past clubbed cap with no match possible — opposing flow already exhausted entry.
+        if (
+            not exit_sig.get("exit")
+            and entry_agg > 0
+            and cum_opp >= entry_agg * (1.0 + float(OFX_CLUBBED_MAX_OVERSHOOT))
+            and age_ms >= int(self.min_hold_ms)
+        ):
+            exit_sig = {
+                "exit": True,
+                "opposite_side": "SHORT" if direction == "LONG" else "LONG",
+                "opposite_aggressor": opp_side,
+                "entry_aggressor_qty": entry_agg,
+                "opposite_aggressor_qty": cum_opp,
+                "match_qty_source": "cumulative_overshoot_exhausted",
+                "match_overshoot": True,
+                "match_in_tolerance_band": False,
+                "match_deviation": (cum_opp / entry_agg) - 1.0 if entry_agg else None,
+            }
+            exit_reason = EXIT_REASON_OVERSHOOT
         self.active["ofx_match_deviation"] = exit_sig.get("match_deviation")
         self.active["ofx_match_reason"] = exit_sig.get("reason")
         self.active["ofx_match_qty_source"] = exit_sig.get("match_qty_source")
@@ -696,6 +735,28 @@ class OfxVolumePaperManager:
             )
             self._write_open(self.active)
             return self.active
+
+        # Overshoot/max-hold class exits: no 30s persist (already past completion geometry).
+        if exit_reason in (EXIT_REASON_OVERSHOOT, EXIT_REASON_MAX_HOLD):
+            return self._close(
+                reason=exit_reason,
+                exit_meta={
+                    "opposite_side": exit_sig.get("opposite_side"),
+                    "opposite_aggressor": exit_sig.get("opposite_aggressor"),
+                    "entry_aggressor_qty": exit_sig.get("entry_aggressor_qty") or entry_agg,
+                    "opposite_aggressor_qty_since_entry": self.active.get(
+                        "opposite_aggressor_qty_since_entry"
+                    ),
+                    "opposite_aggressor_qty_matched": exit_sig.get("opposite_aggressor_qty"),
+                    "match_qty_source": exit_sig.get("match_qty_source"),
+                    "match_deviation": exit_sig.get("match_deviation"),
+                    "match_overshoot": True,
+                    "reconcile": True,
+                },
+                quote=quote,
+                now_ms=now,
+                volume_snapshot=volume_snapshot or {},
+            )
 
         seen = self.active.get("opposite_exit_seen_ms")
         if seen is None:
@@ -732,6 +793,33 @@ class OfxVolumePaperManager:
             quote=quote,
             now_ms=now,
             volume_snapshot=volume_snapshot,
+        )
+
+    def force_close_active(
+        self,
+        *,
+        reason: str = EXIT_REASON_MAX_HOLD,
+        quote: Optional[Dict[str, Any]] = None,
+        now_ms: Optional[int] = None,
+        note: Optional[str] = None,
+    ) -> Optional[Dict[str, Any]]:
+        """Operator/paper reconcile: close active OFX volume trade into outcomes."""
+        if not self.active or not self.active.get("active"):
+            return None
+        now = int(now_ms if now_ms is not None else time.time() * 1000)
+        activated = int(self.active.get("activated_ms") or now)
+        return self._close(
+            reason=reason,
+            exit_meta={
+                "reconcile": True,
+                "held_ms": now - activated,
+                "max_hold_ms": int(OFX_MAX_HOLD_MS),
+                "note": note
+                or "force_close_active — paper reconcile of stuck OFX volume open",
+            },
+            quote=quote,
+            now_ms=now,
+            volume_snapshot={},
         )
 
     def _close(

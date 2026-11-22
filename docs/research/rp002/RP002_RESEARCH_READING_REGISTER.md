@@ -22,17 +22,19 @@
 
 **Strategic finding:** Substantial prior art already exists on adaptive operator selection, bandit-based optimisation, and multi-objective RL. Coralys should **build on that work**, then investigate the less-explored combination of **multi-objective knowledge preservation**, **cross-instance learning**, and **continual adaptation**.
 
-### Study progress (Batch 1)
+### Study progress (Batch 1 + primary-source milestone)
 
 | # | Paper | Full text | Notes |
 | - | ----- | --------- | ----- |
-| 1 | Li et al. FRRMAB (2014) | Local PDF | Studied — see [`07_research_hypotheses_and_experiments/BATCH1_WITHIN_RUN_LEARNING_NOTES.md`](07_research_hypotheses_and_experiments/BATCH1_WITHIN_RUN_LEARNING_NOTES.md) |
-| 2 | DaCosta et al. D-MAB (2008) | Local PDF | Studied — same notes |
-| 3 | Roijers et al. (2013) | Local PDF | Studied — same notes |
-| 4 | Lin et al. B-AOS (2021) | **Blocked** | Abstract-only pending institutional access |
-| 5 | Jiao et al. OVEA (2023) | **Blocked** | Abstract-only pending institutional access |
+| 1 | Li et al. FRRMAB (2014) | Local PDF | **Primary-source complete** — [`07_…/primary_source/PS01_LI_2014_FRRMAB.md`](07_research_hypotheses_and_experiments/primary_source/PS01_LI_2014_FRRMAB.md) |
+| 2 | DaCosta et al. D-MAB (2008) | Local PDF | Batch 1 notes (ablate path) |
+| 3 | Roijers et al. (2013) | Local PDF | **Primary-source complete** — [`PS02_…`](07_research_hypotheses_and_experiments/primary_source/PS02_ROIJERS_2013_MO_SEQUENTIAL.md) |
+| 10 | Tornede et al. (2023) | Local PDF (OA verified) | **Primary-source complete** — [`PS03_…`](07_research_hypotheses_and_experiments/primary_source/PS03_TORNEDE_2023_META_AS.md) |
+| — | Comparative synthesis | — | [`SYNTHESIS_FRRMAB_ROIJERS_TORNEDE.md`](07_research_hypotheses_and_experiments/primary_source/SYNTHESIS_FRRMAB_ROIJERS_TORNEDE.md) |
+| 4 | Lin et al. B-AOS (2021) | **Blocked** | Abstract-only |
+| 5 | Jiao et al. OVEA (2023) | **Blocked** | Abstract-only |
 
-Local PDFs: `02_adaptive_operator_selection/papers/`, `03_multi_objective_learning/papers/`.
+Local PDFs: `02_…/papers/`, `03_…/papers/`, `04_…/papers/tornede2023_…pdf`.
 
 ---
 
@@ -262,6 +264,7 @@ Exhaustive prior-art review required before asserting novelty.
 | ------- | ---- | ----- |
 | 0.1 | 2026-11-16 | Initial Research Reading Register frozen; 18+ resources across six gaps; reading batches; complexity ladder; RD-1..3; architecture **not** frozen |
 | 0.1.1 | 2026-11-16 | Batch 1 progress: full text obtained+studied for Li/DaCosta/Roijers; Lin/Jiao blocked; within-run notes + provisional E0 design only |
+| 0.1.2 | 2026-11-16 | Primary-source milestone: PS-01/02/03 + comparative synthesis; Tornede OA verified; architecture still unfrozen |
 
 ---
 

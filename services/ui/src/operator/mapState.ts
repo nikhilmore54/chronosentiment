@@ -62,6 +62,29 @@ function mapOfRec(raw: unknown, activeHint?: boolean): OfRecommendation | null {
   };
 }
 
+function mapTradePatternMatch(raw: unknown): TradePlanView['trade_pattern_match'] {
+  const o = asRecord(raw);
+  if (!o) return null;
+  return {
+    prediction: (o.prediction as string) ?? null,
+    label: (o.label as string) ?? null,
+    cohort_n: numOrNull(o.cohort_n),
+    hist_wr: numOrNull(o.hist_wr),
+    hist_payoff: numOrNull(o.hist_payoff),
+    hist_net: numOrNull(o.hist_net),
+    blocks_entry:
+      o.blocks_entry === undefined || o.blocks_entry === null
+        ? null
+        : Boolean(o.blocks_entry),
+    gate_enabled:
+      o.gate_enabled === undefined || o.gate_enabled === null
+        ? null
+        : Boolean(o.gate_enabled),
+    gate_mode: (o.gate_mode as string) ?? null,
+    match_mode: (o.match_mode as string) ?? null,
+  };
+}
+
 function mapTradePlan(raw: unknown): TradePlanView | null {
   const o = asRecord(raw);
   if (!o) return null;
@@ -79,6 +102,8 @@ function mapTradePlan(raw: unknown): TradePlanView | null {
     max_holding_seconds: numOrNull(o.max_holding_seconds),
     is_active: Boolean(o.is_active ?? (o.state === 'OPEN' || o.state === 'ACTIVE')),
     order_authority: (o.order_authority as string) ?? null,
+    plan_lifecycle_authority: (o.plan_lifecycle_authority as string) ?? null,
+    trade_pattern_match: mapTradePatternMatch(o.trade_pattern_match),
     order_flow_supported:
       o.order_flow_supported === undefined || o.order_flow_supported === null
         ? null
@@ -145,6 +170,22 @@ export function mapCrypto(raw: Record<string, unknown>): CryptoStatus {
     atr_14: numOrNull(latest?.atr_14 ?? raw.atr_14),
     regime: (latest?.regime as string) ?? (raw.regime as string) ?? null,
     trade_plan: mapTradePlan(raw.trade_plan),
+    gate2e_flat_suppress: (() => {
+      const g = asRecord(raw.gate2e_flat_suppress);
+      if (!g) return null;
+      return {
+        prediction: (g.prediction as string) ?? null,
+        pattern_id: (g.pattern_id as string) ?? null,
+        match_mode: (g.match_mode as string) ?? null,
+        gate_mode: (g.gate_mode as string) ?? null,
+        direction: (g.direction as string) ?? null,
+        plan_id: (g.plan_id as string) ?? null,
+        suppressed_ms: numOrNull(g.suppressed_ms),
+        hist_wr: numOrNull(g.hist_wr),
+        cohort_n: numOrNull(g.cohort_n),
+      };
+    })(),
+    gate2e_pattern_suppressions: numOrNull(raw.gate2e_pattern_suppressions),
     order_flow: ofRec,
     order_flow_last_exit: ofLastExit,
     of_candle_markers: markers
@@ -207,6 +248,7 @@ export function mapCrypto(raw: Record<string, unknown>): CryptoStatus {
               close_time_utc: (o.close_time_utc as string) ?? null,
               plan_lifecycle_authority: (o.plan_lifecycle_authority as string) ?? null,
               tp_level: numOrNull(o.tp_level),
+              trade_pattern_match: mapTradePatternMatch(o.trade_pattern_match),
             };
           }),
         }

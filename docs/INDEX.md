@@ -1,7 +1,7 @@
 # Canonical Repository Index
 
 **Document ID:** GOV-IDX-001
-**Version:** 2.17
+**Version:** 2.19
 **Status:** Active
 **Created:** 2026-08-01
 
@@ -91,6 +91,9 @@ Systematic diagnosis of where/why economic edge is lost. Priority: trading evide
 * Session export 2026-11-04 (intraday): `artifacts/rp608_econ_edge_diag/session_export_2026-11-04.md` — refresh after close; open MTM ≠ realized
 * **Standing rule:** W/L ratio is the primary session diagnostic per book (payoff / gross / friction / net / MFE support it; do not lead with friction) — `.cursor/rules/chronosentiment-core.mdc` §3b · `docs/research/rp608_econ_edge_session_postmortem_method.md`
 * **RP-608-WL-IMPROVE-001** (2026-11-06): trade selection / win probability — baseline frozen · `docs/research/rp608_wl_improvement_plan.md`
+  * Gate 2E crypto pattern **allow_only** (2026-11-21): PRIMARY `PATTERN_GATE=allow_only` · BASELINE `0` · parent-cell BACKOFF · sealed `docs/research/rp608_gate2e_crypto_pattern_sealed_package_2026_11_21.md`
+  * OF paper entry quality (2026-11-21): entry persist 30s + quality gate (not ±0.30) · sealed `docs/research/rp608_of_paper_entry_quality_2026_11_21.md` · observability `docs/research/rp608_of_paper_trade_observability.md`
+  * Trailing SL favorable-only (2026-11-21): never worse than original stop · `docs/research/rp608_trailing_sl_2026_11_21.md` · Gate2X v1.5 hard floor in `rp608_gate2x_crypto_mfe_giveback_2026_11_21.md`
   * Gate 1 PASS: `docs/research/rp608_wl_improve_gate1_diagnostic_completeness.md`
   * Phase 2 Crypto plan decision-time only: `artifacts/rp608_econ_edge_diag/wl_phase2_crypto_plan_entry_quality_2026-11-03_to_05.md`
   * Replication beyond 3–5 Nov: **REPLICATES=0** · `artifacts/rp608_econ_edge_diag/wl_phase2_crypto_plan_replication_beyond_2026-11-03_to_05.md`
@@ -290,6 +293,9 @@ Documents in this section must not be modified except for typographical correcti
 | RP-002 | `docs/research/rp002_coralys_learning_architecture.md` | Coralys Learning Architecture (CLA) — evolutionary learning + multidimensional feedback foundations; three pillars (acquire / preserve / transfer); authority 0% | REGISTERED 2026-11-16 |
 | RP-002-RRR | `docs/research/rp002/RP002_RESEARCH_READING_REGISTER.md` | RP-002 Research Reading Register v0.1 — AOS/MORL/bandits/meta/continual/eval library by gap; reading batches; RD-1..3; architecture **not** frozen | INITIAL FREEZE 2026-11-16 |
 | RP-002-B1 | `docs/research/rp002/07_research_hypotheses_and_experiments/BATCH1_WITHIN_RUN_LEARNING_NOTES.md` | RP-002 Batch 1 within-run learning notes — FRRMAB/D-MAB/Roijers studied; Lin/Jiao blocked; provisional E0 only; authority 0% | ACTIVE 2026-11-16 |
+| RP-002-OPS | `docs/research/rp002/07_research_hypotheses_and_experiments/OPERATOR_SURFACE_MAP.md` | RP-002 operator surface map — EvolutionEngine vs ROADEF 5-arm / UltraCrew; E0 attachment | DRAFT 2026-11-16 |
+| RP-002-E0 | `docs/research/rp002/07_research_hypotheses_and_experiments/RP002_E0_FRRMAB_PROTOCOL.md` | RP-002-E0 FRRMAB vs fixed/RP-405 on ROADEF — **design only · not authorised to run** | DESIGN 2026-11-16 |
+| RP-002-PS | `docs/research/rp002/07_research_hypotheses_and_experiments/primary_source/` | Primary-source analyses PS-01 Li / PS-02 Roijers / PS-03 Tornede + comparative synthesis; architecture unfrozen | ACTIVE 2026-11-16 |
 | UC-R-001 | `docs/research/UltraCrew_Pairing_Topology_Mutation_Evaluation.md` | Pairing Topology Mutation Evaluation | Section 2 FROZEN; Section 3 active |
 | UC-R-002 | `docs/research/UltraCrew_Coralys_Native_Scheduler_Section3.md` | Coralys Native Scheduler — Section 3 | Active — Experiment 0 spec complete |
 | UC-R-003 | `docs/research/UltraCrew_GENCOL_Pipeline_Divergence_Analysis.md` | GENCOL Pipeline Divergence Analysis | Active |
@@ -502,6 +508,8 @@ The following documents exist in the repository but have not been confirmed as c
 
 | Version | Date | Change |
 |---------|------|--------|
+| 2.19 | 2026-11-16 | RP-002-PS primary-source milestone — FRRMAB/Roijers/Tornede analyses + comparative synthesis; Tornede OA verified; architecture unfrozen; authority 0% |
+| 2.18 | 2026-11-16 | RP-002-OPS + RP-002-E0 — operator surface map; FRRMAB E0 protocol design only (ROADEF vs RP-405); not authorised to run; authority 0% |
 | 2.17 | 2026-11-16 | RP-002-B1 Batch 1 notes — Li/DaCosta/Roijers full text studied; Lin/Jiao blocked; E0 design only; architecture unfrozen; authority 0% |
 | 2.16 | 2026-11-16 | RP-002-RRR Research Reading Register initial freeze — 18+ resources by gap; library folders 01–07; architecture remains unfrozen; authority 0% |
 | 2.15 | 2026-11-16 | RP-002 Coralys Learning Architecture registered — Grefenstette (1993) + Schaffer & Grefenstette foundational; multidimensional feedback central; authority 0%; no Gate5/OFX change |

@@ -1,9 +1,11 @@
 # Dependencies
 node_modules/
+.zig-cache/
 
 # Scratch & Temporary analysis scripts
 _tmp*
 **/_tmp*
+scripts/research/_*
 
 # Rust
 target/
@@ -26,6 +28,9 @@ live_capture/
 # Generated Artifacts & Substrates
 # REC-001-H JSONL evidence base — 111MB generated data, reproducible from pipeline
 datasets/recommendation/historical/*.jsonl
+datasets/recommendation/historical_crypto/*.jsonl
+*.csv
+cvrp_seed_*.json
 artifacts/
 core/chronology/soak/
 core/elite/

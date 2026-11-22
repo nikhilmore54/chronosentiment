@@ -48,7 +48,9 @@ Single composition in `OperatorShell`: brand **ChronoSentiment** · top nav Over
 
 ## Workspaces
 
-- **Crypto** — Policy B/C · Trade plan (60m) · OF latch/exit (independent) · candle marks · recent cards with ENTRY/EXIT  
+- **Crypto** — Trade-first: mid + CRYPTO_PLAN W/L scoreboard · open plan · recent trade ledger (USDT+bps) · Gate 2E pattern stamp (ALLOW/STANDASIDE/ABSTAIN, obs) · OF/cards secondary  
+
+
 - **NSE** — universe strip · Coralys input gate panel · next-session + OF badges · session board (incl. STANDASIDE count)
 
 **Pi Command Center slim (2026-11-16):** single command surface — removed Multi-Horizon tab, Sharpe/Calmar essay, Gate C panel, RP-611 panel, 119-row symbol explorer, static G1–G4 essay grid. `/api/state` payloads unchanged.

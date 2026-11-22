@@ -404,12 +404,177 @@ REGISTERED_WINDOW_MS = 1792972800000  # 2026-10-26 05:30:00 IST
 # Overlay state manager instance
 overlay_mgr = TradePlanOverlayManager()
 
-# /api/state assembly is expensive (17k+ decision cards). Short TTL cache prevents
-# Pi/UI refresh stampedes from pegging CPU/RAM while preserving fail-closed freshness.
+# /api/state assembly is expensive (decision cards jsonl grows without bound).
+# Short TTL cache prevents Pi/UI refresh stampedes from pegging CPU/RAM.
+# CRITICAL (2026-11-22): never retain the full cards list in RAM — on Pi this
+# ballooned rp608_live_dashboard to ~6.7GiB RSS and hard-rebooted the host.
 _STATE_CACHE_LOCK = threading.Lock()
+_STATE_BUILD_LOCK = threading.Lock()
 _STATE_CACHE: Dict[str, Any] = {"ts": 0.0, "payload": None}
-_STATE_CACHE_TTL_SEC = 2.0
+# Longer TTL cuts ThreadingHTTPServer stampede rebuilds on the Pi.
+_STATE_CACHE_TTL_SEC = 5.0
 _REASONING_TAIL = 256
+_RECENT_CARDS_UI = 24
+# Serialize heavy NSE live refresh (probe + single-bar); never stack on 15s UI polls.
+_NSE_REFRESH_LOCK = threading.Lock()
+_NSE_REFRESH_META: Dict[str, Any] = {
+    "last_start_ms": 0,
+    "last_finish_ms": 0,
+    "last_error": None,
+    "last_probe_ok": None,
+    "cooldown_until_ms": 0,
+}
+_NSE_REFRESH_MIN_INTERVAL_MS = 60_000
+_NSE_PROBE_FAIL_COOLDOWN_MS = 300_000
+# Incremental append-only scan of rp608_decision_cards.jsonl
+_CARD_SCAN_LOCK = threading.Lock()
+_CARD_SCAN: Dict[str, Any] = {
+    "path": None,
+    "inode": None,
+    "size": 0,
+    "offset": 0,
+    "total": 0,
+    "prewindow": 0,
+    "prospective": 0,
+    "p_returns": [],  # floats only (prospective ret_15m)
+    "tail": None,  # deque of parsed card dicts
+    "latest": None,
+    "latest_prospective": None,
+}
+
+
+def _reset_card_scan(path: Path) -> None:
+    from collections import deque
+
+    _CARD_SCAN.update(
+        {
+            "path": str(path),
+            "inode": None,
+            "size": 0,
+            "offset": 0,
+            "total": 0,
+            "prewindow": 0,
+            "prospective": 0,
+            "p_returns": [],
+            "tail": deque(maxlen=max(_REASONING_TAIL, _RECENT_CARDS_UI)),
+            "latest": None,
+            "latest_prospective": None,
+        }
+    )
+
+
+def _ingest_decision_cards_incremental() -> Dict[str, Any]:
+    """
+    Append-only scan of DECISION_CARDS_FILE.
+
+    Keeps O(tail) card objects in RAM + O(n) float returns for Sharpe — not O(n) dicts.
+    Resets if the file is truncated/rotated.
+    """
+    from collections import deque
+
+    path = DECISION_CARDS_FILE
+    with _CARD_SCAN_LOCK:
+        if _CARD_SCAN.get("tail") is None or _CARD_SCAN.get("path") != str(path):
+            _reset_card_scan(path)
+
+        if not path.exists():
+            _reset_card_scan(path)
+            return {
+                "total": 0,
+                "prewindow": 0,
+                "prospective": 0,
+                "p_returns": [],
+                "tail": [],
+                "latest": None,
+                "latest_prospective": None,
+            }
+
+        try:
+            st = path.stat()
+        except OSError:
+            return {
+                "total": int(_CARD_SCAN["total"]),
+                "prewindow": int(_CARD_SCAN["prewindow"]),
+                "prospective": int(_CARD_SCAN["prospective"]),
+                "p_returns": list(_CARD_SCAN["p_returns"]),
+                "tail": list(_CARD_SCAN["tail"] or []),
+                "latest": _CARD_SCAN["latest"],
+                "latest_prospective": _CARD_SCAN["latest_prospective"],
+            }
+
+        inode = getattr(st, "st_ino", None)
+        size = int(st.st_size)
+        # Truncate / rotate / replace → full rescan
+        if (
+            _CARD_SCAN.get("inode") is not None
+            and inode is not None
+            and inode != _CARD_SCAN["inode"]
+        ) or size < int(_CARD_SCAN.get("size") or 0):
+            _reset_card_scan(path)
+
+        if _CARD_SCAN.get("tail") is None:
+            _CARD_SCAN["tail"] = deque(maxlen=max(_REASONING_TAIL, _RECENT_CARDS_UI))
+
+        offset = int(_CARD_SCAN.get("offset") or 0)
+        if size == offset and _CARD_SCAN.get("inode") == inode:
+            # No new bytes
+            return {
+                "total": int(_CARD_SCAN["total"]),
+                "prewindow": int(_CARD_SCAN["prewindow"]),
+                "prospective": int(_CARD_SCAN["prospective"]),
+                "p_returns": list(_CARD_SCAN["p_returns"]),
+                "tail": list(_CARD_SCAN["tail"]),
+                "latest": _CARD_SCAN["latest"],
+                "latest_prospective": _CARD_SCAN["latest_prospective"],
+            }
+
+        try:
+            with open(path, "r", encoding="utf-8") as f:
+                if offset > 0:
+                    f.seek(offset)
+                    # If we landed mid-line after a partial write, drop the torn line
+                    if offset > 0:
+                        _ = f.readline()
+                for line in f:
+                    line = line.strip()
+                    if not line:
+                        continue
+                    try:
+                        c = json.loads(line)
+                    except Exception:
+                        continue
+                    if not isinstance(c, dict):
+                        continue
+                    _CARD_SCAN["total"] = int(_CARD_SCAN["total"]) + 1
+                    ct = int(c.get("close_time_ms") or 0)
+                    if ct < REGISTERED_WINDOW_MS:
+                        _CARD_SCAN["prewindow"] = int(_CARD_SCAN["prewindow"]) + 1
+                    else:
+                        _CARD_SCAN["prospective"] = int(_CARD_SCAN["prospective"]) + 1
+                        try:
+                            _CARD_SCAN["p_returns"].append(
+                                float(c.get("ret_15m_bps") or 0.0) / 10000.0
+                            )
+                        except Exception:
+                            _CARD_SCAN["p_returns"].append(0.0)
+                        _CARD_SCAN["latest_prospective"] = c
+                    _CARD_SCAN["tail"].append(c)
+                    _CARD_SCAN["latest"] = c
+                _CARD_SCAN["offset"] = f.tell()
+            _CARD_SCAN["inode"] = inode
+            _CARD_SCAN["size"] = size
+        except Exception:
+            pass
+
+        return {
+            "total": int(_CARD_SCAN["total"]),
+            "prewindow": int(_CARD_SCAN["prewindow"]),
+            "prospective": int(_CARD_SCAN["prospective"]),
+            "p_returns": list(_CARD_SCAN["p_returns"]),
+            "tail": list(_CARD_SCAN["tail"]),
+            "latest": _CARD_SCAN["latest"],
+            "latest_prospective": _CARD_SCAN["latest_prospective"],
+        }
 
 
 def get_cached_live_state() -> Dict[str, Any]:
@@ -420,11 +585,19 @@ def get_cached_live_state() -> Dict[str, Any]:
         ts = float(_STATE_CACHE.get("ts") or 0.0)
         if payload is not None and (now - ts) < _STATE_CACHE_TTL_SEC:
             return payload
-    state = load_live_state()
-    with _STATE_CACHE_LOCK:
-        _STATE_CACHE["payload"] = state
-        _STATE_CACHE["ts"] = time.time()
-    return state
+    # One builder at a time — concurrent /api/state threads must not each rescan jsonl.
+    with _STATE_BUILD_LOCK:
+        now2 = time.time()
+        with _STATE_CACHE_LOCK:
+            payload = _STATE_CACHE.get("payload")
+            ts = float(_STATE_CACHE.get("ts") or 0.0)
+            if payload is not None and (now2 - ts) < _STATE_CACHE_TTL_SEC:
+                return payload
+        state = load_live_state()
+        with _STATE_CACHE_LOCK:
+            _STATE_CACHE["payload"] = state
+            _STATE_CACHE["ts"] = time.time()
+        return state
 
 
 def get_observer_service_status() -> Dict[str, Any]:
@@ -443,6 +616,75 @@ def get_observer_service_status() -> Dict[str, Any]:
 
 
 EVENT_DIR = CRYPTO_DIR / "event_driven"
+
+
+def _jsonl_count_and_last(path: Path) -> tuple[int, Optional[Dict[str, Any]]]:
+    """
+    Append-only jsonl: count rows + keep last object without retaining the file in RAM.
+    Incremental by file offset so growing Gate-C ledgers do not full-rescan every refresh.
+    """
+    if not hasattr(_jsonl_count_and_last, "_cache"):
+        _jsonl_count_and_last._cache = {}  # type: ignore[attr-defined]
+    cache: Dict[str, Any] = _jsonl_count_and_last._cache  # type: ignore[attr-defined]
+    key_path = str(path)
+    if not path.exists():
+        cache.pop(key_path, None)
+        return 0, None
+    try:
+        st = path.stat()
+        inode = getattr(st, "st_ino", None)
+        size = int(st.st_size)
+    except OSError:
+        return 0, None
+
+    hit = cache.get(key_path) or {
+        "inode": None,
+        "size": 0,
+        "offset": 0,
+        "count": 0,
+        "last": None,
+    }
+    # Truncate / rotate → full rescan
+    if (
+        (hit.get("inode") is not None and inode is not None and hit.get("inode") != inode)
+        or size < int(hit.get("size") or 0)
+    ):
+        hit = {"inode": None, "size": 0, "offset": 0, "count": 0, "last": None}
+
+    if size == int(hit.get("size") or 0) and hit.get("inode") == inode:
+        return int(hit.get("count") or 0), hit.get("last")
+
+    count = int(hit.get("count") or 0)
+    last: Optional[Dict[str, Any]] = hit.get("last")
+    offset = int(hit.get("offset") or 0)
+    try:
+        with open(path, "r", encoding="utf-8") as f:
+            if offset > 0:
+                f.seek(offset)
+                _ = f.readline()  # drop possible torn line at prior EOF
+            for line in f:
+                line = line.strip()
+                if not line:
+                    continue
+                count += 1
+                try:
+                    obj = json.loads(line)
+                except Exception:
+                    continue
+                if isinstance(obj, dict):
+                    last = obj
+            offset = f.tell()
+        hit = {
+            "inode": inode,
+            "size": size,
+            "offset": offset,
+            "count": count,
+            "last": last,
+        }
+        cache[key_path] = hit
+    except Exception:
+        pass
+    return count, last
 
 
 def get_event_engine_status() -> Dict[str, Any]:
@@ -470,22 +712,15 @@ def get_event_engine_status() -> Dict[str, Any]:
 
     for bars, cfg in candidate_configs.items():
         ledger = EVENT_DIR / f"event_recs_candidate_{bars}b.jsonl"
-        recs = []
-        if ledger.exists():
-            try:
-                with open(ledger, "r", encoding="utf-8") as f:
-                    recs = [json.loads(l) for l in f if l.strip()]
-            except Exception:
-                pass
+        total_emitted, latest_rec = _jsonl_count_and_last(ledger)
 
-        latest_rec = recs[-1] if recs else None
         feat = latest_rec.get("features", {}) if latest_rec else {}
         candidates_info[str(bars)] = {
             "id": cfg["id"],
             "name": cfg["name"],
             "hash_prefix": cfg["hash"][:16],
             "hash_full": cfg["hash"],
-            "total_emitted": len(recs),
+            "total_emitted": total_emitted,
             "latest_recommendation": latest_rec.get("recommendation", {}).get("decision", "AWAITING_SIGNAL") if latest_rec else "AWAITING_SIGNAL",
             "direction": latest_rec.get("recommendation", {}).get("direction", "NEUTRAL") if latest_rec else "NEUTRAL",
             "entry_price": latest_rec.get("recommendation", {}).get("suggested_entry_price", 0.0) if latest_rec else 0.0,
@@ -499,15 +734,7 @@ def get_event_engine_status() -> Dict[str, Any]:
         }
 
     telemetry_file = EVENT_DIR / "event_telemetry.jsonl"
-    latest_telemetry = None
-    if telemetry_file.exists():
-        try:
-            with open(telemetry_file, "r", encoding="utf-8") as f:
-                lines = [l for l in f if l.strip()]
-                if lines:
-                    latest_telemetry = json.loads(lines[-1])
-        except Exception:
-            pass
+    _, latest_telemetry = _jsonl_count_and_last(telemetry_file)
 
     # Cross-candidate agreement calculation
     directions = [c["direction"] for c in candidates_info.values()]
@@ -1878,33 +2105,21 @@ def load_live_state() -> Dict[str, Any]:
         except Exception:
             pass
 
-    # 2. Read Decision Cards (parse all for accounting; reasoning only on tail used by UI)
-    cards: List[Dict[str, Any]] = []
-    if DECISION_CARDS_FILE.exists():
-        try:
-            with open(DECISION_CARDS_FILE, "r", encoding="utf-8") as f:
-                for line in f:
-                    line = line.strip()
-                    if line:
-                        try:
-                            cards.append(json.loads(line))
-                        except Exception:
-                            continue
-        except Exception:
-            pass
-
-    for c in cards[-_REASONING_TAIL:]:
+    # 2. Decision cards — incremental scan (do NOT retain full jsonl as dicts in RAM)
+    card_view = _ingest_decision_cards_incremental()
+    cards_tail: List[Dict[str, Any]] = list(card_view.get("tail") or [])
+    for c in cards_tail[-_REASONING_TAIL:]:
         try:
             c["reasoning"] = derive_card_reasoning(c)
         except Exception:
             pass
 
-    # Separate Pre-Window vs Prospective
-    prewindow_cards = [c for c in cards if c.get("close_time_ms", 0) < REGISTERED_WINDOW_MS]
-    prospective_cards = [c for c in cards if c.get("close_time_ms", 0) >= REGISTERED_WINDOW_MS]
-
-    latest_card = cards[-1] if cards else None
-    latest_prospective = prospective_cards[-1] if prospective_cards else None
+    latest_card = card_view.get("latest")
+    latest_prospective = card_view.get("latest_prospective")
+    n_total_cards = int(card_view.get("total") or 0)
+    n_prewindow = int(card_view.get("prewindow") or 0)
+    n_prospective = int(card_view.get("prospective") or 0)
+    p_returns_cached = list(card_view.get("p_returns") or [])
 
     # Synchronize Trade Plan Overlay with latest durable state / card & reconcile lifecycle.
     # TP/SL/MTM must use live book (sync_lifecycle fetches REST bookTicker) — NOT the
@@ -2078,6 +2293,8 @@ def load_live_state() -> Dict[str, Any]:
             )
             if state == "CLOSED_TP":
                 why += " Outcome: PROFIT_TARGET_HIT (executable book crossed target)."
+            elif state == "CLOSED_TRAIL":
+                why += " Outcome: TRAILING_STOP_HIT (trailed stop fill; industry trailing-stop)."
             elif state == "CLOSED_SL":
                 why += " Outcome: STOP_LOSS_HIT."
             elif state == "TIME_EXIT":
@@ -2103,19 +2320,17 @@ def load_live_state() -> Dict[str, Any]:
     # Next 15m candle close target
     next_close_sec = 900 - (int(time.time()) % 900)
 
-    # Sharpe & Calmar Evaluation Framework Data
-    n_prospective = len(prospective_cards)
-    
+    # Sharpe & Calmar Evaluation Framework Data (uses streamed float returns, not full cards)
     # Statistical Rigor Policy:
     # A sample of < 96 observations (24h of 15m bars) has extreme estimation variance.
     # Multiplying short-window market drift by sqrt(35040) produces uninterpretable artifacts.
     # Metric is strictly suppressed until minimum threshold (N >= 96) is reached.
     MIN_SHARPE_OBSERVATIONS = 96
-    
-    if n_prospective >= MIN_SHARPE_OBSERVATIONS:
-        p_returns = [c.get("ret_15m_bps", 0.0) / 10000.0 for c in prospective_cards]
-        mean_r = sum(p_returns) / n_prospective
-        var_r = sum((r - mean_r) ** 2 for r in p_returns) / (n_prospective - 1)
+    p_returns = p_returns_cached
+    if n_prospective >= MIN_SHARPE_OBSERVATIONS and len(p_returns) >= MIN_SHARPE_OBSERVATIONS:
+        n_ret = len(p_returns)
+        mean_r = sum(p_returns) / n_ret
+        var_r = sum((r - mean_r) ** 2 for r in p_returns) / (n_ret - 1)
         std_r = math.sqrt(var_r) if var_r > 0 else 0.0001
         sharpe_annualized = round((mean_r / std_r) * math.sqrt(35040), 2)
         sharpe_display = f"{sharpe_annualized:.2f} (N={n_prospective})"
@@ -2160,9 +2375,9 @@ def load_live_state() -> Dict[str, Any]:
             "last_heartbeat_utc": checkpoint.get("last_heartbeat_utc", "N/A")
         },
         "accounting": {
-            "total_cards": len(cards),
-            "prewindow_excluded": len(prewindow_cards),
-            "prospective_count": len(prospective_cards)
+            "total_cards": n_total_cards,
+            "prewindow_excluded": n_prewindow,
+            "prospective_count": n_prospective,
         },
         "telemetry_gates": {
             "quote_coverage_pct": telemetry.get("quote_coverage_pct", 100.0),
@@ -2175,6 +2390,41 @@ def load_live_state() -> Dict[str, Any]:
         "latest_card": latest_card,
         "latest_prospective_card": latest_prospective,
         "trade_plan": trade_plan_payload,
+        "gate2e_flat_suppress": (
+            None
+            if (
+                isinstance(trade_plan_payload, dict)
+                and trade_plan_payload.get("is_active")
+            )
+            else (
+                (
+                    of_state.get("last_suppressed_trade_pattern")
+                    if isinstance(of_state.get("last_suppressed_trade_pattern"), dict)
+                    and (
+                        not isinstance(of_state.get("last_closed_plan"), dict)
+                        or int(
+                            (of_state.get("last_suppressed_trade_pattern") or {}).get(
+                                "suppressed_ms"
+                            )
+                            or 0
+                        )
+                        >= int(
+                            (of_state.get("last_closed_plan") or {}).get("exit_time_ms")
+                            or (of_state.get("last_closed_plan") or {}).get(
+                                "closed_ms"
+                            )
+                            or 0
+                        )
+                    )
+                    else None
+                )
+            )
+        ),
+        "gate2e_pattern_suppressions": (
+            (of_state.get("outcomes_summary") or {}).get("gate2e_pattern_suppressions")
+            if isinstance(of_state.get("outcomes_summary"), dict)
+            else None
+        ),
         "order_flow_recommendation": order_flow_recommendation,
         "order_flow_last_exit": order_flow_last_exit,
         # OFX research: executed aggressor volume mark (NOT baseline L1 OF_SUP)
@@ -2208,7 +2458,7 @@ def load_live_state() -> Dict[str, Any]:
             "recent": overlay_mgr.load_recent_of_outcomes(24),
         },
         "ratio_framework": ratio_framework,
-        "recent_cards": cards[-24:][::-1],  # newest first (wider window for OF candle marks)
+        "recent_cards": cards_tail[-_RECENT_CARDS_UI:][::-1],  # newest first
         "nse_schedule": nse_events,
         "gate_c": get_event_engine_status(),
         "nse_operations": get_nse_dashboard_state(),
@@ -4694,21 +4944,28 @@ DASHBOARD_HTML = """<!DOCTYPE html>
     }
 
     async function refreshNseBatch() {
+      // Manual only — live=1 runs Kite probe + single-bar. Auto-poll removed (Pi heat/OOM).
       const btn = document.getElementById('btn-refresh-nse');
       if (btn) {
         btn.disabled = true;
         btn.textContent = '⟳ Evaluating 119 Scrips...';
       }
       try {
-        const res = await fetch('/api/nse/refresh');
+        const res = await fetch('/api/nse/refresh?live=1');
         if (res.ok) {
           const data = await res.json();
           if (data.nse_operations) {
             updateNseUI(data.nse_operations);
           }
+          if (data.status === 'skipped' && btn) {
+            btn.textContent = '⏭ ' + (data.reason || 'Skipped');
+          } else if (btn) {
+            btn.textContent = '✓ Evaluated & Updated';
+          }
+        } else if (btn) {
+          btn.textContent = '⚠ Refresh Failed';
         }
         if (btn) {
-          btn.textContent = '✓ Evaluated & Updated';
           setTimeout(() => {
             btn.disabled = false;
             btn.textContent = '⟳ Refresh Live Batch';
@@ -5620,13 +5877,10 @@ DASHBOARD_HTML = """<!DOCTYPE html>
       }
     }
 
-    // Initial and periodic refresh
+    // Initial and periodic refresh — /api/state already carries nse_operations (read-only).
+    // Do NOT auto-call /api/nse/refresh (Kite probe + single-bar) — that pegged the Pi.
     fetchState();
     setInterval(fetchState, 3000);
-
-    // Continuous Kite batch live feed polling (15s interval)
-    refreshNseBatch();
-    setInterval(refreshNseBatch, 15000);
   </script>
 
   <!-- Kite Connect Re-Authentication Modal -->
@@ -5827,22 +6081,111 @@ class DashboardHTTPRequestHandler(http.server.BaseHTTPRequestHandler):
                 self._send_json(200, get_multi_horizon_dashboard_state())
             except Exception as e:
                 self._send_json(500, {"error": str(e)})
-        elif self.path in ("/api/nse/refresh", "/api/refresh_nse"):
+        elif parsed.path in ("/api/nse/refresh", "/api/refresh_nse"):
             try:
-                if run_probe:
-                    try:
-                        run_probe()
-                    except Exception as pe:
-                        print(f"Probe execution error: {pe}")
-                # Execute daemon bar evaluation cycle to update evaluations snapshot
+                qs = urllib.parse.parse_qs(parsed.query)
+                live = str((qs.get("live") or ["0"])[0]).strip().lower() in (
+                    "1",
+                    "true",
+                    "yes",
+                )
+                now_ms = int(time.time() * 1000)
+                # Default: read-only snapshot (safe for UI). live=1 for manual probe.
+                if not live:
+                    nse_state = get_nse_dashboard_state()
+                    self._send_json(
+                        200,
+                        {
+                            "status": "ok",
+                            "mode": "readonly",
+                            "nse_operations": nse_state,
+                        },
+                    )
+                    return
+
+                # live refresh — never stack; honor cooldown after probe auth failures
+                if not _NSE_REFRESH_LOCK.acquire(blocking=False):
+                    nse_state = get_nse_dashboard_state()
+                    self._send_json(
+                        200,
+                        {
+                            "status": "skipped",
+                            "reason": "refresh_in_progress",
+                            "nse_operations": nse_state,
+                        },
+                    )
+                    return
                 try:
-                    from scripts.run_rp608_nse_shadow_daemon import RP608NSEShadowDaemon
-                    daemon = RP608NSEShadowDaemon(output_dir=NSE_TEST_DIR, single_bar_test=True)
-                    daemon.run_single_iteration()
-                except Exception as de:
-                    print(f"Daemon single-bar evaluation error during refresh: {de}")
-                nse_state = get_nse_dashboard_state()
-                self._send_json(200, {"status": "ok", "nse_operations": nse_state})
+                    meta = _NSE_REFRESH_META
+                    if now_ms < int(meta.get("cooldown_until_ms") or 0):
+                        nse_state = get_nse_dashboard_state()
+                        self._send_json(
+                            200,
+                            {
+                                "status": "skipped",
+                                "reason": "probe_cooldown",
+                                "cooldown_until_ms": meta.get("cooldown_until_ms"),
+                                "last_error": meta.get("last_error"),
+                                "nse_operations": nse_state,
+                            },
+                        )
+                        return
+                    last_finish = int(meta.get("last_finish_ms") or 0)
+                    if last_finish and (now_ms - last_finish) < _NSE_REFRESH_MIN_INTERVAL_MS:
+                        nse_state = get_nse_dashboard_state()
+                        self._send_json(
+                            200,
+                            {
+                                "status": "skipped",
+                                "reason": "min_interval",
+                                "nse_operations": nse_state,
+                            },
+                        )
+                        return
+
+                    meta["last_start_ms"] = now_ms
+                    probe_ok = None
+                    if run_probe:
+                        try:
+                            run_probe()
+                            probe_ok = True
+                        except Exception as pe:
+                            probe_ok = False
+                            err_s = str(pe)
+                            meta["last_error"] = err_s
+                            print(f"Probe execution error: {pe}")
+                            # 403 / auth failures → long cooldown (weekend / expired token)
+                            if "403" in err_s or "Forbidden" in err_s or "token" in err_s.lower():
+                                meta["cooldown_until_ms"] = now_ms + _NSE_PROBE_FAIL_COOLDOWN_MS
+                    meta["last_probe_ok"] = probe_ok
+
+                    # Single-bar test_run eval only when probe did not hard-fail.
+                    # Corrupt test_run checkpoints must not spin the Pi every click.
+                    if probe_ok is not False:
+                        try:
+                            from scripts.run_rp608_nse_shadow_daemon import RP608NSEShadowDaemon
+
+                            daemon = RP608NSEShadowDaemon(
+                                output_dir=NSE_TEST_DIR, single_bar_test=True
+                            )
+                            daemon.run_single_iteration()
+                        except Exception as de:
+                            meta["last_error"] = str(de)
+                            print(f"Daemon single-bar evaluation error during refresh: {de}")
+
+                    meta["last_finish_ms"] = int(time.time() * 1000)
+                    nse_state = get_nse_dashboard_state()
+                    self._send_json(
+                        200,
+                        {
+                            "status": "ok",
+                            "mode": "live",
+                            "probe_ok": probe_ok,
+                            "nse_operations": nse_state,
+                        },
+                    )
+                finally:
+                    _NSE_REFRESH_LOCK.release()
             except Exception as e:
                 self._send_json(500, {"error": str(e)})
         elif self.path in ("/", "/index.html"):

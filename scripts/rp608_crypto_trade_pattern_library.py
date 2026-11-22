@@ -21,7 +21,7 @@ import json
 from collections import Counter, defaultdict
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Sequence
+from typing import Any, Dict, List, Optional
 
 WORKSPACE = Path(__file__).resolve().parent.parent
 
@@ -166,7 +166,9 @@ def bool_token(v: Any) -> str:
     return "T" if bool(v) else "F"
 
 
-def build_entry_pattern_key(feats: Dict[str, Any]) -> str:
+def build_entry_pattern_key(
+    feats: Dict[str, Any], *, include_volume: bool = True
+) -> str:
     parts = [
         str(feats.get("utc_session_phase") or "UNK"),
         str(feats.get("direction") or "UNK"),
@@ -177,43 +179,34 @@ def build_entry_pattern_key(feats: Dict[str, Any]) -> str:
         "T" + str(feats.get("target_dist_bucket") or "UNK"),
         "R" + str(feats.get("gross_rr_bucket") or "UNK"),
         "P" + bool_token(feats.get("prior_stop_same_utc_day_dir")),
-        "V" + str(feats.get("vol_surge") or "UNK"),
     ]
+    if include_volume:
+        parts.append("V" + str(feats.get("vol_surge") or "UNK"))
     key = "|".join(parts)
     assert "symbol" not in key.lower()
     assert "btcusdt" not in key.lower()
     return key
 
 
-def build_exit_pattern_key(feats: Dict[str, Any]) -> str:
+def build_exit_pattern_key(
+    feats: Dict[str, Any], *, include_volume: bool = True
+) -> str:
     parts = [
         str(feats.get("utc_session_phase") or "UNK"),
         str(feats.get("direction") or "UNK"),
         str(feats.get("mfe_bucket") or "UNK"),
         str(feats.get("first_reverse") or "UNK"),
         str(feats.get("hold_bucket") or "UNK"),
-        "V" + str(feats.get("exit_vol_surge") or "UNK"),
     ]
+    if include_volume:
+        parts.append("V" + str(feats.get("exit_vol_surge") or "UNK"))
     return "|".join(parts)
 
 
-def entry_key_softened(feats: Dict[str, Any], dropped: Sequence[str]) -> str:
-    f = dict(feats)
-    for ax in dropped:
-        if ax in {
-            "gross_rr_bucket",
-            "target_dist_bucket",
-            "stop_dist_bucket",
-            "imb_bucket",
-            "atr_bucket",
-            "vol_surge",
-        }:
-            f[ax] = "UNK"
-        elif ax == "of_supported":
-            f[ax] = False
-        elif ax == "prior_stop_same_utc_day_dir":
-            f[ax] = False
-    return build_entry_pattern_key(f)
+def default_baseline_library_path(crypto_dir: Optional[Path] = None) -> Path:
+    """Pre-volume (v1-shaped) library for parallel baseline twin book."""
+    root = Path(crypto_dir) if crypto_dir else (WORKSPACE / "live_capture/shadow_validation/crypto")
+    return root / "rp608_crypto_plan_trade_pattern_library_baseline_parallel.json"
 
 
 def load_jsonl(path: Path) -> List[Dict[str, Any]]:
@@ -245,6 +238,7 @@ def enrich_plan(
     plan: Dict[str, Any],
     *,
     prior_stop: bool,
+    include_volume: bool = True,
 ) -> Dict[str, Any]:
     et = int(plan.get("entry_time_ms") or 0)
     entry = float(plan.get("entry_price") or 0)
@@ -307,8 +301,12 @@ def enrich_plan(
         "_plan_id": str(plan.get("plan_id") or ""),
         "_symbol": str(plan.get("symbol") or ""),
     }
-    feats["entry_pattern_id"] = build_entry_pattern_key(feats)
-    feats["exit_pattern_id"] = build_exit_pattern_key(feats)
+    feats["entry_pattern_id"] = build_entry_pattern_key(
+        feats, include_volume=include_volume
+    )
+    feats["exit_pattern_id"] = build_exit_pattern_key(
+        feats, include_volume=include_volume
+    )
     return feats
 
 
@@ -379,7 +377,9 @@ def classify_exit_label(m: Dict[str, Any], rows: List[Dict[str, Any]]) -> str:
     return "NEUTRAL"
 
 
-def mine_library(plans: List[Dict[str, Any]]) -> Dict[str, Any]:
+def mine_library(
+    plans: List[Dict[str, Any]], *, include_volume: bool = True
+) -> Dict[str, Any]:
     # Dedupe by plan_id keep last
     by_id: Dict[str, Dict[str, Any]] = {}
     for p in plans:
@@ -409,7 +409,7 @@ def mine_library(plans: List[Dict[str, Any]]) -> Dict[str, Any]:
         direction = str(p.get("direction") or "UNK").upper()
         family = f"{direction}"
         prior = family in day_dir_stops[sess]
-        feats = enrich_plan(p, prior_stop=prior)
+        feats = enrich_plan(p, prior_stop=prior, include_volume=include_volume)
         feats["_split"] = "holdout" if sess in holdout_set else "train"
         enriched.append(feats)
         reason = str(p.get("exit_reason") or "")
@@ -454,11 +454,21 @@ def mine_library(plans: List[Dict[str, Any]]) -> Dict[str, Any]:
             "coverage_train_share": round(len(rows) / max(len(train_rows), 1), 4),
         }
 
+    schema = (
+        LIBRARY_SCHEMA
+        if include_volume
+        else "crypto_plan_trade_pattern_library_baseline_parallel_v1"
+    )
     return {
         "protocol_id": PROTOCOL_ID,
-        "schema": LIBRARY_SCHEMA,
-        "book": "CRYPTO_RECOMMENDATION_PLAN",
+        "schema": schema,
+        "book": (
+            "CRYPTO_RECOMMENDATION_PLAN"
+            if include_volume
+            else "CRYPTO_PLAN_BASELINE_PARALLEL"
+        ),
         "authority_pct": 0.0,
+        "include_volume_axes": bool(include_volume),
         "generated_at_utc": datetime.now(timezone.utc).isoformat(),
         "rules": {
             "adverse_min_n": ADVERSE_MIN_N,
@@ -469,6 +479,7 @@ def mine_library(plans: List[Dict[str, Any]]) -> Dict[str, Any]:
             "books_pooled": False,
             "baseline_of_threshold_unchanged": True,
             "ofx_inert": True,
+            "include_volume_axes": bool(include_volume),
             "entry_uses": "Gate2E decision-time standaside vs allow",
             "exit_uses": "Gate2X observational reverse timing (no Gate5 apply)",
         },
@@ -519,7 +530,13 @@ def main() -> int:
         help="trade_plan_outcomes.jsonl paths (repeatable)",
     )
     ap.add_argument("--output", default="")
+    ap.add_argument(
+        "--baseline-parallel",
+        action="store_true",
+        help="Mine pre-volume key schema for CRYPTO_PLAN_BASELINE_PARALLEL twin",
+    )
     args = ap.parse_args()
+    include_volume = not bool(args.baseline_parallel)
     paths = [Path(p) for p in (args.outcomes or [])]
     if not paths:
         paths = [
@@ -541,12 +558,17 @@ def main() -> int:
         rows = load_jsonl(p)
         print(f"[crypto_pattern_library] {p}: {len(rows)}")
         plans.extend(rows)
-    lib = mine_library(plans)
-    out = Path(args.output) if args.output else default_library_path()
+    lib = mine_library(plans, include_volume=include_volume)
+    if args.output:
+        out = Path(args.output)
+    elif include_volume:
+        out = default_library_path()
+    else:
+        out = default_baseline_library_path()
     out.parent.mkdir(parents=True, exist_ok=True)
     out.write_text(json.dumps(lib, indent=2) + "\n", encoding="utf-8")
     print(
-        f"[crypto_pattern_library] wrote {out} "
+        f"[crypto_pattern_library] wrote {out} schema={lib.get('schema')} "
         f"entry={lib['counts']['entry_patterns']} "
         f"adverse={lib['counts']['adverse_entry_patterns']} "
         f"exit={lib['counts']['exit_patterns']} "

@@ -175,9 +175,10 @@ Evidence-supported working hypotheses for Coralys EvolutionEngine AOS:
 ## Open actions
 
 - [ ] Obtain Lin (2021) and Jiao (2023) full texts (institutional access)
-- [ ] Map Coralys `coralys-moga` operator surface → FRRMAB arm set
-- [ ] Specify `RP-002-E0` protocol under `07_research_hypotheses_and_experiments/`
-- [ ] Begin Batch 2 after E0 design sketch (Tornede / meta-features / continual)
+- [x] Map Coralys `coralys-moga` operator surface → FRRMAB arm set → [`OPERATOR_SURFACE_MAP.md`](OPERATOR_SURFACE_MAP.md)
+- [x] Specify `RP-002-E0` protocol → [`RP002_E0_FRRMAB_PROTOCOL.md`](RP002_E0_FRRMAB_PROTOCOL.md) (**design only · not authorised**)
+- [ ] Begin Batch 2 after E0 design review (Tornede / meta-features / continual)
+- [ ] Separate **run authorization** before any E0 execution
 
 ---
 

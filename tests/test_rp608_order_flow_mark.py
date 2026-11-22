@@ -15,7 +15,9 @@ from scripts.rp608_order_flow_mark import (
     l1_from_nse_quote,
 )
 from scripts.rp608_trade_plan_overlay import (
+    CONFIG,
     OF_DEPTH_QUALITY_PROTOCOL_ID,
+    OF_ENTRY_QUALITY_PROTOCOL_ID,
     OF_PAPER_PROTOCOL_ID,
     TradePlanOverlayManager,
     calculate_trade_plan,
@@ -28,6 +30,14 @@ from scripts.rp608_trade_plan_overlay import (
 
 
 class TestOrderFlowExitDriven(unittest.TestCase):
+    def setUp(self):
+        # Existing suite expects immediate paper open; entry persist covered separately.
+        self._prev_entry_persist = CONFIG.get("of_paper_entry_persist_ms")
+        CONFIG["of_paper_entry_persist_ms"] = 0
+
+    def tearDown(self):
+        CONFIG["of_paper_entry_persist_ms"] = self._prev_entry_persist
+
     def test_exit_only_on_opposite_confirm(self):
         long_l1 = {"bid_qty": 90, "ask_qty": 10, "source": "t"}
         short_l1 = {"bid_qty": 10, "ask_qty": 90, "source": "t"}
@@ -131,6 +141,13 @@ class TestOrderFlowExitDriven(unittest.TestCase):
 
 
 class TestOfPaperTradeObservability(unittest.TestCase):
+    def setUp(self):
+        self._prev_entry_persist = CONFIG.get("of_paper_entry_persist_ms")
+        CONFIG["of_paper_entry_persist_ms"] = 0
+
+    def tearDown(self):
+        CONFIG["of_paper_entry_persist_ms"] = self._prev_entry_persist
+
     def _open_long(self, mgr: TradePlanOverlayManager) -> dict:
         card = {
             "bar_idx": 100,
@@ -732,6 +749,155 @@ class TestOfPaperTradeObservability(unittest.TestCase):
             self.assertEqual(xc.get("bar_idx"), 105)
             self.assertEqual(xc.get("decision_event_idx"), 777)
             self.assertNotEqual(xc.get("bar_idx"), (of.get("entry_candle") or {}).get("bar_idx"))
+
+
+class TestOfPaperEntryQualityPersist(unittest.TestCase):
+    """Entry OF persist + quality gate (does not change ±0.30 classify)."""
+
+    def setUp(self):
+        self._prev_persist = CONFIG.get("of_paper_entry_persist_ms")
+        self._prev_gate = None
+        import os
+
+        self._os = os
+        self._prev_gate = os.environ.get("RP608_OF_PAPER_QUALITY_GATE")
+        os.environ["RP608_OF_PAPER_QUALITY_GATE"] = "1"
+        CONFIG["of_paper_entry_persist_ms"] = 30_000
+
+    def tearDown(self):
+        CONFIG["of_paper_entry_persist_ms"] = self._prev_persist
+        if self._prev_gate is None:
+            self._os.environ.pop("RP608_OF_PAPER_QUALITY_GATE", None)
+        else:
+            self._os.environ["RP608_OF_PAPER_QUALITY_GATE"] = self._prev_gate
+
+    def _healthy_quote(self):
+        return {
+            "best_bid_price": 99.9,
+            "best_ask_price": 100.1,
+            "best_bid_qty": 90.0,
+            "best_ask_qty": 10.0,
+        }
+
+    def test_entry_persist_blocks_then_allows(self):
+        with tempfile.TemporaryDirectory() as td:
+            mgr = TradePlanOverlayManager(base_dir=Path(td))
+            t0 = 1793500000000
+            of_meta = {
+                "order_flow_imbalance": 0.8,
+                "order_flow_source": "test",
+            }
+            first = mgr._activate_order_flow_recommendation(
+                direction="LONG",
+                of=of_meta,
+                plan_id="P1",
+                entry_price=100.0,
+                now_ms=t0,
+                candle_mark={"bar_idx": 100},
+                quote=self._healthy_quote(),
+            )
+            self.assertTrue(first is None or not (first or {}).get("active"))
+            supp = mgr.state.get("last_of_paper_open_suppressed") or {}
+            self.assertIn("entry_persist", str(supp.get("reason") or ""))
+            q = supp.get("of_entry_quality") or {}
+            self.assertEqual(q.get("protocol_id"), OF_ENTRY_QUALITY_PROTOCOL_ID)
+            self.assertFalse(q.get("persist_ok"))
+            self.assertTrue(q.get("would_have_opened") or supp.get("would_have_opened"))
+            arm = mgr.state.get("of_entry_persist_arm") or {}
+            self.assertEqual(arm.get("direction"), "LONG")
+
+            # Same-side OF continues — still short of 30s
+            mid = mgr._activate_order_flow_recommendation(
+                direction="LONG",
+                of=of_meta,
+                plan_id="P1",
+                entry_price=100.0,
+                now_ms=t0 + 10_000,
+                candle_mark={"bar_idx": 100},
+                quote=self._healthy_quote(),
+            )
+            self.assertTrue(mid is None or not (mid or {}).get("active"))
+
+            opened = mgr._activate_order_flow_recommendation(
+                direction="LONG",
+                of=of_meta,
+                plan_id="P1",
+                entry_price=100.0,
+                now_ms=t0 + 30_000,
+                candle_mark={"bar_idx": 100},
+                quote=self._healthy_quote(),
+            )
+            self.assertTrue(opened and opened.get("active"))
+            self.assertTrue((opened.get("of_entry_quality") or {}).get("persist_ok"))
+            self.assertIsNone(mgr.state.get("of_entry_persist_arm"))
+
+    def test_entry_persist_clears_when_of_drops(self):
+        with tempfile.TemporaryDirectory() as td:
+            mgr = TradePlanOverlayManager(base_dir=Path(td))
+            t0 = 1793500000000
+            mgr._activate_order_flow_recommendation(
+                direction="LONG",
+                of={"order_flow_imbalance": 0.8, "order_flow_source": "test"},
+                plan_id="P2",
+                entry_price=100.0,
+                now_ms=t0,
+                candle_mark={"bar_idx": 101},
+                quote=self._healthy_quote(),
+            )
+            self.assertIsNotNone(mgr.state.get("of_entry_persist_arm"))
+            # Neutral L1 via continue path clears arm
+            gone = mgr.continue_of_paper_entry_persist(
+                quote={
+                    "best_bid_price": 100.0,
+                    "best_ask_price": 100.1,
+                    "best_bid_qty": 50.0,
+                    "best_ask_qty": 50.0,
+                },
+                now_ms=t0 + 5_000,
+                persist=True,
+            )
+            self.assertIsNone(gone)
+            self.assertIsNone(mgr.state.get("of_entry_persist_arm"))
+
+    def test_depth_reject_stamps_quality(self):
+        with tempfile.TemporaryDirectory() as td:
+            mgr = TradePlanOverlayManager(base_dir=Path(td))
+            CONFIG["of_paper_entry_persist_ms"] = 0
+            thin = mgr._activate_order_flow_recommendation(
+                direction="LONG",
+                of={"order_flow_imbalance": 0.99, "order_flow_source": "test"},
+                plan_id="THIN2",
+                entry_price=100.0,
+                now_ms=1793500000000,
+                candle_mark={"bar_idx": 202},
+                quote={
+                    "best_bid_price": 100.0,
+                    "best_ask_price": 100.1,
+                    "best_bid_qty": 50.0,
+                    "best_ask_qty": 0.01,
+                },
+            )
+            self.assertTrue(thin is None or not (thin or {}).get("active"))
+            q = (mgr.state.get("last_of_paper_open_suppressed") or {}).get(
+                "of_entry_quality"
+            ) or {}
+            self.assertTrue(q.get("persist_ok"))
+            self.assertFalse(q.get("depth_ok"))
+            self.assertIn("thin_opposite", str(q.get("reason") or ""))
+
+    def test_imbalance_threshold_unchanged(self):
+        from scripts.rp608_order_flow_mark import ORDER_FLOW_IMBALANCE_THRESHOLD
+
+        self.assertAlmostEqual(ORDER_FLOW_IMBALANCE_THRESHOLD, 0.30)
+        long_ok = classify_order_flow_support(
+            "LONG", {"bid_qty": 65, "ask_qty": 35, "source": "t"}
+        )
+        # (65-35)/(65+35)=0.30 exactly → supported at threshold
+        self.assertTrue(long_ok["order_flow_supported"])
+        below = classify_order_flow_support(
+            "LONG", {"bid_qty": 64, "ask_qty": 36, "source": "t"}
+        )
+        self.assertFalse(below["order_flow_supported"])
 
 
 if __name__ == "__main__":

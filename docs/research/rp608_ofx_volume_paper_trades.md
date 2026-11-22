@@ -27,6 +27,7 @@ Do **not** pool the two books. Do **not** change baseline OF / ±0.30 / Gate 2 /
 - **Sizing:** Fixed $100 notional (paper)  
 - **Friction:** Same fee/spread model as L1 OF paper (`compute_of_paper_cost_breakdown`)  
 - **Anti-churn:** One OFX volume paper open per 15m bar  
+- **Stuck-open safety (2026-11-21):** if cumulative opposing qty ≥ entry×**1.5** after min-hold → `OPPOSING_VOLUME_OVERSHOOT_EXHAUSTED` (no persist); absolute paper max-hold **6h** → `RECONCILED_MAX_HOLD`. Does not change baseline OF.  
 
 ## Files
 

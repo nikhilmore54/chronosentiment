@@ -49,6 +49,7 @@
 
 pub mod allocation_engine;
 pub mod coralys_state_bridge;
+pub mod crypto_tick_policy;
 pub mod gate2x_causal_map;
 pub mod gate2x_decide;
 pub mod gate2x_features;
@@ -85,6 +86,10 @@ pub use gate2x_features::{
 pub use gate2x_position_manage::{Gate2xBookKind, Gate2xPositionManager};
 pub use rp608_plan_lifecycle::{
     OpenPlanState, PlanLifecycleConfig, PlanLifecycleManager, PlanQuote, PLAN_LIFECYCLE_PROTOCOL,
+};
+pub use crypto_tick_policy::{
+    build_tick_snapshot, evaluate_tick_policies, validate_tick_quote, TickEmissionGate,
+    TickFeatureBuffer, TickFeatureSnapshot, TickQuote, PROTOCOL_ID as CRYPTO_TICK_PROTOCOL_ID,
 };
 pub use intraday_decision::{DecisionBrief, ExecutionFacts, load_intraday_briefs};
 pub use deferred_live::{

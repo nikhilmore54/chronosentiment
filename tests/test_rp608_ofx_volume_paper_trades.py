@@ -12,7 +12,12 @@ WORKSPACE = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(WORKSPACE))
 
 from research.rp608_ofx.executed_flow.volume_mark import is_ofx_opposing_volume_match
-from scripts.rp608_ofx_volume_paper_trades import OfxVolumePaperManager
+from scripts.rp608_ofx_volume_paper_trades import (
+    EXIT_REASON_MAX_HOLD,
+    EXIT_REASON_OVERSHOOT,
+    OFX_MAX_HOLD_MS,
+    OfxVolumePaperManager,
+)
 
 
 def _vol_snap(*, buy: float, sell: float, now: int = 1_700_000_060_000) -> dict:
@@ -180,6 +185,109 @@ class TestOfxVolumePaper(unittest.TestCase):
                     now_ms=2_000_000,
                 )
             self.assertTrue(opened is None or not (opened or {}).get("active"))
+
+    def test_force_close_active_reconciles_stuck_open(self):
+        with tempfile.TemporaryDirectory() as td:
+            mgr = OfxVolumePaperManager(Path(td))
+            t0 = 1_700_000_000_000
+            tid = "OFX-VOL-PAPER-STUCK-FORCE"
+            mgr.active = {
+                "active": True,
+                "direction": "SHORT",
+                "ofx_trade_id": tid,
+                "entry_price": 100.0,
+                "entry_bid": 99.9,
+                "entry_ask": 100.1,
+                "entry_aggressor_qty": 0.01,
+                "simulated_notional_usdt": 100.0,
+                "simulated_quantity": 1.0,
+                "entry_paper_quantity": 1.0,
+                "activated_ms": t0,
+                "entry_time_ms": t0,
+                "symbol": "BTCUSDT",
+            }
+            mgr._write_open(mgr.active)
+            closed = mgr.force_close_active(
+                reason=EXIT_REASON_MAX_HOLD,
+                quote=_quote(bid=99.0, ask=99.1),
+                now_ms=t0 + OFX_MAX_HOLD_MS + 1,
+            )
+            self.assertIsNotNone(closed)
+            self.assertEqual(closed["exit_reason"], EXIT_REASON_MAX_HOLD)
+            self.assertFalse(closed.get("active", True))
+            self.assertIsNone(mgr.active)
+            self.assertFalse(json_open_active(Path(td)))
+            self.assertIn(tid, mgr._known_ids)
+
+    def test_max_hold_closes_on_evaluate(self):
+        with tempfile.TemporaryDirectory() as td:
+            mgr = OfxVolumePaperManager(Path(td))
+            t0 = 1_700_000_000_000
+            mgr.active = {
+                "active": True,
+                "direction": "SHORT",
+                "ofx_trade_id": "OFX-VOL-PAPER-TEST-MAXHOLD",
+                "entry_price": 100.0,
+                "entry_bid": 99.9,
+                "entry_ask": 100.1,
+                "entry_aggressor_qty": 0.01,
+                "simulated_notional_usdt": 100.0,
+                "simulated_quantity": 1.0,
+                "entry_paper_quantity": 1.0,
+                "activated_ms": t0,
+                "entry_time_ms": t0,
+                "symbol": "BTCUSDT",
+            }
+            mgr._write_open(mgr.active)
+            with patch.object(mgr, "_sum_opposite_aggressor_since_entry", return_value=0.0):
+                closed = mgr.evaluate_tick(
+                    volume_snapshot=_vol_snap(buy=0.1, sell=0.1, now=t0 + OFX_MAX_HOLD_MS + 5_000),
+                    quote=_quote(bid=90.0, ask=90.1),
+                    now_ms=t0 + OFX_MAX_HOLD_MS + 5_000,
+                )
+            self.assertIsNotNone(closed)
+            self.assertEqual(closed["exit_reason"], EXIT_REASON_MAX_HOLD)
+
+    def test_overshoot_exhausted_closes_without_persist(self):
+        with tempfile.TemporaryDirectory() as td:
+            mgr = OfxVolumePaperManager(Path(td))
+            t0 = 1_700_000_000_000
+            mgr.active = {
+                "active": True,
+                "direction": "SHORT",
+                "ofx_trade_id": "OFX-VOL-PAPER-TEST-OVERSHOOT",
+                "entry_price": 100.0,
+                "entry_bid": 99.9,
+                "entry_ask": 100.1,
+                "entry_aggressor_qty": 0.01,
+                "simulated_notional_usdt": 100.0,
+                "simulated_quantity": 1.0,
+                "entry_paper_quantity": 1.0,
+                "activated_ms": t0,
+                "entry_time_ms": t0,
+                "symbol": "BTCUSDT",
+            }
+            mgr._write_open(mgr.active)
+            # Past 1.5× entry after min hold — geometric trap unblock
+            with patch.object(mgr, "_sum_opposite_aggressor_since_entry", return_value=0.05):
+                with patch.object(mgr, "_recent_executed_trades", return_value=[]):
+                    closed = mgr.evaluate_tick(
+                        volume_snapshot=_vol_snap(buy=0.05, sell=0.0, now=t0 + 400_000),
+                        quote=_quote(bid=99.0, ask=99.1),
+                        now_ms=t0 + 400_000,
+                    )
+            self.assertIsNotNone(closed)
+            self.assertEqual(closed["exit_reason"], EXIT_REASON_OVERSHOOT)
+
+
+def json_open_active(root: Path) -> bool:
+    import json
+
+    p = root / "ofx_volume_paper_open.json"
+    if not p.exists():
+        return False
+    d = json.loads(p.read_text())
+    return bool(d.get("open"))
 
 
 if __name__ == "__main__":

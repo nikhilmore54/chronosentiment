@@ -80,6 +80,7 @@ Baseline OF stamps / ±0.30 paper = **L1 resting liquidity imbalance**, not volu
 | **Gate 3X H* path-stress** | **PASS_BOTH 2026-11-16** · H60/H120_PATH holdout Δ+255/+381 · `rp608_gate3x_crypto_h_path_review.md` |
 | **Gate 5 Crypto H\*** | **DEPLOYED 2026-11-16** · H120_PATH live · `EARLY_SL_PATH_SCRATCH` · authority 0% · `rp608_gate5_packet_crypto_h_draft.md` |
 | **Gate 5 Crypto Adaptive TP** | **DEPLOY 2026-11-21** · post-1.5×ATR extend +0.5×ATR / SL lock · Gate 2X v1.4 continue-vs-exit · OF ±0.30 still frozen · `rp608_gate5_packet_crypto_adaptive_tp_draft.md` |
+| **Gate 2E shadow thin-WR** | **STAMP-ONLY 2026-11-22** · `SHADOW_ALLOW_IF_N10_WR_GT_035` · allow_only unchanged · `rp608_gate2e_shadow_thin_wr_allow_2026_11_22.md` |
 | **Gate 5 NSE Adaptive TP** | **DEPLOY 2026-11-21** · Estimand A LONG parity · +0.5×ATR (or +0.5% entry) extend / SL lock · Gate 2X v1.4 · `RP-608-GATE5-NSE-ADAPTIVE-TP-001` |
 | Discovery v2 (algorithm upgrade) | **DONE** · Rust `rp608_wl_crypto_plan_discovery_v2` · Gate 2 criteria unchanged · still closed |
 | NSE A Kite feature join (ext. holdout) | **DONE** · Pi · 1625 feature-ready rows |

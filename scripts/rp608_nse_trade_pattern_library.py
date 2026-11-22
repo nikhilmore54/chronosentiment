@@ -380,7 +380,9 @@ def extract_exit_path_feats(
     }
 
 
-def build_entry_pattern_key(feats: Dict[str, Any]) -> str:
+def build_entry_pattern_key(
+    feats: Dict[str, Any], *, include_volume: bool = True
+) -> str:
     """Canonical entry key — never includes symbol."""
     parts = [
         str(feats.get("session_phase") or "UNK"),
@@ -396,23 +398,27 @@ def build_entry_pattern_key(feats: Dict[str, Any]) -> str:
         "C" + str(feats.get("candle_path3") or "UNK"),
         "B" + str(feats.get("signal_body") or "UNK"),
         "R" + str(feats.get("runup_3b") or "UNK"),
-        "V" + str(feats.get("vol_surge") or "UNK"),
     ]
+    if include_volume:
+        parts.append("V" + str(feats.get("vol_surge") or "UNK"))
     key = "|".join(parts)
     assert "symbol" not in key.lower()
     return key
 
 
-def build_exit_pattern_key(feats: Dict[str, Any]) -> str:
-    """Exit/reverse cohort key — path geometry + path volume; no symbol."""
+def build_exit_pattern_key(
+    feats: Dict[str, Any], *, include_volume: bool = True
+) -> str:
+    """Exit/reverse cohort key — path geometry (+ optional path volume); no symbol."""
     parts = [
         str(feats.get("session_phase") or "UNK"),
         str(feats.get("traj15_bucket") or "UNK"),
         str(feats.get("exit_path3") or "UNK"),
         str(feats.get("mfe_bucket") or "UNK"),
         str(feats.get("first_reverse") or "UNK"),
-        "V" + str(feats.get("exit_vol_surge") or "UNK"),
     ]
+    if include_volume:
+        parts.append("V" + str(feats.get("exit_vol_surge") or "UNK"))
     return "|".join(parts)
 
 

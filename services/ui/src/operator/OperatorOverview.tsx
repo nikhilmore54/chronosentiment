@@ -67,8 +67,8 @@ export default function OperatorOverview({ state, onNavigate }: Props) {
           style={{
             ...panelStyle,
             marginBottom: 14,
-            borderColor: op.rose,
-            color: op.rose,
+            borderColor: op.loss,
+            color: op.loss,
             fontFamily: op.mono,
             fontSize: 13,
           }}
@@ -85,20 +85,32 @@ export default function OperatorOverview({ state, onNavigate }: Props) {
           marginBottom: 18,
         }}
       >
-        <Strip title="Crypto" accent={op.cyan}>
+        <Strip title="Crypto" accent={op.signal}>
           {!crypto?.available ? (
-            <div style={{ color: op.rose, fontFamily: op.mono, fontSize: 13 }}>UNAVAILABLE</div>
+            <div style={{ color: op.loss, fontFamily: op.mono, fontSize: 13 }}>UNAVAILABLE</div>
           ) : (
             <>
               <div style={{ display: 'flex', gap: 8, marginBottom: 10, flexWrap: 'wrap' }}>
-                <span style={chip('rgba(45,212,191,0.2)', op.cyan)}>
+                <span style={chip('rgba(143,191,159,0.14)', op.signal)}>
                   B {displayOrUnavailable(crypto.policy_b)}
                 </span>
-                <span style={chip('rgba(251,191,36,0.22)', op.amber)}>
+                <span style={chip('rgba(196,165,116,0.16)', op.warn)}>
                   C {displayOrUnavailable(crypto.policy_c)}
                 </span>
               </div>
               <Kv k="Trade plan" v={displayOrUnavailable(planState)} />
+              <Kv
+                k="Book W/L · cum"
+                v={
+                  crypto.trade_plan_pnl?.summary
+                    ? `${crypto.trade_plan_pnl.summary.n_wins ?? 0}/${crypto.trade_plan_pnl.summary.n_losses ?? 0} · ${
+                        crypto.trade_plan_pnl.summary.cumulative_net_pnl_usdt != null
+                          ? `${crypto.trade_plan_pnl.summary.cumulative_net_pnl_usdt.toFixed(2)} USDT`
+                          : '—'
+                      }`
+                    : 'UNAVAILABLE'
+                }
+              />
               <Kv k="Order flow" v={ofLabel} />
               <Kv
                 k="Mid / quote age"
@@ -114,9 +126,9 @@ export default function OperatorOverview({ state, onNavigate }: Props) {
           )}
         </Strip>
 
-        <Strip title="NSE" accent={op.amber}>
+        <Strip title="NSE" accent={op.warn}>
           {!nse?.available ? (
-            <div style={{ color: op.rose, fontFamily: op.mono, fontSize: 13 }}>UNAVAILABLE</div>
+            <div style={{ color: op.loss, fontFamily: op.mono, fontSize: 13 }}>UNAVAILABLE</div>
           ) : (
             <>
               <Kv
@@ -156,16 +168,16 @@ export default function OperatorOverview({ state, onNavigate }: Props) {
           )}
         </Strip>
 
-        <Strip title="System" accent={op.emerald}>
+        <Strip title="System" accent={op.signal}>
           {!sys?.available ? (
-            <div style={{ color: op.rose, fontFamily: op.mono, fontSize: 13 }}>UNAVAILABLE</div>
+            <div style={{ color: op.loss, fontFamily: op.mono, fontSize: 13 }}>UNAVAILABLE</div>
           ) : (
             <>
               <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 10 }}>
                 <span
                   style={chip(
-                    sys.service_status?.active ? 'rgba(52,211,153,0.25)' : 'rgba(251,113,133,0.3)',
-                    op.text
+                    sys.service_status?.active ? 'rgba(143,191,159,0.16)' : 'rgba(212,136,138,0.2)',
+                    sys.service_status?.active ? op.signal : op.loss
                   )}
                 >
                   {sys.service_status?.status_text ??
@@ -175,9 +187,9 @@ export default function OperatorOverview({ state, onNavigate }: Props) {
                   <span
                     style={chip(
                       sys.telemetry_gates.window_tainted
-                        ? 'rgba(251,113,133,0.35)'
-                        : 'rgba(52,211,153,0.2)',
-                      op.text
+                        ? 'rgba(212,136,138,0.22)'
+                        : 'rgba(143,191,159,0.14)',
+                      sys.telemetry_gates.window_tainted ? op.loss : op.signal
                     )}
                   >
                     {sys.telemetry_gates.window_tainted ? 'WINDOW TAINTED' : 'GATES OK'}
@@ -222,12 +234,12 @@ export default function OperatorOverview({ state, onNavigate }: Props) {
 
 const ctaStyle: CSSProperties = {
   padding: '10px 16px',
-  background: 'rgba(45,212,191,0.1)',
-  border: `1px solid ${op.cyan}`,
-  color: op.cyan,
-  borderRadius: 6,
+  background: 'transparent',
+  border: `1px solid ${op.borderStrong}`,
+  color: op.text,
+  borderRadius: 2,
   cursor: 'pointer',
-  fontWeight: 700,
+  fontWeight: 600,
   fontFamily: op.sans,
   fontSize: 13,
 };

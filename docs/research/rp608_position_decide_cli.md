@@ -49,6 +49,7 @@ echo "$SNAPSHOT_JSON" | "$RP608_POSITION_DECIDE_BIN" --book crypto \
 | `--book crypto\|nse` | force book (else inferred from evidence-dir) |
 | `--version` | prints `RP-608-POSITION-DECIDE-001` |
 | `RP608_PLAN_LIFECYCLE` | `1` (default) enable Rust lifecycle from Python shadows |
+| `RP608_PLAN_LIFECYCLE_REQUIRE_RUST` | `1` hard fail-closed: no Python Adaptive/Gate2X manage if Rust unavailable |
 | `RP608_GATE2X_MANAGE_BIN` / `RP608_POSITION_DECIDE_BIN` | Python client binary path |
 | `RP608_GATE2X_ONESHOT=1` | force per-tick one-shot (debug only) |
 

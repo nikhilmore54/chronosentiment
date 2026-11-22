@@ -37,12 +37,16 @@ from scripts.rp608_order_flow_mark import (
     l1_from_tick_features,
 )
 from scripts.rp608_crypto_trade_pattern_match import (
-    entry_gate_enabled as crypto_pattern_entry_gate_enabled,
+    build_gate2e_shadow_allow_stamp,
+    entry_gate_mode as crypto_pattern_entry_gate_mode,
     exit_gate_enabled as crypto_pattern_exit_gate_enabled,
     features_from_card_or_plan as crypto_pattern_features,
+    gate2e_shadow_thin_wr_enabled,
     load_library as load_crypto_pattern_library,
     match_entry as match_crypto_pattern_entry,
     match_exit as match_crypto_pattern_exit,
+    matches_shadow_allow_if_n10_wr_gt_035,
+    normalize_entry_gate_mode as crypto_normalize_entry_gate_mode,
 )
 from scripts.rp608_crypto_trade_pattern_library import (
     default_baseline_library_path as crypto_baseline_pattern_library_path,
@@ -59,9 +63,11 @@ from scripts.rp608_gate2x_adapter_client import (
 from scripts.rp608_plan_lifecycle_client import (
     get_session as plan_lifecycle_session,
     lifecycle_enabled as plan_lifecycle_enabled,
+    log_require_rust_block as plan_lifecycle_log_require_rust,
     map_lifecycle_close,
     merge_lifecycle_into_plan,
     plan_from_overlay,
+    require_rust_lifecycle as plan_lifecycle_require_rust,
 )
 
 CANDLE_15M_MS = 900_000
@@ -152,6 +158,13 @@ OF_PAPER_OPENS_FILE = OVERLAY_DIR / "of_paper_trade_opens.jsonl"
 OF_PAPER_OPEN_STATE_FILE = OVERLAY_DIR / "of_paper_trades_open.json"
 OF_PAPER_PROTOCOL_ID = "RP-608-OF-PAPER-TRADE-001"
 OF_DEPTH_QUALITY_PROTOCOL_ID = "RP-608-OF-DEPTH-QUALITY-001"
+OF_ENTRY_QUALITY_PROTOCOL_ID = "RP-608-OF-PAPER-ENTRY-QUALITY-001"
+
+
+def of_paper_quality_gate_enabled() -> bool:
+    """RP608_OF_PAPER_QUALITY_GATE: 0=stamp-only, 1=suppress open (default 1)."""
+    raw = os.environ.get("RP608_OF_PAPER_QUALITY_GATE", "1").strip().lower()
+    return raw not in {"0", "off", "false", "no"}
 CONFIG_FILE = OVERLAY_DIR / "overlay_config.json"
 
 
@@ -444,6 +457,11 @@ CONFIG: Dict[str, Any] = {
     "adaptive_tp_extend_atr_mult": 0.5,
     "adaptive_tp_max_extensions": 3,
     "adaptive_tp_protocol": "RP-608-GATE5-CRYPTO-ADAPTIVE-TP-001",
+    # Favorable-only trailing SL (Rust lifecycle): never worse than original stop.
+    "trailing_sl_enabled": True,
+    "trailing_sl_atr_mult": 0.5,
+    "trailing_sl_arm_risk_frac": 0.30,
+    "trailing_sl_protocol": "RP-608-TRAILING-SL-001",
     "max_holding_seconds": 3600,  # 60 minutes
     # Gate 5 (2026-11-15): ambiguous TP∧SL same observation → TP (policy G).
     # Prior: conservative SL / AMBIGUOUS_STOP_TARGET. Authority remains 0%.
@@ -486,6 +504,8 @@ CONFIG: Dict[str, Any] = {
     "gate2x_ratchet_peak_frac": 0.30,  # floor = max(cost_clear, 0.30×peak_mfe)
     "gate2x_deep_giveback_frac": 0.50,  # (peak-cur)/peak
     "gate2x_deep_giveback_dwell_scale": 0.40,  # multiply dwell when deep
+    # v1.5: once through cost_clear during soft-breach, Exit now (no dwell bleed).
+    # Stamped in Rust gate2x_decide as MFE_GIVEBACK_TO_COST_CLEAR_HARD_FLOOR.
     "gate2x_mfe_giveback_protocol": "RP-608-GATE2X-CRYPTO-MFE-GIVEBACK-001",
     "simulated_notional_usdt": 1000.0,
     "price_tick_size": 0.01,
@@ -501,12 +521,16 @@ CONFIG: Dict[str, Any] = {
     # RT fee floor ≈12 bps — require sustained reverse OF after meaningful hold.
     "of_paper_min_hold_ms": 300_000,           # 5m min hold before reverse-OF close
     "of_paper_opposite_persist_ms": 30_000,    # 30s continuous opposite OF
+    "of_paper_entry_persist_ms": 30_000,       # 30s continuous same-side OF before paper open
     "of_paper_one_per_15m_bar": True,
     # PAPER open quality (does NOT change OF ±0.30 mark — only whether a paper
     # trade is booked). Rejects micro/hollow books that Stage-1 showed as bleed.
     "of_paper_reject_thin_opposite": True,
     "of_paper_min_entry_signal_qty": 0.25,     # BTC L1 same-side qty floor
     "of_paper_min_same_side_notional_usdt": 5_000.0,
+    # 2026-11-21 diag: QUALITY vs WEAK same_side notional did NOT separate
+    # (WEAK denser) — do not raise floor; entry persist is the quality lever.
+    "of_paper_min_combined_touch_notional_usdt": 0.0,
     # OF paper size = % of entry-side L1 qty (LONG=bidQty, SHORT=askQty)
     "of_paper_participation_pct": 0.10,       # target 10%
     "of_paper_participation_pct_min": 0.05,   # floor 5%
@@ -531,12 +555,15 @@ def round_tick(price: float, tick_size: float = 0.01) -> float:
     return round(round(price / tick_size) * tick_size, 2)
 
 
-def fetch_live_btcusdt_book(timeout_sec: float = 2.0) -> Optional[Dict[str, Any]]:
+def fetch_live_book_ticker(
+    symbol: str = "BTCUSDT", timeout_sec: float = 2.0
+) -> Optional[Dict[str, Any]]:
     """
-    Live Binance BTCUSDT bookTicker (REST). Used for TP/SL/MTM — never the
+    Live Binance spot bookTicker (REST). Used for TP/SL/MTM — never the
     entry-bar decision-card quote, which goes stale within seconds.
     """
-    url = "https://api.binance.com/api/v3/ticker/bookTicker?symbol=BTCUSDT"
+    sym = str(symbol or "BTCUSDT").strip().upper() or "BTCUSDT"
+    url = f"https://api.binance.com/api/v3/ticker/bookTicker?symbol={sym}"
     try:
         req = urllib.request.Request(url, headers={"User-Agent": "rp608-trade-plan-overlay/1.0"})
         with urllib.request.urlopen(req, timeout=timeout_sec) as resp:
@@ -555,9 +582,15 @@ def fetch_live_btcusdt_book(timeout_sec: float = 2.0) -> Optional[Dict[str, Any]
             "spread_bps": ((ask - bid) / mid) * 10000.0 if mid > 0 else 0.0,
             "local_wallclock_utc_ms": now_ms,
             "quote_source": "binance_rest_bookTicker",
+            "symbol": sym,
         }
     except Exception:
         return None
+
+
+def fetch_live_btcusdt_book(timeout_sec: float = 2.0) -> Optional[Dict[str, Any]]:
+    """Back-compat alias — BTCUSDT bookTicker REST."""
+    return fetch_live_book_ticker("BTCUSDT", timeout_sec=timeout_sec)
 
 
 def normalize_book_quote(quote: Optional[Dict[str, Any]]) -> Optional[Dict[str, Any]]:
@@ -690,10 +723,13 @@ def calculate_trade_plan(
         "atr_14": atr,
         "entry_price": entry_price,
         "stop_loss_price": stop_price,
+        "original_stop_loss_price": stop_price,
         "profit_target_price": target_price,
         "tp_level": 0,
         "adaptive_tp_armed": False,
         "adaptive_tp_protocol": CONFIG.get("adaptive_tp_protocol"),
+        "trailing_sl_armed": False,
+        "trailing_sl_protocol": CONFIG.get("trailing_sl_protocol"),
         "invalidation_price": invalidation_price,
         "simulated_quantity": qty,
         "simulated_notional_usdt": notional_usdt,
@@ -725,6 +761,7 @@ def calculate_trade_plan(
         # Gate 5 H120_PATH live path stamps (L1 mid)
         "path_h_adverse_seen": False,
         "path_h_revisit_seen": False,
+        "symbol": str(decision_card.get("symbol") or "BTCUSDT").strip().upper() or "BTCUSDT",
         # Candle OHLCV volume surge (pattern Gate 2E/2X; not OFX aggression)
         **_plan_volume_fields(decision_card),
     }
@@ -738,15 +775,20 @@ class TradePlanOverlayManager:
         base_dir: Optional[Path] = None,
         *,
         book_id: str = "CRYPTO_PLAN",
+        symbol: str = "BTCUSDT",
         of_paper_enabled: bool = True,
         volume_pattern_axes: bool = True,
         pattern_library_path: Optional[Path] = None,
+        pattern_entry_gate_mode: Optional[str] = None,
     ):
         self.base_dir = Path(base_dir) if base_dir else OVERLAY_DIR
         self.base_dir.mkdir(parents=True, exist_ok=True)
         self.book_id = str(book_id)
+        self.symbol = str(symbol or "BTCUSDT").strip().upper() or "BTCUSDT"
         self.of_paper_enabled = bool(of_paper_enabled)
         self.volume_pattern_axes = bool(volume_pattern_axes)
+        # Per-book Gate 2E mode (PRIMARY allow_only vs BASELINE off). None → env.
+        self._pattern_entry_gate_mode_override = pattern_entry_gate_mode
         self._pattern_library_path_override = (
             Path(pattern_library_path) if pattern_library_path else None
         )
@@ -756,6 +798,8 @@ class TradePlanOverlayManager:
         self.of_outcomes_file = self.base_dir / "of_trade_outcomes.jsonl"
         self.of_opens_file = self.base_dir / "of_paper_trade_opens.jsonl"
         self.of_open_state_file = self.base_dir / "of_paper_trades_open.json"
+        # Gate 2E observational thin-WR shadow allows (stamp-only; never opens).
+        self.gate2e_shadow_allows_file = self.base_dir / "gate2e_shadow_allows.jsonl"
         self.config_file = self.base_dir / "overlay_config.json"
         self._save_config_if_missing()
         self.state: Dict[str, Any] = self._load_state()
@@ -832,7 +876,9 @@ class TradePlanOverlayManager:
             pass
 
     def _note_pattern_stop(self, plan: Dict[str, Any]) -> None:
-        if "STOP" not in str(plan.get("exit_reason") or ""):
+        reason = str(plan.get("exit_reason") or "")
+        # Trailing-stop fills are not initial protective-stop losses for pattern day marks.
+        if "STOP" not in reason or reason == "TRAILING_STOP_HIT":
             return
         et = plan.get("entry_time_ms")
         if not et:
@@ -1071,9 +1117,19 @@ class TradePlanOverlayManager:
     ) -> Optional[Dict[str, Any]]:
         """Rust Adaptive TP + Gate 2X + SL/TP authority. Returns closed plan or None."""
         if not plan_lifecycle_enabled():
+            if plan_lifecycle_require_rust():
+                plan_lifecycle_log_require_rust(
+                    "crypto",
+                    "RP608_PLAN_LIFECYCLE disabled while REQUIRE_RUST=1",
+                )
             return None
         sess = plan_lifecycle_session(book="crypto")
         if sess is None:
+            if plan_lifecycle_require_rust():
+                plan_lifecycle_log_require_rust(
+                    "crypto",
+                    "lifecycle bin missing or lacks --plan-lifecycle-loop",
+                )
             return None
         rust_plan = plan_from_overlay(plan, book="crypto")
         quote = {
@@ -1086,6 +1142,11 @@ class TradePlanOverlayManager:
         }
         result = sess.tick(rust_plan, quote)
         if not result or not isinstance(result, dict):
+            if plan_lifecycle_require_rust():
+                plan_lifecycle_log_require_rust(
+                    "crypto",
+                    "plan-lifecycle-loop tick failed",
+                )
             return None
         merged = merge_lifecycle_into_plan(plan, result, book="crypto")
         self.state["active_plan"] = merged
@@ -1150,6 +1211,8 @@ class TradePlanOverlayManager:
         ) + net_pnl
         if terminal_state == "CLOSED_TP":
             summ["tp_hits"] = int(summ.get("tp_hits") or 0) + 1
+        elif terminal_state == "CLOSED_TRAIL":
+            summ["trail_hits"] = int(summ.get("trail_hits") or 0) + 1
         elif terminal_state == "CLOSED_SL":
             summ["sl_hits"] = int(summ.get("sl_hits") or 0) + 1
         elif terminal_state == "TIME_EXIT":
@@ -1421,6 +1484,13 @@ class TradePlanOverlayManager:
             return detail
         return None
 
+    def _pattern_entry_gate_mode(self) -> str:
+        if self._pattern_entry_gate_mode_override is not None:
+            return crypto_normalize_entry_gate_mode(
+                self._pattern_entry_gate_mode_override
+            )
+        return crypto_pattern_entry_gate_mode()
+
     def _match_entry_pattern(
         self, card: Dict[str, Any], plan_preview: Optional[Dict[str, Any]] = None
     ) -> Dict[str, Any]:
@@ -1445,6 +1515,7 @@ class TradePlanOverlayManager:
             library=self._crypto_pattern_lib(),
             feats=feats,
             include_volume=self.volume_pattern_axes,
+            gate_mode=self._pattern_entry_gate_mode(),
         )
 
     def _save_config_if_missing(self):
@@ -1475,6 +1546,7 @@ class TradePlanOverlayManager:
                 "early_sl_path_scratches": 0,
                 "gate2e_cooldown_suppressions": 0,
                 "gate2e_path_invalid_suppressions": 0,
+                "gate2e_pattern_suppressions": 0,
                 "gate2e_path_dual_stamp_divergences": 0,
                 "gate2x_mfe_giveback_exits": 0,
                 "cumulative_net_pnl_usdt": 0.0
@@ -1486,6 +1558,7 @@ class TradePlanOverlayManager:
                 "cumulative_gross_pnl_usdt": 0.0,
                 "cumulative_net_pnl_usdt": 0.0,
                 "cumulative_friction_usdt": 0.0,
+                "of_entry_quality_suppressions": 0,
             },
         }
 
@@ -2019,35 +2092,127 @@ class TradePlanOverlayManager:
             ),
         }
 
+    def _of_entry_persist_ok(
+        self, *, direction: str, now_ms: int
+    ) -> Tuple[bool, str, Dict[str, Any]]:
+        """
+        Same-side OF must persist continuously before paper open (mirror exit persist).
+        Does not change ±0.30 classify — only paper booking.
+        """
+        persist = int(CONFIG.get("of_paper_entry_persist_ms", 30_000) or 0)
+        direction_u = str(direction or "").upper()
+        arm = self.state.get("of_entry_persist_arm")
+        if not isinstance(arm, dict):
+            arm = {}
+        if persist <= 0:
+            return True, "ok", {"persist_ms": 0, "armed_ms": now_ms, "direction": direction_u}
+        if str(arm.get("direction") or "") != direction_u or arm.get("seen_ms") is None:
+            self.state["of_entry_persist_arm"] = {
+                "direction": direction_u,
+                "seen_ms": now_ms,
+            }
+            return (
+                False,
+                f"entry_persist_arming_need_{persist}ms",
+                {"persist_ms": persist, "armed_ms": now_ms, "direction": direction_u},
+            )
+        try:
+            seen_i = int(arm["seen_ms"])
+        except (TypeError, ValueError):
+            self.state["of_entry_persist_arm"] = {
+                "direction": direction_u,
+                "seen_ms": now_ms,
+            }
+            return False, "entry_persist_rearm", {"persist_ms": persist, "armed_ms": now_ms}
+        held = now_ms - seen_i
+        if held < persist:
+            return (
+                False,
+                f"entry_persist_{held}ms<{persist}ms",
+                {
+                    "persist_ms": persist,
+                    "armed_ms": seen_i,
+                    "held_ms": held,
+                    "direction": direction_u,
+                },
+            )
+        return (
+            True,
+            "ok",
+            {
+                "persist_ms": persist,
+                "armed_ms": seen_i,
+                "held_ms": held,
+                "direction": direction_u,
+            },
+        )
+
+    def _clear_of_entry_persist_arm(self) -> None:
+        self.state.pop("of_entry_persist_arm", None)
+
     def _of_paper_entry_quality_ok(
         self,
         *,
         size: Dict[str, Any],
         depth_q: Dict[str, Any],
-    ) -> Tuple[bool, str]:
+        persist_meta: Optional[Dict[str, Any]] = None,
+        persist_ok: bool = True,
+        persist_reason: str = "ok",
+    ) -> Tuple[bool, str, Dict[str, Any]]:
         """
         PAPER-only open filter. Does not change OF ±0.30 classification —
         only whether a paper trade is booked against a confirmed OF latch.
         """
+        depth_ok = True
+        depth_reason = "ok"
         if CONFIG.get("of_paper_reject_thin_opposite", True) and depth_q.get(
             "thin_opposite_diagnostic"
         ):
-            return False, "thin_opposite_diagnostic"
+            depth_ok = False
+            depth_reason = "thin_opposite_diagnostic"
         min_sig = float(CONFIG.get("of_paper_min_entry_signal_qty", 0.0) or 0.0)
         try:
             sig = float(size.get("entry_signal_qty") or 0.0)
         except (TypeError, ValueError):
             sig = 0.0
-        if min_sig > 0.0 and sig < min_sig:
-            return False, f"entry_signal_qty_{sig}<{min_sig}"
+        if depth_ok and min_sig > 0.0 and sig < min_sig:
+            depth_ok = False
+            depth_reason = f"entry_signal_qty_{sig}<{min_sig}"
         min_same = float(CONFIG.get("of_paper_min_same_side_notional_usdt", 0.0) or 0.0)
         try:
             same_n = float(depth_q.get("same_side_touch_notional_usdt") or 0.0)
         except (TypeError, ValueError):
             same_n = 0.0
-        if min_same > 0.0 and same_n < min_same:
-            return False, f"same_side_notional_{same_n}<{min_same}"
-        return True, "ok"
+        if depth_ok and min_same > 0.0 and same_n < min_same:
+            depth_ok = False
+            depth_reason = f"same_side_notional_{same_n}<{min_same}"
+        min_comb = float(
+            CONFIG.get("of_paper_min_combined_touch_notional_usdt", 0.0) or 0.0
+        )
+        try:
+            comb_n = float(depth_q.get("combined_touch_notional_usdt") or 0.0)
+        except (TypeError, ValueError):
+            comb_n = 0.0
+        if depth_ok and min_comb > 0.0 and comb_n < min_comb:
+            depth_ok = False
+            depth_reason = f"combined_touch_notional_{comb_n}<{min_comb}"
+
+        ok = bool(persist_ok and depth_ok)
+        reason = "ok"
+        if not persist_ok:
+            reason = persist_reason
+        elif not depth_ok:
+            reason = depth_reason
+        stamp = {
+            "protocol_id": OF_ENTRY_QUALITY_PROTOCOL_ID,
+            "persist_ok": bool(persist_ok),
+            "depth_ok": bool(depth_ok),
+            "ok": ok,
+            "reason": reason,
+            "persist": persist_meta or {},
+            "gate_enabled": of_paper_quality_gate_enabled(),
+        }
+        return ok, reason, stamp
 
     def _activate_order_flow_recommendation(
         self,
@@ -2098,18 +2263,54 @@ class TradePlanOverlayManager:
             imbalance=of.get("order_flow_imbalance"),
             phase="entry",
         )
-        ok_q, deny_q = self._of_paper_entry_quality_ok(size=size, depth_q=depth_q)
-        if not ok_q:
-            self.state["last_of_paper_open_suppressed"] = {
+        persist_ok, persist_reason, persist_meta = self._of_entry_persist_ok(
+            direction=str(direction).upper(), now_ms=now
+        )
+        ok_q, deny_q, quality_stamp = self._of_paper_entry_quality_ok(
+            size=size,
+            depth_q=depth_q,
+            persist_meta=persist_meta,
+            persist_ok=persist_ok,
+            persist_reason=persist_reason,
+        )
+        gate_on = of_paper_quality_gate_enabled()
+        if not ok_q and gate_on:
+            suppressed = {
                 "reason": deny_q,
                 "direction": str(direction).upper(),
                 "order_flow_imbalance": of.get("order_flow_imbalance"),
                 "entry_signal_qty": size.get("entry_signal_qty"),
                 "depth_quality": depth_q,
+                "of_entry_quality": quality_stamp,
                 "suppressed_ms": now,
+                "would_have_opened": True,
                 "protocol_id": OF_PAPER_PROTOCOL_ID,
-                "note": "PAPER open suppressed — OF ±0.30 mark unchanged; no paper trade booked",
+                "note": (
+                    "PAPER open suppressed by entry quality — OF ±0.30 mark unchanged; "
+                    "no paper trade booked"
+                ),
             }
+            self.state["last_of_paper_open_suppressed"] = suppressed
+            summ = self.state.setdefault("of_outcomes_summary", {})
+            summ["of_entry_quality_suppressions"] = int(
+                summ.get("of_entry_quality_suppressions") or 0
+            ) + 1
+            self._log_event(
+                "OF_PAPER_OPEN_SUPPRESSED",
+                {
+                    "direction": str(direction).upper(),
+                    "plan_id": plan_id,
+                    "state": "OF_QUALITY_SUPPRESSED",
+                },
+                {
+                    "reason": deny_q,
+                    "of_entry_quality": quality_stamp,
+                    "depth_quality": depth_q,
+                    "order_flow_imbalance": of.get("order_flow_imbalance"),
+                    "would_have_opened": True,
+                    "protocol_id": OF_ENTRY_QUALITY_PROTOCOL_ID,
+                },
+            )
             return existing if isinstance(existing, dict) else None
 
         notional = float(size["simulated_notional_usdt"])
@@ -2124,9 +2325,13 @@ class TradePlanOverlayManager:
         fill_ms = int(entry_time_ms) if entry_time_ms is not None else now
         of_trade_id = f"OF-PAPER-{(plan_id or 'NOPLAN')}-{fill_ms}"
         paper_open_ts = _iso_utc_ms(fill_ms)
+        # Stamp-only mode: still open but record that quality would have blocked.
+        open_quality = dict(quality_stamp)
+        if not ok_q and not gate_on:
+            open_quality["stamp_only_would_suppress"] = True
         rec = {
             "active": True,
-            "symbol": "BTCUSDT",
+            "symbol": self.symbol,
             "direction": direction,
             "order_flow_label": ORDER_FLOW_LABEL,
             "order_flow_supported": True,
@@ -2145,6 +2350,7 @@ class TradePlanOverlayManager:
             "participation_pct_max": size.get("participation_pct_max"),
             "sizing_source": size.get("sizing_source"),
             "depth_quality": depth_q,
+            "of_entry_quality": open_quality,
             "entry_quote_source": (quote or {}).get("quote_source") if isinstance(quote, dict) else None,
             "simulated_notional_usdt": notional,
             "simulated_quantity": qty,
@@ -2157,6 +2363,7 @@ class TradePlanOverlayManager:
                 "opposite_side_order_flow_confirm"
                 f"+min_hold_{int(CONFIG.get('of_paper_min_hold_ms', 300_000))}ms"
                 f"+persist_{int(CONFIG.get('of_paper_opposite_persist_ms', 30_000))}ms"
+                f"+entry_persist_{int(CONFIG.get('of_paper_entry_persist_ms', 30_000))}ms"
             ),
             "execution_mode": "PAPER",
             "live_order_authority": 0.0,
@@ -2171,6 +2378,7 @@ class TradePlanOverlayManager:
                 "after min hold — not on L1 flicker. Not tied to 60m plan TP/SL. 0% authority."
             ),
         }
+        self._clear_of_entry_persist_arm()
         self.state["active_order_flow_recommendation"] = rec
         self.state.pop("last_of_paper_open_suppressed", None)
         bar_idx = (entry_candle or {}).get("bar_idx")
@@ -2622,6 +2830,85 @@ class TradePlanOverlayManager:
             return dict(rec)
         return None
 
+    def continue_of_paper_entry_persist(
+        self,
+        *,
+        quote: Optional[Dict[str, Any]] = None,
+        now_ms: Optional[int] = None,
+        persist: bool = True,
+        plan_id: Optional[str] = None,
+        entry_price: Optional[float] = None,
+    ) -> Optional[Dict[str, Any]]:
+        """
+        WS/tick continuation for OF paper entry persist.
+
+        Decision cards arm `of_entry_persist_arm`; live L1 must keep same-side OF
+        for of_paper_entry_persist_ms before paper open. Does not change ±0.30.
+        """
+        if not self.of_paper_enabled:
+            return None
+        now = int(now_ms if now_ms is not None else time.time() * 1000)
+        active = self.state.get("active_order_flow_recommendation")
+        if active and active.get("active"):
+            return dict(active)
+        arm = self.state.get("of_entry_persist_arm")
+        if not isinstance(arm, dict):
+            return None
+        direction_u = str(arm.get("direction") or "").upper()
+        if direction_u not in ("LONG", "SHORT"):
+            self._clear_of_entry_persist_arm()
+            return None
+        l1 = l1_from_book_ticker(quote if isinstance(quote, dict) else None)
+        of = classify_order_flow_support(direction_u, l1)
+        if not of.get("order_flow_supported"):
+            self._clear_of_entry_persist_arm()
+            if persist:
+                self._save_state()
+            return None
+        px = entry_price
+        if px is None and isinstance(quote, dict):
+            raw_px = (
+                quote.get("best_bid_price")
+                if direction_u == "LONG"
+                else quote.get("best_ask_price")
+            )
+            try:
+                px = float(raw_px) if raw_px is not None else None
+            except (TypeError, ValueError):
+                px = None
+        rec = self._activate_order_flow_recommendation(
+            direction=direction_u,
+            of=of,
+            plan_id=plan_id,
+            entry_price=px,
+            now_ms=now,
+            candle_mark=build_of_candle_mark(now_ms=now),
+            quote=quote if isinstance(quote, dict) else None,
+        )
+        if (
+            isinstance(rec, dict)
+            and rec.get("active")
+            and rec.get("of_trade_id")
+        ):
+            self._log_event(
+                "ORDER_FLOW_RECOMMENDATION_ACTIVE",
+                {
+                    "plan_id": plan_id or rec.get("plan_id"),
+                    "direction": direction_u,
+                    "entry_price": rec.get("entry_price"),
+                    "state": "OF_ACTIVE",
+                },
+                {
+                    "order_flow_imbalance": of.get("order_flow_imbalance"),
+                    "order_flow_source": of.get("order_flow_source") or "entry_persist_ws",
+                    "of_entry_quality": rec.get("of_entry_quality"),
+                    "entry_persist_continued": True,
+                },
+            )
+        if persist:
+            self._save_state()
+        return rec if isinstance(rec, dict) else None
+
     def _save_state(self):
         # Unique tmp — fixed overlay_state.tmp races when duplicate daemons
         # (or dashboard) write the same book dir (Errno 2 on replace).
@@ -2657,6 +2944,49 @@ class TradePlanOverlayManager:
             evt.update(extra)
         with open(self.events_file, "a", encoding="utf-8") as f:
             f.write(json.dumps(evt) + "\n")
+
+    def _maybe_log_gate2e_shadow_allow(
+        self,
+        pattern_stamp: Dict[str, Any],
+        plan: Dict[str, Any],
+        suppressed_ms: int,
+    ) -> Optional[Dict[str, Any]]:
+        """Stamp-only counterfactual when allow_only suppresses thin-high-WR ABSTAIN.
+
+        Never opens a trade. Does not change live RP608_CRYPTO_PATTERN_GATE.
+        Default env ON (RP608_CRYPTO_GATE2E_SHADOW_THIN_WR=1).
+        """
+        if not gate2e_shadow_thin_wr_enabled():
+            return None
+        if not matches_shadow_allow_if_n10_wr_gt_035(pattern_stamp):
+            return None
+        stamp = build_gate2e_shadow_allow_stamp(
+            pattern_stamp=pattern_stamp,
+            plan_id=plan.get("plan_id"),
+            direction=plan.get("direction"),
+            suppressed_ms=suppressed_ms,
+            book_id=self.book_id,
+            plan=plan,
+        )
+        stamp["timestamp_utc"] = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
+        with open(self.gate2e_shadow_allows_file, "a", encoding="utf-8") as f:
+            f.write(json.dumps(stamp) + "\n")
+        summ = self.state.setdefault("outcomes_summary", {})
+        summ["gate2e_shadow_allow_stamps"] = int(
+            summ.get("gate2e_shadow_allow_stamps") or 0
+        ) + 1
+        self.state["last_gate2e_shadow_allow"] = {
+            "shadow_rule_id": stamp.get("shadow_rule_id"),
+            "pattern_id": stamp.get("pattern_id"),
+            "feature_pattern_id": stamp.get("feature_pattern_id"),
+            "plan_id": stamp.get("plan_id"),
+            "hist_wr": stamp.get("hist_wr"),
+            "cohort_n": stamp.get("cohort_n"),
+            "suppressed_ms": stamp.get("suppressed_ms"),
+            "live_vol_surge": stamp.get("live_vol_surge"),
+            "vol_burst_20": stamp.get("vol_burst_20"),
+        }
+        return stamp
 
     def _log_outcome(self, outcome_data: Dict[str, Any]):
         with open(self.outcomes_file, "a", encoding="utf-8") as f:
@@ -2961,6 +3291,12 @@ class TradePlanOverlayManager:
             state = str(row.get("state") or "")
             if "PROFIT_TARGET" in reason or state == "CLOSED_TP":
                 summary["tp_hits"] += 1
+            elif (
+                "TRAILING_STOP" in reason
+                or state == "CLOSED_TRAIL"
+                or reason == "TRAILING_STOP_HIT"
+            ):
+                summary["trail_hits"] = int(summary.get("trail_hits") or 0) + 1
             elif "STOP_LOSS" in reason or "AMBIGUOUS" in reason or state == "CLOSED_SL":
                 summary["sl_hits"] += 1
             elif "TIME" in reason or "HORIZON" in reason or state == "TIME_EXIT":
@@ -3104,16 +3440,57 @@ class TradePlanOverlayManager:
                 self.state["suppressed_signals_count"] = int(
                     self.state.get("suppressed_signals_count") or 0
                 ) + 1
+                summ = self.state.setdefault("outcomes_summary", {})
+                summ["gate2e_pattern_suppressions"] = int(
+                    summ.get("gate2e_pattern_suppressions") or 0
+                ) + 1
+                suppress_snap = {
+                    "prediction": pattern_stamp.get("prediction"),
+                    "pattern_id": pattern_stamp.get("pattern_id"),
+                    "feature_pattern_id": pattern_stamp.get("feature_pattern_id"),
+                    "match_mode": pattern_stamp.get("match_mode"),
+                    "gate_mode": pattern_stamp.get("gate_mode")
+                    or self._pattern_entry_gate_mode(),
+                    "direction": plan.get("direction"),
+                    "plan_id": plan.get("plan_id"),
+                    "suppressed_ms": now_ms,
+                    "hist_wr": pattern_stamp.get("hist_wr"),
+                    "cohort_n": pattern_stamp.get("cohort_n"),
+                    "live_vol_surge": pattern_stamp.get("live_vol_surge")
+                    or plan.get("vol_surge"),
+                    "live_vol_burst_20": pattern_stamp.get("live_vol_burst_20")
+                    if pattern_stamp.get("live_vol_burst_20") is not None
+                    else plan.get("vol_burst_20"),
+                }
+                self.state["last_suppressed_trade_pattern"] = suppress_snap
                 self._log_event(
                     "SUPPRESSED_TRADE_PATTERN",
                     plan,
                     {
                         "pattern_id": pattern_stamp.get("pattern_id"),
+                        "feature_pattern_id": pattern_stamp.get(
+                            "feature_pattern_id"
+                        ),
+                        "prediction": pattern_stamp.get("prediction"),
+                        "match_mode": pattern_stamp.get("match_mode"),
                         "hist_wr": pattern_stamp.get("hist_wr"),
                         "cohort_n": pattern_stamp.get("cohort_n"),
-                        "gate_enabled": crypto_pattern_entry_gate_enabled(),
+                        "gate_enabled": pattern_stamp.get("gate_enabled"),
+                        "gate_mode": pattern_stamp.get("gate_mode")
+                        or self._pattern_entry_gate_mode(),
                         "book_id": self.book_id,
+                        # Live Gate2E candle vol (≠ pattern_id mined V*; ≠ OFX)
+                        "live_vol_surge": suppress_snap.get("live_vol_surge"),
+                        "live_vol_burst_20": suppress_snap.get(
+                            "live_vol_burst_20"
+                        ),
+                        "vol_surge": plan.get("vol_surge"),
+                        "vol_burst_20": plan.get("vol_burst_20"),
                     },
+                )
+                # Observational thin-WR counterfactual (stamp-only; authority 0%).
+                self._maybe_log_gate2e_shadow_allow(
+                    pattern_stamp, plan, suppressed_ms=now_ms
                 )
                 self._save_state()
                 return None
@@ -3122,6 +3499,7 @@ class TradePlanOverlayManager:
 
         self.state["active_plan"] = plan
         self.state["total_plans_created"] += 1
+        self.state.pop("last_suppressed_trade_pattern", None)
         self._log_event(
             "PLAN_CREATED",
             plan,
@@ -3225,6 +3603,8 @@ class TradePlanOverlayManager:
             active = self.state.get("active_order_flow_recommendation")
 
         if not of.get("order_flow_supported"):
+            # Same-side OF dropped — reset entry persist arm (mirror exit persist).
+            self._clear_of_entry_persist_arm()
             if persist:
                 self._save_state()
             return self.state.get("active_order_flow_recommendation")
@@ -3262,20 +3642,22 @@ class TradePlanOverlayManager:
                 candle_mark=entry_mark,
                 quote=quote if isinstance(quote, dict) else None,
             )
-            self._log_event(
-                "ORDER_FLOW_RECOMMENDATION_ACTIVE",
-                {
-                    "plan_id": plan_id,
-                    "direction": direction_u,
-                    "entry_price": entry_price,
-                    "state": "OF_ACTIVE",
-                },
-                {
-                    "order_flow_imbalance": of.get("order_flow_imbalance"),
-                    "order_flow_source": of.get("order_flow_source"),
-                    "entry_candle": entry_mark,
-                },
-            )
+            if isinstance(rec, dict) and rec.get("active") and rec.get("of_trade_id"):
+                self._log_event(
+                    "ORDER_FLOW_RECOMMENDATION_ACTIVE",
+                    {
+                        "plan_id": plan_id,
+                        "direction": direction_u,
+                        "entry_price": entry_price,
+                        "state": "OF_ACTIVE",
+                    },
+                    {
+                        "order_flow_imbalance": of.get("order_flow_imbalance"),
+                        "order_flow_source": of.get("order_flow_source"),
+                        "entry_candle": entry_mark,
+                        "of_entry_quality": rec.get("of_entry_quality"),
+                    },
+                )
             if persist:
                 self._save_state()
             return rec
@@ -3397,9 +3779,12 @@ class TradePlanOverlayManager:
             return rust_closed
         plan = self.state.get("active_plan") or plan
         _rust_hold = plan.get("plan_lifecycle_authority") == "rust_rp608_plan_lifecycle"
+        # REQUIRE_RUST: missing bin / loop fail → no silent Python Adaptive/Gate2X/SL-TP.
+        _require_rust_blocked = bool(plan_lifecycle_require_rust() and not _rust_hold)
+        _skip_python_lifecycle = _rust_hold or _require_rust_blocked
 
         giveback_reason = None
-        if not _rust_hold:
+        if not _skip_python_lifecycle:
             # Gate 5 Adaptive TP: extend target + lock SL before Gate 2X decide.
             # Re-read TP/SL after ratchet so protect geometry sees the runner.
             _tp0 = float(plan["profit_target_price"])
@@ -3556,14 +3941,15 @@ class TradePlanOverlayManager:
             )
 
         # Refresh TP/SL after possible adaptive ratchet earlier in this tick.
-        # Skipped when Rust plan-lifecycle already owned Adaptive/Gate2X/SL/TP.
+        # Skipped when Rust plan-lifecycle owned Adaptive/Gate2X/SL/TP, or when
+        # REQUIRE_RUST blocked Python manage (TIME_EXIT safety valve still allowed).
         terminal_state = None
         exit_reason = None
         exit_price = 0.0
         ambiguous = False
         tie_break = "TP"
 
-        if not _rust_hold:
+        if not _skip_python_lifecycle:
             sl = float(plan["stop_loss_price"])
             tp = float(plan["profit_target_price"])
             try:
@@ -3643,14 +4029,34 @@ class TradePlanOverlayManager:
                     summ = self.state.setdefault("outcomes_summary", {})
                     summ["early_sl_path_scratches"] = int(summ.get("early_sl_path_scratches") or 0) + 1
                 else:
-                    terminal_state = "CLOSED_SL"
-                    exit_reason = "STOP_LOSS_HIT"
-                    self.state["outcomes_summary"]["sl_hits"] += 1
+                    orig_sl = float(
+                        plan.get("original_stop_loss_price")
+                        if plan.get("original_stop_loss_price") is not None
+                        else sl
+                    )
+                    trailed = bool(plan.get("trailing_sl_armed")) and abs(sl - orig_sl) > 1e-9
+                    if trailed:
+                        # Industry/OMS style (IBKR/TT): Trailing Stop fill ≠ initial SL.
+                        terminal_state = "CLOSED_TRAIL"
+                        exit_reason = "TRAILING_STOP_HIT"
+                        plan["exit_reason_detail"] = "TRAILING_STOP_HIT"
+                        summ = self.state.setdefault("outcomes_summary", {})
+                        summ["trail_hits"] = int(summ.get("trail_hits") or 0) + 1
+                    else:
+                        terminal_state = "CLOSED_SL"
+                        exit_reason = "STOP_LOSS_HIT"
+                        self.state["outcomes_summary"]["sl_hits"] += 1
                     exit_price = sl
             elif now_ms >= expiry_ms:
                 terminal_state = "TIME_EXIT"
                 exit_reason = "MAX_HORIZON_60M_EXPIRED"
                 self.state["outcomes_summary"]["time_exits"] += 1
+        elif _require_rust_blocked and now_ms >= expiry_ms:
+            # Cutover allows Python TIME_EXIT when Rust lifecycle is unavailable.
+            terminal_state = "TIME_EXIT"
+            exit_reason = "MAX_HORIZON_60M_EXPIRED"
+            exit_price = exec_px
+            self.state["outcomes_summary"]["time_exits"] += 1
 
         if terminal_state:
             plan["state"] = terminal_state
@@ -3788,7 +4194,7 @@ class TradePlanOverlayManager:
         self.reconcile_of_paper_already_closed(persist=mutate_of)
         active = self.state.get("active_plan")
 
-        live = fetch_live_btcusdt_book()
+        live = fetch_live_book_ticker(self.symbol)
         eval_quote = normalize_book_quote(live) or normalize_book_quote(current_quote)
 
         # Reconcile OF exit on live book (independent of plan / 60m) — daemon only

@@ -19,6 +19,7 @@ Validates:
 from __future__ import annotations
 
 import json
+import os
 from pathlib import Path
 import shutil
 import tempfile
@@ -37,6 +38,10 @@ from scripts.rp608_trade_plan_overlay import (
 class TestTradePlanOverlay(unittest.TestCase):
 
     def setUp(self):
+        # Unit tests exercise Python Adaptive/SL/TP fallback. Live Pi uses Rust
+        # PlanLifecycleManager (RP608_PLAN_LIFECYCLE=1) — keep books/paths separate.
+        self._prev_plan_lifecycle = os.environ.get("RP608_PLAN_LIFECYCLE")
+        os.environ["RP608_PLAN_LIFECYCLE"] = "0"
         self.tmp_dir = tempfile.TemporaryDirectory()
         self.test_overlay_dir = Path(self.tmp_dir.name)
 
@@ -72,6 +77,10 @@ class TestTradePlanOverlay(unittest.TestCase):
 
     def tearDown(self):
         self.tmp_dir.cleanup()
+        if self._prev_plan_lifecycle is None:
+            os.environ.pop("RP608_PLAN_LIFECYCLE", None)
+        else:
+            os.environ["RP608_PLAN_LIFECYCLE"] = self._prev_plan_lifecycle
 
     def test_01_short_trade_plan_levels(self):
         """Validates short entry at bid, SL at E + 1.0*ATR, TP at E - 1.5*ATR."""
@@ -568,6 +577,211 @@ class TestTradePlanOverlay(unittest.TestCase):
             mgr._gate2e_path_already_invalid(plan, quote),
             "FORMING_HIGH_THROUGH_STOP",
         )
+
+    def test_16_allow_only_suppresses_when_pattern_abstains(self):
+        """PRIMARY allow_only: empty library → ABSTAIN → SUPPRESSED_TRADE_PATTERN."""
+        mgr = TradePlanOverlayManager(
+            base_dir=self.test_overlay_dir,
+            of_paper_enabled=False,
+            pattern_entry_gate_mode="allow_only",
+        )
+        quote = {
+            "best_bid_price": 80170.00,
+            "best_ask_price": 80170.01,
+            "high_price": 80180.00,
+            "low_price": 80100.00,
+            "exchange_event_time_ms": 1792975500000,
+        }
+        with mock.patch.object(
+            mgr,
+            "_maybe_log_gate2e_path_dual_stamp",
+            return_value={"forming_path_invalid": None},
+        ):
+            opened = mgr.process_decision_card(self.sample_card_short, current_quote=quote)
+        self.assertIsNone(opened)
+        self.assertIsNone(mgr.state.get("active_plan"))
+        events = (self.test_overlay_dir / "trade_plan_events.jsonl").read_text()
+        self.assertIn("SUPPRESSED_TRADE_PATTERN", events)
+        self.assertIn("allow_only", events)
+
+    def test_17_baseline_gate_off_still_opens_on_abstain(self):
+        """BASELINE control (gate=0): same abstain stamp must not block open."""
+        mgr = TradePlanOverlayManager(
+            base_dir=self.test_overlay_dir,
+            book_id="CRYPTO_PLAN_BASELINE_PARALLEL",
+            of_paper_enabled=False,
+            volume_pattern_axes=False,
+            pattern_entry_gate_mode="0",
+        )
+        quote = {
+            "best_bid_price": 80170.00,
+            "best_ask_price": 80170.01,
+            "high_price": 80180.00,
+            "low_price": 80100.00,
+            "exchange_event_time_ms": 1792975500000,
+        }
+        with mock.patch.object(
+            mgr,
+            "_maybe_log_gate2e_path_dual_stamp",
+            return_value={"forming_path_invalid": None},
+        ):
+            opened = mgr.process_decision_card(self.sample_card_short, current_quote=quote)
+        self.assertIsNotNone(opened)
+        self.assertEqual(opened["state"], "OPEN")
+        self.assertEqual(
+            opened.get("trade_pattern_match", {}).get("prediction"),
+            "ABSTAIN_INSUFFICIENT",
+        )
+        self.assertFalse(opened.get("trade_pattern_match", {}).get("blocks_entry"))
+
+    def test_18_gate2e_shadow_allow_stamp_on_thin_high_wr_suppress(self):
+        """allow_only still suppresses; thin n≥10 wr>0.35 → shadow jsonl only."""
+        os.environ["RP608_CRYPTO_GATE2E_SHADOW_THIN_WR"] = "1"
+        mgr = TradePlanOverlayManager(
+            base_dir=self.test_overlay_dir,
+            book_id="CRYPTO_PLAN",
+            of_paper_enabled=False,
+            pattern_entry_gate_mode="allow_only",
+        )
+        thin_stamp = {
+            "kind": "ENTRY",
+            "pattern_id": "US|SHORT|thin|VUNK",
+            "feature_pattern_id": "US|SHORT|thin|VHIGH",
+            "match_mode": "BACKOFF",
+            "dropped_axes": ["vol_surge"],
+            "cohort_n": 18,
+            "hist_wr": 0.44,
+            "hist_payoff": 0.9,
+            "hist_net": 1.2,
+            "label": "INSUFFICIENT",
+            "prediction": "ABSTAIN_INSUFFICIENT",
+            "blocks_entry": True,
+            "gate_enabled": True,
+            "gate_mode": "allow_only",
+            "standaside_reason": "STANDASIDE_TRADE_PATTERN",
+            "symbol_banned": False,
+            "live_vol_surge": "HIGH",
+            "live_vol_burst_20": 1.85,
+        }
+        quote = {
+            "best_bid_price": 80170.00,
+            "best_ask_price": 80170.01,
+            "high_price": 80180.00,
+            "low_price": 80100.00,
+            "exchange_event_time_ms": 1792975500000,
+        }
+        with mock.patch.object(
+            mgr,
+            "_maybe_log_gate2e_path_dual_stamp",
+            return_value={"forming_path_invalid": None},
+        ), mock.patch.object(
+            mgr, "_match_entry_pattern", return_value=thin_stamp
+        ):
+            opened = mgr.process_decision_card(self.sample_card_short, current_quote=quote)
+        self.assertIsNone(opened)
+        self.assertIsNone(mgr.state.get("active_plan"))
+        shadow_path = self.test_overlay_dir / "gate2e_shadow_allows.jsonl"
+        self.assertTrue(shadow_path.exists())
+        row = json.loads(shadow_path.read_text().strip().splitlines()[-1])
+        self.assertEqual(row["shadow_rule_id"], "SHADOW_ALLOW_IF_N10_WR_GT_035")
+        self.assertEqual(row["cohort_n"], 18)
+        self.assertEqual(row["hist_wr"], 0.44)
+        self.assertEqual(row["prediction"], "ABSTAIN_INSUFFICIENT")
+        self.assertEqual(row["book_id"], "CRYPTO_PLAN")
+        self.assertFalse(row["opens_trade"])
+        self.assertEqual(row["live_vol_surge"], "HIGH")
+        self.assertEqual(row["vol_axis"], "VHIGH")
+        # Live suppress still logged; no plan created.
+        events = (self.test_overlay_dir / "trade_plan_events.jsonl").read_text()
+        self.assertIn("SUPPRESSED_TRADE_PATTERN", events)
+        self.assertIn("live_vol_surge", events)
+        self.assertNotIn("PLAN_CREATED", events)
+
+    def test_19_require_rust_missing_bin_skips_python_giveback_manage(self):
+        """REQUIRE_RUST=1 + missing bin → no Python Adaptive/Gate2X mutation."""
+        import scripts.rp608_plan_lifecycle_client as plc
+
+        prev_lc = os.environ.get("RP608_PLAN_LIFECYCLE")
+        prev_req = os.environ.get("RP608_PLAN_LIFECYCLE_REQUIRE_RUST")
+        prev_bin = os.environ.get("RP608_PLAN_LIFECYCLE_BIN")
+        prev_pos = os.environ.get("RP608_POSITION_DECIDE_BIN")
+        prev_g2x = os.environ.get("RP608_GATE2X_MANAGE_BIN")
+        try:
+            os.environ["RP608_PLAN_LIFECYCLE"] = "1"
+            os.environ["RP608_PLAN_LIFECYCLE_REQUIRE_RUST"] = "1"
+            os.environ["RP608_PLAN_LIFECYCLE_BIN"] = "/nonexistent/rp608_position_decide"
+            os.environ["RP608_POSITION_DECIDE_BIN"] = "/nonexistent/rp608_position_decide"
+            os.environ["RP608_GATE2X_MANAGE_BIN"] = "/nonexistent/rp608_position_decide"
+            with plc._LOCK:
+                plc._SESSIONS.clear()
+
+            mgr = TradePlanOverlayManager(
+                base_dir=self.test_overlay_dir,
+                of_paper_enabled=False,
+            )
+            plan = calculate_trade_plan(self.sample_card_short)
+            tp0 = float(plan["profit_target_price"])
+            sl0 = float(plan["stop_loss_price"])
+            t0 = int(time.time() * 1000)
+            plan["entry_time_ms"] = t0
+            plan["expiry_time_ms"] = t0 + 3_600_000
+            plan["tp_level"] = 0
+            mgr.state["active_plan"] = plan
+            mgr._save_state()
+
+            # Quote that would Adaptive-extend under Python fallback.
+            quote_tp = {
+                "best_bid_price": tp0 - 1.0,
+                "best_ask_price": tp0 - 0.5,
+            }
+            with mock.patch.object(plc, "resolve_lifecycle_bin", return_value=None):
+                with mock.patch.dict(
+                    CONFIG,
+                    {
+                        "adaptive_tp_enabled": True,
+                        "gate2x_mfe_giveback_protect_enabled": True,
+                    },
+                ):
+                    with mock.patch.object(
+                        mgr, "_adaptive_tp_try_extend", wraps=mgr._adaptive_tp_try_extend
+                    ) as adap:
+                        with mock.patch.object(
+                            mgr,
+                            "_gate2x_update_mfe_giveback",
+                            wraps=mgr._gate2x_update_mfe_giveback,
+                        ) as gb:
+                            resolved = mgr.evaluate_market_tick(
+                                quote_tp, now_ms=t0 + 5_000
+                            )
+
+            self.assertIsNotNone(resolved)
+            self.assertEqual(resolved["state"], "OPEN")
+            self.assertEqual(int(resolved.get("tp_level") or 0), 0)
+            self.assertAlmostEqual(float(resolved["profit_target_price"]), tp0, places=2)
+            self.assertAlmostEqual(float(resolved["stop_loss_price"]), sl0, places=2)
+            self.assertNotEqual(
+                resolved.get("plan_lifecycle_authority"),
+                "rust_rp608_plan_lifecycle",
+            )
+            adap.assert_not_called()
+            gb.assert_not_called()
+            self.assertTrue(plc.require_rust_lifecycle())
+        finally:
+            with plc._LOCK:
+                plc._SESSIONS.clear()
+            for key, prev in (
+                ("RP608_PLAN_LIFECYCLE", prev_lc),
+                ("RP608_PLAN_LIFECYCLE_REQUIRE_RUST", prev_req),
+                ("RP608_PLAN_LIFECYCLE_BIN", prev_bin),
+                ("RP608_POSITION_DECIDE_BIN", prev_pos),
+                ("RP608_GATE2X_MANAGE_BIN", prev_g2x),
+            ):
+                if prev is None:
+                    os.environ.pop(key, None)
+                else:
+                    os.environ[key] = prev
+            # Restore suite default for other tests.
+            os.environ["RP608_PLAN_LIFECYCLE"] = "0"
 
 
 if __name__ == "__main__":

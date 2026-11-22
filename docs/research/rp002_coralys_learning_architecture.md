@@ -213,7 +213,8 @@ Observe outcomes  →  Learn (RP-002 / Learning Intelligence)
 | First implementation-oriented papers | FRRMAB (Li 2014); Roijers (2013); Tornede (2023) |
 | Batch 1 study | **In progress** — Li/DaCosta/Roijers full text studied; Lin/Jiao access blocked; notes in `rp002/07_…/BATCH1_WITHIN_RUN_LEARNING_NOTES.md` |
 | Operator selection as first experiment | **Authorized as framing for experiment design only** — no implementation mandated by this doc |
-| Experiment protocol / harness / metrics | Draft E0 (FRRMAB reproduce) sketched in Batch 1 notes — **not authorised to run** |
+| Operator surface map | [`rp002/07_…/OPERATOR_SURFACE_MAP.md`](rp002/07_research_hypotheses_and_experiments/OPERATOR_SURFACE_MAP.md) — E0 → ROADEF 5-arm destroy portfolio |
+| Experiment protocol | [`RP002_E0_FRRMAB_PROTOCOL.md`](rp002/07_research_hypotheses_and_experiments/RP002_E0_FRRMAB_PROTOCOL.md) — **design only · not authorised to run** |
 | Authority | **0%** |
 
 ---
@@ -225,6 +226,8 @@ Observe outcomes  →  Learn (RP-002 / Learning Intelligence)
 | 0.1 | 2026-11-16 | Programme registered; foundational refs Grefenstette (1993) + Schaffer & Grefenstette; three pillars; multidimensional feedback central; operator selection demoted to first experimental application |
 | 0.2 | 2026-11-16 | Linked RP-002 Research Reading Register (initial freeze); library folders 01–07; architecture explicitly unfrozen |
 | 0.3 | 2026-11-16 | Batch 1 within-run notes (FRRMAB / D-MAB / Roijers); provisional E0 design only; architecture still unfrozen |
+| 0.4 | 2026-11-16 | Operator surface map + RP-002-E0 protocol (ROADEF FRRMAB vs RP-405); design only; not authorised to run |
+| 0.5 | 2026-11-16 | Primary-source analyses FRRMAB/Roijers/Tornede + comparative synthesis; CLA architecture remains unfrozen |
 
 ---
 

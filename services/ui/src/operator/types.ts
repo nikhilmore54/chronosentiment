@@ -36,6 +36,20 @@ export type OfRecommendation = {
   live_order_authority?: number | null;
 };
 
+/** Gate 2E crypto trade-pattern stamp (observational; blocks only if gate_enabled). */
+export type TradePatternMatchView = {
+  prediction?: string | null;
+  label?: string | null;
+  cohort_n?: number | null;
+  hist_wr?: number | null;
+  hist_payoff?: number | null;
+  hist_net?: number | null;
+  blocks_entry?: boolean | null;
+  gate_enabled?: boolean | null;
+  gate_mode?: string | null;
+  match_mode?: string | null;
+};
+
 export type TradePlanView = {
   plan_id?: string | null;
   direction?: string | null;
@@ -50,6 +64,8 @@ export type TradePlanView = {
   is_active?: boolean;
   order_authority?: string | null;
   order_flow_supported?: boolean | null;
+  plan_lifecycle_authority?: string | null;
+  trade_pattern_match?: TradePatternMatchView | null;
   valuation?: {
     unrealized_net_pnl_usdt?: number | null;
     unrealized_net_return_bps?: number | null;
@@ -166,6 +182,7 @@ export type TradePlanOutcome = {
   close_time_utc?: string | null;
   plan_lifecycle_authority?: string | null;
   tp_level?: number | null;
+  trade_pattern_match?: TradePatternMatchView | null;
 };
 
 export type TradePlanPnl = {
@@ -189,6 +206,19 @@ export type TradePlanPnl = {
   recent?: TradePlanOutcome[];
 };
 
+/** Gate 2E allow_only suppress stamp when PRIMARY is flat due to pattern gate. */
+export type Gate2eFlatSuppressView = {
+  prediction?: string | null;
+  pattern_id?: string | null;
+  match_mode?: string | null;
+  gate_mode?: string | null;
+  direction?: string | null;
+  plan_id?: string | null;
+  suppressed_ms?: number | null;
+  hist_wr?: number | null;
+  cohort_n?: number | null;
+};
+
 export type CryptoStatus = {
   available: boolean;
   policy_b?: string | null;
@@ -199,6 +229,9 @@ export type CryptoStatus = {
   atr_14?: number | null;
   regime?: string | null;
   trade_plan?: TradePlanView | null;
+  /** Present when flat because Gate 2E allow_only suppressed the last candidate. */
+  gate2e_flat_suppress?: Gate2eFlatSuppressView | null;
+  gate2e_pattern_suppressions?: number | null;
   order_flow?: OfRecommendation | null;
   order_flow_last_exit?: OfRecommendation | null;
   of_candle_markers?: {

@@ -5,9 +5,17 @@ RP-608 Crypto plan — live trade pattern matcher.
 ENTRY: ALLOW / STANDASIDE_ADVERSE_PATTERN / ABSTAIN_INSUFFICIENT
 EXIT:  HOLD / EXIT_REVERSE_PATTERN / ABSTAIN_INSUFFICIENT
 
-Env:
-  RP608_CRYPTO_PATTERN_GATE=1      → block adverse entries (default 0)
-  RP608_CRYPTO_PATTERN_EXIT_GATE=1 → paper early exit on reverse (default 0; Gate 5 frozen)
+Env RP608_CRYPTO_PATTERN_GATE:
+  0 / off              → stamp only
+  1 / adverse / true   → block STANDASIDE_ADVERSE only
+  2 / allow_only       → block unless ALLOW (no trade > bad trade)
+
+RP608_CRYPTO_PATTERN_EXIT_GATE=1 → paper early exit on reverse (default 0; Gate 5 frozen)
+
+RP608_CRYPTO_GATE2E_SHADOW_THIN_WR (default 1 / ON):
+  Stamp-only SHADOW_ALLOW_IF_N10_WR_GT_035 when allow_only suppresses ABSTAIN
+  on thin cells with n≥10 and hist_wr>0.35. Never opens trades; never loosens
+  live PRIMARY gate. Join later to BASELINE outcomes (books never pooled).
 
 No symbol bans. Books never pooled. OF ±0.30 / OFX unchanged.
 """
@@ -17,16 +25,16 @@ from __future__ import annotations
 import json
 import os
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Sequence
 
 from scripts.rp608_crypto_trade_pattern_library import (
     ENTRY_BACKOFF_DROP_ORDER,
     atr_pct_bucket,
     build_entry_pattern_key,
     build_exit_pattern_key,
+    default_baseline_library_path,
     default_library_path,
     dist_bps_bucket,
-    entry_key_softened,
     hold_bucket,
     imb_bucket,
     mfe_bps_from_plan,
@@ -36,16 +44,142 @@ from scripts.rp608_crypto_trade_pattern_library import (
     vol_surge_bucket,
 )
 
+# Always required for parent-cell match (never in ENTRY_BACKOFF_DROP_ORDER).
+_CORE_ENTRY_AXES = ("utc_session_phase", "direction")
 
-def entry_gate_enabled() -> bool:
-    raw = os.environ.get("RP608_CRYPTO_PATTERN_GATE", "0").strip().lower()
-    return raw in {"1", "true", "on", "yes"}
+
+def normalize_entry_gate_mode(raw: Optional[str]) -> str:
+    """Return off | adverse | allow_only."""
+    v = (raw or "0").strip().lower()
+    if v in {"0", "off", "false", "no", ""}:
+        return "off"
+    if v in {"2", "allow_only", "allow-only", "strict"}:
+        return "allow_only"
+    if v in {"1", "true", "on", "yes", "adverse"}:
+        return "adverse"
+    return "off"
+
+
+def entry_gate_mode(override: Optional[str] = None) -> str:
+    if override is not None:
+        return normalize_entry_gate_mode(override)
+    return normalize_entry_gate_mode(os.environ.get("RP608_CRYPTO_PATTERN_GATE", "0"))
+
+
+def entry_gate_enabled(override: Optional[str] = None) -> bool:
+    """True when any blocking mode is active (adverse or allow_only)."""
+    return entry_gate_mode(override) != "off"
+
+
+def entry_blocks_prediction(prediction: str, mode: str) -> bool:
+    m = normalize_entry_gate_mode(mode)
+    if m == "off":
+        return False
+    if m == "adverse":
+        return prediction == "STANDASIDE_ADVERSE_PATTERN"
+    if m == "allow_only":
+        return prediction != "ALLOW"
+    return False
 
 
 def exit_gate_enabled() -> bool:
     raw = os.environ.get("RP608_CRYPTO_PATTERN_EXIT_GATE", "0").strip().lower()
     return raw in {"1", "true", "on", "yes"}
 
+
+# Gate 2E observational shadow (stamp-only; authority 0%; never opens trades).
+# Counterfactual: thin cells with n≥10 and hist_wr>0.35 that allow_only still
+# suppresses as ABSTAIN (library adverse floor remains n≥30). Join later to
+# BASELINE outcomes — do not loosen live RP608_CRYPTO_PATTERN_GATE=allow_only.
+SHADOW_ALLOW_IF_N10_WR_GT_035 = "SHADOW_ALLOW_IF_N10_WR_GT_035"
+SHADOW_THIN_WR_MIN_N = 10
+SHADOW_THIN_WR_MIN_WR = 0.35
+# Default ON: stamp-only is safe / observational. Set 0 to disable.
+_SHADOW_THIN_WR_ENV = "RP608_CRYPTO_GATE2E_SHADOW_THIN_WR"
+
+
+def gate2e_shadow_thin_wr_enabled(override: Optional[str] = None) -> bool:
+    """Env RP608_CRYPTO_GATE2E_SHADOW_THIN_WR — default ON (stamp-only)."""
+    raw = (
+        override
+        if override is not None
+        else os.environ.get(_SHADOW_THIN_WR_ENV, "1")
+    )
+    v = (raw or "1").strip().lower()
+    return v not in {"0", "off", "false", "no"}
+
+
+def matches_shadow_allow_if_n10_wr_gt_035(pattern_stamp: Dict[str, Any]) -> bool:
+    """True when suppress is ABSTAIN/thin but cohort would pass n≥10 & wr>0.35.
+
+    Live allow_only still blocks; this is observational only.
+    """
+    pred = str(pattern_stamp.get("prediction") or "")
+    label = str(pattern_stamp.get("label") or "")
+    # Thin-high-WR under allow_only → ABSTAIN_INSUFFICIENT (n < adverse floor 30).
+    if pred not in {"ABSTAIN_INSUFFICIENT"} and label not in {"INSUFFICIENT"}:
+        return False
+    if pred == "ALLOW":
+        return False
+    n = int(pattern_stamp.get("cohort_n") or 0)
+    wr_raw = pattern_stamp.get("hist_wr")
+    if wr_raw is None:
+        return False
+    try:
+        wr = float(wr_raw)
+    except (TypeError, ValueError):
+        return False
+    return n >= SHADOW_THIN_WR_MIN_N and wr > SHADOW_THIN_WR_MIN_WR
+
+
+def build_gate2e_shadow_allow_stamp(
+    *,
+    pattern_stamp: Dict[str, Any],
+    plan_id: Any,
+    direction: Any,
+    suppressed_ms: int,
+    book_id: str,
+    plan: Optional[Dict[str, Any]] = None,
+) -> Dict[str, Any]:
+    """Append-only jsonl schema for SHADOW_ALLOW_IF_N10_WR_GT_035.
+
+    Includes live Gate 2E candle volume (≠ OFX). ``pattern_id`` may show a
+    BACKOFF mined ``VUNK`` cell — ``live_vol_*`` is the decision-time axis.
+    """
+    src = plan or {}
+    live_surge = pattern_stamp.get("live_vol_surge")
+    live_burst = pattern_stamp.get("live_vol_burst_20")
+    if live_surge not in {"LOW", "MED", "HIGH", "UNK"}:
+        live_surge = _resolve_vol_surge(plan=src, card=None)
+    if live_burst is None:
+        raw_b = src.get("vol_burst_20")
+        try:
+            live_burst = float(raw_b) if raw_b is not None else None
+        except (TypeError, ValueError):
+            live_burst = None
+    return {
+        "shadow_rule_id": SHADOW_ALLOW_IF_N10_WR_GT_035,
+        "pattern_id": pattern_stamp.get("pattern_id"),
+        "feature_pattern_id": pattern_stamp.get("feature_pattern_id"),
+        "prediction": pattern_stamp.get("prediction"),
+        "hist_wr": pattern_stamp.get("hist_wr"),
+        "cohort_n": pattern_stamp.get("cohort_n"),
+        "plan_id": plan_id,
+        "direction": direction,
+        "suppressed_ms": int(suppressed_ms),
+        "book_id": book_id,
+        "match_mode": pattern_stamp.get("match_mode"),
+        "gate_mode": pattern_stamp.get("gate_mode"),
+        "label": pattern_stamp.get("label"),
+        "entry_price": src.get("entry_price"),
+        "vol_burst_20": live_burst,
+        "vol_surge": live_surge,
+        "vol_axis": f"V{live_surge}",
+        "live_vol_burst_20": live_burst,
+        "live_vol_surge": live_surge,
+        "authority_pct": 0.0,
+        "opens_trade": False,
+    }
 
 def load_library(path: Optional[Path] = None) -> Dict[str, Any]:
     p = Path(path) if path else default_library_path()
@@ -66,11 +200,15 @@ def _resolve_vol_surge(
     plan: Optional[Dict[str, Any]] = None,
     prefer_exit: bool = False,
 ) -> str:
-    """Candle OHLCV surge bucket (not OFX aggression). Prefer latched plan stamps."""
+    """Candle OHLCV surge bucket (not OFX aggression). Prefer latched plan stamps.
+
+    Concrete LOW/MED/HIGH and numeric burst win over placeholder ``UNK`` so a
+    plan latch of UNK cannot mask card ``vol_burst_20`` (Gate 2E ≠ OFX).
+    """
     src_plan = plan or {}
     src_card = card or {}
     if prefer_exit:
-        for raw in (
+        candidates = (
             src_plan.get("exit_vol_surge"),
             src_plan.get("exit_vol_burst_20"),
             src_card.get("exit_vol_burst_20"),
@@ -78,28 +216,23 @@ def _resolve_vol_surge(
             src_plan.get("vol_surge"),
             src_plan.get("vol_burst_20"),
             src_card.get("vol_burst_20"),
-        ):
-            if raw in {"LOW", "MED", "HIGH", "UNK"}:
-                return str(raw)
-            if raw is not None:
-                try:
-                    return vol_surge_bucket(float(raw))
-                except (TypeError, ValueError):
-                    continue
-        return "UNK"
-    for raw in (
-        src_plan.get("vol_surge"),
-        src_plan.get("vol_burst_20"),
-        src_card.get("vol_surge"),
-        src_card.get("vol_burst_20"),
-    ):
-        if raw in {"LOW", "MED", "HIGH", "UNK"}:
+        )
+    else:
+        candidates = (
+            src_plan.get("vol_surge"),
+            src_plan.get("vol_burst_20"),
+            src_card.get("vol_surge"),
+            src_card.get("vol_burst_20"),
+        )
+    for raw in candidates:
+        if raw in {"LOW", "MED", "HIGH"}:
             return str(raw)
-        if raw is not None:
-            try:
-                return vol_surge_bucket(float(raw))
-            except (TypeError, ValueError):
-                continue
+        if raw is None or raw == "UNK":
+            continue
+        try:
+            return vol_surge_bucket(float(raw))
+        except (TypeError, ValueError):
+            continue
     return "UNK"
 
 
@@ -159,7 +292,119 @@ def features_from_card_or_plan(
         ),
         "prior_stop_same_utc_day_dir": bool(prior_stop_same_utc_day_dir),
         "vol_surge": _resolve_vol_surge(card=card, plan=plan, prefer_exit=False),
+        "vol_burst_20": _optional_float(
+            src.get("vol_burst_20")
+            if src.get("vol_burst_20") is not None
+            else (card or {}).get("vol_burst_20")
+        ),
     }
+
+
+def _optional_float(raw: Any) -> Optional[float]:
+    if raw is None:
+        return None
+    try:
+        return float(raw)
+    except (TypeError, ValueError):
+        return None
+
+
+def parse_entry_pattern_key(key: str) -> Optional[Dict[str, Any]]:
+    """Parse mined entry key → axis dict for parent-cell compare."""
+    parts = str(key).split("|")
+    if len(parts) < 9:
+        return None
+    of_tok = parts[2]
+    if not of_tok.startswith("OF"):
+        return None
+    prior_tok = parts[8]
+    if not prior_tok.startswith("P"):
+        return None
+    out: Dict[str, Any] = {
+        "utc_session_phase": parts[0],
+        "direction": parts[1],
+        "of_supported": of_tok[2:] == "T",
+        "imb_bucket": parts[3],
+        "atr_bucket": parts[4],
+        "stop_dist_bucket": parts[5][1:] if parts[5].startswith("S") else parts[5],
+        "target_dist_bucket": parts[6][1:] if parts[6].startswith("T") else parts[6],
+        "gross_rr_bucket": parts[7][1:] if parts[7].startswith("R") else parts[7],
+        "prior_stop_same_utc_day_dir": prior_tok[1:] == "T",
+    }
+    if len(parts) >= 10 and parts[9].startswith("V"):
+        out["vol_surge"] = parts[9][1:]
+    else:
+        out["vol_surge"] = "UNK"
+    return out
+
+
+def _feat_axis(feats: Dict[str, Any], ax: str) -> Any:
+    if ax == "of_supported":
+        return bool(feats.get("of_supported"))
+    if ax == "prior_stop_same_utc_day_dir":
+        return bool(feats.get("prior_stop_same_utc_day_dir"))
+    if ax == "utc_session_phase":
+        return str(feats.get("utc_session_phase") or "UNK")
+    if ax == "direction":
+        return str(feats.get("direction") or "UNK").upper()
+    if ax == "vol_surge":
+        return str(feats.get("vol_surge") or "UNK")
+    return feats.get(ax)
+
+
+def _parent_cell_match(
+    patterns: Dict[str, Any],
+    feats: Dict[str, Any],
+    dropped: Sequence[str],
+    *,
+    min_n: int,
+    include_volume: bool,
+) -> Optional[Dict[str, Any]]:
+    """Best library cell matching live feats on all non-dropped axes (+ core)."""
+    required = list(_CORE_ENTRY_AXES)
+    drop_set = set(dropped)
+    for ax in (
+        "of_supported",
+        "imb_bucket",
+        "atr_bucket",
+        "stop_dist_bucket",
+        "target_dist_bucket",
+        "gross_rr_bucket",
+        "prior_stop_same_utc_day_dir",
+        "vol_surge",
+    ):
+        if ax in drop_set:
+            continue
+        if ax == "vol_surge" and not include_volume:
+            continue
+        required.append(ax)
+
+    best: Optional[Dict[str, Any]] = None
+    best_n = -1
+    for key, rec in patterns.items():
+        parsed = parse_entry_pattern_key(key)
+        if not parsed:
+            continue
+        ok = True
+        for ax in required:
+            live = _feat_axis(feats, ax)
+            cell = parsed.get(ax)
+            if ax in {"of_supported", "prior_stop_same_utc_day_dir"}:
+                if bool(live) != bool(cell):
+                    ok = False
+                    break
+            elif str(live) != str(cell):
+                ok = False
+                break
+        if not ok:
+            continue
+        n = int((rec.get("train") or {}).get("n") or 0)
+        if n < min_n:
+            continue
+        if n > best_n:
+            best_n = n
+            best = rec
+    return best
 
 
 def _lookup_entry(
@@ -167,18 +412,28 @@ def _lookup_entry(
     feats: Dict[str, Any],
     *,
     min_n: int = 10,
+    include_volume: bool = True,
 ) -> tuple[Optional[Dict[str, Any]], str, List[str]]:
-    exact = build_entry_pattern_key(feats)
+    exact = build_entry_pattern_key(feats, include_volume=include_volume)
     if exact in patterns:
         return patterns[exact], "EXACT", []
     dropped: List[str] = []
-    for ax in ENTRY_BACKOFF_DROP_ORDER:
+    drop_order = (
+        ENTRY_BACKOFF_DROP_ORDER
+        if include_volume
+        else tuple(ax for ax in ENTRY_BACKOFF_DROP_ORDER if ax != "vol_surge")
+    )
+    for ax in drop_order:
         dropped.append(ax)
-        soft = entry_key_softened(feats, dropped)
-        if soft in patterns:
-            rec = patterns[soft]
-            if int((rec.get("train") or {}).get("n") or 0) >= min_n:
-                return rec, "BACKOFF", list(dropped)
+        rec = _parent_cell_match(
+            patterns,
+            feats,
+            dropped,
+            min_n=min_n,
+            include_volume=include_volume,
+        )
+        if rec is not None:
+            return rec, "BACKOFF", list(dropped)
     return None, "NONE", dropped
 
 
@@ -187,16 +442,33 @@ def match_entry(
     library: Dict[str, Any],
     feats: Dict[str, Any],
     gate_on: Optional[bool] = None,
+    gate_mode: Optional[str] = None,
+    include_volume: bool = True,
 ) -> Dict[str, Any]:
     patterns = library.get("entry_patterns") or {}
-    exact = build_entry_pattern_key(feats)
+    exact = build_entry_pattern_key(feats, include_volume=include_volume)
     assert "symbol" not in exact.lower()
-    rec, mode, dropped = _lookup_entry(patterns, feats)
-    gate = bool(entry_gate_enabled() if gate_on is None else gate_on)
+    rec, mode, dropped = _lookup_entry(
+        patterns, feats, include_volume=include_volume
+    )
+    if gate_mode is not None:
+        gmode = normalize_entry_gate_mode(gate_mode)
+    elif gate_on is True:
+        gmode = "adverse"
+    elif gate_on is False:
+        gmode = "off"
+    else:
+        gmode = entry_gate_mode()
+    gate = gmode != "off"
+    live_vol = str(feats.get("vol_surge") or "UNK")
+    live_burst = feats.get("vol_burst_20")
     if rec is None:
+        prediction = "ABSTAIN_INSUFFICIENT"
+        blocks = entry_blocks_prediction(prediction, gmode)
         return {
             "kind": "ENTRY",
             "pattern_id": exact,
+            "feature_pattern_id": exact,
             "match_mode": mode,
             "dropped_axes": dropped,
             "cohort_n": 0,
@@ -204,10 +476,14 @@ def match_entry(
             "hist_payoff": None,
             "hist_net": None,
             "label": "INSUFFICIENT",
-            "prediction": "ABSTAIN_INSUFFICIENT",
-            "blocks_entry": False,
+            "prediction": prediction,
+            "blocks_entry": blocks,
             "gate_enabled": gate,
+            "gate_mode": gmode,
+            "standaside_reason": "STANDASIDE_TRADE_PATTERN" if blocks else None,
             "symbol_banned": False,
+            "live_vol_surge": live_vol,
+            "live_vol_burst_20": live_burst,
         }
     train = rec.get("train") or {}
     label = str(rec.get("label") or "INSUFFICIENT")
@@ -217,10 +493,11 @@ def match_entry(
         prediction = "ABSTAIN_INSUFFICIENT"
     else:
         prediction = "ALLOW"
-    blocks = bool(gate and prediction == "STANDASIDE_ADVERSE_PATTERN")
+    blocks = entry_blocks_prediction(prediction, gmode)
     return {
         "kind": "ENTRY",
         "pattern_id": rec.get("pattern_id") or exact,
+        "feature_pattern_id": exact,
         "match_mode": mode,
         "dropped_axes": dropped,
         "cohort_n": int(train.get("n") or 0),
@@ -231,8 +508,12 @@ def match_entry(
         "prediction": prediction,
         "blocks_entry": blocks,
         "gate_enabled": gate,
+        "gate_mode": gmode,
         "standaside_reason": "STANDASIDE_TRADE_PATTERN" if blocks else None,
         "symbol_banned": False,
+        # Live candle volume at decision (may differ from BACKOFF mined V* axis)
+        "live_vol_surge": live_vol,
+        "live_vol_burst_20": live_burst,
     }
 
 
@@ -241,6 +522,7 @@ def match_exit(
     library: Dict[str, Any],
     plan: Dict[str, Any],
     gate_on: Optional[bool] = None,
+    include_volume: bool = True,
 ) -> Dict[str, Any]:
     et = int(plan.get("entry_time_ms") or 0)
     mfe_bps = mfe_bps_from_plan(plan)
@@ -285,7 +567,7 @@ def match_exit(
         "hold_bucket": hold_bucket(float(hold_s) if hold_s is not None else None),
         "exit_vol_surge": _resolve_vol_surge(plan=plan, prefer_exit=True),
     }
-    pid = build_exit_pattern_key(feats)
+    pid = build_exit_pattern_key(feats, include_volume=include_volume)
     patterns = library.get("exit_patterns") or {}
     rec = patterns.get(pid)
     gate = bool(exit_gate_enabled() if gate_on is None else gate_on)

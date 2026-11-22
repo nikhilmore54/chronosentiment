@@ -2,7 +2,11 @@
 
 Python shadows remain I/O + state persistence; lifecycle authority is
 `rp608_position_decide --plan-lifecycle-loop` when available.
-Fail-closed: return None so caller keeps Python path.
+
+Default fail-closed: return None so caller may keep Python Adaptive/Gate2X path.
+With `RP608_PLAN_LIFECYCLE_REQUIRE_RUST=1`: callers must NOT mutate plans via
+Python Adaptive TP / Gate 2X giveback / hard SL-TP manage — log and skip
+(TIME_EXIT / NSE bar horizon may remain Python per cutover doc).
 Aligned with .cursor/rules/chronosentiment-core.mdc §3c.
 """
 
@@ -12,6 +16,7 @@ import json
 import os
 import subprocess
 import threading
+import time
 from pathlib import Path
 from typing import Any, Dict, Optional, TextIO, Tuple
 
@@ -24,6 +29,8 @@ DEFAULT_NSE_EVIDENCE = str(_REPO_ROOT / "datasets/recommendation/historical")
 
 _SESSIONS: Dict[Tuple[str, str, str], "PlanLifecycleSession"] = {}
 _LOCK = threading.Lock()
+_REQUIRE_RUST_LOG_TS: Dict[str, float] = {}
+_REQUIRE_RUST_LOG_INTERVAL_S = 30.0
 
 
 def lifecycle_enabled() -> bool:
@@ -33,6 +40,33 @@ def lifecycle_enabled() -> bool:
         "no",
         "off",
     }
+
+
+def require_rust_lifecycle() -> bool:
+    """Hard fail-closed: no silent Python Adaptive/Gate2X manage when Rust is down."""
+    return os.environ.get("RP608_PLAN_LIFECYCLE_REQUIRE_RUST", "").strip().lower() in {
+        "1",
+        "true",
+        "yes",
+        "on",
+    }
+
+
+def log_require_rust_block(book: str, reason: str) -> None:
+    """Rate-limited FATAL log when REQUIRE_RUST blocks Python manage fallback."""
+    if not require_rust_lifecycle():
+        return
+    now = time.monotonic()
+    key = f"{book}:{reason}"
+    last = _REQUIRE_RUST_LOG_TS.get(key, 0.0)
+    if now - last < _REQUIRE_RUST_LOG_INTERVAL_S:
+        return
+    _REQUIRE_RUST_LOG_TS[key] = now
+    print(
+        f"[FATAL][plan_lifecycle] REQUIRE_RUST book={book} — {reason}; "
+        "skipping Python Adaptive/Gate2X manage mutations (fail-closed)",
+        flush=True,
+    )
 
 
 def _bin_supports_plan_lifecycle(path: str) -> bool:
@@ -201,6 +235,11 @@ def plan_from_overlay(plan: Dict[str, Any], *, book: str = "crypto") -> Dict[str
         ).upper(),
         "entry_price": float(plan.get("entry_price") or plan.get("entry_px") or 0),
         "stop_loss_price": float(plan.get("stop_loss_price") or plan.get("sl") or 0),
+        "original_stop_loss_price": (
+            float(plan["original_stop_loss_price"])
+            if plan.get("original_stop_loss_price") is not None
+            else float(plan.get("stop_loss_price") or plan.get("sl") or 0)
+        ),
         "profit_target_price": float(tp or 0),
         "atr_14": float(plan.get("atr_14") or 0),
         "simulated_quantity": float(qty or 0),
@@ -209,6 +248,7 @@ def plan_from_overlay(plan: Dict[str, Any], *, book: str = "crypto") -> Dict[str
         "expiry_time_ms": int(expiry or 0),
         "tp_level": int(plan.get("tp_level") or 0),
         "adaptive_tp_armed": bool(plan.get("adaptive_tp_armed")),
+        "trailing_sl_armed": bool(plan.get("trailing_sl_armed")),
         "mfe_exec_price": mfe,
         "mae_exec_price": mae,
         "gate2x_peak_mfe": peak,
@@ -235,9 +275,11 @@ def merge_lifecycle_into_plan(
     peak_dst = "gate2x_peak_mfe_inr" if book == "nse" else "gate2x_peak_mfe_usdt"
     for k_src, k_dst in (
         ("stop_loss_price", "stop_loss_price"),
+        ("original_stop_loss_price", "original_stop_loss_price"),
         ("profit_target_price", "profit_target_price"),
         ("tp_level", "tp_level"),
         ("adaptive_tp_armed", "adaptive_tp_armed"),
+        ("trailing_sl_armed", "trailing_sl_armed"),
         ("mfe_exec_price", "mfe_exec_price"),
         ("mae_exec_price", "mae_exec_price"),
         ("gate2x_peak_mfe", peak_dst),
@@ -271,6 +313,8 @@ def merge_lifecycle_into_plan(
 _EXIT_REASON_MAP_CRYPTO = {
     "PROFIT_TARGET_HIT": ("CLOSED_TP", "PROFIT_TARGET_HIT"),
     "STOP_LOSS_HIT": ("CLOSED_SL", "STOP_LOSS_HIT"),
+    # Industry/OMS style: trailed stop fill (IBKR/TT/etc. "Trailing Stop")
+    "TRAILING_STOP_HIT": ("CLOSED_TRAIL", "TRAILING_STOP_HIT"),
     "EARLY_SL_PATH_SCRATCH": ("CLOSED_SCRATCH", "EARLY_SL_PATH_SCRATCH"),
     "GATE2X_MFE_GIVEBACK_PROTECT": ("CLOSED_GIVEBACK", "GATE2X_MFE_GIVEBACK_PROTECT"),
     "MAX_HORIZON_EXPIRED": ("TIME_EXIT", "MAX_HORIZON_60M_EXPIRED"),
@@ -281,6 +325,7 @@ _EXIT_REASON_MAP_CRYPTO = {
 _EXIT_REASON_MAP_NSE = {
     "PROFIT_TARGET_HIT": ("TAKE_PROFIT", "TAKE_PROFIT"),
     "STOP_LOSS_HIT": ("STOP_LOSS", "STOP_LOSS"),
+    "TRAILING_STOP_HIT": ("TRAILING_STOP", "TRAILING_STOP_HIT"),
     "EARLY_SL_PATH_SCRATCH": ("STOP_LOSS", "EARLY_SL_PATH_SCRATCH"),
     "GATE2X_MFE_GIVEBACK_PROTECT": (
         "GATE2X_MFE_GIVEBACK_PROTECT",

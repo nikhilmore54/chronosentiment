@@ -121,12 +121,18 @@ def _pattern_lookup(
     feats: Dict[str, Any],
     *,
     min_n: int = 10,
+    include_volume: bool = True,
 ) -> Tuple[Optional[Dict[str, Any]], str, List[str]]:
     """Exact then backoff. Returns (pattern_rec, match_mode, dropped_axes)."""
     if exact_key in patterns:
         return patterns[exact_key], "EXACT", []
     dropped: List[str] = []
-    for axis in ENTRY_BACKOFF_DROP_ORDER:
+    drop_order = (
+        ENTRY_BACKOFF_DROP_ORDER
+        if include_volume
+        else tuple(ax for ax in ENTRY_BACKOFF_DROP_ORDER if ax != "vol_surge")
+    )
+    for axis in drop_order:
         dropped.append(axis)
         key = entry_key_with_wildcards(feats, dropped)
         # Wildcard keys are not stored; scan for compatible cohorts and aggregate
@@ -145,7 +151,7 @@ def _pattern_lookup(
                 softened[ax] = False
             elif ax in {"jittery", "turbulent"}:
                 softened[ax] = False
-        soft_key = build_entry_pattern_key(softened)
+        soft_key = build_entry_pattern_key(softened, include_volume=include_volume)
         if soft_key in patterns:
             rec = patterns[soft_key]
             n = int((rec.get("train") or {}).get("n") or 0)
@@ -165,11 +171,17 @@ def match_entry(
     library: Dict[str, Any],
     feats: Dict[str, Any],
     gate_on: Optional[bool] = None,
+    include_volume: bool = True,
 ) -> Dict[str, Any]:
     patterns = library.get("entry_patterns") or {}
-    exact = build_entry_pattern_key(feats)
+    exact = build_entry_pattern_key(feats, include_volume=include_volume)
     assert "symbol" not in exact.lower()
-    rec, mode, dropped = _pattern_lookup(patterns, exact, feats, min_n=10)
+    feats_use = dict(feats)
+    if not include_volume:
+        feats_use["vol_surge"] = "UNK"
+    rec, mode, dropped = _pattern_lookup(
+        patterns, exact, feats_use, min_n=10, include_volume=include_volume
+    )
     if rec is None:
         stamp = {
             "kind": "ENTRY",
@@ -226,6 +238,7 @@ def match_exit(
     current_bar_idx: int,
     entry_price: float,
     gate_on: Optional[bool] = None,
+    include_volume: bool = True,
 ) -> Dict[str, Any]:
     path = extract_exit_path_feats(
         bars_dict,
@@ -241,7 +254,7 @@ def match_exit(
         "first_reverse": path.get("first_reverse") or "UNK",
         "exit_vol_surge": path.get("exit_vol_surge") or "UNK",
     }
-    pid = build_exit_pattern_key(feats)
+    pid = build_exit_pattern_key(feats, include_volume=include_volume)
     patterns = library.get("exit_patterns") or {}
     rec = patterns.get(pid)
     gate = bool(exit_gate_enabled() if gate_on is None else gate_on)

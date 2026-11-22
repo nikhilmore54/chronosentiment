@@ -16,6 +16,7 @@ use super::gate2x_position_manage::{Gate2xBookKind, Gate2xPositionManager};
 pub const PLAN_LIFECYCLE_PROTOCOL: &str = "RP-608-PLAN-LIFECYCLE-MANAGE-001";
 pub const ADAPTIVE_TP_CRYPTO: &str = "RP-608-GATE5-CRYPTO-ADAPTIVE-TP-001";
 pub const ADAPTIVE_TP_NSE: &str = "RP-608-GATE5-NSE-ADAPTIVE-TP-001";
+pub const TRAILING_SL_PROTOCOL: &str = "RP-608-TRAILING-SL-001";
 
 fn round_tick(px: f64) -> f64 {
     (px * 100.0).round() / 100.0
@@ -28,12 +29,31 @@ pub struct PlanLifecycleConfig {
     pub adaptive_tp_max_extensions: u32,
     /// Fallback % of entry when atr_14 missing (NSE Arm A).
     pub adaptive_tp_extend_pct: f64,
+    /// Favorable-only SL trail (never worse than original stop).
+    #[serde(default = "default_true")]
+    pub trailing_sl_enabled: bool,
+    /// Trail distance = atr_mult × ATR(14) behind favorable extreme.
+    #[serde(default = "default_trail_atr_mult")]
+    pub trailing_sl_atr_mult: f64,
+    /// Arm trail only after favorable move ≥ this fraction of initial risk.
+    #[serde(default = "default_trail_arm_frac")]
+    pub trailing_sl_arm_risk_frac: f64,
     pub round_trip_friction_bps: f64,
     pub meaningful_floor_bps: f64,
     pub early_sl_path_scratch_enabled: bool,
     pub early_sl_path_scratch_max_hold_s: f64,
     pub early_sl_path_friction_bps_side: f64,
     pub ambiguous_tie_break_tp: bool,
+}
+
+fn default_true() -> bool {
+    true
+}
+fn default_trail_atr_mult() -> f64 {
+    0.5
+}
+fn default_trail_arm_frac() -> f64 {
+    0.30
 }
 
 impl Default for PlanLifecycleConfig {
@@ -43,6 +63,9 @@ impl Default for PlanLifecycleConfig {
             adaptive_tp_extend_atr_mult: 0.5,
             adaptive_tp_max_extensions: 3,
             adaptive_tp_extend_pct: 0.005,
+            trailing_sl_enabled: true,
+            trailing_sl_atr_mult: 0.5,
+            trailing_sl_arm_risk_frac: 0.30,
             round_trip_friction_bps: 12.0,
             meaningful_floor_bps: 5.0,
             early_sl_path_scratch_enabled: true,
@@ -80,10 +103,15 @@ pub struct OpenPlanState {
     pub simulated_notional_usdt: f64,
     pub entry_time_ms: i64,
     pub expiry_time_ms: i64,
+    /// Immutable opening stop — trail may only tighten vs this bound.
+    #[serde(default)]
+    pub original_stop_loss_price: Option<f64>,
     #[serde(default)]
     pub tp_level: u32,
     #[serde(default)]
     pub adaptive_tp_armed: bool,
+    #[serde(default)]
+    pub trailing_sl_armed: bool,
     #[serde(default)]
     pub mfe_exec_price: Option<f64>,
     #[serde(default)]
@@ -111,6 +139,9 @@ pub struct OpenPlanState {
 pub enum LifecycleCloseReason {
     ProfitTargetHit,
     StopLossHit,
+    /// Industry-style label when a *trailed* stop (moved from original) is hit.
+    /// Distinct from [`StopLossHit`] (initial / unmoved protective stop).
+    TrailingStopHit,
     EarlySlPathScratch,
     Gate2xMfeGivebackProtect,
     MaxHorizonExpired,
@@ -222,7 +253,8 @@ impl PlanLifecycleManager {
             plan.exit_vol_surge = Some(vs.to_ascii_uppercase());
         }
 
-        // Adaptive TP extend before Gate2X / hard exits
+        // Favorable-only trailing SL (never worse than original), then Adaptive TP.
+        self.apply_trailing_sl(&mut plan, &direction, exec);
         self.apply_adaptive_tp(&mut plan, &direction, bid, ask, low, high, now_ms);
 
         // Gate 2X
@@ -320,10 +352,21 @@ impl PlanLifecycleManager {
             } else {
                 (plan.entry_price - exit_px) * plan.simulated_quantity
             };
-            let reason = if ambiguous_as.is_some() {
-                LifecycleCloseReason::AmbiguousStopTarget
+            let orig_sl = plan
+                .original_stop_loss_price
+                .unwrap_or(plan.stop_loss_price);
+            let trailed = plan.trailing_sl_armed
+                && (plan.stop_loss_price - orig_sl).abs() > 1e-9;
+            let (reason, detail) = if ambiguous_as.is_some() {
+                (LifecycleCloseReason::AmbiguousStopTarget, None)
+            } else if trailed {
+                // Standard brokerage/OMS style: trailing stop fill ≠ initial stop loss.
+                (
+                    LifecycleCloseReason::TrailingStopHit,
+                    Some("TRAILING_STOP_HIT".into()),
+                )
             } else {
-                LifecycleCloseReason::StopLossHit
+                (LifecycleCloseReason::StopLossHit, None)
             };
             self.gate2x.reset_position_latch();
             return LifecycleTickResult {
@@ -331,7 +374,7 @@ impl PlanLifecycleManager {
                 closed: true,
                 plan,
                 exit_reason: Some(reason),
-                exit_reason_detail: None,
+                exit_reason_detail: detail,
                 exit_price: Some(round_tick(exit_px)),
                 net_pnl: Some(((gross - friction) * 100.0).round() / 100.0),
                 gate2x_action: Some(format!("{:?}", g2x.action)),
@@ -399,6 +442,73 @@ impl PlanLifecycleManager {
             net_pnl: None,
             gate2x_action: Some(format!("{:?}", g2x.action)),
             ambiguous_resolved_as: None,
+        }
+    }
+
+    /// Trail stop with favorable ticks. LONG: SL only rises; SHORT: SL only falls.
+    /// Bound: never beyond `original_stop_loss_price` (never more damage than open risk).
+    fn apply_trailing_sl(&self, plan: &mut OpenPlanState, direction: &str, exec: f64) {
+        if !self.cfg.trailing_sl_enabled {
+            return;
+        }
+        let orig = plan
+            .original_stop_loss_price
+            .unwrap_or(plan.stop_loss_price);
+        plan.original_stop_loss_price = Some(orig);
+
+        let entry = plan.entry_price;
+        let risk = if direction == "LONG" {
+            entry - orig
+        } else {
+            orig - entry
+        };
+        if risk <= 0.0 {
+            return;
+        }
+
+        let mfe_px = plan.mfe_exec_price.unwrap_or(exec);
+        let fav = if direction == "LONG" {
+            mfe_px - entry
+        } else {
+            entry - mfe_px
+        };
+        let arm = risk * self.cfg.trailing_sl_arm_risk_frac.max(0.0);
+        if fav < arm {
+            return;
+        }
+
+        let trail_dist = if plan.atr_14 > 0.0 {
+            self.cfg.trailing_sl_atr_mult * plan.atr_14
+        } else {
+            risk * 0.5
+        };
+        if trail_dist <= 0.0 {
+            return;
+        }
+
+        let proposed = if direction == "LONG" {
+            round_tick(mfe_px - trail_dist)
+        } else {
+            round_tick(mfe_px + trail_dist)
+        };
+
+        let mut sl = plan.stop_loss_price;
+        if direction == "LONG" {
+            // Tighten up only; never below original; keep below MFE (no instant stop).
+            let cand = proposed.max(orig);
+            if cand > sl && cand < mfe_px {
+                sl = cand;
+            }
+        } else {
+            // Tighten down only; never above original; keep above MFE.
+            let cand = proposed.min(orig);
+            if cand < sl && cand > mfe_px {
+                sl = cand;
+            }
+        }
+        if (sl - plan.stop_loss_price).abs() > 1e-9 {
+            plan.stop_loss_price = sl;
+            plan.trailing_sl_armed = true;
         }
     }
 
@@ -605,8 +715,10 @@ mod tests {
             simulated_notional_usdt: 1000.0,
             entry_time_ms: 1_000_000,
             expiry_time_ms: 1_000_000 + 3_600_000,
+            original_stop_loss_price: Some(sl),
             tp_level: 0,
             adaptive_tp_armed: false,
+            trailing_sl_armed: false,
             mfe_exec_price: None,
             mae_exec_price: None,
             gate2x_peak_mfe: None,
@@ -618,6 +730,114 @@ mod tests {
             exit_vol_surge: Some("UNK".into()),
             book: Some("crypto".into()),
         }
+    }
+
+    #[test]
+    fn trailing_sl_short_tightens_never_worse_than_original() {
+        let dir = std::env::temp_dir().join("rp608_plan_lc_trail");
+        let _ = std::fs::remove_dir_all(&dir);
+        std::fs::create_dir_all(&dir).unwrap();
+        write_store(&dir);
+        let mut cfg = PlanLifecycleConfig::default();
+        cfg.adaptive_tp_enabled = false; // isolate trail
+        cfg.trailing_sl_enabled = true;
+        cfg.trailing_sl_atr_mult = 0.5;
+        cfg.trailing_sl_arm_risk_frac = 0.30;
+        let mut mgr =
+            PlanLifecycleManager::load(dir.to_str().unwrap(), Gate2xBookKind::Crypto, cfg)
+                .unwrap();
+        let entry = 100.0;
+        let atr = 10.0;
+        let mut plan = short_plan(entry, atr);
+        let orig_sl = plan.stop_loss_price; // 110
+        // Favorable move: ask/low down to 95 → fav=5 = 50% of risk 10 → armed.
+        // Keep high below trailed SL so we do not trip STOP_LOSS this tick.
+        let q = PlanQuote {
+            best_bid_price: 94.9,
+            best_ask_price: 95.0,
+            low_price: Some(94.5),
+            high_price: Some(98.0),
+            now_ms: Some(1_000_000 + 30_000),
+            vol_surge: Some("UNK".into()),
+        };
+        let r = mgr.manage_tick(plan, q);
+        assert!(!r.closed);
+        assert!(r.plan.trailing_sl_armed);
+        assert!(r.plan.stop_loss_price < orig_sl);
+        assert!(r.plan.stop_loss_price <= orig_sl);
+        // proposed ≈ mfe(94.5) + 0.5*atr = 94.5+5 = 99.5
+        assert!((r.plan.stop_loss_price - 99.5).abs() < 0.05);
+        assert_eq!(r.plan.original_stop_loss_price, Some(orig_sl));
+
+        // Adverse tick must not loosen SL back toward original
+        plan = r.plan;
+        let locked = plan.stop_loss_price;
+        let q2 = PlanQuote {
+            best_bid_price: 101.0,
+            best_ask_price: 101.2,
+            low_price: Some(94.5),
+            high_price: Some(101.5),
+            now_ms: Some(1_000_000 + 60_000),
+            vol_surge: Some("UNK".into()),
+        };
+        let r2 = mgr.manage_tick(plan, q2);
+        assert!(r2.plan.stop_loss_price <= locked + 1e-9);
+        assert!(r2.plan.stop_loss_price <= orig_sl + 1e-9);
+    }
+
+    #[test]
+    fn trailing_stop_hit_uses_industry_exit_reason() {
+        let dir = std::env::temp_dir().join("rp608_plan_lc_trail_hit");
+        let _ = std::fs::remove_dir_all(&dir);
+        std::fs::create_dir_all(&dir).unwrap();
+        write_store(&dir);
+        let mut cfg = PlanLifecycleConfig::default();
+        cfg.adaptive_tp_enabled = false;
+        cfg.trailing_sl_enabled = true;
+        cfg.trailing_sl_atr_mult = 0.5;
+        cfg.trailing_sl_arm_risk_frac = 0.30;
+        cfg.early_sl_path_scratch_enabled = false;
+        let mut mgr =
+            PlanLifecycleManager::load(dir.to_str().unwrap(), Gate2xBookKind::Crypto, cfg)
+                .unwrap();
+        let entry = 100.0;
+        let atr = 10.0;
+        let mut plan = short_plan(entry, atr);
+        let orig_sl = plan.stop_loss_price;
+        // Arm trail (favorable)
+        let q = PlanQuote {
+            best_bid_price: 94.9,
+            best_ask_price: 95.0,
+            low_price: Some(94.5),
+            high_price: Some(98.0),
+            now_ms: Some(1_000_000 + 30_000),
+            vol_surge: Some("UNK".into()),
+        };
+        let r = mgr.manage_tick(plan, q);
+        assert!(!r.closed);
+        assert!(r.plan.trailing_sl_armed);
+        assert!(r.plan.stop_loss_price < orig_sl);
+        plan = r.plan;
+        let trail = plan.stop_loss_price;
+        // Trip the trailed stop (not the original): ask/high through trail
+        let q_hit = PlanQuote {
+            best_bid_price: trail + 0.2,
+            best_ask_price: trail + 0.4,
+            low_price: Some(94.5),
+            high_price: Some(trail + 0.5),
+            now_ms: Some(1_000_000 + 60_000),
+            vol_surge: Some("UNK".into()),
+        };
+        let r_hit = mgr.manage_tick(plan, q_hit);
+        assert!(r_hit.closed);
+        match r_hit.exit_reason {
+            Some(LifecycleCloseReason::TrailingStopHit) => {}
+            other => panic!("expected TrailingStopHit, got {:?}", other),
+        }
+        assert_eq!(
+            r_hit.exit_reason_detail.as_deref(),
+            Some("TRAILING_STOP_HIT")
+        );
     }
 
     #[test]

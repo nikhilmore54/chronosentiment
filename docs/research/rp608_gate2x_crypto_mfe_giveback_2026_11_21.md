@@ -86,6 +86,14 @@ Candle OHLCV burst buckets (not OFX aggression). Same twin baseline books.
 
 Config keys: `gate2x_ratchet_peak_frac`, `gate2x_reversal_med_vol_dwell_ms`, `gate2x_deep_giveback_*`.
 
+## v1.5 — hard floor (no dwell bleed) · 2026-11-21
+
+**Incident:** BASELINE `PLAN-256576` / `PLAN-256733` SHORT — peak MFE +$5.9 / +$13.7 (tp_frac 0.40 / 0.95) then `GATE2X_MFE_GIVEBACK_PROTECT` at net **−$3.52 / −$4.99** after ~36s LOW deep-GB dwell while still bleeding through cost-clear.
+
+**Rule:** ratchet/protect floor still **starts** soft-breach dwell (wick filter). Once `current_mfe ≤ cost_clear` (`arm_threshold`; or `0` in ENTRY mode) → **immediate** adverse (`…_HARD_FLOOR`) — do not finish dwell into a loss fill.
+
+W/L-first · payoff/net disclosed · books never pooled · OF ±0.30 unchanged.
+
 ## v1.4 — Adaptive TP runner (2026-11-21)
 
 Paired with Gate 5 packet `RP-608-GATE5-CRYPTO-ADAPTIVE-TP-001`:

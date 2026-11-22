@@ -148,6 +148,7 @@ class OfxCryptoAggTradeJournal:
         self.coverage_path = self.root / "capture_coverage.json"
         self.enabled = bool(enabled)
         self.symbol = str(symbol).upper()
+        self.ws_url = f"wss://stream.binance.com:9443/ws/{self.symbol.lower()}@aggTrade"
         self.flush_every = max(1, int(flush_every))
         self.max_seen_ids = max(1000, int(max_seen_ids))
         self.connection_session_id = str(uuid.uuid4())
@@ -162,6 +163,7 @@ class OfxCryptoAggTradeJournal:
             "phase": PHASE,
             "enabled": self.enabled,
             "symbol": self.symbol,
+            "ws_url": self.ws_url,
             "connection_session_id": self.connection_session_id,
             "events_seen": 0,
             "events_written": 0,
