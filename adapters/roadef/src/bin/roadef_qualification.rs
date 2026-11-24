@@ -25,31 +25,31 @@ fn run_instance(net: &Network, tm: &roadef::models::TrafficMatrix, scenario: &ro
     };
     let _budget_t1 = scenario.budget.iter().find(|b| b.t == 1).map(|b| b.value).unwrap_or(0);
 
-    // Disabled links per time slot
-    let disabled_t0: HashSet<u64> = scenario.interventions.iter().filter(|i| i.t == 0).flat_map(|i| i.links.iter().copied()).collect();
-    let disabled_t1: HashSet<u64> = scenario.interventions.iter().filter(|i| i.t == 1).flat_map(|i| i.links.iter().copied()).collect();
-    let disabled_both: HashSet<u64> = disabled_t0.union(&disabled_t1).copied().collect();
+    // Disabled links across all time slots
+    let disabled_all: HashSet<u64> = scenario.interventions.iter().flat_map(|i| i.links.iter().copied()).collect();
 
-    // Average‑volume demand list (used for routing priority)
+    // Average‑volume demand list (used for routing priority) across all time slots
     let demands_avg: Vec<(usize, u64, u64, f64)> = tm.demands.iter().enumerate()
         .map(|(i, d)| {
-            let v0 = d.v[0];
-            let v1 = if d.v.len() > 1 { d.v[1] } else { d.v[0] };
-            (i, d.s, d.t, (v0 + v1) / 2.0)
+            let avg_v = if !d.v.is_empty() {
+                d.v.iter().sum::<f64>() / d.v.len() as f64
+            } else {
+                0.0
+            };
+            (i, d.s, d.t, avg_v)
         })
         .collect();
 
     // Greedy shared assignment (core frozen algorithm)
-    let shared_assign = solve_greedy(&net, &demands_avg, &disabled_both, max_seg);
+    let shared_assign = solve_greedy(&net, &demands_avg, &disabled_all, max_seg);
 
-    // Build srpaths for both slots
+    // Build srpaths for all time slots (identical waypoints ensure 0 reconfiguration distance)
     let mut srpaths: Vec<SrPath> = Vec::new();
     for d_idx in 0..num_demands {
         if let Some(w) = shared_assign.get(&d_idx) {
             if !w.is_empty() {
-                srpaths.push(SrPath { d: d_idx, t: 0, w: w.clone() });
-                if num_slots > 1 {
-                    srpaths.push(SrPath { d: d_idx, t: 1, w: w.clone() });
+                for slot in 0..num_slots {
+                    srpaths.push(SrPath { d: d_idx, t: slot, w: w.clone() });
                 }
             }
         }
@@ -124,7 +124,17 @@ fn solve_greedy(
             .or_else(|| dijkstra_path(net, *src, *dst, disabled_links));
         if let Some(fp) = full_path {
             // Convert to waypoints respecting segment limit
-            let waypoints = if fp.len() <= 2 { vec![] } else { fp[1..fp.len() - 1].to_vec() };
+            let waypoints = if fp.len() <= 2 || max_segments == 0 {
+                vec![]
+            } else {
+                let raw_wp = fp[1..fp.len() - 1].to_vec();
+                let max_wp = max_segments.saturating_sub(1);
+                if raw_wp.len() > max_wp {
+                    raw_wp[..max_wp].to_vec()
+                } else {
+                    raw_wp
+                }
+            };
             // Update link flows for future load‑aware calculations
             for j in 0..fp.len().saturating_sub(1) {
                 if let Some(link_id) = link_by_endpoints.get(&(fp[j], fp[j + 1])) {

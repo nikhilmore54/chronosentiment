@@ -70,6 +70,12 @@ impl ParityScheduleGenerator {
 
 #[test]
 fn test_inrc_full_objective_parity() {
+    let check_java = Command::new("java").arg("-version").output();
+    if check_java.is_err() || !check_java.unwrap().status.success() {
+        eprintln!("SKIPPING: Java runtime (JRE) not detected; official validator.jar execution requires external JRE.");
+        return;
+    }
+
     let base_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("tests/data/n030w4");
 
     let scenario = parse_scenario(base_dir.join("Sc-n030w4.json")).unwrap();

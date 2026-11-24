@@ -2,6 +2,8 @@ use super::optimization::{InrcEvaluation, InrcGenome, InrcOptimizer, SoftConstra
 use coralys_core::{EvaluationResult, Violation};
 use coralys_matching::{AssignmentSolver, BipartiteMatchingSolver};
 use coralys_moga::traits::FitnessEvaluator;
+use rand::rngs::StdRng;
+use rand::Rng;
 use std::collections::HashMap;
 
 impl InrcOptimizer {
@@ -10,6 +12,434 @@ impl InrcOptimizer {
             + day * self.context.shift_types.len()
             + shift;
         genome.bits[index]
+    }
+
+    pub fn set_bit(&self, genome: &mut InrcGenome, nurse: usize, day: usize, shift: usize, val: bool) {
+        let index = nurse * (self.context.num_days * self.context.shift_types.len())
+            + day * self.context.shift_types.len()
+            + shift;
+        genome.bits[index] = val;
+    }
+
+    pub fn get_assigned_shift(&self, genome: &InrcGenome, nurse: usize, day: usize) -> Option<usize> {
+        let num_shifts = self.context.shift_types.len();
+        for s in 0..num_shifts {
+            if self.get_bit(genome, nurse, day, s) {
+                return Some(s);
+            }
+        }
+        None
+    }
+
+    pub fn set_assigned_shift(&self, genome: &mut InrcGenome, nurse: usize, day: usize, shift: Option<usize>) {
+        let num_shifts = self.context.shift_types.len();
+        for s in 0..num_shifts {
+            self.set_bit(genome, nurse, day, s, shift == Some(s));
+        }
+    }
+
+    pub fn is_forbidden_succession(&self, nurse: usize, day: usize, shift: usize, genome: &InrcGenome) -> bool {
+        let nurse_id = &self.context.scenario.nurses[nurse].id;
+        let shift_name = &self.context.shift_types[shift];
+
+        // 1. Transition from day - 1 to day
+        let prev_shift_name: Option<String> = if day == 0 {
+            let hist = self.context.history.nurse_history.iter().find(|h| &h.nurse == nurse_id);
+            if let Some(h) = hist {
+                if h.number_of_consecutive_days_off > 0
+                    || h.last_assigned_shift_type.is_empty()
+                    || h.last_assigned_shift_type == "None"
+                {
+                    None
+                } else {
+                    Some(h.last_assigned_shift_type.clone())
+                }
+            } else {
+                None
+            }
+        } else {
+            self.get_assigned_shift(genome, nurse, day - 1)
+                .map(|s| self.context.shift_types[s].clone())
+        };
+
+        if let Some(ref prev) = prev_shift_name {
+            if let Some(rule) = self
+                .context
+                .scenario
+                .forbidden_shift_type_successions
+                .iter()
+                .find(|r| &r.preceding == prev)
+            {
+                if rule.succeeding.contains(shift_name) {
+                    return true;
+                }
+            }
+        }
+
+        // 2. Transition from day to day + 1
+        if day + 1 < self.context.num_days {
+            if let Some(next_s) = self.get_assigned_shift(genome, nurse, day + 1) {
+                let next_shift_name = &self.context.shift_types[next_s];
+                if let Some(rule) = self
+                    .context
+                    .scenario
+                    .forbidden_shift_type_successions
+                    .iter()
+                    .find(|r| &r.preceding == shift_name)
+                {
+                    if rule.succeeding.contains(next_shift_name) {
+                        return true;
+                    }
+                }
+            }
+        }
+
+        false
+    }
+
+    /// Targeted hard constraint repair pass (HC1-HC4).
+    pub fn repair_hard_constraints(&self, genome: &mut InrcGenome) {
+        let num_nurses = self.context.num_nurses;
+        let num_days = self.context.num_days;
+        let num_shifts = self.context.shift_types.len();
+
+        // 1. Clean multiple shifts per nurse per day (HC3 / HC4)
+        for n in 0..num_nurses {
+            for d in 0..num_days {
+                let mut true_shifts = Vec::new();
+                for s in 0..num_shifts {
+                    if self.get_bit(genome, n, d, s) {
+                        true_shifts.push(s);
+                    }
+                }
+                if true_shifts.len() > 1 {
+                    for &s in &true_shifts[1..] {
+                        self.set_bit(genome, n, d, s, false);
+                    }
+                }
+            }
+        }
+
+        // 2. Clean forbidden shift type successions (HC4)
+        for n in 0..num_nurses {
+            for d in 0..num_days {
+                if let Some(s) = self.get_assigned_shift(genome, n, d) {
+                    if self.is_forbidden_succession(n, d, s, genome) {
+                        let mut fixed = false;
+                        for alt_s in 0..num_shifts {
+                            if alt_s != s && !self.is_forbidden_succession(n, d, alt_s, genome) {
+                                self.set_assigned_shift(genome, n, d, Some(alt_s));
+                                fixed = true;
+                                break;
+                            }
+                        }
+                        if !fixed {
+                            self.set_assigned_shift(genome, n, d, None);
+                        }
+                    }
+                }
+            }
+        }
+
+        // 3. Ejection chain repair for minimum coverage & skills (HC1 & HC2)
+        let days_map = [
+            "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday",
+        ];
+
+        for _pass in 0..20 {
+            let mut any_deficit = false;
+            for d in 0..num_days {
+                let day_name = days_map[d];
+                for s in 0..num_shifts {
+                    let shift_name = &self.context.shift_types[s];
+
+                    for req in &self.context.week_data.requirements {
+                        if req.shift_type != *shift_name {
+                            continue;
+                        }
+                        let req_level = match day_name {
+                            "Monday" => &req.monday,
+                            "Tuesday" => &req.tuesday,
+                            "Wednesday" => &req.wednesday,
+                            "Thursday" => &req.thursday,
+                            "Friday" => &req.friday,
+                            "Saturday" => &req.saturday,
+                            "Sunday" => &req.sunday,
+                            _ => unreachable!(),
+                        };
+
+                        if req_level.minimum == 0 {
+                            continue;
+                        }
+
+                        let mut count_qualified = 0;
+                        for n in 0..num_nurses {
+                            if self.get_assigned_shift(genome, n, d) == Some(s) {
+                                if self.context.scenario.nurses[n].skills.contains(&req.skill) {
+                                    count_qualified += 1;
+                                }
+                            }
+                        }
+
+                        if count_qualified < req_level.minimum {
+                            any_deficit = true;
+                            let needed = req_level.minimum - count_qualified;
+                            let mut assigned_count = 0;
+
+                            // Step 1: Assign off-duty qualified nurses with NO succession conflict
+                            for n in 0..num_nurses {
+                                if assigned_count >= needed {
+                                    break;
+                                }
+                                if self.get_assigned_shift(genome, n, d).is_none() {
+                                    if self.context.scenario.nurses[n].skills.contains(&req.skill) {
+                                        if !self.is_forbidden_succession(n, d, s, genome) {
+                                            self.set_assigned_shift(genome, n, d, Some(s));
+                                            assigned_count += 1;
+                                        }
+                                    }
+                                }
+                            }
+
+                            // Step 1b: If still needed, assign off-duty qualified nurse and clear d+1 succession conflict
+                            if assigned_count < needed {
+                                for n in 0..num_nurses {
+                                    if assigned_count >= needed {
+                                        break;
+                                    }
+                                    if self.get_assigned_shift(genome, n, d).is_none() {
+                                        if self.context.scenario.nurses[n].skills.contains(&req.skill) {
+                                            let nurse_id = &self.context.scenario.nurses[n].id;
+                                            let prev_ok = if d == 0 {
+                                                let hist = self.context.history.nurse_history.iter().find(|h| &h.nurse == nurse_id);
+                                                if let Some(h) = hist {
+                                                    if h.last_assigned_shift_type != "None" {
+                                                        !self.context.scenario.forbidden_shift_type_successions.iter().any(|r| r.preceding == h.last_assigned_shift_type && r.succeeding.contains(shift_name))
+                                                    } else {
+                                                        true
+                                                    }
+                                                } else {
+                                                    true
+                                                }
+                                            } else {
+                                                if let Some(prev_s) = self.get_assigned_shift(genome, n, d - 1) {
+                                                    let prev_name = &self.context.shift_types[prev_s];
+                                                    !self.context.scenario.forbidden_shift_type_successions.iter().any(|r| r.preceding == *prev_name && r.succeeding.contains(shift_name))
+                                                } else {
+                                                    true
+                                                }
+                                            };
+                                            if prev_ok {
+                                                self.set_assigned_shift(genome, n, d, Some(s));
+                                                if d + 1 < num_days {
+                                                    if let Some(next_s) = self.get_assigned_shift(genome, n, d + 1) {
+                                                        let next_name = &self.context.shift_types[next_s];
+                                                        if self.context.scenario.forbidden_shift_type_successions.iter().any(|r| r.preceding == *shift_name && r.succeeding.contains(next_name)) {
+                                                            self.set_assigned_shift(genome, n, d + 1, None);
+                                                        }
+                                                    }
+                                                }
+                                                assigned_count += 1;
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+
+                            // Step 2: Swap surplus nurses from other shifts
+                            if assigned_count < needed {
+                                for n in 0..num_nurses {
+                                    if assigned_count >= needed {
+                                        break;
+                                    }
+                                    if let Some(other_s) = self.get_assigned_shift(genome, n, d) {
+                                        if other_s != s
+                                            && self.context.scenario.nurses[n]
+                                                .skills
+                                                .contains(&req.skill)
+                                        {
+                                            let nurse_id = &self.context.scenario.nurses[n].id;
+                                            let prev_ok = if d == 0 {
+                                                let hist = self.context.history.nurse_history.iter().find(|h| &h.nurse == nurse_id);
+                                                if let Some(h) = hist {
+                                                    if h.last_assigned_shift_type != "None" {
+                                                        !self.context.scenario.forbidden_shift_type_successions.iter().any(|r| r.preceding == h.last_assigned_shift_type && r.succeeding.contains(shift_name))
+                                                    } else {
+                                                        true
+                                                    }
+                                                } else {
+                                                    true
+                                                }
+                                            } else {
+                                                if let Some(prev_s) = self.get_assigned_shift(genome, n, d - 1) {
+                                                    let prev_name = &self.context.shift_types[prev_s];
+                                                    !self.context.scenario.forbidden_shift_type_successions.iter().any(|r| r.preceding == *prev_name && r.succeeding.contains(shift_name))
+                                                } else {
+                                                    true
+                                                }
+                                            };
+                                            if prev_ok {
+                                                self.set_assigned_shift(genome, n, d, Some(s));
+                                                if d + 1 < num_days {
+                                                    if let Some(next_s) = self.get_assigned_shift(genome, n, d + 1) {
+                                                        let next_name = &self.context.shift_types[next_s];
+                                                        if self.context.scenario.forbidden_shift_type_successions.iter().any(|r| r.preceding == *shift_name && r.succeeding.contains(next_name)) {
+                                                            self.set_assigned_shift(genome, n, d + 1, None);
+                                                        }
+                                                    }
+                                                }
+                                                assigned_count += 1;
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            if !any_deficit {
+                break;
+            }
+        }
+    }
+
+    /// Post-GA Memetic Polish via Simulated Annealing.
+    pub fn simulated_annealing(
+        &self,
+        genome: &mut InrcGenome,
+        time_budget_ms: u64,
+        rng: &mut StdRng,
+    ) -> InrcEvaluation {
+        let start = std::time::Instant::now();
+        let mut current_eval = self.evaluate(genome, &Default::default());
+        let mut best_genome = genome.clone();
+        let mut best_eval = current_eval.clone();
+
+        let num_nurses = self.context.num_nurses;
+        let num_days = self.context.num_days;
+        let num_shifts = self.context.shift_types.len();
+
+        let mut temp = 100.0f64;
+        let cool_rate = 0.9995f64;
+
+        while start.elapsed().as_millis() < time_budget_ms as u128 {
+            let move_type = rng.gen_range(0..4);
+            let mut candidate = genome.clone();
+
+            match move_type {
+                0 => {
+                    // Move 0: Reassign single shift
+                    let n = rng.gen_range(0..num_nurses);
+                    let d = rng.gen_range(0..num_days);
+                    let new_shift = if rng.gen_bool(0.3) {
+                        None
+                    } else {
+                        Some(rng.gen_range(0..num_shifts))
+                    };
+                    self.set_assigned_shift(&mut candidate, n, d, new_shift);
+                }
+                1 => {
+                    // Move 1: Swap two nurses on day d
+                    let n1 = rng.gen_range(0..num_nurses);
+                    let mut n2 = rng.gen_range(0..num_nurses);
+                    if n1 == n2 {
+                        n2 = (n1 + 1) % num_nurses;
+                    }
+                    let d = rng.gen_range(0..num_days);
+                    let s1 = self.get_assigned_shift(&candidate, n1, d);
+                    let s2 = self.get_assigned_shift(&candidate, n2, d);
+                    self.set_assigned_shift(&mut candidate, n1, d, s2);
+                    self.set_assigned_shift(&mut candidate, n2, d, s1);
+                }
+                2 => {
+                    // Move 2: Weekend block swap (Saturday & Sunday)
+                    let n1 = rng.gen_range(0..num_nurses);
+                    let mut n2 = rng.gen_range(0..num_nurses);
+                    if n1 == n2 {
+                        n2 = (n1 + 1) % num_nurses;
+                    }
+                    for d in 5..=6 {
+                        let s1 = self.get_assigned_shift(&candidate, n1, d);
+                        let s2 = self.get_assigned_shift(&candidate, n2, d);
+                        self.set_assigned_shift(&mut candidate, n1, d, s2);
+                        self.set_assigned_shift(&mut candidate, n2, d, s1);
+                    }
+                }
+                _ => {
+                    // Move 3: 2-day consecutive block swap
+                    let n1 = rng.gen_range(0..num_nurses);
+                    let mut n2 = rng.gen_range(0..num_nurses);
+                    if n1 == n2 {
+                        n2 = (n1 + 1) % num_nurses;
+                    }
+                    let d = rng.gen_range(0..num_days - 1);
+                    for offset in 0..2 {
+                        let day = d + offset;
+                        let s1 = self.get_assigned_shift(&candidate, n1, day);
+                        let s2 = self.get_assigned_shift(&candidate, n2, day);
+                        self.set_assigned_shift(&mut candidate, n1, day, s2);
+                        self.set_assigned_shift(&mut candidate, n2, day, s1);
+                    }
+                }
+            }
+
+            let cand_eval = self.evaluate(&candidate, &Default::default());
+
+            let current_hc = current_eval.hc_coverage
+                + current_eval.hc_skills
+                + current_eval.hc_one_shift_per_day
+                + current_eval.hc_forbidden_successions;
+            let cand_hc = cand_eval.hc_coverage
+                + cand_eval.hc_skills
+                + cand_eval.hc_one_shift_per_day
+                + cand_eval.hc_forbidden_successions;
+
+            let accept = if cand_hc < current_hc {
+                true
+            } else if cand_hc > current_hc {
+                false
+            } else {
+                let delta = cand_eval.soft_report.total_penalty as f64
+                    - current_eval.soft_report.total_penalty as f64;
+                if delta <= 0.0 {
+                    true
+                } else {
+                    rng.gen_bool((-delta / temp.max(1.0)).exp().min(1.0))
+                }
+            };
+
+            if accept {
+                *genome = candidate;
+                current_eval = cand_eval;
+
+                let best_hc = best_eval.hc_coverage
+                    + best_eval.hc_skills
+                    + best_eval.hc_one_shift_per_day
+                    + best_eval.hc_forbidden_successions;
+                let is_better = if current_hc < best_hc {
+                    true
+                } else if current_hc == best_hc {
+                    current_eval.soft_report.total_penalty
+                        < best_eval.soft_report.total_penalty
+                } else {
+                    false
+                };
+
+                if is_better {
+                    best_genome = genome.clone();
+                    best_eval = current_eval.clone();
+                }
+            }
+
+            temp *= cool_rate;
+            if temp < 0.1 {
+                temp = 100.0;
+            }
+        }
+
+        *genome = best_genome;
+        best_eval
     }
 }
 
@@ -82,7 +512,11 @@ impl FitnessEvaluator<InrcGenome> for InrcOptimizer {
                 .find(|h| &h.nurse == nurse_id);
 
             let mut previous_shift_type = if let Some(h) = hist {
-                h.last_assigned_shift_type.clone()
+                if h.number_of_consecutive_days_off > 0 {
+                    "None".to_string()
+                } else {
+                    h.last_assigned_shift_type.clone()
+                }
             } else {
                 "None".to_string()
             };
@@ -792,7 +1226,7 @@ impl FitnessEvaluator<InrcGenome> for InrcOptimizer {
         let total_hc_penalty =
             hc_coverage + hc_skills + hc_one_shift_per_day + hc_forbidden_successions;
 
-        let base_fitness = 100_000.0;
+        let base_fitness = 10_000_000.0;
         let fitness = base_fitness - total_hc_penalty as f64 - soft_report.total_penalty as f64;
 
         // Build the platform EvaluationResult (vector of objectives)

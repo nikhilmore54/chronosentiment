@@ -96,6 +96,14 @@ pub fn save_replay(assignments_path: &PathBuf, out_json: &PathBuf) -> Result<(),
 pub fn run_optimization(context: &std::sync::Arc<crate::optimization::ScheduleContext>, config: coralys_moga::config::EvolutionConfig) -> coralys_moga::engine::GaResult<crate::optimization::ScheduleEvaluation> {
     use crate::optimization::ScheduleOptimizer;
     use coralys_moga::engine::EvolutionEngine;
+
+    // Synchronize observatory population size with configuration
+    context
+        .observatory
+        .lock()
+        .unwrap()
+        .start_run(config.population_size);
+
     // Create the optimizer which implements required traits.
     let optimizer = ScheduleOptimizer::new(context.clone());
     // Build the evolution engine with the optimizer as evaluator, mutator, crossover, and factory.

@@ -111,13 +111,20 @@ use rand::rngs::StdRng;
 
 impl GenomeFactory<InrcGenome> for InrcOptimizer {
     fn create(&self, rng: &mut StdRng) -> InrcGenome {
-        let size = self.context.num_nurses * self.context.num_days * self.context.shift_types.len();
+        let num_nurses = self.context.num_nurses;
+        let num_days = self.context.num_days;
+        let num_shifts = self.context.shift_types.len();
+        let size = num_nurses * num_days * num_shifts;
         let mut bits = vec![false; size];
 
-        // Initialize somewhat sparsely, around the expected density (150-200 shifts / 840 total)
-        for i in 0..size {
-            if rng.gen_bool(0.22) {
-                bits[i] = true;
+        // Initialize with at most one shift per nurse per day (~70% work density)
+        for n in 0..num_nurses {
+            for d in 0..num_days {
+                if rng.gen_bool(0.70) {
+                    let s = rng.gen_range(0..num_shifts);
+                    let idx = n * (num_days * num_shifts) + d * num_shifts + s;
+                    bits[idx] = true;
+                }
             }
         }
 
@@ -127,6 +134,29 @@ impl GenomeFactory<InrcGenome> for InrcOptimizer {
 
 impl MutationOperator<InrcGenome> for InrcOptimizer {
     fn mutate(&self, genome: &mut InrcGenome, rng: &mut StdRng) {
+        let num_nurses = self.context.num_nurses;
+        let num_days = self.context.num_days;
+        let num_shifts = self.context.shift_types.len();
+
+        // 1. Domain-aware shift reassignment: pick a nurse and day, reassign to another shift or off
+        let moves = rng.gen_range(2..=5);
+        for _ in 0..moves {
+            let n = rng.gen_range(0..num_nurses);
+            let d = rng.gen_range(0..num_days);
+
+            for s in 0..num_shifts {
+                let idx = n * (num_days * num_shifts) + d * num_shifts + s;
+                genome.bits[idx] = false;
+            }
+
+            if rng.gen_bool(0.70) {
+                let s = rng.gen_range(0..num_shifts);
+                let idx = n * (num_days * num_shifts) + d * num_shifts + s;
+                genome.bits[idx] = true;
+            }
+        }
+
+        // 2. Low-rate point bit-flips for exploration
         let rate = 1.0 / (genome.bits.len() as f64).max(1.0);
         for i in 0..genome.bits.len() {
             if rng.gen_bool(rate) {

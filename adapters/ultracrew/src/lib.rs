@@ -99,6 +99,12 @@ pub mod helpers {
         context: Arc<ScheduleContext>,
         config: EvolutionConfig,
     ) -> GaResult<ScheduleEvaluation> {
+        context
+            .observatory
+            .lock()
+            .unwrap()
+            .start_run(config.population_size);
+
         let mutator = ScheduleOptimizer::new(context.clone());
         let crossover = ScheduleOptimizer::new(context.clone());
         let evaluator = ScheduleOptimizer::new(context.clone());

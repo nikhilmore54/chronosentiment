@@ -1,0 +1,121 @@
+use std::path::PathBuf;
+use coralys_core::{DecisionPlugin, DecisionProposal, ReasoningEngine};
+use ultracrew::inrc::{
+    get_inrc_bks_entry, CoralysInrcEngine, InrcAction, InrcDecisionPlugin, InrcOptimizationConfig,
+};
+
+#[test]
+fn test_inrc_decision_plugin_lifecycle() {
+    let base_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        .join("tests")
+        .join("data")
+        .join("n030w4");
+
+    let scenario_path = base_dir.join("Sc-n030w4.json");
+    let week_data_path = base_dir.join("WD-n030w4-0.json");
+    let history_path = base_dir.join("H0-n030w4-0.json");
+
+    // 1. Initialize plugin
+    let mut plugin = InrcDecisionPlugin::from_files(
+        &scenario_path,
+        &week_data_path,
+        &history_path,
+        0,
+    )
+    .expect("Plugin initialization failed");
+
+    // 2. Query initial state
+    let state = plugin.current_state();
+    assert_eq!(state.scenario_id, "n030w4");
+    assert_eq!(state.week_index, 0);
+    assert_eq!(state.num_nurses, 30);
+    assert_eq!(state.num_days, 7);
+    assert_eq!(state.num_shifts, 4);
+
+    // Initial all-false genome has coverage violations
+    let initial_eval = plugin.evaluate(&state);
+    assert!(
+        !initial_eval.hard_constraint_violations.is_empty(),
+        "Empty roster must have coverage violations"
+    );
+
+    // 3. Test InrcAction::AssignShift simulation
+    let action_assign = InrcAction::AssignShift {
+        nurse_idx: 0,
+        day: 0,
+        shift_idx: 1, // Day shift
+        assigned: true,
+    };
+    let proposal_assign = DecisionProposal {
+        priority: 1.0,
+        estimated_gain: 0.0,
+        affected_resources: vec!["HN_0".to_string()],
+        violations_resolved: vec![],
+        confidence: 1.0,
+        payload: serde_json::to_value(&action_assign).unwrap(),
+    };
+
+    let simulated_state = plugin
+        .simulate(&state, &proposal_assign)
+        .expect("Simulate assign failed");
+    let target_idx = 0 * (7 * 4) + 0 * 4 + 1;
+    assert!(simulated_state.genome_bits[target_idx]);
+
+    // 4. Test InrcAction::SwapNursesDay
+    let action_swap = InrcAction::SwapNursesDay {
+        nurse_a: 0,
+        nurse_b: 1,
+        day: 0,
+    };
+    let proposal_swap = DecisionProposal {
+        priority: 1.0,
+        estimated_gain: 0.0,
+        affected_resources: vec!["HN_0".to_string(), "HN_1".to_string()],
+        violations_resolved: vec![],
+        confidence: 1.0,
+        payload: serde_json::to_value(&action_swap).unwrap(),
+    };
+
+    let swapped_state = plugin
+        .simulate(&simulated_state, &proposal_swap)
+        .expect("Simulate swap failed");
+    let swapped_target_idx = 1 * (7 * 4) + 0 * 4 + 1;
+    assert!(swapped_state.genome_bits[swapped_target_idx]);
+    assert!(!swapped_state.genome_bits[target_idx]);
+
+    // 5. Test execute mutating current state
+    plugin.execute(&proposal_assign);
+    assert!(plugin.current_state().genome_bits[target_idx]);
+
+    // 6. Test ReasoningEngine solving
+    let engine = CoralysInrcEngine;
+    let config = InrcOptimizationConfig {
+        population_size: 200,
+        generation_limit: 100,
+        seed: Some(42),
+    };
+
+    let proposals = engine.solve(&mut plugin, &config).expect("Solving failed");
+    assert!(!proposals.is_empty());
+
+    let best_proposal = &proposals[0];
+    let next_state = plugin
+        .simulate(&plugin.current_state(), best_proposal)
+        .expect("Simulation of engine proposal failed");
+
+    let eval = plugin.evaluate(&next_state);
+    println!(
+        "Engine Evaluation: hard violations = {}, soft penalty = {}",
+        eval.hard_constraint_violations.len(),
+        next_state.total_soft_penalty
+    );
+
+    // 7. Test BKS lookup and gap calculation
+    let bks_entry = get_inrc_bks_entry("n030w4_1_6-2-9-1").expect("BKS entry not found");
+    assert_eq!(bks_entry.best_known_ub, 1670);
+    assert_eq!(bks_entry.num_nurses, 30);
+    assert_eq!(bks_entry.num_weeks, 4);
+
+    let gap = next_state.optimality_gap(bks_entry.best_known_ub);
+    println!("Optimality gap against BKS: {:.2}%", gap);
+}

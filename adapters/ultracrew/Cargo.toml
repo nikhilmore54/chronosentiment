@@ -16,6 +16,10 @@ path = "src/bin/ultraroster_p1_demo.rs"
 name = "ultraroster_p2_demo"
 path = "src/bin/ultraroster_p2_demo.rs"
 
+[[bin]]
+name = "inrc_bks_runner"
+path = "src/bin/inrc_bks_runner.rs"
+
 [dependencies]
 coralys-ecology = { path = "../../coralys-ecology" }
 coralys-moga = { path = "../../coralys-moga" }
@@ -32,6 +36,7 @@ anyhow = "1.0"
 toml = "0.8"
 serde_yaml = "0.9"
 uuid = { version = "1.0", features = ["v4"] }
+chrono = { version = "0.4", features = ["serde"] }
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter", "fmt"] }
 rayon = "1.10"
