@@ -9,3 +9,4 @@ pub mod tracker;
 pub mod models;
 pub mod persistence;
 pub mod device_session;
+pub mod gerad_service;

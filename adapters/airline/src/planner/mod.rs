@@ -18,6 +18,12 @@
 //! - **Fast feedback**: incremental and what-if analysis avoid re-running all
 //!   rules against the entire roster when only a small change has been made.
 
+pub mod decision;
 pub mod incremental;
 pub mod summary;
 pub mod whatif;
+
+pub use decision::{
+    AirlineAction, AirlineDecisionAdapter, AirlineDecisionPlugin, AirlineState,
+    CoralysAirlineEngine, IropsRepairRequest,
+};

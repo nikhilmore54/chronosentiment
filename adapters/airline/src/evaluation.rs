@@ -52,7 +52,7 @@ pub fn evaluate_roster(roster: &Roster, checker: &LegalityChecker) -> LegalityRe
     LegalityReport { legal, rules }
 }
 
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
 
 /// Difference between two legality evaluations.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]

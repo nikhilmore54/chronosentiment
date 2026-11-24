@@ -53,14 +53,22 @@ pub mod resilience;
 // path.
 
 pub use domain::{
-    AircraftType, AirportCode, CrewId, CrewMember, CrewRole, Duty, DutyError, DutyId, FlightLeg,
-    FlightLegId, FlightNumber, Pairing, PairingError, PairingId, PlanningPeriod, Qualification,
-    Roster, RosterError, RosterId, Rotation, RotationError, RotationId,
+    AircraftType, AirportCode, CarryInLock, CrewId, CrewMember, CrewRole, Duty, DutyError, DutyId,
+    FlightLeg, FlightLegId, FlightNumber, OutstationTour, Pairing, PairingError, PairingId,
+    PlanningPeriod, Qualification, RolloverDecision, Roster, RosterError, RosterId, Rotation,
+    RotationError, RotationId,
 };
 
 pub use legality::{
     EntityRef, LegalityChecker, LegalityRule, LegalityViolation, ViolationSeverity,
 };
 
-pub use optimization::search::evolutionary::{EvolutionaryConfig, EvolutionaryScheduler};
+pub use planner::decision::{
+    AirlineAction, AirlineDecisionAdapter, AirlineDecisionPlugin, AirlineState,
+    CoralysAirlineEngine, IropsRepairRequest,
+};
+
+pub use optimization::search::evolutionary::{
+    EvolutionaryConfig, EvolutionaryScheduler, OptimizationMode, SchedulingProfile,
+};
 pub use optimization::search::greedy::GreedyScheduler;

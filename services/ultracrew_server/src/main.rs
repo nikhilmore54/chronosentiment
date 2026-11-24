@@ -21,6 +21,11 @@ use ultracrew::inrc::validator::validate_schedule;
 use ultracrew_server::device_session::{
     clear_device_session_handler, get_device_session_handler, save_device_session_handler,
 };
+use ultracrew_server::gerad_service::{
+    get_benchmark_catalog, run_gerad_coralys_optimization, run_gerad_irops_recovery,
+    AirlineIropsRequest, AirlineIropsResponse, AirlineOptimizeRequest,
+    AirlineOptimizeResponse, BenchmarkInstanceMeta,
+};
 use ultracrew_server::models::{DecisionCase, DecisionLog, ScheduleVersion};
 use ultracrew_server::persistence::{delete_item, load_collection, save_item};
 use ultracrew_server::simulation::{
@@ -2430,6 +2435,26 @@ async fn get_nurses_handler(State(state): State<Arc<Mutex<AppState>>>) -> impl I
     }
 }
 
+// ─── GERAD Coralys v2.0 Airline Handlers ──────────────────────────────────────
+
+async fn gerad_benchmarks_handler() -> impl IntoResponse {
+    (StatusCode::OK, Json(get_benchmark_catalog())).into_response()
+}
+
+async fn gerad_optimize_handler(
+    Json(req): Json<AirlineOptimizeRequest>,
+) -> impl IntoResponse {
+    let resp = run_gerad_coralys_optimization(req);
+    (StatusCode::OK, Json(resp)).into_response()
+}
+
+async fn gerad_irops_handler(
+    Json(req): Json<AirlineIropsRequest>,
+) -> impl IntoResponse {
+    let resp = run_gerad_irops_recovery(req);
+    (StatusCode::OK, Json(resp)).into_response()
+}
+
 #[tokio::main]
 async fn main() {
     let cors = CorsLayer::new()
@@ -2512,6 +2537,10 @@ async fn main() {
         .route("/api/load-scenario", post(load_scenario_handler))
         // INRC nurse rostering compliance endpoint
         .route("/api/inrc/compliance", post(inrc_compliance_handler))
+        // GERAD Coralys v2.0 Airline Endpoints
+        .route("/api/airline/benchmarks", get(gerad_benchmarks_handler))
+        .route("/api/airline/optimize", post(gerad_optimize_handler))
+        .route("/api/airline/irops/repair", post(gerad_irops_handler))
         // Device session state persistence endpoints
         .route(
             "/api/session/state",

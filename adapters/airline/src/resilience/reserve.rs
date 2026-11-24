@@ -5,6 +5,7 @@
 //! strategy, delegating feasibility checks to the Layer 2 legality engine.
 
 use crate::domain::crew::{CrewId, CrewMember};
+use crate::domain::pairing::Pairing;
 use crate::domain::roster::Roster;
 use crate::domain::rotation::Rotation;
 use crate::legality::LegalityChecker;
@@ -24,12 +25,20 @@ impl ReservePool {
         }
     }
 
+    pub fn from_members(members: Vec<CrewMember>) -> Self {
+        Self { members }
+    }
+
     pub fn add(&mut self, member: CrewMember) {
         self.members.push(member);
     }
 
     pub fn members(&self) -> &[CrewMember] {
         &self.members
+    }
+
+    pub fn get_by_base(&self, base: &crate::domain::flight::AirportCode) -> Vec<&CrewMember> {
+        self.members.iter().filter(|m| &m.base == base).collect()
     }
 
     pub fn len(&self) -> usize {
@@ -139,6 +148,126 @@ impl<'a> ReserveAllocator<'a> {
             assignments,
             uncovered_rotations: uncovered,
         }
+    }
+
+    /// Match standby reserve crew to open/uncovered pairings (e.g. during the end-of-month push).
+    pub fn allocate_open_pairings(
+        &self,
+        roster: &Roster,
+        open_pairings: &[Pairing],
+        pool: &ReservePool,
+    ) -> (Roster, Vec<ReserveAssignment>, Vec<Pairing>) {
+        let mut rotations: Vec<Rotation> = roster.rotations().cloned().collect();
+        let mut assignments: Vec<ReserveAssignment> = Vec::new();
+        let mut still_uncovered: Vec<Pairing> = Vec::new();
+
+        for pairing in open_pairings {
+            let mut covered = false;
+
+            // Find matching reserve crew members at the pairing's base
+            for reserve in pool.members() {
+                if reserve.base != pairing.base {
+                    continue;
+                }
+
+                // Look for an existing rotation for this reserve crew or create one
+                if let Some((rot_idx, rot)) = rotations
+                    .iter_mut()
+                    .enumerate()
+                    .find(|(_, r)| r.crew_id == reserve.id)
+                {
+                    // Check chronological overlap and rest with existing pairings
+                    let p_start = pairing.start();
+                    let p_end = pairing.end();
+                    let overlaps = rot.pairings().iter().any(|p| {
+                        !(p_end <= p.start() - chrono::Duration::minutes(720)
+                            || p_start >= p.end() + chrono::Duration::minutes(720))
+                    });
+
+                    if !overlaps {
+                        let mut new_pairings = rot.pairings().to_vec();
+                        new_pairings.push(pairing.clone());
+                        new_pairings.sort_by_key(|p| p.start());
+
+                        // Verify monthly 85h flying cap
+                        let total_minutes: i64 = new_pairings
+                            .iter()
+                            .map(|p| p.total_block_time().num_minutes())
+                            .sum();
+
+                        if total_minutes <= 85 * 60 {
+                            if let Ok(new_rot) =
+                                Rotation::new(rot.id.clone(), reserve.id.clone(), new_pairings)
+                            {
+                                // Legality check
+                                let temp_roster = Roster::with_crew(
+                                    roster.id.clone(),
+                                    roster.period.clone(),
+                                    roster.legs().cloned().collect(),
+                                    vec![new_rot.clone()],
+                                    vec![reserve.clone()],
+                                );
+
+                                if let Ok(ref tr) = temp_roster {
+                                    if !self.checker.check(tr).iter().any(|v| v.is_error()) {
+                                        *rot = new_rot;
+                                        assignments.push(ReserveAssignment {
+                                            crew_id: reserve.id.clone(),
+                                            rotation_index: rot_idx,
+                                        });
+                                        covered = true;
+                                        break;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                } else {
+                    // Reserve crew has no rotation yet; create a fresh rotation for them
+                    if let Ok(new_rot) = Rotation::new(
+                        crate::domain::rotation::RotationId::new(format!("RES_{}", reserve.id)),
+                        reserve.id.clone(),
+                        vec![pairing.clone()],
+                    ) {
+                        let temp_roster = Roster::with_crew(
+                            roster.id.clone(),
+                            roster.period.clone(),
+                            roster.legs().cloned().collect(),
+                            vec![new_rot.clone()],
+                            vec![reserve.clone()],
+                        );
+
+                        if let Ok(ref tr) = temp_roster {
+                            if !self.checker.check(tr).iter().any(|v| v.is_error()) {
+                                let new_rot_idx = rotations.len();
+                                rotations.push(new_rot);
+                                assignments.push(ReserveAssignment {
+                                    crew_id: reserve.id.clone(),
+                                    rotation_index: new_rot_idx,
+                                });
+                                covered = true;
+                                break;
+                            }
+                        }
+                    }
+                }
+            }
+
+            if !covered {
+                still_uncovered.push(pairing.clone());
+            }
+        }
+
+        let new_roster = Roster::with_crew(
+            roster.id.clone(),
+            roster.period.clone(),
+            roster.legs().cloned().collect(),
+            rotations,
+            roster.crew_members().cloned().collect(),
+        )
+        .unwrap_or_else(|_| roster.clone());
+
+        (new_roster, assignments, still_uncovered)
     }
 }
 

@@ -1,7 +1,6 @@
 use crate::domain::duty::{Duty, DutyId};
 use crate::domain::flight::{AirportCode, FlightLeg};
 use crate::domain::pairing::{Pairing, PairingId};
-use chrono::Duration;
 
 pub struct PairingGenerator {
     pub min_sit_mins: i64,
@@ -194,7 +193,7 @@ impl PairingGenerator {
 mod tests {
     use super::*;
     use crate::domain::flight::{AircraftType, FlightLegId, FlightNumber};
-    use chrono::{TimeZone, Utc};
+    use chrono::{Duration, TimeZone, Utc};
 
     fn make_leg(id: &str, origin: &str, dest: &str, dep_h: u32, arr_h: u32) -> FlightLeg {
         let base_time = Utc.with_ymd_and_hms(2026, 7, 1, 0, 0, 0).unwrap();

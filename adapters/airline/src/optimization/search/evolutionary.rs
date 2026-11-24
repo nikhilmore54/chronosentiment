@@ -26,10 +26,35 @@ use crate::optimization::search::greedy::GreedyScheduler;
 use rand::rngs::StdRng;
 use rand::seq::SliceRandom;
 use rand::{Rng, SeedableRng};
+use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
+/// Operational optimization modes supported by Coralys.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub enum OptimizationMode {
+    /// Mode A: Equity-Primary (minimizes flying hours & leg variance across crew).
+    ModeAEquity,
+    /// Mode B: Preference-Aware (maximizes pilot bids, vacations, and seniority satisfaction).
+    ModeBPreference,
+    /// Mode C: Deadhead / Open-Flight Protection (uses cross-base repositioning to eliminate uncrewed flights).
+    ModeCCrossBaseDeadhead,
+}
+
+/// Scheduling profile delineating the exact problem formulation and operational scope.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub enum SchedulingProfile {
+    /// Standalone 31-Day Benchmark Profile (Kasirzadeh et al., 2017 & Racette et al., 2025/2026).
+    /// Hard 85.00h monthly cap evaluated strictly within the 31-day horizon with 0 trailing hours.
+    /// Default profile for 100% apples-to-apples literature comparison.
+    Standalone31DayBenchmark,
+    /// Production Airline Operations Profile.
+    /// Incorporates month-end carry-over accounting, multi-trip outstation tours,
+    /// reserve pilot designations, and frozen-prefix IROPS recovery.
+    ProductionAirlineOperations,
+}
+
 /// Configuration parameters for the evolutionary scheduler.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct EvolutionaryConfig {
     /// Population size (number of candidate schedules maintained).
     pub pop_size: usize,
@@ -41,6 +66,19 @@ pub struct EvolutionaryConfig {
     pub tournament_k: usize,
     /// Random seed for deterministic reproducibility.
     pub seed: u64,
+    /// Penalty weight for unassigned pairings, prioritizing zero uncrewed flights.
+    pub unassigned_penalty: f64,
+    /// Operational optimization mode.
+    pub mode: OptimizationMode,
+    /// Scheduling profile (default: Standalone31DayBenchmark).
+    pub profile: SchedulingProfile,
+    /// Percentage of crew designated as Standby Reserves (e.g. 0.05 to 0.10).
+    pub reserve_ratio: f64,
+    /// Optional mid-month flying hour pacing cap (e.g., 75.0h) before day 25,
+    /// preserving fresh capacity for the end-of-month window.
+    pub mid_month_pacing_cap: Option<f64>,
+    /// Cutoff day of the month for pacing (default: 25).
+    pub pacing_cutoff_day: Option<u32>,
 }
 
 impl Default for EvolutionaryConfig {
@@ -51,6 +89,31 @@ impl Default for EvolutionaryConfig {
             crossover_prob: 0.80,
             tournament_k: 3,
             seed: 42,
+            unassigned_penalty: 50_000.0,
+            mode: OptimizationMode::ModeAEquity,
+            profile: SchedulingProfile::Standalone31DayBenchmark,
+            reserve_ratio: 0.0,
+            mid_month_pacing_cap: None,
+            pacing_cutoff_day: Some(25),
+        }
+    }
+}
+
+impl EvolutionaryConfig {
+    /// Standalone 31-day benchmark profile (default) for 100% apples-to-apples literature comparison.
+    /// Evaluates the hard 85.00h ceiling strictly within 31 days with 0 trailing rollover hours.
+    pub fn standalone_benchmark() -> Self {
+        Self::default()
+    }
+
+    /// Production airline operations profile with month-end rollover accounting, reserve sizing, and outstation tours.
+    pub fn production_airline() -> Self {
+        Self {
+            profile: SchedulingProfile::ProductionAirlineOperations,
+            reserve_ratio: 0.08,
+            mid_month_pacing_cap: Some(75.0),
+            pacing_cutoff_day: Some(25),
+            ..Self::default()
         }
     }
 }
@@ -289,16 +352,123 @@ impl<'a> EvolutionaryScheduler<'a> {
         }
 
         if overlaps > 0 || empty_rotations > 0 {
-            return 100_000.0 + (overlaps as f64) * 1_000.0 + (empty_rotations as f64) * 5_000.0;
+            return 1_000_000.0
+                + (overlaps as f64) * 10_000.0
+                + (empty_rotations as f64) * 50_000.0
+                + (unassigned as f64) * self.config.unassigned_penalty;
+        }
+
+        let mut pacing_penalty = 0.0;
+        if let Some(cap) = self.config.mid_month_pacing_cap {
+            let cutoff = self.config.pacing_cutoff_day.unwrap_or(25);
+            for bucket in &buckets {
+                let early_minutes: i64 = bucket
+                    .iter()
+                    .filter(|p| {
+                        use chrono::Datelike;
+                        p.start().day() <= cutoff
+                    })
+                    .map(|p| p.total_block_time().num_minutes())
+                    .sum();
+                let early_hours = early_minutes as f64 / 60.0;
+                if early_hours > cap {
+                    pacing_penalty += (early_hours - cap) * 500.0;
+                }
+            }
         }
 
         match self.decode_genome(genome, pairings, base_rotations, period) {
             Some(roster) => {
                 let cost = self.evaluate_roster_cost(&roster);
-                cost + (unassigned as f64) * 0.001
+                cost + (unassigned as f64) * self.config.unassigned_penalty + pacing_penalty
             }
             None => f64::INFINITY,
         }
+    }
+
+    /// Assign pairings to rotations and then perform duty rebundling on remaining unassigned pairings
+    /// to maximize flight coverage.
+    pub fn assign_with_duty_rescue(
+        &self,
+        roster: &Roster,
+        pairings: Vec<Pairing>,
+        metrics: &mut OptimizationMetrics,
+    ) -> (Roster, Vec<Pairing>) {
+        let assigned_roster = self.assign(roster, pairings.clone(), metrics);
+
+        let assigned_ids: std::collections::HashSet<PairingId> = assigned_roster
+            .rotations()
+            .flat_map(|r| r.pairings())
+            .map(|p| p.id.clone())
+            .collect();
+
+        let unassigned: Vec<Pairing> = pairings
+            .into_iter()
+            .filter(|p| !assigned_ids.contains(&p.id))
+            .collect();
+
+        if unassigned.is_empty() {
+            return (assigned_roster, Vec::new());
+        }
+
+        // Decompose unassigned pairings at base visits
+        let mut decomposed_subs = Vec::new();
+        for p in &unassigned {
+            let subs = p.decompose_at_base_visits();
+            decomposed_subs.extend(subs);
+        }
+
+        // Attempt greedy second-pass rescue for decomposed sub-pairings
+        let mut final_rotations: Vec<Rotation> = assigned_roster.rotations().cloned().collect();
+        let mut still_unassigned = Vec::new();
+
+        for sub in decomposed_subs {
+            let mut placed = false;
+            for rot in final_rotations.iter_mut() {
+                let sub_start = sub.start();
+                let sub_end = sub.end();
+                let overlaps = rot.pairings().iter().any(|p| {
+                    !(sub_end <= p.start() - chrono::Duration::minutes(720)
+                        || sub_start >= p.end() + chrono::Duration::minutes(720))
+                });
+
+                if !overlaps {
+                    let mut candidate_pairings = rot.pairings().to_vec();
+                    candidate_pairings.push(sub.clone());
+                    candidate_pairings.sort_by_key(|p| p.start());
+
+                    let total_minutes: i64 = candidate_pairings
+                        .iter()
+                        .map(|p| p.total_block_time().num_minutes())
+                        .sum();
+
+                    if total_minutes <= 85 * 60 {
+                        if let Ok(new_rot) =
+                            Rotation::new(rot.id.clone(), rot.crew_id.clone(), candidate_pairings)
+                        {
+                            *rot = new_rot;
+                            placed = true;
+                            metrics.record_improvement();
+                            break;
+                        }
+                    }
+                }
+            }
+            if !placed {
+                still_unassigned.push(sub);
+            }
+        }
+
+        let rescued_roster = Roster::with_crew(
+            assigned_roster.id.clone(),
+            assigned_roster.period.clone(),
+            assigned_roster.legs().cloned().collect(),
+            final_rotations,
+            assigned_roster.crew_members().cloned().collect(),
+        )
+        .unwrap_or(assigned_roster);
+
+        (rescued_roster, still_unassigned)
     }
 
     fn decode_genome(

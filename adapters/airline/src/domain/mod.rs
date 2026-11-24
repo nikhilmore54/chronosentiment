@@ -51,7 +51,7 @@ pub use crew::{CrewId, CrewMember, CrewRole, Qualification};
 // RosterError now has DuplicateCrewMember variant — re-export is unchanged
 pub use duty::{Duty, DutyError, DutyId};
 pub use flight::{AircraftType, AirportCode, FlightLeg, FlightLegId, FlightNumber};
-pub use pairing::{Pairing, PairingError, PairingId};
+pub use pairing::{CarryInLock, OutstationTour, Pairing, PairingError, PairingId, RolloverDecision};
 pub use roster::{PlanningPeriod, Roster, RosterError, RosterId};
 pub use roster_metrics::{BaseCreditFloor, DutyRecord, RosterMetrics, aggregate_roster_credits};
 pub use rotation::{Rotation, RotationError, RotationId};
