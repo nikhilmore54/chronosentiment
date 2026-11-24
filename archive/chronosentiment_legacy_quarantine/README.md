@@ -1,4 +1,6 @@
-# Quarantine (not compiled)
+# Quarantine (not compiled) — CLEAN-003-C archive
+
+**Moved from** `adapters/chronosentiment/legacy/quarantine/` on 2026-11-24.
 
 Preserved sources that must not appear on the product or `legacy-lake` compile
 graph.

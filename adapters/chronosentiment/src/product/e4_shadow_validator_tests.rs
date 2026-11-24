@@ -63,7 +63,11 @@ fn test_no_trigger_shadow_equals_baseline() {
     
     // Flush happens when prod exits and both shadows exit.
     assert_eq!(val.active_positions.len(), 0); // flushed
-    let content = fs::read_to_string("live_capture/ledger/shadow_ledger_e4_050_20260914.jsonl").unwrap_or_default();
+    // CLEAN-003-B: Sep-2026 ledger JSONL archived; fixture kept for unit tests.
+    let content = fs::read_to_string(
+        "tests/fixtures/e4_shadow/shadow_ledger_e4_050_20260914.jsonl",
+    )
+    .unwrap_or_default();
     assert!(content.contains(r#""data_integrity":"COMPLETE""#));
 }
 
@@ -143,6 +147,10 @@ fn test_reconciliation_failure() {
     
     assert_eq!(val.active_positions.len(), 0);
     // It should have flushed with RECONCILIATION_FAILURE.
-    let content = fs::read_to_string("live_capture/ledger/shadow_ledger_e4_050_20260914.jsonl").unwrap_or_default();
+    // CLEAN-003-B: Sep-2026 ledger JSONL archived; fixture kept for unit tests.
+    let content = fs::read_to_string(
+        "tests/fixtures/e4_shadow/shadow_ledger_e4_050_20260914.jsonl",
+    )
+    .unwrap_or_default();
     assert!(content.contains(r#""data_integrity":"RECONCILIATION_FAILURE""#));
 }

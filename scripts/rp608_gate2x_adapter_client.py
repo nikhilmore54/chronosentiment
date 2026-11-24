@@ -52,8 +52,8 @@ def resolve_decide_bin() -> Optional[str]:
             candidates.append(env)
     # Prefer explicit aarch64 stage / home bin before any stale unsuffixed copy.
     for rel in (
-        "adapters/chronosentiment/bin/rp608_position_decide.aarch64-linux",
-        "adapters/chronosentiment/bin/rp608_position_decide",
+        "artifacts/deploy/chronosentiment/rp608_position_decide.aarch64-linux",
+        "artifacts/deploy/chronosentiment/rp608_position_decide",
         "adapters/chronosentiment/target/aarch64-unknown-linux-gnu/release/rp608_position_decide",
         "adapters/chronosentiment/target/release/rp608_position_decide",
         "adapters/chronosentiment/target/debug/rp608_position_decide",

@@ -132,14 +132,14 @@ cd adapters/chronosentiment
 cargo zigbuild -p chronosentiment_adapter --bin rp608_position_decide --release \
   --target aarch64-unknown-linux-gnu
 # staged copy:
-#   adapters/chronosentiment/bin/rp608_position_decide.aarch64-linux
+#   artifacts/deploy/chronosentiment/rp608_position_decide.aarch64-linux
 ```
 
 On Pi:
 
 ```bash
 mkdir -p ~/bin
-cp adapters/chronosentiment/bin/rp608_position_decide.aarch64-linux ~/bin/rp608_position_decide
+cp artifacts/deploy/chronosentiment/rp608_position_decide.aarch64-linux ~/bin/rp608_position_decide
 chmod +x ~/bin/rp608_position_decide
 export RP608_POSITION_DECIDE_BIN=$HOME/bin/rp608_position_decide
 # smoke:

@@ -25,8 +25,8 @@ Environment=RP608_NSE_ENTRY_PATH=TICK_PATH
 # Adapter-side Coralys prior+preopen+phase gate (crates frozen; OF ±0.30 untouched).
 Environment=RP608_NSE_CORALYS_INPUT_GATE=1
 # Same plan-lifecycle client as crypto; fail-closed when bin/loop unavailable.
-Environment=RP608_POSITION_DECIDE_BIN=/home/ultraspeed/ChronoSentiment_MEGA_FINAL/adapters/chronosentiment/bin/rp608_position_decide.aarch64-linux
-Environment=RP608_GATE2X_MANAGE_BIN=/home/ultraspeed/ChronoSentiment_MEGA_FINAL/adapters/chronosentiment/bin/rp608_position_decide.aarch64-linux
+Environment=RP608_POSITION_DECIDE_BIN=/home/ultraspeed/ChronoSentiment_MEGA_FINAL/artifacts/deploy/chronosentiment/rp608_position_decide.aarch64-linux
+Environment=RP608_GATE2X_MANAGE_BIN=/home/ultraspeed/ChronoSentiment_MEGA_FINAL/artifacts/deploy/chronosentiment/rp608_position_decide.aarch64-linux
 Environment=RP608_PLAN_LIFECYCLE=1
 Environment=RP608_PLAN_LIFECYCLE_REQUIRE_RUST=1
 

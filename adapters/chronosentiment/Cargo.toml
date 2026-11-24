@@ -335,3 +335,252 @@ name = "rp608_regime_breakout_tests"
 path = "research/tests/rp608_regime_breakout_tests.rs"
 required-features = ["research"]
 
+# ---------------------------------------------------------------------------
+# CLEAN-003-D — CS-P-006 ecology / heritage / sqlx gated behind research
+# Default cargo test keeps discipline + product Gate2X/NSE/TIME signal.
+# ---------------------------------------------------------------------------
+[[test]]
+name = "assessment_enrichment_tests"
+path = "tests/assessment_enrichment_tests.rs"
+required-features = ["research"]
+
+[[test]]
+name = "csp006_snapshot_tests"
+path = "tests/csp006_snapshot_tests.rs"
+required-features = ["research"]
+
+[[test]]
+name = "csp006b_protocol_tests"
+path = "tests/csp006b_protocol_tests.rs"
+required-features = ["research"]
+
+[[test]]
+name = "csp006c2_gap_review_tests"
+path = "tests/csp006c2_gap_review_tests.rs"
+required-features = ["research"]
+
+[[test]]
+name = "csp006c2d_decision_value_tests"
+path = "tests/csp006c2d_decision_value_tests.rs"
+required-features = ["research"]
+
+[[test]]
+name = "csp006c2o_observability_tests"
+path = "tests/csp006c2o_observability_tests.rs"
+required-features = ["research"]
+
+[[test]]
+name = "csp006c2p_population_ecology_tests"
+path = "tests/csp006c2p_population_ecology_tests.rs"
+required-features = ["research"]
+
+[[test]]
+name = "csp006c2r_recommendation_outcome_tests"
+path = "tests/csp006c2r_recommendation_outcome_tests.rs"
+required-features = ["research"]
+
+[[test]]
+name = "csp006c2s_selection_review_tests"
+path = "tests/csp006c2s_selection_review_tests.rs"
+required-features = ["research"]
+
+[[test]]
+name = "csp006c3_protocol_tests"
+path = "tests/csp006c3_protocol_tests.rs"
+required-features = ["research"]
+
+[[test]]
+name = "csp006c3c_comparison_tests"
+path = "tests/csp006c3c_comparison_tests.rs"
+required-features = ["research"]
+
+[[test]]
+name = "csp006c3d_rule_ecology_tests"
+path = "tests/csp006c3d_rule_ecology_tests.rs"
+required-features = ["research"]
+
+[[test]]
+name = "csp006c3e_rule_persistence_tests"
+path = "tests/csp006c3e_rule_persistence_tests.rs"
+required-features = ["research"]
+
+[[test]]
+name = "csp006c3f_state_landscape_tests"
+path = "tests/csp006c3f_state_landscape_tests.rs"
+required-features = ["research"]
+
+[[test]]
+name = "csp006c3g_regime_question_tests"
+path = "tests/csp006c3g_regime_question_tests.rs"
+required-features = ["research"]
+
+[[test]]
+name = "csp006c3i_implementation_tests"
+path = "tests/csp006c3i_implementation_tests.rs"
+required-features = ["research"]
+
+[[test]]
+name = "csp006c3r_search_tests"
+path = "tests/csp006c3r_search_tests.rs"
+required-features = ["research"]
+
+[[test]]
+name = "csp006m1_decision_value_specification_tests"
+path = "tests/csp006m1_decision_value_specification_tests.rs"
+required-features = ["research"]
+
+[[test]]
+name = "csp006m_decision_value_model_tests"
+path = "tests/csp006m_decision_value_model_tests.rs"
+required-features = ["research"]
+
+[[test]]
+name = "csp006n_decision_value_harness_tests"
+path = "tests/csp006n_decision_value_harness_tests.rs"
+required-features = ["research"]
+
+[[test]]
+name = "csp006p_decision_intent_tests"
+path = "tests/csp006p_decision_intent_tests.rs"
+required-features = ["research"]
+
+[[test]]
+name = "csp006p_observatory_execution_tests"
+path = "tests/csp006p_observatory_execution_tests.rs"
+required-features = ["research"]
+
+[[test]]
+name = "csp006p_observatory_live_execution_tests"
+path = "tests/csp006p_observatory_live_execution_tests.rs"
+required-features = ["research"]
+
+[[test]]
+name = "csp006p_observatory_maturity_tests"
+path = "tests/csp006p_observatory_maturity_tests.rs"
+required-features = ["research"]
+
+[[test]]
+name = "csp006p_observatory_prospective_tests"
+path = "tests/csp006p_observatory_prospective_tests.rs"
+required-features = ["research"]
+
+[[test]]
+name = "csp006p_observatory_slice_tests"
+path = "tests/csp006p_observatory_slice_tests.rs"
+required-features = ["research"]
+
+[[test]]
+name = "csp006p_observatory_tests"
+path = "tests/csp006p_observatory_tests.rs"
+required-features = ["research"]
+
+[[test]]
+name = "csp007_protocol_tests"
+path = "tests/csp007_protocol_tests.rs"
+required-features = ["research"]
+
+[[test]]
+name = "csp_test_001_verification_matrix"
+path = "tests/csp_test_001_verification_matrix.rs"
+required-features = ["research"]
+
+[[test]]
+name = "dataset_partition_tests"
+path = "tests/dataset_partition_tests.rs"
+required-features = ["research"]
+
+[[test]]
+name = "factor_ecology_tests"
+path = "tests/factor_ecology_tests.rs"
+required-features = ["research"]
+
+[[test]]
+name = "forward_paper_tests"
+path = "tests/forward_paper_tests.rs"
+required-features = ["research"]
+
+[[test]]
+name = "historical_laboratory_tests"
+path = "tests/historical_laboratory_tests.rs"
+required-features = ["research"]
+
+[[test]]
+name = "knowledge_outcome_tests"
+path = "tests/knowledge_outcome_tests.rs"
+required-features = ["research"]
+
+[[test]]
+name = "knowledge_tests"
+path = "tests/knowledge_tests.rs"
+required-features = ["research"]
+
+[[test]]
+name = "outcome_determinism_tests"
+path = "tests/outcome_determinism_tests.rs"
+required-features = ["research"]
+
+[[test]]
+name = "outcome_engine_sqlx_tests"
+path = "tests/outcome_engine_sqlx_tests.rs"
+required-features = ["research"]
+
+[[test]]
+name = "outcome_engine_tests"
+path = "tests/outcome_engine_tests.rs"
+required-features = ["research"]
+
+[[test]]
+name = "performance_engine_sqlx_tests"
+path = "tests/performance_engine_sqlx_tests.rs"
+required-features = ["research"]
+
+[[test]]
+name = "performance_engine_tests"
+path = "tests/performance_engine_tests.rs"
+required-features = ["research"]
+
+[[test]]
+name = "policy_discovery_tests"
+path = "tests/policy_discovery_tests.rs"
+required-features = ["research"]
+
+[[test]]
+name = "policy_search_diagnosis_tests"
+path = "tests/policy_search_diagnosis_tests.rs"
+required-features = ["research"]
+
+[[test]]
+name = "replay_adapter_sqlx_tests"
+path = "tests/replay_adapter_sqlx_tests.rs"
+required-features = ["research"]
+
+[[test]]
+name = "replay_adapter_tests"
+path = "tests/replay_adapter_tests.rs"
+required-features = ["research"]
+
+[[test]]
+name = "replay_backtest_sqlx_tests"
+path = "tests/replay_backtest_sqlx_tests.rs"
+required-features = ["research"]
+
+[[test]]
+name = "replay_backtest_tests"
+path = "tests/replay_backtest_tests.rs"
+required-features = ["research"]
+
+[[test]]
+name = "replay_tests"
+path = "tests/replay_tests.rs"
+required-features = ["research"]
+
+[[test]]
+name = "repository_tests"
+path = "tests/repository_tests.rs"
+required-features = ["research"]
+
+[[test]]
+name = "week1_tests"
+path = "tests/week1_tests.rs"
+required-features = ["research"]
+

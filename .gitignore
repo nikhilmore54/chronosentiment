@@ -31,7 +31,18 @@ datasets/recommendation/historical/*.jsonl
 datasets/recommendation/historical_crypto/*.jsonl
 *.csv
 cvrp_seed_*.json
-artifacts/
+# Generated artifacts (ignore contents; allow CLEAN-003-E deploy bins)
+artifacts/*
+!artifacts/deploy/
+artifacts/deploy/*
+!artifacts/deploy/chronosentiment/
+artifacts/deploy/chronosentiment/*
+!artifacts/deploy/chronosentiment/README.md
+!artifacts/deploy/chronosentiment/rp608_position_decide.aarch64-linux
+!artifacts/deploy/chronosentiment/rp608_position_decide.darwin-arm64
+# CLEAN-003-B: adapter live_capture keeps README pointer only (no JSONL)
+!adapters/chronosentiment/live_capture/
+!adapters/chronosentiment/live_capture/README.md
 core/chronology/soak/
 core/elite/
 state_archive/

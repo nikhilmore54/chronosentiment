@@ -114,11 +114,12 @@ fn phase_c_gate_script_must_not_exist() {
 
 #[test]
 fn week2_tests_are_quarantined_not_compiled() {
+    // CLEAN-003-C: quarantine tree relocated under repo archive/
     assert!(
         crate_root()
-            .join("legacy/quarantine/tests/week2_tests.rs")
+            .join("../../archive/chronosentiment_legacy_quarantine/tests/week2_tests.rs")
             .exists(),
-        "week2_tests.rs must be preserved in quarantine"
+        "week2_tests.rs must be preserved in archive quarantine"
     );
     assert!(
         !crate_root().join("tests/week2_tests.rs").exists(),
@@ -167,10 +168,8 @@ fn default_executable_surface_contains_only_governed_binaries() {
         .collect();
     names.sort();
 
-    // The default executable surface consists of exactly 16 targets across 3 authority tiers:
-    // 1. Production authority (7)
-    // 2. Replay / validation (7)
-    // 3. Required utilities (2)
+    // Default executable surface — production / LIVE / TIME / Gate2X decide.
+    // CLEAN-003-A: rp608_position_decide is product (Pi shadow Gate2X / plan-lifecycle).
     const GOVERNED_DEFAULT_SURFACE: &[&str] = &[
         "csp006_p_enrich",
         "deferred_live_decision_loop",
@@ -182,6 +181,7 @@ fn default_executable_surface_contains_only_governed_binaries() {
         "live004_certify",
         "live005_ledger",
         "rec001h_historical_reconstruction",
+        "rp608_position_decide",
         "time002_reconstruct",
         "time003_replay",
         "time004_ledger",
@@ -199,7 +199,8 @@ fn default_executable_surface_contains_only_governed_binaries() {
     assert_eq!(
         names.len(),
         GOVERNED_DEFAULT_SURFACE.len(),
-        "default executable surface must contain exactly 16 binaries"
+        "default executable surface must contain exactly {} binaries",
+        GOVERNED_DEFAULT_SURFACE.len()
     );
 }
 
