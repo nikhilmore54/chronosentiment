@@ -43,6 +43,7 @@ pub mod domain;
 pub mod evaluation;
 pub mod legality;
 pub mod optimization;
+pub mod orlib;
 pub mod planner;
 pub mod resilience;
 

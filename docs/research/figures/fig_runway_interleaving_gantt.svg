@@ -1,0 +1,163 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 480" width="960" height="480">
+
+    <defs>
+      <linearGradient id="rwyBg" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0%" stop-color="#1E293B"/>
+        <stop offset="100%" stop-color="#0F172A"/>
+      </linearGradient>
+      <linearGradient id="taxiBg" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0%" stop-color="#334155"/>
+        <stop offset="100%" stop-color="#1E293B"/>
+      </linearGradient>
+      <pattern id="wakeHatch" width="8" height="8" patternTransform="rotate(45 0 0)" patternUnits="userSpaceOnUse">
+        <line x1="0" y1="0" x2="0" y2="8" stroke="#F59E0B" stroke-width="1.5" stroke-opacity="0.35"/>
+      </pattern>
+      <filter id="shadow" x="-3%" y="-5%" width="108%" height="114%">
+        <feDropShadow dx="1" dy="2" stdDeviation="2" flood-color="#000" flood-opacity="0.25"/>
+      </filter>
+    </defs>
+    <style>
+      text { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
+      .title { font-size: 17px; font-weight: 700; fill: #0F172A; }
+      .subtitle { font-size: 12px; font-weight: 400; fill: #475569; }
+      .axis-label { font-size: 11px; font-weight: 500; fill: #64748B; }
+      .track-title { font-size: 13px; font-weight: 700; fill: #1E293B; }
+      .track-sub { font-size: 10px; font-weight: 500; fill: #64748B; }
+      .op-id { font-size: 10.5px; font-weight: 700; fill: #FFFFFF; }
+      .op-sub { font-size: 8.5px; font-weight: 600; fill: #E2E8F0; }
+      .legend-text { font-size: 11px; font-weight: 600; fill: #334155; }
+      .callout-title { font-size: 11.5px; font-weight: 700; fill: #047857; }
+      .callout-body { font-size: 10px; font-weight: 500; fill: #065F46; }
+    </style>
+    
+<rect width="960" height="480" fill="#F8FAFC" rx="8"/>
+<rect x="2" y="2" width="956" height="476" fill="none" stroke="#E2E8F0" stroke-width="1.5" rx="7"/>
+<text x="130" y="32" class="title">Mixed-Mode Runway Interleaving Schedule &amp; Wake-Vortex Decay Gap Utilization</text>
+<text x="130" y="50" class="subtitle">Paris CDG Peak Hub Bank (LFPG) &#8226; Active-Set Timing with Wake Separation Envelopes &#8226; Sub-Second Solver</text>
+<g transform="translate(500, 20)">
+<rect x="0" y="0" width="16" height="12" rx="3" fill="#2563EB"/>
+<text x="22" y="10" class="legend-text">Arrival (Landing)</text>
+<rect x="135" y="0" width="16" height="12" rx="3" fill="#D97706"/>
+<text x="157" y="10" class="legend-text">Departure (Takeoff)</text>
+<rect x="290" y="0" width="16" height="12" rx="3" fill="url(#wakeHatch)" stroke="#F59E0B" stroke-width="1"/>
+<text x="312" y="10" class="legend-text">Wake Decay Gap (Dividend)</text>
+</g>
+<rect x="130" y="100" width="780" height="140" fill="url(#rwyBg)" rx="6" filter="url(#shadow)"/>
+<text x="115" y="155" text-anchor="end" class="track-title">Runway 09R/27L</text>
+<text x="115" y="175" text-anchor="end" class="track-sub">Mixed-Mode Active</text>
+<text x="115" y="192" text-anchor="end" class="track-sub">S_LT = 60s, S_TL = 60s</text>
+<line x1="140" y1="170" x2="900" y2="170" stroke="#64748B" stroke-width="1.5" stroke-dasharray="16 12" stroke-opacity="0.6"/>
+<rect x="130" y="275" width="780" height="90" fill="url(#taxiBg)" rx="6" filter="url(#shadow)"/>
+<text x="115" y="317" text-anchor="end" class="track-title">Taxiway Q (FIFO)</text>
+<text x="115" y="333" text-anchor="end" class="track-sub">Departure Hold Line</text>
+<line x1="130.0" y1="80" x2="130.0" y2="365" stroke="#E2E8F0" stroke-width="1.2" stroke-dasharray=""/>
+<text x="130.0" y="385" text-anchor="middle" class="axis-label">00:00</text>
+<text x="130.0" y="399" text-anchor="middle" class="track-sub">+0s</text>
+<line x1="173.33333333333331" y1="80" x2="173.33333333333331" y2="365" stroke="#F1F5F9" stroke-width="0.8" stroke-dasharray="3 3"/>
+<line x1="216.66666666666666" y1="80" x2="216.66666666666666" y2="365" stroke="#E2E8F0" stroke-width="1.2" stroke-dasharray=""/>
+<text x="216.66666666666666" y="385" text-anchor="middle" class="axis-label">02:00</text>
+<text x="216.66666666666666" y="399" text-anchor="middle" class="track-sub">+120s</text>
+<line x1="260.0" y1="80" x2="260.0" y2="365" stroke="#F1F5F9" stroke-width="0.8" stroke-dasharray="3 3"/>
+<line x1="303.3333333333333" y1="80" x2="303.3333333333333" y2="365" stroke="#E2E8F0" stroke-width="1.2" stroke-dasharray=""/>
+<text x="303.3333333333333" y="385" text-anchor="middle" class="axis-label">04:00</text>
+<text x="303.3333333333333" y="399" text-anchor="middle" class="track-sub">+240s</text>
+<line x1="346.6666666666667" y1="80" x2="346.6666666666667" y2="365" stroke="#F1F5F9" stroke-width="0.8" stroke-dasharray="3 3"/>
+<line x1="390.0" y1="80" x2="390.0" y2="365" stroke="#E2E8F0" stroke-width="1.2" stroke-dasharray=""/>
+<text x="390.0" y="385" text-anchor="middle" class="axis-label">06:00</text>
+<text x="390.0" y="399" text-anchor="middle" class="track-sub">+360s</text>
+<line x1="433.3333333333333" y1="80" x2="433.3333333333333" y2="365" stroke="#F1F5F9" stroke-width="0.8" stroke-dasharray="3 3"/>
+<line x1="476.66666666666663" y1="80" x2="476.66666666666663" y2="365" stroke="#E2E8F0" stroke-width="1.2" stroke-dasharray=""/>
+<text x="476.66666666666663" y="385" text-anchor="middle" class="axis-label">08:00</text>
+<text x="476.66666666666663" y="399" text-anchor="middle" class="track-sub">+480s</text>
+<line x1="520.0" y1="80" x2="520.0" y2="365" stroke="#F1F5F9" stroke-width="0.8" stroke-dasharray="3 3"/>
+<line x1="563.3333333333334" y1="80" x2="563.3333333333334" y2="365" stroke="#E2E8F0" stroke-width="1.2" stroke-dasharray=""/>
+<text x="563.3333333333334" y="385" text-anchor="middle" class="axis-label">10:00</text>
+<text x="563.3333333333334" y="399" text-anchor="middle" class="track-sub">+600s</text>
+<line x1="606.6666666666667" y1="80" x2="606.6666666666667" y2="365" stroke="#F1F5F9" stroke-width="0.8" stroke-dasharray="3 3"/>
+<line x1="650.0" y1="80" x2="650.0" y2="365" stroke="#E2E8F0" stroke-width="1.2" stroke-dasharray=""/>
+<text x="650.0" y="385" text-anchor="middle" class="axis-label">12:00</text>
+<text x="650.0" y="399" text-anchor="middle" class="track-sub">+720s</text>
+<line x1="693.3333333333334" y1="80" x2="693.3333333333334" y2="365" stroke="#F1F5F9" stroke-width="0.8" stroke-dasharray="3 3"/>
+<line x1="736.6666666666666" y1="80" x2="736.6666666666666" y2="365" stroke="#E2E8F0" stroke-width="1.2" stroke-dasharray=""/>
+<text x="736.6666666666666" y="385" text-anchor="middle" class="axis-label">14:00</text>
+<text x="736.6666666666666" y="399" text-anchor="middle" class="track-sub">+840s</text>
+<line x1="780.0" y1="80" x2="780.0" y2="365" stroke="#F1F5F9" stroke-width="0.8" stroke-dasharray="3 3"/>
+<line x1="823.3333333333333" y1="80" x2="823.3333333333333" y2="365" stroke="#E2E8F0" stroke-width="1.2" stroke-dasharray=""/>
+<text x="823.3333333333333" y="385" text-anchor="middle" class="axis-label">16:00</text>
+<text x="823.3333333333333" y="399" text-anchor="middle" class="track-sub">+960s</text>
+<line x1="866.6666666666666" y1="80" x2="866.6666666666666" y2="365" stroke="#F1F5F9" stroke-width="0.8" stroke-dasharray="3 3"/>
+<line x1="910.0" y1="80" x2="910.0" y2="365" stroke="#E2E8F0" stroke-width="1.2" stroke-dasharray=""/>
+<text x="910.0" y="385" text-anchor="middle" class="axis-label">18:00</text>
+<text x="910.0" y="399" text-anchor="middle" class="track-sub">+1080s</text>
+<rect x="173.33333333333331" y="108" width="97.50000000000006" height="124" fill="url(#wakeHatch)" rx="4"/>
+<rect x="173.33333333333331" y="108" width="97.50000000000006" height="124" fill="none" stroke="#F59E0B" stroke-width="1.5" stroke-dasharray="4 3" rx="4"/>
+<g transform="translate(183.33333333333331, 112)">
+<rect width="210" height="34" rx="4" fill="#ECFDF5" stroke="#10B981" stroke-width="1.2"/>
+<text x="8" y="14" class="callout-title">Wake-Vortex Interleaving Dividend</text>
+<text x="8" y="27" class="callout-body">D01 inserted in void &#8594; 2 ops / 135s (vs 144s for 1 H-M landing)</text>
+</g>
+<rect x="173.33333333333331" y="154" width="32.5" height="42" rx="4" fill="#1D4ED8" stroke="#93C5FD" stroke-width="1.2" filter="url(#shadow)"/>
+<text x="189.58333333333331" y="170" text-anchor="middle" class="op-id">A01 (H)</text>
+<text x="189.58333333333331" y="184" text-anchor="middle" class="op-sub">AFR012</text>
+<rect x="220.27777777777777" y="180" width="28" height="42" rx="4" fill="#D97706" stroke="#FDE68A" stroke-width="1.2" filter="url(#shadow)"/>
+<text x="234.27777777777777" y="196" text-anchor="middle" class="op-id">D01 (M)</text>
+<text x="234.27777777777777" y="210" text-anchor="middle" class="op-sub">DLH402</text>
+<rect x="155.27777777777777" y="299" width="65.0" height="42" rx="4" fill="#475569" stroke="#94A3B8" stroke-width="1" stroke-dasharray="3 2"/>
+<line x1="220.27777777777777" y1="320" x2="220.27777777777777" y2="201" stroke="#F59E0B" stroke-width="1.5" stroke-dasharray="2 2" stroke-opacity="0.8"/>
+<text x="163.27777777777777" y="319" class="op-sub" fill="#F1F5F9">Hold: D01</text>
+<rect x="270.83333333333337" y="154" width="28.888888888888857" height="42" rx="4" fill="#2563EB" stroke="#93C5FD" stroke-width="1.2" filter="url(#shadow)"/>
+<text x="285.2777777777778" y="170" text-anchor="middle" class="op-id">A02 (M)</text>
+<text x="285.2777777777778" y="184" text-anchor="middle" class="op-sub">BAW318</text>
+<rect x="317.77777777777777" y="180" width="28" height="42" rx="4" fill="#D97706" stroke="#FDE68A" stroke-width="1.2" filter="url(#shadow)"/>
+<text x="331.77777777777777" y="196" text-anchor="middle" class="op-id">D02 (M)</text>
+<text x="331.77777777777777" y="210" text-anchor="middle" class="op-sub">AFR850</text>
+<rect x="252.77777777777777" y="299" width="65.0" height="42" rx="4" fill="#475569" stroke="#94A3B8" stroke-width="1" stroke-dasharray="3 2"/>
+<line x1="317.77777777777777" y1="320" x2="317.77777777777777" y2="201" stroke="#F59E0B" stroke-width="1.5" stroke-dasharray="2 2" stroke-opacity="0.8"/>
+<text x="260.77777777777777" y="319" class="op-sub" fill="#F1F5F9">Hold: D02</text>
+<rect x="368.33333333333337" y="154" width="32.49999999999994" height="42" rx="4" fill="#1D4ED8" stroke="#93C5FD" stroke-width="1.2" filter="url(#shadow)"/>
+<text x="384.58333333333337" y="170" text-anchor="middle" class="op-id">A03 (H)</text>
+<text x="384.58333333333337" y="184" text-anchor="middle" class="op-sub">UAE073</text>
+<rect x="422.5" y="180" width="30.333333333333314" height="42" rx="4" fill="#B45309" stroke="#FDE68A" stroke-width="1.2" filter="url(#shadow)"/>
+<text x="437.66666666666663" y="196" text-anchor="middle" class="op-id">D03 (H)</text>
+<text x="437.66666666666663" y="210" text-anchor="middle" class="op-sub">AFR214</text>
+<rect x="357.5" y="299" width="65.0" height="42" rx="4" fill="#475569" stroke="#94A3B8" stroke-width="1" stroke-dasharray="3 2"/>
+<line x1="422.5" y1="320" x2="422.5" y2="201" stroke="#F59E0B" stroke-width="1.5" stroke-dasharray="2 2" stroke-opacity="0.8"/>
+<text x="365.5" y="319" class="op-sub" fill="#F1F5F9">Hold: D03</text>
+<rect x="483.8888888888889" y="154" width="28.888888888888914" height="42" rx="4" fill="#2563EB" stroke="#93C5FD" stroke-width="1.2" filter="url(#shadow)"/>
+<text x="498.33333333333337" y="170" text-anchor="middle" class="op-id">A04 (M)</text>
+<text x="498.33333333333337" y="184" text-anchor="middle" class="op-sub">KLM122</text>
+<rect x="530.8333333333333" y="180" width="28" height="42" rx="4" fill="#F59E0B" stroke="#FDE68A" stroke-width="1.2" filter="url(#shadow)"/>
+<text x="544.8333333333333" y="196" text-anchor="middle" class="op-id">D04 (L)</text>
+<text x="544.8333333333333" y="210" text-anchor="middle" class="op-sub">HOP611</text>
+<rect x="465.83333333333337" y="299" width="64.99999999999989" height="42" rx="4" fill="#475569" stroke="#94A3B8" stroke-width="1" stroke-dasharray="3 2"/>
+<line x1="530.8333333333333" y1="320" x2="530.8333333333333" y2="201" stroke="#F59E0B" stroke-width="1.5" stroke-dasharray="2 2" stroke-opacity="0.8"/>
+<text x="473.83333333333337" y="319" class="op-sub" fill="#F1F5F9">Hold: D04</text>
+<rect x="595.8333333333333" y="154" width="32.5" height="42" rx="4" fill="#1D4ED8" stroke="#93C5FD" stroke-width="1.2" filter="url(#shadow)"/>
+<text x="612.0833333333333" y="170" text-anchor="middle" class="op-id">A05 (H)</text>
+<text x="612.0833333333333" y="184" text-anchor="middle" class="op-sub">QTR039</text>
+<rect x="642.7777777777778" y="180" width="28" height="42" rx="4" fill="#D97706" stroke="#FDE68A" stroke-width="1.2" filter="url(#shadow)"/>
+<text x="656.7777777777778" y="196" text-anchor="middle" class="op-id">D05 (M)</text>
+<text x="656.7777777777778" y="210" text-anchor="middle" class="op-sub">EZY288</text>
+<rect x="577.7777777777778" y="299" width="65.0" height="42" rx="4" fill="#475569" stroke="#94A3B8" stroke-width="1" stroke-dasharray="3 2"/>
+<line x1="642.7777777777778" y1="320" x2="642.7777777777778" y2="201" stroke="#F59E0B" stroke-width="1.5" stroke-dasharray="2 2" stroke-opacity="0.8"/>
+<text x="585.7777777777778" y="319" class="op-sub" fill="#F1F5F9">Hold: D05</text>
+<rect x="693.3333333333334" y="154" width="28.888888888888914" height="42" rx="4" fill="#2563EB" stroke="#93C5FD" stroke-width="1.2" filter="url(#shadow)"/>
+<text x="707.7777777777778" y="170" text-anchor="middle" class="op-id">A06 (M)</text>
+<text x="707.7777777777778" y="184" text-anchor="middle" class="op-sub">SWR554</text>
+<rect x="740.2777777777778" y="180" width="28" height="42" rx="4" fill="#D97706" stroke="#FDE68A" stroke-width="1.2" filter="url(#shadow)"/>
+<text x="754.2777777777778" y="196" text-anchor="middle" class="op-id">D06 (M)</text>
+<text x="754.2777777777778" y="210" text-anchor="middle" class="op-sub">AFR902</text>
+<rect x="675.2777777777778" y="299" width="65.0" height="42" rx="4" fill="#475569" stroke="#94A3B8" stroke-width="1" stroke-dasharray="3 2"/>
+<line x1="740.2777777777778" y1="320" x2="740.2777777777778" y2="201" stroke="#F59E0B" stroke-width="1.5" stroke-dasharray="2 2" stroke-opacity="0.8"/>
+<text x="683.2777777777778" y="319" class="op-sub" fill="#F1F5F9">Hold: D06</text>
+<rect x="794.4444444444445" y="154" width="28.8888888888888" height="42" rx="4" fill="#2563EB" stroke="#93C5FD" stroke-width="1.2" filter="url(#shadow)"/>
+<text x="808.8888888888889" y="170" text-anchor="middle" class="op-id">A07 (M)</text>
+<text x="808.8888888888889" y="184" text-anchor="middle" class="op-sub">IBE340</text>
+<rect x="841.3888888888889" y="180" width="28" height="42" rx="4" fill="#D97706" stroke="#FDE68A" stroke-width="1.2" filter="url(#shadow)"/>
+<text x="855.3888888888889" y="196" text-anchor="middle" class="op-id">D07 (M)</text>
+<text x="855.3888888888889" y="210" text-anchor="middle" class="op-sub">AFR771</text>
+<rect x="776.3888888888889" y="299" width="65.0" height="42" rx="4" fill="#475569" stroke="#94A3B8" stroke-width="1" stroke-dasharray="3 2"/>
+<line x1="841.3888888888889" y1="320" x2="841.3888888888889" y2="201" stroke="#F59E0B" stroke-width="1.5" stroke-dasharray="2 2" stroke-opacity="0.8"/>
+<text x="784.3888888888889" y="319" class="op-sub" fill="#F1F5F9">Hold: D07</text>
+<text x="520" y="465" text-anchor="middle" class="axis-label" style="font-size:12px; font-weight:600;">Timeline (mm:ss from Horizon Start, Active Peak Window)</text>
+</svg>

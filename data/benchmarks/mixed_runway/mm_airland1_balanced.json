@@ -1,0 +1,255 @@
+{
+  "instance_name": "mm_airland1_balanced",
+  "base_beasley_name": "airland1",
+  "track": "TrackA_ExtendedBeasley",
+  "regime": "balanced",
+  "num_operations": 10,
+  "num_arrivals": 5,
+  "num_departures": 5,
+  "num_runways": 1,
+  "freeze_time": 10.0,
+  "operations": [
+    {
+      "id": 0,
+      "op_type": "Arrival",
+      "wake_category": "Heavy",
+      "wake_cat_id": 0,
+      "earliest_time": 129.0,
+      "target_time": 155.0,
+      "latest_time": 559.0,
+      "penalty_early": 10.0,
+      "penalty_late": 10.0
+    },
+    {
+      "id": 1,
+      "op_type": "Departure",
+      "wake_category": "Heavy",
+      "wake_cat_id": 0,
+      "earliest_time": 195.0,
+      "target_time": 258.0,
+      "latest_time": 744.0,
+      "penalty_early": 10.0,
+      "penalty_late": 10.0
+    },
+    {
+      "id": 2,
+      "op_type": "Arrival",
+      "wake_category": "Heavy",
+      "wake_cat_id": 0,
+      "earliest_time": 89.0,
+      "target_time": 98.0,
+      "latest_time": 510.0,
+      "penalty_early": 30.0,
+      "penalty_late": 30.0
+    },
+    {
+      "id": 3,
+      "op_type": "Departure",
+      "wake_category": "Heavy",
+      "wake_cat_id": 0,
+      "earliest_time": 96.0,
+      "target_time": 106.0,
+      "latest_time": 521.0,
+      "penalty_early": 30.0,
+      "penalty_late": 30.0
+    },
+    {
+      "id": 4,
+      "op_type": "Arrival",
+      "wake_category": "Heavy",
+      "wake_cat_id": 0,
+      "earliest_time": 110.0,
+      "target_time": 123.0,
+      "latest_time": 555.0,
+      "penalty_early": 30.0,
+      "penalty_late": 30.0
+    },
+    {
+      "id": 5,
+      "op_type": "Departure",
+      "wake_category": "Heavy",
+      "wake_cat_id": 0,
+      "earliest_time": 120.0,
+      "target_time": 135.0,
+      "latest_time": 576.0,
+      "penalty_early": 30.0,
+      "penalty_late": 30.0
+    },
+    {
+      "id": 6,
+      "op_type": "Arrival",
+      "wake_category": "Heavy",
+      "wake_cat_id": 0,
+      "earliest_time": 124.0,
+      "target_time": 138.0,
+      "latest_time": 577.0,
+      "penalty_early": 30.0,
+      "penalty_late": 30.0
+    },
+    {
+      "id": 7,
+      "op_type": "Departure",
+      "wake_category": "Heavy",
+      "wake_cat_id": 0,
+      "earliest_time": 126.0,
+      "target_time": 140.0,
+      "latest_time": 573.0,
+      "penalty_early": 30.0,
+      "penalty_late": 30.0
+    },
+    {
+      "id": 8,
+      "op_type": "Arrival",
+      "wake_category": "Heavy",
+      "wake_cat_id": 0,
+      "earliest_time": 135.0,
+      "target_time": 150.0,
+      "latest_time": 591.0,
+      "penalty_early": 30.0,
+      "penalty_late": 30.0
+    },
+    {
+      "id": 9,
+      "op_type": "Departure",
+      "wake_category": "Heavy",
+      "wake_cat_id": 0,
+      "earliest_time": 160.0,
+      "target_time": 180.0,
+      "latest_time": 657.0,
+      "penalty_early": 30.0,
+      "penalty_late": 30.0
+    }
+  ],
+  "separation_matrix": [
+    [
+      0,
+      3,
+      15,
+      9,
+      15,
+      9,
+      15,
+      9,
+      15,
+      9
+    ],
+    [
+      3,
+      0,
+      10,
+      12,
+      10,
+      12,
+      10,
+      12,
+      10,
+      12
+    ],
+    [
+      15,
+      9,
+      0,
+      4,
+      8,
+      4,
+      8,
+      4,
+      8,
+      4
+    ],
+    [
+      10,
+      12,
+      5,
+      0,
+      5,
+      6,
+      5,
+      6,
+      5,
+      6
+    ],
+    [
+      15,
+      9,
+      8,
+      4,
+      0,
+      4,
+      8,
+      4,
+      8,
+      4
+    ],
+    [
+      10,
+      12,
+      5,
+      6,
+      5,
+      0,
+      5,
+      6,
+      5,
+      6
+    ],
+    [
+      15,
+      9,
+      8,
+      4,
+      8,
+      4,
+      0,
+      4,
+      8,
+      4
+    ],
+    [
+      10,
+      12,
+      5,
+      6,
+      5,
+      6,
+      5,
+      0,
+      5,
+      6
+    ],
+    [
+      15,
+      9,
+      8,
+      4,
+      8,
+      4,
+      8,
+      4,
+      0,
+      4
+    ],
+    [
+      10,
+      12,
+      5,
+      6,
+      5,
+      6,
+      5,
+      6,
+      5,
+      0
+    ]
+  ],
+  "taxiway_precedence": [
+    [
+      3,
+      5
+    ],
+    [
+      5,
+      7
+    ]
+  ]
+}

@@ -1,0 +1,22 @@
+\begin{table*}[t]
+\centering
+\caption{Track B: High-Density Real-World Peak Bank Operations on Major International Runway Hubs}
+\label{tab:track_b_airports}
+\resizebox{\textwidth}{!}{%
+\begin{tabular}{llccccccccc}
+\toprule
+\textbf{Hub Airport} & \textbf{Operational Profile} & \boldmath{$N$} & \boldmath{$R$} & \textbf{FCFS} $Z$ & \textbf{Coralys} $Z$ & \textbf{FCFS TP} & \textbf{Coralys TP} & \textbf{TP Gain (\%)} & \textbf{Dep Delay Saved} & \textbf{Latency (ms)} \\
+\midrule
+LFPG (Paris CDG) & 1-Hour Peak & 45 & 1 & 10143 & 9393 & 46.3/h & 46.3/h & +0.0\% & -3.2 s & 408.8 \\
+LFPG (Paris CDG) & 3-Hour Bank & 120 & 2 & 662 & 662 & 40.2/h & 40.2/h & +0.0\% & 0.0 s & 6434.1 \\
+EGKK (London Gatwick) & Single-Runway Peak & 52 & 1 & 44157 & 14991 & 52.2/h & 52.2/h & +0.0\% & 14.6 s & 941.6 \\
+LSZH (Zurich) & 1-Hour Peak & 40 & 1 & 5202 & 5202 & 40.6/h & 40.6/h & +0.0\% & 0.0 s & 211.6 \\
+VOMM / VABB (MAA–BOM) & Domestic Mixed Bank & 60 & 1 & 7076 & 7076 & 48.8/h & 48.8/h & +0.0\% & 0.0 s & 1111.1 \\
+\bottomrule
+\end{tabular}%
+}
+\vspace{1mm}
+\begin{flushleft}
+\footnotesize{\textbf{Notes}: Real-world peak arrival and departure banks calibrated against Paris Charles de Gaulle (LFPG/CDG), London Gatwick (EGKK/LGW), Zurich (LSZH/ZRH), and Chennai--Mumbai domestic corridors (VOMM/VABB). Throughput (TP) is measured in sustained operations per hour ($3600 \times N / (t_{\max} - t_{\min})$). Departure delay savings reflect average pushback-to-wheels-up queue time reductions achieved via Heavy $\to$ Light wake-gap takeoff interleaving.}
+\end{flushleft}
+\end{table*}

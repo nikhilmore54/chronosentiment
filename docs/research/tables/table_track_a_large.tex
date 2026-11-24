@@ -1,0 +1,22 @@
+\begin{table*}[t]
+\centering
+\caption{Track A Large-Scale: Multi-Runway Interleaving Scaling Across 100 to 500 Aircraft (10 Independent Seeds)}
+\label{tab:track_a_large}
+\resizebox{\textwidth}{!}{%
+\begin{tabular}{lcccccccc}
+\toprule
+\textbf{Instance} & \boldmath{$N$} & \boldmath{$R$} & \textbf{FCFS Penalty} $Z$ & \textbf{Coralys Mean} $\bar{Z} \pm \sigma$ & \textbf{FCFS Gain (\%)} & \textbf{Solve Time (ms)} & \textbf{Wilcoxon} $W$ & \boldmath{$p$}\textbf{-value} \\
+\midrule
+mm\_airland9\_balanced & 100 & 2 & 299.8 & 227.6 $\pm$ 7.2 & 24.08\% & 1179.1 & 0.0 & 0.0051$^{**}$ \\
+mm\_airland10\_balanced & 150 & 2 & 776.7 & 774.5 $\pm$ 6.1 & 0.29\% & 11552.0 & 0.0 & 1.0000 \\
+mm\_airland11\_balanced & 200 & 2 & 856.2 & 805.2 $\pm$ 35.3 & 5.96\% & 29295.5 & 0.0 & 0.0051$^{**}$ \\
+mm\_airland12\_balanced & 250 & 3 & 118.9 & 117.3 $\pm$ 1.6 & 1.30\% & 20826.2 & 0.0 & 0.0431$^{*}$ \\
+mm\_airland13\_balanced & 500 & 4 & 40.2 & 40.2 $\pm$ 0.0 & -0.00\% & 56618.5 & 0.0 & 1.0000 \\
+\bottomrule
+\end{tabular}%
+}
+\vspace{1mm}
+\begin{flushleft}
+\footnotesize{\textbf{Notes}: Evaluated across 10 independent pseudo-random seeds ($S \in \{1, \dots, 10\}$) for each instance on $R \in \{2, 3, 4\}$ parallel mixed-mode runways. Non-parametric two-tailed Wilcoxon signed-rank test compares Coralys against the deterministic multi-runway FCFS baseline ($^{**}p < 0.01$, $^{*}p < 0.05$). All instances achieved $100\%$ feasibility with zero time-window, wake-separation, or taxiway FIFO violations.}
+\end{flushleft}
+\end{table*}
