@@ -1,160 +1,160 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 520" width="960" height="520">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 440" width="960" height="440">
 
-    <defs>
-      <linearGradient id="bgGrad" x1="0" y1="0" x2="0" y2="1">
-        <stop offset="0%" stop-color="#F8FAFC"/>
-        <stop offset="100%" stop-color="#F1F5F9"/>
-      </linearGradient>
-      <filter id="panelShadow" x="-3%" y="-5%" width="108%" height="114%">
-        <feDropShadow dx="1" dy="2" stdDeviation="2" flood-color="#000" flood-opacity="0.12"/>
-      </filter>
-    </defs>
     <style>
-      text { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
-      .title { font-size: 17px; font-weight: 700; fill: #0F172A; }
-      .subtitle { font-size: 12px; font-weight: 400; fill: #475569; }
-      .axis-title { font-size: 12px; font-weight: 700; fill: #1E293B; }
-      .axis-label { font-size: 10.5px; font-weight: 500; fill: #64748B; }
-      .legend-txt { font-size: 11px; font-weight: 600; fill: #1E293B; }
-      .badge-txt { font-size: 9px; font-weight: 700; fill: #FFFFFF; text-anchor: middle; }
-      .star-label { font-size: 9.5px; font-weight: 700; fill: #059669; }
-      .stat-title { font-size: 12px; font-weight: 700; fill: #0F172A; }
-      .stat-val { font-size: 16px; font-weight: 800; fill: #2563EB; }
+      .main-title { font-family: 'Helvetica Neue', Helvetica, Arial, 'DejaVu Sans', sans-serif; font-size: 13pt; font-weight: bold; fill: #111827; }
+      .sub-title { font-family: 'Helvetica Neue', Helvetica, Arial, 'DejaVu Sans', sans-serif; font-size: 9.5pt; font-style: italic; fill: #4B5563; }
+      .panel-hdr { font-family: 'Helvetica Neue', Helvetica, Arial, 'DejaVu Sans', sans-serif; font-size: 10.5pt; font-weight: bold; fill: #111827; }
+      .panel-sub { font-family: 'Helvetica Neue', Helvetica, Arial, 'DejaVu Sans', sans-serif; font-size: 8.5pt; font-style: italic; fill: #4B5563; }
+      .axis-title { font-family: 'Helvetica Neue', Helvetica, Arial, 'DejaVu Sans', sans-serif; font-size: 9pt; font-weight: bold; fill: #111827; }
+      .axis-lbl { font-family: 'Helvetica Neue', Helvetica, Arial, 'DejaVu Sans', sans-serif; font-size: 8.5pt; fill: #374151; }
+      .legend-lbl { font-family: 'Helvetica Neue', Helvetica, Arial, 'DejaVu Sans', sans-serif; font-size: 8.5pt; fill: #1F2937; }
+      .star-note { font-family: 'Helvetica Neue', Helvetica, Arial, 'DejaVu Sans', sans-serif; font-size: 8pt; font-weight: bold; fill: #047857; }
+      .thresh-note { font-family: 'Helvetica Neue', Helvetica, Arial, 'DejaVu Sans', sans-serif; font-size: 8pt; font-weight: bold; fill: #B91C1C; }
+      .footer-note { font-family: 'Helvetica Neue', Helvetica, Arial, 'DejaVu Sans', sans-serif; font-size: 8pt; font-style: italic; fill: #1F2937; }
     </style>
     
-<rect width="960" height="520" fill="url(#bgGrad)" rx="8"/>
-<rect x="2" y="2" width="956" height="516" fill="none" stroke="#E2E8F0" stroke-width="1.5" rx="7"/>
-<text x="75" y="30" class="title">Canonical Benchmark Performance across Extended OR-Library Suite (airland9&#8211;13)</text>
-<text x="75" y="48" class="subtitle">Evaluated on 20 Canonical Configurations (N = 100 to 500 Aircraft, R = 1..4 Runways) against Published Literature Baselines</text>
-<rect x="75" y="85" width="410" height="355" fill="#FFFFFF" rx="6" stroke="#CBD5E1" stroke-width="1" filter="url(#panelShadow)"/>
-<text x="91" y="107" class="axis-title">Optimality Gap (%) vs Fleet Scale N</text>
-<text x="91" y="121" class="axis-label">Compared to Faye (2015) &amp; Pi&#241;ol &amp; Beasley (2006) BKS</text>
-<line x1="110" y1="369.54545454545456" x2="470" y2="369.54545454545456" stroke="#059669" stroke-width="1.8" stroke-dasharray=""/>
-<text x="103" y="373.04545454545456" text-anchor="end" class="axis-label" font-weight="700" fill="#059669">0.0%</text>
-<line x1="110" y1="318.6363636363636" x2="470" y2="318.6363636363636" stroke="#E2E8F0" stroke-width="1.0" stroke-dasharray="3 3"/>
-<text x="103" y="322.1363636363636" text-anchor="end" class="axis-label" font-weight="400" fill="#64748B">2.0%</text>
-<line x1="110" y1="267.72727272727275" x2="470" y2="267.72727272727275" stroke="#E2E8F0" stroke-width="1.0" stroke-dasharray="3 3"/>
-<text x="103" y="271.22727272727275" text-anchor="end" class="axis-label" font-weight="400" fill="#64748B">4.0%</text>
-<line x1="110" y1="216.8181818181818" x2="470" y2="216.8181818181818" stroke="#E2E8F0" stroke-width="1.0" stroke-dasharray="3 3"/>
-<text x="103" y="220.3181818181818" text-anchor="end" class="axis-label" font-weight="400" fill="#64748B">6.0%</text>
-<line x1="110" y1="165.9090909090909" x2="470" y2="165.9090909090909" stroke="#E2E8F0" stroke-width="1.0" stroke-dasharray="3 3"/>
-<text x="103" y="169.4090909090909" text-anchor="end" class="axis-label" font-weight="400" fill="#64748B">8.0%</text>
-<line x1="110" y1="115.0" x2="470" y2="115.0" stroke="#E2E8F0" stroke-width="1.0" stroke-dasharray="3 3"/>
-<text x="103" y="118.5" text-anchor="end" class="axis-label" font-weight="400" fill="#64748B">10.0%</text>
-<text x="465" y="363.54545454545456" text-anchor="end" class="star-label">&#8592; Published Literature BKS (0.00%)</text>
-<line x1="120" y1="395" x2="120" y2="400" stroke="#64748B" stroke-width="1.2"/>
-<text x="120" y="414" text-anchor="middle" class="axis-label" font-weight="600">100</text>
-<line x1="200" y1="395" x2="200" y2="400" stroke="#64748B" stroke-width="1.2"/>
-<text x="200" y="414" text-anchor="middle" class="axis-label" font-weight="600">150</text>
-<line x1="280" y1="395" x2="280" y2="400" stroke="#64748B" stroke-width="1.2"/>
-<text x="280" y="414" text-anchor="middle" class="axis-label" font-weight="600">200</text>
-<line x1="360" y1="395" x2="360" y2="400" stroke="#64748B" stroke-width="1.2"/>
-<text x="360" y="414" text-anchor="middle" class="axis-label" font-weight="600">250</text>
-<line x1="450" y1="395" x2="450" y2="400" stroke="#64748B" stroke-width="1.2"/>
-<text x="450" y="414" text-anchor="middle" class="axis-label" font-weight="600">500</text>
-<text x="280" y="432" text-anchor="middle" class="axis-title" style="font-size:11px;">Aircraft Fleet Scale N</text>
-<polyline points="120,356.3911195278712 200,115.0 280,115.0 360,115.0 450,115.0" fill="none" stroke="#2563EB" stroke-width="2" stroke-opacity="0.75"/>
-<circle cx="120" cy="356.3911195278712" r="4.5" fill="#2563EB" stroke="#FFFFFF" stroke-width="1.5"/>
-<circle cx="200" cy="115.0" r="4.5" fill="#2563EB" stroke="#FFFFFF" stroke-width="1.5"/>
-<circle cx="280" cy="115.0" r="4.5" fill="#2563EB" stroke="#FFFFFF" stroke-width="1.5"/>
-<circle cx="360" cy="115.0" r="4.5" fill="#2563EB" stroke="#FFFFFF" stroke-width="1.5"/>
-<circle cx="450" cy="115.0" r="4.5" fill="#2563EB" stroke="#FFFFFF" stroke-width="1.5"/>
-<polyline points="120,369.545454545422 200,395.0 280,395.0 360,115.0 450,115.0" fill="none" stroke="#059669" stroke-width="2" stroke-opacity="0.75"/>
-<circle cx="120" cy="369.545454545422" r="7" fill="#F59E0B" stroke="#B45309" stroke-width="1.5"/>
-<circle cx="120" cy="369.545454545422" r="3" fill="#FFFFFF"/>
-<circle cx="200" cy="395.0" r="7" fill="#F59E0B" stroke="#B45309" stroke-width="1.5"/>
-<circle cx="200" cy="395.0" r="3" fill="#FFFFFF"/>
-<circle cx="280" cy="395.0" r="7" fill="#F59E0B" stroke="#B45309" stroke-width="1.5"/>
-<circle cx="280" cy="395.0" r="3" fill="#FFFFFF"/>
-<circle cx="360" cy="115.0" r="4.5" fill="#059669" stroke="#FFFFFF" stroke-width="1.5"/>
-<circle cx="450" cy="115.0" r="4.5" fill="#059669" stroke="#FFFFFF" stroke-width="1.5"/>
-<polyline points="120,369.54545454545456 200,115.0 280,115.0 360,395.0 450,115.0" fill="none" stroke="#7C3AED" stroke-width="2" stroke-opacity="0.75"/>
-<circle cx="120" cy="369.54545454545456" r="7" fill="#F59E0B" stroke="#B45309" stroke-width="1.5"/>
-<circle cx="120" cy="369.54545454545456" r="3" fill="#FFFFFF"/>
-<circle cx="200" cy="115.0" r="4.5" fill="#7C3AED" stroke="#FFFFFF" stroke-width="1.5"/>
-<circle cx="280" cy="115.0" r="4.5" fill="#7C3AED" stroke="#FFFFFF" stroke-width="1.5"/>
-<circle cx="360" cy="395.0" r="7" fill="#F59E0B" stroke="#B45309" stroke-width="1.5"/>
-<circle cx="360" cy="395.0" r="3" fill="#FFFFFF"/>
-<circle cx="450" cy="115.0" r="4.5" fill="#7C3AED" stroke="#FFFFFF" stroke-width="1.5"/>
-<polyline points="120,369.54545454545456 360,395.0 450,369.54545454545456" fill="none" stroke="#D97706" stroke-width="2" stroke-opacity="0.75"/>
-<circle cx="120" cy="369.54545454545456" r="7" fill="#F59E0B" stroke="#B45309" stroke-width="1.5"/>
-<circle cx="120" cy="369.54545454545456" r="3" fill="#FFFFFF"/>
-<rect x="194" y="363.54545454545456" width="12" height="12" fill="#10B981" stroke="#047857" stroke-width="1.5" rx="2"/>
-<text x="200" y="360.54545454545456" class="star-label" text-anchor="middle" fill="#047857" font-size="8px">New BKS</text>
-<rect x="274" y="363.54545454545456" width="12" height="12" fill="#10B981" stroke="#047857" stroke-width="1.5" rx="2"/>
-<text x="280" y="360.54545454545456" class="star-label" text-anchor="middle" fill="#047857" font-size="8px">New BKS</text>
-<circle cx="360" cy="395.0" r="7" fill="#F59E0B" stroke="#B45309" stroke-width="1.5"/>
-<circle cx="360" cy="395.0" r="3" fill="#FFFFFF"/>
-<circle cx="450" cy="369.54545454545456" r="7" fill="#F59E0B" stroke="#B45309" stroke-width="1.5"/>
-<circle cx="450" cy="369.54545454545456" r="3" fill="#FFFFFF"/>
-<circle cx="98" cy="135" r="4.5" fill="#2563EB"/>
-<text x="109" y="138.5" class="axis-label" font-weight="600">R=1 (Faye BKS)</text>
-<circle cx="98" cy="151" r="4.5" fill="#059669"/>
-<text x="109" y="154.5" class="axis-label" font-weight="600">R=2 (P&amp;B)</text>
-<circle cx="98" cy="167" r="4.5" fill="#7C3AED"/>
-<text x="109" y="170.5" class="axis-label" font-weight="600">R=3 (P&amp;B)</text>
-<circle cx="98" cy="183" r="4.5" fill="#D97706"/>
-<text x="109" y="186.5" class="axis-label" font-weight="600">R=4 (Beasley)</text>
-<rect x="525" y="85" width="395" height="355" fill="#FFFFFF" rx="6" stroke="#CBD5E1" stroke-width="1" filter="url(#panelShadow)"/>
-<text x="541" y="107" class="axis-title">Single-Thread CPU Solve Time (Seconds)</text>
-<text x="541" y="121" class="axis-label">Logarithmic runtime scaling (Total suite = 388.9 s)</text>
-<line x1="565" y1="395.0" x2="905" y2="395.0" stroke="#CBD5E1" stroke-width="1.0" stroke-dasharray=""/>
-<text x="557" y="398.5" text-anchor="end" class="axis-label">0.1s</text>
-<line x1="565" y1="335.71195915482156" x2="905" y2="335.71195915482156" stroke="#F1F5F9" stroke-width="1.0" stroke-dasharray="2 2"/>
-<line x1="565" y1="310.1779897887054" x2="905" y2="310.1779897887054" stroke="#CBD5E1" stroke-width="1.0" stroke-dasharray=""/>
-<text x="557" y="313.6779897887054" text-anchor="end" class="axis-label">1s</text>
-<line x1="565" y1="250.889948943527" x2="905" y2="250.889948943527" stroke="#F1F5F9" stroke-width="1.0" stroke-dasharray="2 2"/>
-<line x1="565" y1="225.35597957741078" x2="905" y2="225.35597957741078" stroke="#CBD5E1" stroke-width="1.0" stroke-dasharray=""/>
-<text x="557" y="228.85597957741078" text-anchor="end" class="axis-label">10s</text>
-<line x1="565" y1="184.88559563755388" x2="905" y2="184.88559563755388" stroke="#F1F5F9" stroke-width="1.0" stroke-dasharray="2 2"/>
-<line x1="565" y1="140.5339693661162" x2="905" y2="140.5339693661162" stroke="#CBD5E1" stroke-width="1.0" stroke-dasharray=""/>
-<text x="557" y="144.0339693661162" text-anchor="end" class="axis-label">100s</text>
-<line x1="565" y1="115.0" x2="905" y2="115.0" stroke="#F1F5F9" stroke-width="1.0" stroke-dasharray="2 2"/>
-<line x1="575" y1="395" x2="575" y2="400" stroke="#64748B" stroke-width="1.2"/>
-<text x="575" y="414" text-anchor="middle" class="axis-label" font-weight="600">100</text>
-<line x1="655" y1="395" x2="655" y2="400" stroke="#64748B" stroke-width="1.2"/>
-<text x="655" y="414" text-anchor="middle" class="axis-label" font-weight="600">150</text>
-<line x1="735" y1="395" x2="735" y2="400" stroke="#64748B" stroke-width="1.2"/>
-<text x="735" y="414" text-anchor="middle" class="axis-label" font-weight="600">200</text>
-<line x1="815" y1="395" x2="815" y2="400" stroke="#64748B" stroke-width="1.2"/>
-<text x="815" y="414" text-anchor="middle" class="axis-label" font-weight="600">250</text>
-<line x1="905" y1="395" x2="905" y2="400" stroke="#64748B" stroke-width="1.2"/>
-<text x="905" y="414" text-anchor="middle" class="axis-label" font-weight="600">500</text>
-<text x="722" y="432" text-anchor="middle" class="axis-title" style="font-size:11px;">Aircraft Fleet Scale N</text>
-<polyline points="575,338.2587629030343 655,277.4095021250314 735,248.67609620391212 815,221.3172981596921 905,185.40484348520584" fill="none" stroke="#2563EB" stroke-width="2" stroke-opacity="0.8"/>
-<circle cx="575" cy="338.2587629030343" r="4.5" fill="#2563EB" stroke="#FFFFFF" stroke-width="1.5"/>
-<circle cx="655" cy="277.4095021250314" r="4.5" fill="#2563EB" stroke="#FFFFFF" stroke-width="1.5"/>
-<circle cx="735" cy="248.67609620391212" r="4.5" fill="#2563EB" stroke="#FFFFFF" stroke-width="1.5"/>
-<circle cx="815" cy="221.3172981596921" r="4.5" fill="#2563EB" stroke="#FFFFFF" stroke-width="1.5"/>
-<circle cx="905" cy="185.40484348520584" r="4.5" fill="#2563EB" stroke="#FFFFFF" stroke-width="1.5"/>
-<polyline points="575,277.75467068477974 655,226.5456889036866 735,208.19391986153596 815,185.14968419247143 905,127.19781154292423" fill="none" stroke="#059669" stroke-width="2" stroke-opacity="0.8"/>
-<circle cx="575" cy="277.75467068477974" r="4.5" fill="#059669" stroke="#FFFFFF" stroke-width="1.5"/>
-<circle cx="655" cy="226.5456889036866" r="4.5" fill="#059669" stroke="#FFFFFF" stroke-width="1.5"/>
-<circle cx="735" cy="208.19391986153596" r="4.5" fill="#059669" stroke="#FFFFFF" stroke-width="1.5"/>
-<circle cx="815" cy="185.14968419247143" r="4.5" fill="#059669" stroke="#FFFFFF" stroke-width="1.5"/>
-<circle cx="905" cy="127.19781154292423" r="4.5" fill="#059669" stroke="#FFFFFF" stroke-width="1.5"/>
-<polyline points="575,305.97034201063707 655,267.8857366019748 735,242.74300548625052 815,216.48043234678 905,156.93746927071092" fill="none" stroke="#7C3AED" stroke-width="2" stroke-opacity="0.8"/>
-<circle cx="575" cy="305.97034201063707" r="4.5" fill="#7C3AED" stroke="#FFFFFF" stroke-width="1.5"/>
-<circle cx="655" cy="267.8857366019748" r="4.5" fill="#7C3AED" stroke="#FFFFFF" stroke-width="1.5"/>
-<circle cx="735" cy="242.74300548625052" r="4.5" fill="#7C3AED" stroke="#FFFFFF" stroke-width="1.5"/>
-<circle cx="815" cy="216.48043234678" r="4.5" fill="#7C3AED" stroke="#FFFFFF" stroke-width="1.5"/>
-<circle cx="905" cy="156.93746927071092" r="4.5" fill="#7C3AED" stroke="#FFFFFF" stroke-width="1.5"/>
-<polyline points="575,344.2465203335118 655,308.4157711170068 735,280.7780689224316 815,242.9823739631117 905,173.03242857053095" fill="none" stroke="#D97706" stroke-width="2" stroke-opacity="0.8"/>
-<circle cx="575" cy="344.2465203335118" r="4.5" fill="#D97706" stroke="#FFFFFF" stroke-width="1.5"/>
-<circle cx="655" cy="308.4157711170068" r="4.5" fill="#D97706" stroke="#FFFFFF" stroke-width="1.5"/>
-<circle cx="735" cy="280.7780689224316" r="4.5" fill="#D97706" stroke="#FFFFFF" stroke-width="1.5"/>
-<circle cx="815" cy="242.9823739631117" r="4.5" fill="#D97706" stroke="#FFFFFF" stroke-width="1.5"/>
-<circle cx="905" cy="173.03242857053095" r="4.5" fill="#D97706" stroke="#FFFFFF" stroke-width="1.5"/>
-<line x1="565" y1="310.1779897887054" x2="905" y2="310.1779897887054" stroke="#EA580C" stroke-width="1.5" stroke-dasharray="4 3"/>
-<text x="900" y="305.1779897887054" text-anchor="end" class="axis-label" font-weight="700" fill="#EA580C">&#8592; Sub-Second Interactive Threshold (1.0 s)</text>
-<g transform="translate(75, 485)">
-<rect x="0" y="0" width="180" height="24" rx="4" fill="#ECFDF5" stroke="#10B981" stroke-width="1"/>
-<text x="90" y="16" class="badge-txt" fill="#047857">8 Exact / Better than BKS</text>
-<rect x="195" y="0" width="180" height="24" rx="4" fill="#EFF6FF" stroke="#3B82F6" stroke-width="1"/>
-<text x="285" y="16" class="badge-txt" fill="#1D4ED8">Suite-Wide Mean Gap: 0.84%</text>
-<rect x="390" y="0" width="220" height="24" rx="4" fill="#F5F3FF" stroke="#8B5CF6" stroke-width="1"/>
-<text x="500" y="16" class="badge-txt" fill="#6D28D9">Multi-Rwy Mean Gap: 0.64%</text>
-<rect x="625" y="0" width="215" height="24" rx="4" fill="#FEF3C7" stroke="#F59E0B" stroke-width="1"/>
-<text x="732" y="16" class="badge-txt" fill="#B45309">100% Zero-Violation Feasible</text>
-</g>
+<rect width="960" height="440" fill="#FFFFFF"/>
+<text x="40" y="26" class="main-title">Fig. 3. Canonical benchmark scaling and certified optimality gaps across airland9&#8211;13.</text>
+<text x="40" y="44" class="sub-title">Evaluated on 20 canonical configurations (N = 100 to 500 Aircraft, R = 1..4 Runways) against certified published literature.</text>
+<rect x="40" y="62" width="425" height="320" fill="#FFFFFF" stroke="#D1D5DB" stroke-width="1.0"/>
+<text x="54" y="82" class="panel-hdr">(a) Optimality Gap vs. Fleet Scale N</text>
+<text x="54" y="96" class="panel-sub">Compared to certified BKS (Faye 2015, Pi&#241;ol &amp; Beasley 2006)</text>
+<circle cx="60" cy="110" r="3.5" fill="#1E3A8A"/>
+<text x="68" y="113" class="legend-lbl">R = 1 (Faye BKS)</text>
+<circle cx="170" cy="110" r="3.5" fill="#047857"/>
+<text x="178" y="113" class="legend-lbl">R = 2 (P&amp;B)</text>
+<circle cx="255" cy="110" r="3.5" fill="#7C3AED"/>
+<text x="263" y="113" class="legend-lbl">R = 3 (P&amp;B)</text>
+<circle cx="340" cy="110" r="3.5" fill="#D97706"/>
+<text x="348" y="113" class="legend-lbl">R = 4 (Beasley)</text>
+<line x1="95" y1="337.0" x2="445" y2="337.0" stroke="#E5E7EB" stroke-width="0.8" stroke-dasharray="2 2"/>
+<line x1="91" y1="337.0" x2="95" y2="337.0" stroke="#374151" stroke-width="1.0"/>
+<text x="88" y="340.0" text-anchor="end" class="axis-lbl" fill="#374151" font-weight="normal">-6.0%</text>
+<line x1="95" y1="310.625" x2="445" y2="310.625" stroke="#E5E7EB" stroke-width="0.8" stroke-dasharray="2 2"/>
+<line x1="91" y1="310.625" x2="95" y2="310.625" stroke="#374151" stroke-width="1.0"/>
+<text x="88" y="313.625" text-anchor="end" class="axis-lbl" fill="#374151" font-weight="normal">-4.0%</text>
+<line x1="95" y1="284.25" x2="445" y2="284.25" stroke="#E5E7EB" stroke-width="0.8" stroke-dasharray="2 2"/>
+<line x1="91" y1="284.25" x2="95" y2="284.25" stroke="#374151" stroke-width="1.0"/>
+<text x="88" y="287.25" text-anchor="end" class="axis-lbl" fill="#374151" font-weight="normal">-2.0%</text>
+<line x1="95" y1="257.875" x2="445" y2="257.875" stroke="#047857" stroke-width="1.5" stroke-dasharray=""/>
+<line x1="91" y1="257.875" x2="95" y2="257.875" stroke="#374151" stroke-width="1.0"/>
+<text x="88" y="260.875" text-anchor="end" class="axis-lbl" fill="#047857" font-weight="bold">0.0%</text>
+<line x1="95" y1="231.5" x2="445" y2="231.5" stroke="#E5E7EB" stroke-width="0.8" stroke-dasharray="2 2"/>
+<line x1="91" y1="231.5" x2="95" y2="231.5" stroke="#374151" stroke-width="1.0"/>
+<text x="88" y="234.5" text-anchor="end" class="axis-lbl" fill="#374151" font-weight="normal">2.0%</text>
+<line x1="95" y1="205.125" x2="445" y2="205.125" stroke="#E5E7EB" stroke-width="0.8" stroke-dasharray="2 2"/>
+<line x1="91" y1="205.125" x2="95" y2="205.125" stroke="#374151" stroke-width="1.0"/>
+<text x="88" y="208.125" text-anchor="end" class="axis-lbl" fill="#374151" font-weight="normal">4.0%</text>
+<line x1="95" y1="178.75" x2="445" y2="178.75" stroke="#E5E7EB" stroke-width="0.8" stroke-dasharray="2 2"/>
+<line x1="91" y1="178.75" x2="95" y2="178.75" stroke="#374151" stroke-width="1.0"/>
+<text x="88" y="181.75" text-anchor="end" class="axis-lbl" fill="#374151" font-weight="normal">6.0%</text>
+<line x1="95" y1="152.375" x2="445" y2="152.375" stroke="#E5E7EB" stroke-width="0.8" stroke-dasharray="2 2"/>
+<line x1="91" y1="152.375" x2="95" y2="152.375" stroke="#374151" stroke-width="1.0"/>
+<text x="88" y="155.375" text-anchor="end" class="axis-lbl" fill="#374151" font-weight="normal">8.0%</text>
+<line x1="95" y1="126.0" x2="445" y2="126.0" stroke="#E5E7EB" stroke-width="0.8" stroke-dasharray="2 2"/>
+<line x1="91" y1="126.0" x2="95" y2="126.0" stroke="#374151" stroke-width="1.0"/>
+<text x="88" y="129.0" text-anchor="end" class="axis-lbl" fill="#374151" font-weight="normal">10.0%</text>
+<text x="103" y="252.875" text-anchor="start" class="star-note">&#8592; Published BKS (0.00%)</text>
+<line x1="95" y1="337" x2="445" y2="337" stroke="#374151" stroke-width="1.0"/>
+<line x1="112.5" y1="337" x2="112.5" y2="341" stroke="#374151" stroke-width="1.0"/>
+<text x="112.5" y="353" text-anchor="middle" class="axis-lbl">100</text>
+<line x1="182.5" y1="337" x2="182.5" y2="341" stroke="#374151" stroke-width="1.0"/>
+<text x="182.5" y="353" text-anchor="middle" class="axis-lbl">150</text>
+<line x1="263.0" y1="337" x2="263.0" y2="341" stroke="#374151" stroke-width="1.0"/>
+<text x="263.0" y="353" text-anchor="middle" class="axis-lbl">200</text>
+<line x1="340.0" y1="337" x2="340.0" y2="341" stroke="#374151" stroke-width="1.0"/>
+<text x="340.0" y="353" text-anchor="middle" class="axis-lbl">250</text>
+<line x1="427.5" y1="337" x2="427.5" y2="341" stroke="#374151" stroke-width="1.0"/>
+<text x="427.5" y="353" text-anchor="middle" class="axis-lbl">500</text>
+<text x="270.0" y="369" text-anchor="middle" class="axis-title">Fleet Scale N (Aircraft)</text>
+<polyline points="112.5,257.80684997416114 182.5,225.3563042010382 263.0,251.40460484993116 340.0,249.5539917246187 427.5,215.5491000256044" fill="none" stroke="#1E3A8A" stroke-width="1.8"/>
+<circle cx="112.5" cy="257.80684997416114" r="4.0" fill="#1E3A8A" stroke="#FFFFFF" stroke-width="1.0"/>
+<circle cx="182.5" cy="225.3563042010382" r="4.0" fill="#1E3A8A" stroke="#FFFFFF" stroke-width="1.0"/>
+<circle cx="263.0" cy="251.40460484993116" r="4.0" fill="#1E3A8A" stroke="#FFFFFF" stroke-width="1.0"/>
+<circle cx="340.0" cy="249.5539917246187" r="4.0" fill="#1E3A8A" stroke="#FFFFFF" stroke-width="1.0"/>
+<circle cx="427.5" cy="215.5491000256044" r="4.0" fill="#1E3A8A" stroke="#FFFFFF" stroke-width="1.0"/>
+<polyline points="112.5,257.87499999999983 182.5,267.4900507768424 263.0,267.79758575689823 340.0,190.653390707707 427.5,255.18394120227788" fill="none" stroke="#047857" stroke-width="1.8"/>
+<circle cx="112.5" cy="257.87499999999983" r="5.5" fill="#047857" stroke="#F59E0B" stroke-width="2.0"/>
+<circle cx="182.5" cy="267.4900507768424" r="5.5" fill="#047857" stroke="#F59E0B" stroke-width="2.0"/>
+<circle cx="263.0" cy="267.79758575689823" r="5.5" fill="#047857" stroke="#F59E0B" stroke-width="2.0"/>
+<circle cx="340.0" cy="190.653390707707" r="4.0" fill="#047857" stroke="#FFFFFF" stroke-width="1.0"/>
+<circle cx="427.5" cy="255.18394120227788" r="4.0" fill="#047857" stroke="#FFFFFF" stroke-width="1.0"/>
+<polyline points="112.5,257.875 182.5,141.73270148462345 263.0,251.74980150853503 340.0,333.1545510708403 427.5,218.8137392471479" fill="none" stroke="#7C3AED" stroke-width="1.8"/>
+<circle cx="112.5" cy="257.875" r="5.5" fill="#7C3AED" stroke="#F59E0B" stroke-width="2.0"/>
+<circle cx="182.5" cy="141.73270148462345" r="4.0" fill="#7C3AED" stroke="#FFFFFF" stroke-width="1.0"/>
+<circle cx="263.0" cy="251.74980150853503" r="4.0" fill="#7C3AED" stroke="#FFFFFF" stroke-width="1.0"/>
+<circle cx="340.0" cy="333.1545510708403" r="5.5" fill="#7C3AED" stroke="#F59E0B" stroke-width="2.0"/>
+<circle cx="427.5" cy="218.8137392471479" r="4.0" fill="#7C3AED" stroke="#FFFFFF" stroke-width="1.0"/>
+<polyline points="112.5,257.875 340.0,284.3559236947792 427.5,258.60763888888886" fill="none" stroke="#D97706" stroke-width="1.8"/>
+<circle cx="112.5" cy="257.875" r="5.5" fill="#D97706" stroke="#F59E0B" stroke-width="2.0"/>
+<rect x="178.5" y="253.875" width="8" height="8" fill="#FFFFFF" stroke="#D97706" stroke-width="1.8"/>
+<rect x="259.0" y="253.875" width="8" height="8" fill="#FFFFFF" stroke="#D97706" stroke-width="1.8"/>
+<circle cx="340.0" cy="284.3559236947792" r="5.5" fill="#D97706" stroke="#F59E0B" stroke-width="2.0"/>
+<circle cx="427.5" cy="258.60763888888886" r="5.5" fill="#D97706" stroke="#F59E0B" stroke-width="2.0"/>
+<rect x="495" y="62" width="425" height="320" fill="#FFFFFF" stroke="#D1D5DB" stroke-width="1.0"/>
+<text x="509" y="82" class="panel-hdr">(b) Single-Thread CPU Execution Time</text>
+<text x="509" y="96" class="panel-sub">Logarithmic runtime scaling (Total suite = 388.9 s)</text>
+<circle cx="535" cy="110" r="3.5" fill="#1E3A8A"/>
+<text x="543" y="113" class="legend-lbl">R = 1</text>
+<circle cx="605" cy="110" r="3.5" fill="#047857"/>
+<text x="613" y="113" class="legend-lbl">R = 2</text>
+<circle cx="675" cy="110" r="3.5" fill="#7C3AED"/>
+<text x="683" y="113" class="legend-lbl">R = 3</text>
+<circle cx="745" cy="110" r="3.5" fill="#D97706"/>
+<text x="753" y="113" class="legend-lbl">R = 4</text>
+<line x1="550" y1="337.0" x2="900" y2="337.0" stroke="#CBD5E1" stroke-width="1.0" stroke-dasharray=""/>
+<line x1="546" y1="337.0" x2="550" y2="337.0" stroke="#374151" stroke-width="1.0"/>
+<text x="543" y="340.0" text-anchor="end" class="axis-lbl">0.1 s</text>
+<line x1="550" y1="273.08055659077445" x2="900" y2="273.08055659077445" stroke="#CBD5E1" stroke-width="1.0" stroke-dasharray=""/>
+<line x1="546" y1="273.08055659077445" x2="550" y2="273.08055659077445" stroke="#374151" stroke-width="1.0"/>
+<text x="543" y="276.08055659077445" text-anchor="end" class="axis-lbl">1.0 s</text>
+<line x1="550" y1="209.16111318154884" x2="900" y2="209.16111318154884" stroke="#CBD5E1" stroke-width="1.0" stroke-dasharray=""/>
+<line x1="546" y1="209.16111318154884" x2="550" y2="209.16111318154884" stroke="#374151" stroke-width="1.0"/>
+<text x="543" y="212.16111318154884" text-anchor="end" class="axis-lbl">10 s</text>
+<line x1="550" y1="145.2416697723233" x2="900" y2="145.2416697723233" stroke="#CBD5E1" stroke-width="1.0" stroke-dasharray=""/>
+<line x1="546" y1="145.2416697723233" x2="550" y2="145.2416697723233" stroke="#374151" stroke-width="1.0"/>
+<text x="543" y="148.2416697723233" text-anchor="end" class="axis-lbl">100 s</text>
+<line x1="550" y1="126.0" x2="900" y2="126.0" stroke="#F3F4F6" stroke-width="0.6" stroke-dasharray="2 2"/>
+<line x1="546" y1="126.0" x2="550" y2="126.0" stroke="#374151" stroke-width="1.0"/>
+<text x="543" y="129.0" text-anchor="end" class="axis-lbl">200 s</text>
+<line x1="550" y1="273.08055659077445" x2="900" y2="273.08055659077445" stroke="#B91C1C" stroke-width="1.2" stroke-dasharray="4 2"/>
+<text x="895" y="268.08055659077445" text-anchor="end" class="thresh-note">&#8592; Interactive ATC Threshold (1.0 s)</text>
+<line x1="550" y1="337" x2="900" y2="337" stroke="#374151" stroke-width="1.0"/>
+<line x1="567.5" y1="337" x2="567.5" y2="341" stroke="#374151" stroke-width="1.0"/>
+<text x="567.5" y="353" text-anchor="middle" class="axis-lbl">100</text>
+<line x1="637.5" y1="337" x2="637.5" y2="341" stroke="#374151" stroke-width="1.0"/>
+<text x="637.5" y="353" text-anchor="middle" class="axis-lbl">150</text>
+<line x1="718.0" y1="337" x2="718.0" y2="341" stroke="#374151" stroke-width="1.0"/>
+<text x="718.0" y="353" text-anchor="middle" class="axis-lbl">200</text>
+<line x1="795.0" y1="337" x2="795.0" y2="341" stroke="#374151" stroke-width="1.0"/>
+<text x="795.0" y="353" text-anchor="middle" class="axis-lbl">250</text>
+<line x1="882.5" y1="337" x2="882.5" y2="341" stroke="#374151" stroke-width="1.0"/>
+<text x="882.5" y="353" text-anchor="middle" class="axis-lbl">500</text>
+<text x="725.0" y="369" text-anchor="middle" class="axis-title">Fleet Scale N (Aircraft)</text>
+<polyline points="567.5,294.8489122615048 637.5,244.99159008226485 718.0,227.03515891577308 795.0,203.5887559761415 882.5,178.60675398925332" fill="none" stroke="#1E3A8A" stroke-width="1.8"/>
+<circle cx="567.5" cy="294.8489122615048" r="4.0" fill="#1E3A8A" stroke="#FFFFFF" stroke-width="1.0"/>
+<circle cx="637.5" cy="244.99159008226485" r="4.0" fill="#1E3A8A" stroke="#FFFFFF" stroke-width="1.0"/>
+<circle cx="718.0" cy="227.03515891577308" r="4.0" fill="#1E3A8A" stroke="#FFFFFF" stroke-width="1.0"/>
+<circle cx="795.0" cy="203.5887559761415" r="4.0" fill="#1E3A8A" stroke="#FFFFFF" stroke-width="1.0"/>
+<circle cx="882.5" cy="178.60675398925332" r="4.0" fill="#1E3A8A" stroke="#FFFFFF" stroke-width="1.0"/>
+<polyline points="567.5,249.40466371889633 637.5,209.49371774811118 718.0,195.5087629350789 795.0,175.27841442989376 882.5,134.61013547154545" fill="none" stroke="#047857" stroke-width="1.8"/>
+<circle cx="567.5" cy="249.40466371889633" r="4.0" fill="#047857" stroke="#FFFFFF" stroke-width="1.0"/>
+<circle cx="637.5" cy="209.49371774811118" r="4.0" fill="#047857" stroke="#FFFFFF" stroke-width="1.0"/>
+<circle cx="718.0" cy="195.5087629350789" r="4.0" fill="#047857" stroke="#FFFFFF" stroke-width="1.0"/>
+<circle cx="795.0" cy="175.27841442989376" r="4.0" fill="#047857" stroke="#FFFFFF" stroke-width="1.0"/>
+<circle cx="882.5" cy="134.61013547154545" r="4.0" fill="#047857" stroke="#FFFFFF" stroke-width="1.0"/>
+<polyline points="567.5,275.0652757001259 637.5,241.206800449532 718.0,221.6965405895669 795.0,203.12860177304762 882.5,155.718272389558" fill="none" stroke="#7C3AED" stroke-width="1.8"/>
+<circle cx="567.5" cy="275.0652757001259" r="4.0" fill="#7C3AED" stroke="#FFFFFF" stroke-width="1.0"/>
+<circle cx="637.5" cy="241.206800449532" r="4.0" fill="#7C3AED" stroke="#FFFFFF" stroke-width="1.0"/>
+<circle cx="718.0" cy="221.6965405895669" r="4.0" fill="#7C3AED" stroke="#FFFFFF" stroke-width="1.0"/>
+<circle cx="795.0" cy="203.12860177304762" r="4.0" fill="#7C3AED" stroke="#FFFFFF" stroke-width="1.0"/>
+<circle cx="882.5" cy="155.718272389558" r="4.0" fill="#7C3AED" stroke="#FFFFFF" stroke-width="1.0"/>
+<polyline points="567.5,303.94956499997045 637.5,271.08069305675076 718.0,250.2393297475138 795.0,224.28218554503286 882.5,168.3382611106201" fill="none" stroke="#D97706" stroke-width="1.8"/>
+<circle cx="567.5" cy="303.94956499997045" r="4.0" fill="#D97706" stroke="#FFFFFF" stroke-width="1.0"/>
+<circle cx="637.5" cy="271.08069305675076" r="4.0" fill="#D97706" stroke="#FFFFFF" stroke-width="1.0"/>
+<circle cx="718.0" cy="250.2393297475138" r="4.0" fill="#D97706" stroke="#FFFFFF" stroke-width="1.0"/>
+<circle cx="795.0" cy="224.28218554503286" r="4.0" fill="#D97706" stroke="#FFFFFF" stroke-width="1.0"/>
+<circle cx="882.5" cy="168.3382611106201" r="4.0" fill="#D97706" stroke="#FFFFFF" stroke-width="1.0"/>
+<text x="40" y="418" class="footer-note">Note: 8 configurations match exact 0.00% global optimum or beat literature BKS; multi-runway mean gap = 0.64%;</text>
+<text x="40" y="430" class="footer-note">suite-wide mean gap = 0.84% across all 18 reported configurations; 100% zero-violation feasibility audited via AirlandDecisionPlugin.</text>
 </svg>

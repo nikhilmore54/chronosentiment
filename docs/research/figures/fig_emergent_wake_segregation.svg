@@ -1,399 +1,393 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 480" width="960" height="480">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 440" width="960" height="440">
 
-    <defs>
-      <linearGradient id="barGrad1" x1="0" y1="0" x2="0" y2="1">
-        <stop offset="0%" stop-color="#7C3AED"/>
-        <stop offset="100%" stop-color="#5B21B6"/>
-      </linearGradient>
-      <linearGradient id="barGrad2" x1="0" y1="0" x2="0" y2="1">
-        <stop offset="0%" stop-color="#0284C7"/>
-        <stop offset="100%" stop-color="#0369A1"/>
-      </linearGradient>
-      <linearGradient id="barGrad3" x1="0" y1="0" x2="0" y2="1">
-        <stop offset="0%" stop-color="#10B981"/>
-        <stop offset="100%" stop-color="#047857"/>
-      </linearGradient>
-      <filter id="boxShadow" x="-3%" y="-5%" width="108%" height="114%">
-        <feDropShadow dx="1" dy="2" stdDeviation="2" flood-color="#000" flood-opacity="0.15"/>
-      </filter>
-    </defs>
     <style>
-      text { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
-      .title { font-size: 17px; font-weight: 700; fill: #0F172A; }
-      .subtitle { font-size: 12px; font-weight: 400; fill: #475569; }
-      .panel-title { font-size: 13.5px; font-weight: 700; fill: #1E293B; }
-      .panel-sub { font-size: 10.5px; font-weight: 500; fill: #64748B; }
-      .axis-txt { font-size: 10.5px; font-weight: 500; fill: #475569; }
-      .legend-lbl { font-size: 11px; font-weight: 600; fill: #334155; }
-      .cell-val { font-size: 9px; font-weight: 600; text-anchor: middle; }
-      .bar-val { font-size: 10px; font-weight: 700; fill: #FFFFFF; text-anchor: middle; }
-      .callout { font-size: 10.5px; font-weight: 600; fill: #047857; }
+      .main-title { font-family: 'Helvetica Neue', Helvetica, Arial, 'DejaVu Sans', sans-serif; font-size: 13pt; font-weight: bold; fill: #111827; }
+      .sub-title { font-family: 'Helvetica Neue', Helvetica, Arial, 'DejaVu Sans', sans-serif; font-size: 9.5pt; font-style: italic; fill: #4B5563; }
+      .panel-hdr { font-family: 'Helvetica Neue', Helvetica, Arial, 'DejaVu Sans', sans-serif; font-size: 10.5pt; font-weight: bold; fill: #111827; }
+      .panel-sub { font-family: 'Helvetica Neue', Helvetica, Arial, 'DejaVu Sans', sans-serif; font-size: 8.5pt; font-style: italic; fill: #4B5563; }
+      .axis-lbl { font-family: 'Helvetica Neue', Helvetica, Arial, 'DejaVu Sans', sans-serif; font-size: 8.5pt; fill: #1F2937; }
+      .axis-bold { font-family: 'Helvetica Neue', Helvetica, Arial, 'DejaVu Sans', sans-serif; font-size: 8.5pt; font-weight: bold; fill: #111827; }
+      .cell-txt { font-family: 'Helvetica Neue', Helvetica, Arial, 'DejaVu Sans', sans-serif; font-size: 7.5pt; font-weight: bold; text-anchor: middle; }
+      .bar-lbl { font-family: 'Helvetica Neue', Helvetica, Arial, 'DejaVu Sans', sans-serif; font-size: 8pt; font-weight: bold; fill: #FFFFFF; text-anchor: middle; }
+      .legend-lbl { font-family: 'Helvetica Neue', Helvetica, Arial, 'DejaVu Sans', sans-serif; font-size: 8.5pt; fill: #1F2937; }
+      .caption-note { font-family: 'Helvetica Neue', Helvetica, Arial, 'DejaVu Sans', sans-serif; font-size: 8pt; font-style: italic; fill: #374151; }
     </style>
     
-<rect width="960" height="480" fill="#F8FAFC" rx="8"/>
-<rect x="2" y="2" width="956" height="476" fill="none" stroke="#E2E8F0" stroke-width="1.5" rx="7"/>
-<text x="40" y="32" class="title">Autonomous Domain-Agnostic Wake-Vortex Segregation Emergence</text>
-<text x="40" y="50" class="subtitle">Spectral Affinity Clustering A_ij = -(S_ij + S_ji) Deduces Aerodynamic Wake Grouping Directly from Raw Separation Matrices</text>
-<rect x="40" y="75" width="420" height="365" fill="#FFFFFF" rx="6" stroke="#CBD5E1" stroke-width="1" filter="url(#boxShadow)"/>
-<text x="56" y="101" class="panel-title">Pairwise Separation Affinity Matrix A_ij</text>
-<text x="56" y="117" class="panel-sub">Block-diagonal emergence after spectral sort (No aircraft size labels)</text>
-<rect x="105.0" y="135.0" width="17.666666666666668" height="17.666666666666668" rx="2" fill="#1E40AF"/>
-<text x="114.58333333333333" y="147.58333333333334" class="cell-val" fill="#FFFFFF">192</text>
-<rect x="124.16666666666667" y="135.0" width="17.666666666666668" height="17.666666666666668" rx="2" fill="#1E40AF"/>
-<text x="133.75" y="147.58333333333334" class="cell-val" fill="#FFFFFF">192</text>
-<rect x="143.33333333333334" y="135.0" width="17.666666666666668" height="17.666666666666668" rx="2" fill="#1E40AF"/>
-<text x="152.91666666666669" y="147.58333333333334" class="cell-val" fill="#FFFFFF">192</text>
-<rect x="162.5" y="135.0" width="17.666666666666668" height="17.666666666666668" rx="2" fill="#1E40AF"/>
-<text x="172.08333333333334" y="147.58333333333334" class="cell-val" fill="#FFFFFF">192</text>
-<rect x="181.66666666666669" y="135.0" width="17.666666666666668" height="17.666666666666668" rx="2" fill="#DBEAFE"/>
-<text x="191.25000000000003" y="147.58333333333334" class="cell-val" fill="#1E293B">194</text>
-<rect x="200.83333333333334" y="135.0" width="17.666666666666668" height="17.666666666666668" rx="2" fill="#DBEAFE"/>
-<text x="210.41666666666669" y="147.58333333333334" class="cell-val" fill="#1E293B">194</text>
-<rect x="220.0" y="135.0" width="17.666666666666668" height="17.666666666666668" rx="2" fill="#DBEAFE"/>
-<text x="229.58333333333334" y="147.58333333333334" class="cell-val" fill="#1E293B">194</text>
-<rect x="239.16666666666669" y="135.0" width="17.666666666666668" height="17.666666666666668" rx="2" fill="#DBEAFE"/>
-<text x="248.75000000000003" y="147.58333333333334" class="cell-val" fill="#1E293B">194</text>
-<rect x="258.33333333333337" y="135.0" width="17.666666666666668" height="17.666666666666668" rx="2" fill="#DBEAFE"/>
-<text x="267.9166666666667" y="147.58333333333334" class="cell-val" fill="#1E293B">194</text>
-<rect x="277.5" y="135.0" width="17.666666666666668" height="17.666666666666668" rx="2" fill="#FEE2E2"/>
-<text x="287.0833333333333" y="147.58333333333334" class="cell-val" fill="#991B1B">216</text>
-<rect x="296.6666666666667" y="135.0" width="17.666666666666668" height="17.666666666666668" rx="2" fill="#FEE2E2"/>
-<text x="306.25" y="147.58333333333334" class="cell-val" fill="#991B1B">216</text>
-<rect x="315.83333333333337" y="135.0" width="17.666666666666668" height="17.666666666666668" rx="2" fill="#FEE2E2"/>
-<text x="325.4166666666667" y="147.58333333333334" class="cell-val" fill="#991B1B">216</text>
-<rect x="105.0" y="154.16666666666666" width="17.666666666666668" height="17.666666666666668" rx="2" fill="#1E40AF"/>
-<text x="114.58333333333333" y="166.75" class="cell-val" fill="#FFFFFF">192</text>
-<rect x="124.16666666666667" y="154.16666666666666" width="17.666666666666668" height="17.666666666666668" rx="2" fill="#1E40AF"/>
-<text x="133.75" y="166.75" class="cell-val" fill="#FFFFFF">192</text>
-<rect x="143.33333333333334" y="154.16666666666666" width="17.666666666666668" height="17.666666666666668" rx="2" fill="#1E40AF"/>
-<text x="152.91666666666669" y="166.75" class="cell-val" fill="#FFFFFF">192</text>
-<rect x="162.5" y="154.16666666666666" width="17.666666666666668" height="17.666666666666668" rx="2" fill="#1E40AF"/>
-<text x="172.08333333333334" y="166.75" class="cell-val" fill="#FFFFFF">192</text>
-<rect x="181.66666666666669" y="154.16666666666666" width="17.666666666666668" height="17.666666666666668" rx="2" fill="#DBEAFE"/>
-<text x="191.25000000000003" y="166.75" class="cell-val" fill="#1E293B">194</text>
-<rect x="200.83333333333334" y="154.16666666666666" width="17.666666666666668" height="17.666666666666668" rx="2" fill="#DBEAFE"/>
-<text x="210.41666666666669" y="166.75" class="cell-val" fill="#1E293B">194</text>
-<rect x="220.0" y="154.16666666666666" width="17.666666666666668" height="17.666666666666668" rx="2" fill="#DBEAFE"/>
-<text x="229.58333333333334" y="166.75" class="cell-val" fill="#1E293B">194</text>
-<rect x="239.16666666666669" y="154.16666666666666" width="17.666666666666668" height="17.666666666666668" rx="2" fill="#DBEAFE"/>
-<text x="248.75000000000003" y="166.75" class="cell-val" fill="#1E293B">194</text>
-<rect x="258.33333333333337" y="154.16666666666666" width="17.666666666666668" height="17.666666666666668" rx="2" fill="#DBEAFE"/>
-<text x="267.9166666666667" y="166.75" class="cell-val" fill="#1E293B">194</text>
-<rect x="277.5" y="154.16666666666666" width="17.666666666666668" height="17.666666666666668" rx="2" fill="#FEE2E2"/>
-<text x="287.0833333333333" y="166.75" class="cell-val" fill="#991B1B">216</text>
-<rect x="296.6666666666667" y="154.16666666666666" width="17.666666666666668" height="17.666666666666668" rx="2" fill="#FEE2E2"/>
-<text x="306.25" y="166.75" class="cell-val" fill="#991B1B">216</text>
-<rect x="315.83333333333337" y="154.16666666666666" width="17.666666666666668" height="17.666666666666668" rx="2" fill="#FEE2E2"/>
-<text x="325.4166666666667" y="166.75" class="cell-val" fill="#991B1B">216</text>
-<rect x="105.0" y="173.33333333333334" width="17.666666666666668" height="17.666666666666668" rx="2" fill="#1E40AF"/>
-<text x="114.58333333333333" y="185.91666666666669" class="cell-val" fill="#FFFFFF">192</text>
-<rect x="124.16666666666667" y="173.33333333333334" width="17.666666666666668" height="17.666666666666668" rx="2" fill="#1E40AF"/>
-<text x="133.75" y="185.91666666666669" class="cell-val" fill="#FFFFFF">192</text>
-<rect x="143.33333333333334" y="173.33333333333334" width="17.666666666666668" height="17.666666666666668" rx="2" fill="#1E40AF"/>
-<text x="152.91666666666669" y="185.91666666666669" class="cell-val" fill="#FFFFFF">192</text>
-<rect x="162.5" y="173.33333333333334" width="17.666666666666668" height="17.666666666666668" rx="2" fill="#1E40AF"/>
-<text x="172.08333333333334" y="185.91666666666669" class="cell-val" fill="#FFFFFF">192</text>
-<rect x="181.66666666666669" y="173.33333333333334" width="17.666666666666668" height="17.666666666666668" rx="2" fill="#DBEAFE"/>
-<text x="191.25000000000003" y="185.91666666666669" class="cell-val" fill="#1E293B">194</text>
-<rect x="200.83333333333334" y="173.33333333333334" width="17.666666666666668" height="17.666666666666668" rx="2" fill="#DBEAFE"/>
-<text x="210.41666666666669" y="185.91666666666669" class="cell-val" fill="#1E293B">194</text>
-<rect x="220.0" y="173.33333333333334" width="17.666666666666668" height="17.666666666666668" rx="2" fill="#DBEAFE"/>
-<text x="229.58333333333334" y="185.91666666666669" class="cell-val" fill="#1E293B">194</text>
-<rect x="239.16666666666669" y="173.33333333333334" width="17.666666666666668" height="17.666666666666668" rx="2" fill="#DBEAFE"/>
-<text x="248.75000000000003" y="185.91666666666669" class="cell-val" fill="#1E293B">194</text>
-<rect x="258.33333333333337" y="173.33333333333334" width="17.666666666666668" height="17.666666666666668" rx="2" fill="#DBEAFE"/>
-<text x="267.9166666666667" y="185.91666666666669" class="cell-val" fill="#1E293B">194</text>
-<rect x="277.5" y="173.33333333333334" width="17.666666666666668" height="17.666666666666668" rx="2" fill="#FEE2E2"/>
-<text x="287.0833333333333" y="185.91666666666669" class="cell-val" fill="#991B1B">216</text>
-<rect x="296.6666666666667" y="173.33333333333334" width="17.666666666666668" height="17.666666666666668" rx="2" fill="#FEE2E2"/>
-<text x="306.25" y="185.91666666666669" class="cell-val" fill="#991B1B">216</text>
-<rect x="315.83333333333337" y="173.33333333333334" width="17.666666666666668" height="17.666666666666668" rx="2" fill="#FEE2E2"/>
-<text x="325.4166666666667" y="185.91666666666669" class="cell-val" fill="#991B1B">216</text>
-<rect x="105.0" y="192.5" width="17.666666666666668" height="17.666666666666668" rx="2" fill="#1E40AF"/>
-<text x="114.58333333333333" y="205.08333333333334" class="cell-val" fill="#FFFFFF">192</text>
-<rect x="124.16666666666667" y="192.5" width="17.666666666666668" height="17.666666666666668" rx="2" fill="#1E40AF"/>
-<text x="133.75" y="205.08333333333334" class="cell-val" fill="#FFFFFF">192</text>
-<rect x="143.33333333333334" y="192.5" width="17.666666666666668" height="17.666666666666668" rx="2" fill="#1E40AF"/>
-<text x="152.91666666666669" y="205.08333333333334" class="cell-val" fill="#FFFFFF">192</text>
-<rect x="162.5" y="192.5" width="17.666666666666668" height="17.666666666666668" rx="2" fill="#1E40AF"/>
-<text x="172.08333333333334" y="205.08333333333334" class="cell-val" fill="#FFFFFF">192</text>
-<rect x="181.66666666666669" y="192.5" width="17.666666666666668" height="17.666666666666668" rx="2" fill="#DBEAFE"/>
-<text x="191.25000000000003" y="205.08333333333334" class="cell-val" fill="#1E293B">194</text>
-<rect x="200.83333333333334" y="192.5" width="17.666666666666668" height="17.666666666666668" rx="2" fill="#DBEAFE"/>
-<text x="210.41666666666669" y="205.08333333333334" class="cell-val" fill="#1E293B">194</text>
-<rect x="220.0" y="192.5" width="17.666666666666668" height="17.666666666666668" rx="2" fill="#DBEAFE"/>
-<text x="229.58333333333334" y="205.08333333333334" class="cell-val" fill="#1E293B">194</text>
-<rect x="239.16666666666669" y="192.5" width="17.666666666666668" height="17.666666666666668" rx="2" fill="#DBEAFE"/>
-<text x="248.75000000000003" y="205.08333333333334" class="cell-val" fill="#1E293B">194</text>
-<rect x="258.33333333333337" y="192.5" width="17.666666666666668" height="17.666666666666668" rx="2" fill="#DBEAFE"/>
-<text x="267.9166666666667" y="205.08333333333334" class="cell-val" fill="#1E293B">194</text>
-<rect x="277.5" y="192.5" width="17.666666666666668" height="17.666666666666668" rx="2" fill="#FEE2E2"/>
-<text x="287.0833333333333" y="205.08333333333334" class="cell-val" fill="#991B1B">216</text>
-<rect x="296.6666666666667" y="192.5" width="17.666666666666668" height="17.666666666666668" rx="2" fill="#FEE2E2"/>
-<text x="306.25" y="205.08333333333334" class="cell-val" fill="#991B1B">216</text>
-<rect x="315.83333333333337" y="192.5" width="17.666666666666668" height="17.666666666666668" rx="2" fill="#FEE2E2"/>
-<text x="325.4166666666667" y="205.08333333333334" class="cell-val" fill="#991B1B">216</text>
-<rect x="105.0" y="211.66666666666669" width="17.666666666666668" height="17.666666666666668" rx="2" fill="#DBEAFE"/>
-<text x="114.58333333333333" y="224.25000000000003" class="cell-val" fill="#1E293B">194</text>
-<rect x="124.16666666666667" y="211.66666666666669" width="17.666666666666668" height="17.666666666666668" rx="2" fill="#DBEAFE"/>
-<text x="133.75" y="224.25000000000003" class="cell-val" fill="#1E293B">194</text>
-<rect x="143.33333333333334" y="211.66666666666669" width="17.666666666666668" height="17.666666666666668" rx="2" fill="#DBEAFE"/>
-<text x="152.91666666666669" y="224.25000000000003" class="cell-val" fill="#1E293B">194</text>
-<rect x="162.5" y="211.66666666666669" width="17.666666666666668" height="17.666666666666668" rx="2" fill="#DBEAFE"/>
-<text x="172.08333333333334" y="224.25000000000003" class="cell-val" fill="#1E293B">194</text>
-<rect x="181.66666666666669" y="211.66666666666669" width="17.666666666666668" height="17.666666666666668" rx="2" fill="#2563EB"/>
-<text x="191.25000000000003" y="224.25000000000003" class="cell-val" fill="#FFFFFF">144</text>
-<rect x="200.83333333333334" y="211.66666666666669" width="17.666666666666668" height="17.666666666666668" rx="2" fill="#2563EB"/>
-<text x="210.41666666666669" y="224.25000000000003" class="cell-val" fill="#FFFFFF">144</text>
-<rect x="220.0" y="211.66666666666669" width="17.666666666666668" height="17.666666666666668" rx="2" fill="#2563EB"/>
-<text x="229.58333333333334" y="224.25000000000003" class="cell-val" fill="#FFFFFF">144</text>
-<rect x="239.16666666666669" y="211.66666666666669" width="17.666666666666668" height="17.666666666666668" rx="2" fill="#2563EB"/>
-<text x="248.75000000000003" y="224.25000000000003" class="cell-val" fill="#FFFFFF">144</text>
-<rect x="258.33333333333337" y="211.66666666666669" width="17.666666666666668" height="17.666666666666668" rx="2" fill="#2563EB"/>
-<text x="267.9166666666667" y="224.25000000000003" class="cell-val" fill="#FFFFFF">144</text>
-<rect x="277.5" y="211.66666666666669" width="17.666666666666668" height="17.666666666666668" rx="2" fill="#93C5FD"/>
-<text x="287.0833333333333" y="224.25000000000003" class="cell-val" fill="#1E293B">180</text>
-<rect x="296.6666666666667" y="211.66666666666669" width="17.666666666666668" height="17.666666666666668" rx="2" fill="#93C5FD"/>
-<text x="306.25" y="224.25000000000003" class="cell-val" fill="#1E293B">180</text>
-<rect x="315.83333333333337" y="211.66666666666669" width="17.666666666666668" height="17.666666666666668" rx="2" fill="#93C5FD"/>
-<text x="325.4166666666667" y="224.25000000000003" class="cell-val" fill="#1E293B">180</text>
-<rect x="105.0" y="230.83333333333334" width="17.666666666666668" height="17.666666666666668" rx="2" fill="#DBEAFE"/>
-<text x="114.58333333333333" y="243.41666666666669" class="cell-val" fill="#1E293B">194</text>
-<rect x="124.16666666666667" y="230.83333333333334" width="17.666666666666668" height="17.666666666666668" rx="2" fill="#DBEAFE"/>
-<text x="133.75" y="243.41666666666669" class="cell-val" fill="#1E293B">194</text>
-<rect x="143.33333333333334" y="230.83333333333334" width="17.666666666666668" height="17.666666666666668" rx="2" fill="#DBEAFE"/>
-<text x="152.91666666666669" y="243.41666666666669" class="cell-val" fill="#1E293B">194</text>
-<rect x="162.5" y="230.83333333333334" width="17.666666666666668" height="17.666666666666668" rx="2" fill="#DBEAFE"/>
-<text x="172.08333333333334" y="243.41666666666669" class="cell-val" fill="#1E293B">194</text>
-<rect x="181.66666666666669" y="230.83333333333334" width="17.666666666666668" height="17.666666666666668" rx="2" fill="#2563EB"/>
-<text x="191.25000000000003" y="243.41666666666669" class="cell-val" fill="#FFFFFF">144</text>
-<rect x="200.83333333333334" y="230.83333333333334" width="17.666666666666668" height="17.666666666666668" rx="2" fill="#2563EB"/>
-<text x="210.41666666666669" y="243.41666666666669" class="cell-val" fill="#FFFFFF">144</text>
-<rect x="220.0" y="230.83333333333334" width="17.666666666666668" height="17.666666666666668" rx="2" fill="#2563EB"/>
-<text x="229.58333333333334" y="243.41666666666669" class="cell-val" fill="#FFFFFF">144</text>
-<rect x="239.16666666666669" y="230.83333333333334" width="17.666666666666668" height="17.666666666666668" rx="2" fill="#2563EB"/>
-<text x="248.75000000000003" y="243.41666666666669" class="cell-val" fill="#FFFFFF">144</text>
-<rect x="258.33333333333337" y="230.83333333333334" width="17.666666666666668" height="17.666666666666668" rx="2" fill="#2563EB"/>
-<text x="267.9166666666667" y="243.41666666666669" class="cell-val" fill="#FFFFFF">144</text>
-<rect x="277.5" y="230.83333333333334" width="17.666666666666668" height="17.666666666666668" rx="2" fill="#93C5FD"/>
-<text x="287.0833333333333" y="243.41666666666669" class="cell-val" fill="#1E293B">180</text>
-<rect x="296.6666666666667" y="230.83333333333334" width="17.666666666666668" height="17.666666666666668" rx="2" fill="#93C5FD"/>
-<text x="306.25" y="243.41666666666669" class="cell-val" fill="#1E293B">180</text>
-<rect x="315.83333333333337" y="230.83333333333334" width="17.666666666666668" height="17.666666666666668" rx="2" fill="#93C5FD"/>
-<text x="325.4166666666667" y="243.41666666666669" class="cell-val" fill="#1E293B">180</text>
-<rect x="105.0" y="250.0" width="17.666666666666668" height="17.666666666666668" rx="2" fill="#DBEAFE"/>
-<text x="114.58333333333333" y="262.5833333333333" class="cell-val" fill="#1E293B">194</text>
-<rect x="124.16666666666667" y="250.0" width="17.666666666666668" height="17.666666666666668" rx="2" fill="#DBEAFE"/>
-<text x="133.75" y="262.5833333333333" class="cell-val" fill="#1E293B">194</text>
-<rect x="143.33333333333334" y="250.0" width="17.666666666666668" height="17.666666666666668" rx="2" fill="#DBEAFE"/>
-<text x="152.91666666666669" y="262.5833333333333" class="cell-val" fill="#1E293B">194</text>
-<rect x="162.5" y="250.0" width="17.666666666666668" height="17.666666666666668" rx="2" fill="#DBEAFE"/>
-<text x="172.08333333333334" y="262.5833333333333" class="cell-val" fill="#1E293B">194</text>
-<rect x="181.66666666666669" y="250.0" width="17.666666666666668" height="17.666666666666668" rx="2" fill="#2563EB"/>
-<text x="191.25000000000003" y="262.5833333333333" class="cell-val" fill="#FFFFFF">144</text>
-<rect x="200.83333333333334" y="250.0" width="17.666666666666668" height="17.666666666666668" rx="2" fill="#2563EB"/>
-<text x="210.41666666666669" y="262.5833333333333" class="cell-val" fill="#FFFFFF">144</text>
-<rect x="220.0" y="250.0" width="17.666666666666668" height="17.666666666666668" rx="2" fill="#2563EB"/>
-<text x="229.58333333333334" y="262.5833333333333" class="cell-val" fill="#FFFFFF">144</text>
-<rect x="239.16666666666669" y="250.0" width="17.666666666666668" height="17.666666666666668" rx="2" fill="#2563EB"/>
-<text x="248.75000000000003" y="262.5833333333333" class="cell-val" fill="#FFFFFF">144</text>
-<rect x="258.33333333333337" y="250.0" width="17.666666666666668" height="17.666666666666668" rx="2" fill="#2563EB"/>
-<text x="267.9166666666667" y="262.5833333333333" class="cell-val" fill="#FFFFFF">144</text>
-<rect x="277.5" y="250.0" width="17.666666666666668" height="17.666666666666668" rx="2" fill="#93C5FD"/>
-<text x="287.0833333333333" y="262.5833333333333" class="cell-val" fill="#1E293B">180</text>
-<rect x="296.6666666666667" y="250.0" width="17.666666666666668" height="17.666666666666668" rx="2" fill="#93C5FD"/>
-<text x="306.25" y="262.5833333333333" class="cell-val" fill="#1E293B">180</text>
-<rect x="315.83333333333337" y="250.0" width="17.666666666666668" height="17.666666666666668" rx="2" fill="#93C5FD"/>
-<text x="325.4166666666667" y="262.5833333333333" class="cell-val" fill="#1E293B">180</text>
-<rect x="105.0" y="269.1666666666667" width="17.666666666666668" height="17.666666666666668" rx="2" fill="#DBEAFE"/>
-<text x="114.58333333333333" y="281.75" class="cell-val" fill="#1E293B">194</text>
-<rect x="124.16666666666667" y="269.1666666666667" width="17.666666666666668" height="17.666666666666668" rx="2" fill="#DBEAFE"/>
-<text x="133.75" y="281.75" class="cell-val" fill="#1E293B">194</text>
-<rect x="143.33333333333334" y="269.1666666666667" width="17.666666666666668" height="17.666666666666668" rx="2" fill="#DBEAFE"/>
-<text x="152.91666666666669" y="281.75" class="cell-val" fill="#1E293B">194</text>
-<rect x="162.5" y="269.1666666666667" width="17.666666666666668" height="17.666666666666668" rx="2" fill="#DBEAFE"/>
-<text x="172.08333333333334" y="281.75" class="cell-val" fill="#1E293B">194</text>
-<rect x="181.66666666666669" y="269.1666666666667" width="17.666666666666668" height="17.666666666666668" rx="2" fill="#2563EB"/>
-<text x="191.25000000000003" y="281.75" class="cell-val" fill="#FFFFFF">144</text>
-<rect x="200.83333333333334" y="269.1666666666667" width="17.666666666666668" height="17.666666666666668" rx="2" fill="#2563EB"/>
-<text x="210.41666666666669" y="281.75" class="cell-val" fill="#FFFFFF">144</text>
-<rect x="220.0" y="269.1666666666667" width="17.666666666666668" height="17.666666666666668" rx="2" fill="#2563EB"/>
-<text x="229.58333333333334" y="281.75" class="cell-val" fill="#FFFFFF">144</text>
-<rect x="239.16666666666669" y="269.1666666666667" width="17.666666666666668" height="17.666666666666668" rx="2" fill="#2563EB"/>
-<text x="248.75000000000003" y="281.75" class="cell-val" fill="#FFFFFF">144</text>
-<rect x="258.33333333333337" y="269.1666666666667" width="17.666666666666668" height="17.666666666666668" rx="2" fill="#2563EB"/>
-<text x="267.9166666666667" y="281.75" class="cell-val" fill="#FFFFFF">144</text>
-<rect x="277.5" y="269.1666666666667" width="17.666666666666668" height="17.666666666666668" rx="2" fill="#93C5FD"/>
-<text x="287.0833333333333" y="281.75" class="cell-val" fill="#1E293B">180</text>
-<rect x="296.6666666666667" y="269.1666666666667" width="17.666666666666668" height="17.666666666666668" rx="2" fill="#93C5FD"/>
-<text x="306.25" y="281.75" class="cell-val" fill="#1E293B">180</text>
-<rect x="315.83333333333337" y="269.1666666666667" width="17.666666666666668" height="17.666666666666668" rx="2" fill="#93C5FD"/>
-<text x="325.4166666666667" y="281.75" class="cell-val" fill="#1E293B">180</text>
-<rect x="105.0" y="288.33333333333337" width="17.666666666666668" height="17.666666666666668" rx="2" fill="#DBEAFE"/>
-<text x="114.58333333333333" y="300.9166666666667" class="cell-val" fill="#1E293B">194</text>
-<rect x="124.16666666666667" y="288.33333333333337" width="17.666666666666668" height="17.666666666666668" rx="2" fill="#DBEAFE"/>
-<text x="133.75" y="300.9166666666667" class="cell-val" fill="#1E293B">194</text>
-<rect x="143.33333333333334" y="288.33333333333337" width="17.666666666666668" height="17.666666666666668" rx="2" fill="#DBEAFE"/>
-<text x="152.91666666666669" y="300.9166666666667" class="cell-val" fill="#1E293B">194</text>
-<rect x="162.5" y="288.33333333333337" width="17.666666666666668" height="17.666666666666668" rx="2" fill="#DBEAFE"/>
-<text x="172.08333333333334" y="300.9166666666667" class="cell-val" fill="#1E293B">194</text>
-<rect x="181.66666666666669" y="288.33333333333337" width="17.666666666666668" height="17.666666666666668" rx="2" fill="#2563EB"/>
-<text x="191.25000000000003" y="300.9166666666667" class="cell-val" fill="#FFFFFF">144</text>
-<rect x="200.83333333333334" y="288.33333333333337" width="17.666666666666668" height="17.666666666666668" rx="2" fill="#2563EB"/>
-<text x="210.41666666666669" y="300.9166666666667" class="cell-val" fill="#FFFFFF">144</text>
-<rect x="220.0" y="288.33333333333337" width="17.666666666666668" height="17.666666666666668" rx="2" fill="#2563EB"/>
-<text x="229.58333333333334" y="300.9166666666667" class="cell-val" fill="#FFFFFF">144</text>
-<rect x="239.16666666666669" y="288.33333333333337" width="17.666666666666668" height="17.666666666666668" rx="2" fill="#2563EB"/>
-<text x="248.75000000000003" y="300.9166666666667" class="cell-val" fill="#FFFFFF">144</text>
-<rect x="258.33333333333337" y="288.33333333333337" width="17.666666666666668" height="17.666666666666668" rx="2" fill="#2563EB"/>
-<text x="267.9166666666667" y="300.9166666666667" class="cell-val" fill="#FFFFFF">144</text>
-<rect x="277.5" y="288.33333333333337" width="17.666666666666668" height="17.666666666666668" rx="2" fill="#93C5FD"/>
-<text x="287.0833333333333" y="300.9166666666667" class="cell-val" fill="#1E293B">180</text>
-<rect x="296.6666666666667" y="288.33333333333337" width="17.666666666666668" height="17.666666666666668" rx="2" fill="#93C5FD"/>
-<text x="306.25" y="300.9166666666667" class="cell-val" fill="#1E293B">180</text>
-<rect x="315.83333333333337" y="288.33333333333337" width="17.666666666666668" height="17.666666666666668" rx="2" fill="#93C5FD"/>
-<text x="325.4166666666667" y="300.9166666666667" class="cell-val" fill="#1E293B">180</text>
-<rect x="105.0" y="307.5" width="17.666666666666668" height="17.666666666666668" rx="2" fill="#FEE2E2"/>
-<text x="114.58333333333333" y="320.0833333333333" class="cell-val" fill="#991B1B">216</text>
-<rect x="124.16666666666667" y="307.5" width="17.666666666666668" height="17.666666666666668" rx="2" fill="#FEE2E2"/>
-<text x="133.75" y="320.0833333333333" class="cell-val" fill="#991B1B">216</text>
-<rect x="143.33333333333334" y="307.5" width="17.666666666666668" height="17.666666666666668" rx="2" fill="#FEE2E2"/>
-<text x="152.91666666666669" y="320.0833333333333" class="cell-val" fill="#991B1B">216</text>
-<rect x="162.5" y="307.5" width="17.666666666666668" height="17.666666666666668" rx="2" fill="#FEE2E2"/>
-<text x="172.08333333333334" y="320.0833333333333" class="cell-val" fill="#991B1B">216</text>
-<rect x="181.66666666666669" y="307.5" width="17.666666666666668" height="17.666666666666668" rx="2" fill="#93C5FD"/>
-<text x="191.25000000000003" y="320.0833333333333" class="cell-val" fill="#1E293B">180</text>
-<rect x="200.83333333333334" y="307.5" width="17.666666666666668" height="17.666666666666668" rx="2" fill="#93C5FD"/>
-<text x="210.41666666666669" y="320.0833333333333" class="cell-val" fill="#1E293B">180</text>
-<rect x="220.0" y="307.5" width="17.666666666666668" height="17.666666666666668" rx="2" fill="#93C5FD"/>
-<text x="229.58333333333334" y="320.0833333333333" class="cell-val" fill="#1E293B">180</text>
-<rect x="239.16666666666669" y="307.5" width="17.666666666666668" height="17.666666666666668" rx="2" fill="#93C5FD"/>
-<text x="248.75000000000003" y="320.0833333333333" class="cell-val" fill="#1E293B">180</text>
-<rect x="258.33333333333337" y="307.5" width="17.666666666666668" height="17.666666666666668" rx="2" fill="#93C5FD"/>
-<text x="267.9166666666667" y="320.0833333333333" class="cell-val" fill="#1E293B">180</text>
-<rect x="277.5" y="307.5" width="17.666666666666668" height="17.666666666666668" rx="2" fill="#2563EB"/>
-<text x="287.0833333333333" y="320.0833333333333" class="cell-val" fill="#FFFFFF">144</text>
-<rect x="296.6666666666667" y="307.5" width="17.666666666666668" height="17.666666666666668" rx="2" fill="#2563EB"/>
-<text x="306.25" y="320.0833333333333" class="cell-val" fill="#FFFFFF">144</text>
-<rect x="315.83333333333337" y="307.5" width="17.666666666666668" height="17.666666666666668" rx="2" fill="#2563EB"/>
-<text x="325.4166666666667" y="320.0833333333333" class="cell-val" fill="#FFFFFF">144</text>
-<rect x="105.0" y="326.6666666666667" width="17.666666666666668" height="17.666666666666668" rx="2" fill="#FEE2E2"/>
-<text x="114.58333333333333" y="339.25" class="cell-val" fill="#991B1B">216</text>
-<rect x="124.16666666666667" y="326.6666666666667" width="17.666666666666668" height="17.666666666666668" rx="2" fill="#FEE2E2"/>
-<text x="133.75" y="339.25" class="cell-val" fill="#991B1B">216</text>
-<rect x="143.33333333333334" y="326.6666666666667" width="17.666666666666668" height="17.666666666666668" rx="2" fill="#FEE2E2"/>
-<text x="152.91666666666669" y="339.25" class="cell-val" fill="#991B1B">216</text>
-<rect x="162.5" y="326.6666666666667" width="17.666666666666668" height="17.666666666666668" rx="2" fill="#FEE2E2"/>
-<text x="172.08333333333334" y="339.25" class="cell-val" fill="#991B1B">216</text>
-<rect x="181.66666666666669" y="326.6666666666667" width="17.666666666666668" height="17.666666666666668" rx="2" fill="#93C5FD"/>
-<text x="191.25000000000003" y="339.25" class="cell-val" fill="#1E293B">180</text>
-<rect x="200.83333333333334" y="326.6666666666667" width="17.666666666666668" height="17.666666666666668" rx="2" fill="#93C5FD"/>
-<text x="210.41666666666669" y="339.25" class="cell-val" fill="#1E293B">180</text>
-<rect x="220.0" y="326.6666666666667" width="17.666666666666668" height="17.666666666666668" rx="2" fill="#93C5FD"/>
-<text x="229.58333333333334" y="339.25" class="cell-val" fill="#1E293B">180</text>
-<rect x="239.16666666666669" y="326.6666666666667" width="17.666666666666668" height="17.666666666666668" rx="2" fill="#93C5FD"/>
-<text x="248.75000000000003" y="339.25" class="cell-val" fill="#1E293B">180</text>
-<rect x="258.33333333333337" y="326.6666666666667" width="17.666666666666668" height="17.666666666666668" rx="2" fill="#93C5FD"/>
-<text x="267.9166666666667" y="339.25" class="cell-val" fill="#1E293B">180</text>
-<rect x="277.5" y="326.6666666666667" width="17.666666666666668" height="17.666666666666668" rx="2" fill="#2563EB"/>
-<text x="287.0833333333333" y="339.25" class="cell-val" fill="#FFFFFF">144</text>
-<rect x="296.6666666666667" y="326.6666666666667" width="17.666666666666668" height="17.666666666666668" rx="2" fill="#2563EB"/>
-<text x="306.25" y="339.25" class="cell-val" fill="#FFFFFF">144</text>
-<rect x="315.83333333333337" y="326.6666666666667" width="17.666666666666668" height="17.666666666666668" rx="2" fill="#2563EB"/>
-<text x="325.4166666666667" y="339.25" class="cell-val" fill="#FFFFFF">144</text>
-<rect x="105.0" y="345.83333333333337" width="17.666666666666668" height="17.666666666666668" rx="2" fill="#FEE2E2"/>
-<text x="114.58333333333333" y="358.4166666666667" class="cell-val" fill="#991B1B">216</text>
-<rect x="124.16666666666667" y="345.83333333333337" width="17.666666666666668" height="17.666666666666668" rx="2" fill="#FEE2E2"/>
-<text x="133.75" y="358.4166666666667" class="cell-val" fill="#991B1B">216</text>
-<rect x="143.33333333333334" y="345.83333333333337" width="17.666666666666668" height="17.666666666666668" rx="2" fill="#FEE2E2"/>
-<text x="152.91666666666669" y="358.4166666666667" class="cell-val" fill="#991B1B">216</text>
-<rect x="162.5" y="345.83333333333337" width="17.666666666666668" height="17.666666666666668" rx="2" fill="#FEE2E2"/>
-<text x="172.08333333333334" y="358.4166666666667" class="cell-val" fill="#991B1B">216</text>
-<rect x="181.66666666666669" y="345.83333333333337" width="17.666666666666668" height="17.666666666666668" rx="2" fill="#93C5FD"/>
-<text x="191.25000000000003" y="358.4166666666667" class="cell-val" fill="#1E293B">180</text>
-<rect x="200.83333333333334" y="345.83333333333337" width="17.666666666666668" height="17.666666666666668" rx="2" fill="#93C5FD"/>
-<text x="210.41666666666669" y="358.4166666666667" class="cell-val" fill="#1E293B">180</text>
-<rect x="220.0" y="345.83333333333337" width="17.666666666666668" height="17.666666666666668" rx="2" fill="#93C5FD"/>
-<text x="229.58333333333334" y="358.4166666666667" class="cell-val" fill="#1E293B">180</text>
-<rect x="239.16666666666669" y="345.83333333333337" width="17.666666666666668" height="17.666666666666668" rx="2" fill="#93C5FD"/>
-<text x="248.75000000000003" y="358.4166666666667" class="cell-val" fill="#1E293B">180</text>
-<rect x="258.33333333333337" y="345.83333333333337" width="17.666666666666668" height="17.666666666666668" rx="2" fill="#93C5FD"/>
-<text x="267.9166666666667" y="358.4166666666667" class="cell-val" fill="#1E293B">180</text>
-<rect x="277.5" y="345.83333333333337" width="17.666666666666668" height="17.666666666666668" rx="2" fill="#2563EB"/>
-<text x="287.0833333333333" y="358.4166666666667" class="cell-val" fill="#FFFFFF">144</text>
-<rect x="296.6666666666667" y="345.83333333333337" width="17.666666666666668" height="17.666666666666668" rx="2" fill="#2563EB"/>
-<text x="306.25" y="358.4166666666667" class="cell-val" fill="#FFFFFF">144</text>
-<rect x="315.83333333333337" y="345.83333333333337" width="17.666666666666668" height="17.666666666666668" rx="2" fill="#2563EB"/>
-<text x="325.4166666666667" y="358.4166666666667" class="cell-val" fill="#FFFFFF">144</text>
-<text x="97" y="147.58333333333334" text-anchor="end" class="axis-txt" font-weight="700" fill="#7C3AED">f1(H)</text>
-<text x="97" y="166.75" text-anchor="end" class="axis-txt" font-weight="700" fill="#7C3AED">f2(H)</text>
-<text x="97" y="185.91666666666669" text-anchor="end" class="axis-txt" font-weight="700" fill="#7C3AED">f3(H)</text>
-<text x="97" y="205.08333333333334" text-anchor="end" class="axis-txt" font-weight="700" fill="#7C3AED">f4(H)</text>
-<text x="97" y="224.25000000000003" text-anchor="end" class="axis-txt" font-weight="700" fill="#0284C7">f5(M)</text>
-<text x="97" y="243.41666666666669" text-anchor="end" class="axis-txt" font-weight="700" fill="#0284C7">f6(M)</text>
-<text x="97" y="262.5833333333333" text-anchor="end" class="axis-txt" font-weight="700" fill="#0284C7">f7(M)</text>
-<text x="97" y="281.75" text-anchor="end" class="axis-txt" font-weight="700" fill="#0284C7">f8(M)</text>
-<text x="97" y="300.9166666666667" text-anchor="end" class="axis-txt" font-weight="700" fill="#0284C7">f9(M)</text>
-<text x="97" y="320.0833333333333" text-anchor="end" class="axis-txt" font-weight="700" fill="#10B981">f10(L)</text>
-<text x="97" y="339.25" text-anchor="end" class="axis-txt" font-weight="700" fill="#10B981">f11(L)</text>
-<text x="97" y="358.4166666666667" text-anchor="end" class="axis-txt" font-weight="700" fill="#10B981">f12(L)</text>
-<text x="114.58333333333333" y="127" text-anchor="middle" class="axis-txt" font-weight="700" fill="#7C3AED">H</text>
-<text x="133.75" y="127" text-anchor="middle" class="axis-txt" font-weight="700" fill="#7C3AED">H</text>
-<text x="152.91666666666669" y="127" text-anchor="middle" class="axis-txt" font-weight="700" fill="#7C3AED">H</text>
-<text x="172.08333333333334" y="127" text-anchor="middle" class="axis-txt" font-weight="700" fill="#7C3AED">H</text>
-<text x="191.25000000000003" y="127" text-anchor="middle" class="axis-txt" font-weight="700" fill="#0284C7">M</text>
-<text x="210.41666666666669" y="127" text-anchor="middle" class="axis-txt" font-weight="700" fill="#0284C7">M</text>
-<text x="229.58333333333334" y="127" text-anchor="middle" class="axis-txt" font-weight="700" fill="#0284C7">M</text>
-<text x="248.75000000000003" y="127" text-anchor="middle" class="axis-txt" font-weight="700" fill="#0284C7">M</text>
-<text x="267.9166666666667" y="127" text-anchor="middle" class="axis-txt" font-weight="700" fill="#0284C7">M</text>
-<text x="287.0833333333333" y="127" text-anchor="middle" class="axis-txt" font-weight="700" fill="#10B981">L</text>
-<text x="306.25" y="127" text-anchor="middle" class="axis-txt" font-weight="700" fill="#10B981">L</text>
-<text x="325.4166666666667" y="127" text-anchor="middle" class="axis-txt" font-weight="700" fill="#10B981">L</text>
-<rect x="105" y="135" width="76.66666666666667" height="76.66666666666667" fill="none" stroke="#7C3AED" stroke-width="2" rx="3"/>
-<text x="187.66666666666669" y="173.33333333333334" class="axis-txt" font-weight="700" fill="#7C3AED">&#8592; Heavy Cluster (H-H: 192s)</text>
-<rect x="181.66666666666669" y="211.66666666666669" width="95.83333333333334" height="95.83333333333334" fill="none" stroke="#0284C7" stroke-width="2" rx="3"/>
-<text x="283.5" y="259.58333333333337" class="axis-txt" font-weight="700" fill="#0284C7">&#8592; Medium Cluster</text>
-<rect x="277.5" y="307.5" width="57.5" height="57.5" fill="none" stroke="#10B981" stroke-width="2" rx="3"/>
-<text x="341.0" y="336.25" class="axis-txt" font-weight="700" fill="#10B981">&#8592; Light</text>
-<text x="56" y="418" class="callout">&#10004; Intrinsic affinity clustering penalizes cross-class S_HL (216s) buffer void.</text>
-<text x="56" y="432" class="panel-sub">Raw integer inputs: zero aerodynamic or aircraft classification heuristics used.</text>
-<rect x="490" y="75" width="430" height="365" fill="#FFFFFF" rx="6" stroke="#CBD5E1" stroke-width="1" filter="url(#boxShadow)"/>
-<text x="506" y="101" class="panel-title">Emergent Parallel Runway Allocation Breakdown</text>
-<text x="506" y="117" class="panel-sub">airland13 (N=500 operations across R=4 parallel runways)</text>
-<rect x="506" y="133" width="14" height="10" rx="2" fill="url(#barGrad1)"/>
-<text x="524" y="142" class="legend-lbl">Heavy (H)</text>
-<rect x="606" y="133" width="14" height="10" rx="2" fill="url(#barGrad2)"/>
-<text x="624" y="142" class="legend-lbl">Medium (M)</text>
-<rect x="711" y="133" width="14" height="10" rx="2" fill="url(#barGrad3)"/>
-<text x="729" y="142" class="legend-lbl">Light (L)</text>
-<text x="603" y="183" text-anchor="end" class="axis-txt" font-weight="700">Runway 0</text>
-<text x="603" y="197" text-anchor="end" class="panel-sub">Heavy-Arrival Trunk</text>
-<rect x="615" y="163" width="200.34" height="44" fill="url(#barGrad1)" rx="3"/>
-<text x="715.17" y="189" class="bar-val">74%</text>
-<rect x="815.34" y="163" width="58.86" height="44" fill="url(#barGrad2)"/>
-<text x="844.77" y="189" class="bar-val">22%</text>
-<rect x="874.2" y="163" width="10.8" height="44" fill="url(#barGrad3)" rx="3"/>
-<text x="603" y="239" text-anchor="end" class="axis-txt" font-weight="700">Runway 1</text>
-<text x="603" y="253" text-anchor="end" class="panel-sub">Heavy/Medium Mixed</text>
-<rect x="615" y="219" width="131.22" height="44" fill="url(#barGrad1)" rx="3"/>
-<text x="680.61" y="245" class="bar-val">49%</text>
-<rect x="746.22" y="219" width="118.8" height="44" fill="url(#barGrad2)"/>
-<text x="805.62" y="245" class="bar-val">44%</text>
-<rect x="865.02" y="219" width="19.980000000000004" height="44" fill="url(#barGrad3)" rx="3"/>
-<text x="603" y="295" text-anchor="end" class="axis-txt" font-weight="700">Runway 2</text>
-<text x="603" y="309" text-anchor="end" class="panel-sub">Medium Mainstream</text>
-<rect x="615" y="275" width="32.4" height="44" fill="url(#barGrad1)" rx="3"/>
-<rect x="647.4" y="275" width="195.75" height="44" fill="url(#barGrad2)"/>
-<text x="745.275" y="301" class="bar-val">72%</text>
-<rect x="843.15" y="275" width="41.85" height="44" fill="url(#barGrad3)" rx="3"/>
-<text x="864.0749999999999" y="301" class="bar-val">16%</text>
-<text x="603" y="351" text-anchor="end" class="axis-txt" font-weight="700">Runway 3</text>
-<text x="603" y="365" text-anchor="end" class="panel-sub">Light/Regional Segregated</text>
-<rect x="615" y="331" width="6.48" height="44" fill="url(#barGrad1)" rx="3"/>
-<rect x="621.48" y="331" width="104.22" height="44" fill="url(#barGrad2)"/>
-<text x="673.59" y="357" class="bar-val">39%</text>
-<rect x="725.7" y="331" width="159.29999999999998" height="44" fill="url(#barGrad3)" rx="3"/>
-<text x="805.35" y="357" class="bar-val">59%</text>
-<text x="506" y="418" class="callout">&#10004; 74.2% of Heavy traffic naturally routes to Runway 0; 59.0% Light to Runway 3.</text>
-<text x="506" y="432" class="panel-sub">Reduces cumulative suite wake-buffer loss by 78.4% without any rule-based AMAN constraints.</text>
+<rect width="960" height="440" fill="#FFFFFF"/>
+<text x="40" y="26" class="main-title">Fig. 2. Autonomous domain-agnostic wake-vortex segregation emergence.</text>
+<text x="40" y="44" class="sub-title">Pairwise separation affinity matrix deduces aircraft aerodynamic wake classes directly from raw separation costs S_ij.</text>
+<rect x="40" y="62" width="420" height="345" fill="#FFFFFF" stroke="#D1D5DB" stroke-width="1.0"/>
+<text x="54" y="84" class="panel-hdr">(a) Pairwise Separation Affinity Matrix A_ij</text>
+<text x="54" y="98" class="panel-sub">Raw mutual separation S_ij + S_ji (seconds) after spectral ordering</text>
+<rect x="95.0" y="118.0" width="18.0" height="18.0" fill="#1E3A8A" stroke="#E5E7EB" stroke-width="0.5"/>
+<text x="104.0" y="129.5" class="cell-txt" fill="#FFFFFF">192</text>
+<rect x="113.0" y="118.0" width="18.0" height="18.0" fill="#1E3A8A" stroke="#E5E7EB" stroke-width="0.5"/>
+<text x="122.0" y="129.5" class="cell-txt" fill="#FFFFFF">192</text>
+<rect x="131.0" y="118.0" width="18.0" height="18.0" fill="#1E3A8A" stroke="#E5E7EB" stroke-width="0.5"/>
+<text x="140.0" y="129.5" class="cell-txt" fill="#FFFFFF">192</text>
+<rect x="149.0" y="118.0" width="18.0" height="18.0" fill="#1E3A8A" stroke="#E5E7EB" stroke-width="0.5"/>
+<text x="158.0" y="129.5" class="cell-txt" fill="#FFFFFF">192</text>
+<rect x="167.0" y="118.0" width="18.0" height="18.0" fill="#BFDBFE" stroke="#E5E7EB" stroke-width="0.5"/>
+<text x="176.0" y="129.5" class="cell-txt" fill="#1E293B">194</text>
+<rect x="185.0" y="118.0" width="18.0" height="18.0" fill="#BFDBFE" stroke="#E5E7EB" stroke-width="0.5"/>
+<text x="194.0" y="129.5" class="cell-txt" fill="#1E293B">194</text>
+<rect x="203.0" y="118.0" width="18.0" height="18.0" fill="#BFDBFE" stroke="#E5E7EB" stroke-width="0.5"/>
+<text x="212.0" y="129.5" class="cell-txt" fill="#1E293B">194</text>
+<rect x="221.0" y="118.0" width="18.0" height="18.0" fill="#BFDBFE" stroke="#E5E7EB" stroke-width="0.5"/>
+<text x="230.0" y="129.5" class="cell-txt" fill="#1E293B">194</text>
+<rect x="239.0" y="118.0" width="18.0" height="18.0" fill="#BFDBFE" stroke="#E5E7EB" stroke-width="0.5"/>
+<text x="248.0" y="129.5" class="cell-txt" fill="#1E293B">194</text>
+<rect x="257.0" y="118.0" width="18.0" height="18.0" fill="#FEE2E2" stroke="#E5E7EB" stroke-width="0.5"/>
+<text x="266.0" y="129.5" class="cell-txt" fill="#991B1B">216</text>
+<rect x="275.0" y="118.0" width="18.0" height="18.0" fill="#FEE2E2" stroke="#E5E7EB" stroke-width="0.5"/>
+<text x="284.0" y="129.5" class="cell-txt" fill="#991B1B">216</text>
+<rect x="293.0" y="118.0" width="18.0" height="18.0" fill="#FEE2E2" stroke="#E5E7EB" stroke-width="0.5"/>
+<text x="302.0" y="129.5" class="cell-txt" fill="#991B1B">216</text>
+<rect x="95.0" y="136.0" width="18.0" height="18.0" fill="#1E3A8A" stroke="#E5E7EB" stroke-width="0.5"/>
+<text x="104.0" y="147.5" class="cell-txt" fill="#FFFFFF">192</text>
+<rect x="113.0" y="136.0" width="18.0" height="18.0" fill="#1E3A8A" stroke="#E5E7EB" stroke-width="0.5"/>
+<text x="122.0" y="147.5" class="cell-txt" fill="#FFFFFF">192</text>
+<rect x="131.0" y="136.0" width="18.0" height="18.0" fill="#1E3A8A" stroke="#E5E7EB" stroke-width="0.5"/>
+<text x="140.0" y="147.5" class="cell-txt" fill="#FFFFFF">192</text>
+<rect x="149.0" y="136.0" width="18.0" height="18.0" fill="#1E3A8A" stroke="#E5E7EB" stroke-width="0.5"/>
+<text x="158.0" y="147.5" class="cell-txt" fill="#FFFFFF">192</text>
+<rect x="167.0" y="136.0" width="18.0" height="18.0" fill="#BFDBFE" stroke="#E5E7EB" stroke-width="0.5"/>
+<text x="176.0" y="147.5" class="cell-txt" fill="#1E293B">194</text>
+<rect x="185.0" y="136.0" width="18.0" height="18.0" fill="#BFDBFE" stroke="#E5E7EB" stroke-width="0.5"/>
+<text x="194.0" y="147.5" class="cell-txt" fill="#1E293B">194</text>
+<rect x="203.0" y="136.0" width="18.0" height="18.0" fill="#BFDBFE" stroke="#E5E7EB" stroke-width="0.5"/>
+<text x="212.0" y="147.5" class="cell-txt" fill="#1E293B">194</text>
+<rect x="221.0" y="136.0" width="18.0" height="18.0" fill="#BFDBFE" stroke="#E5E7EB" stroke-width="0.5"/>
+<text x="230.0" y="147.5" class="cell-txt" fill="#1E293B">194</text>
+<rect x="239.0" y="136.0" width="18.0" height="18.0" fill="#BFDBFE" stroke="#E5E7EB" stroke-width="0.5"/>
+<text x="248.0" y="147.5" class="cell-txt" fill="#1E293B">194</text>
+<rect x="257.0" y="136.0" width="18.0" height="18.0" fill="#FEE2E2" stroke="#E5E7EB" stroke-width="0.5"/>
+<text x="266.0" y="147.5" class="cell-txt" fill="#991B1B">216</text>
+<rect x="275.0" y="136.0" width="18.0" height="18.0" fill="#FEE2E2" stroke="#E5E7EB" stroke-width="0.5"/>
+<text x="284.0" y="147.5" class="cell-txt" fill="#991B1B">216</text>
+<rect x="293.0" y="136.0" width="18.0" height="18.0" fill="#FEE2E2" stroke="#E5E7EB" stroke-width="0.5"/>
+<text x="302.0" y="147.5" class="cell-txt" fill="#991B1B">216</text>
+<rect x="95.0" y="154.0" width="18.0" height="18.0" fill="#1E3A8A" stroke="#E5E7EB" stroke-width="0.5"/>
+<text x="104.0" y="165.5" class="cell-txt" fill="#FFFFFF">192</text>
+<rect x="113.0" y="154.0" width="18.0" height="18.0" fill="#1E3A8A" stroke="#E5E7EB" stroke-width="0.5"/>
+<text x="122.0" y="165.5" class="cell-txt" fill="#FFFFFF">192</text>
+<rect x="131.0" y="154.0" width="18.0" height="18.0" fill="#1E3A8A" stroke="#E5E7EB" stroke-width="0.5"/>
+<text x="140.0" y="165.5" class="cell-txt" fill="#FFFFFF">192</text>
+<rect x="149.0" y="154.0" width="18.0" height="18.0" fill="#1E3A8A" stroke="#E5E7EB" stroke-width="0.5"/>
+<text x="158.0" y="165.5" class="cell-txt" fill="#FFFFFF">192</text>
+<rect x="167.0" y="154.0" width="18.0" height="18.0" fill="#BFDBFE" stroke="#E5E7EB" stroke-width="0.5"/>
+<text x="176.0" y="165.5" class="cell-txt" fill="#1E293B">194</text>
+<rect x="185.0" y="154.0" width="18.0" height="18.0" fill="#BFDBFE" stroke="#E5E7EB" stroke-width="0.5"/>
+<text x="194.0" y="165.5" class="cell-txt" fill="#1E293B">194</text>
+<rect x="203.0" y="154.0" width="18.0" height="18.0" fill="#BFDBFE" stroke="#E5E7EB" stroke-width="0.5"/>
+<text x="212.0" y="165.5" class="cell-txt" fill="#1E293B">194</text>
+<rect x="221.0" y="154.0" width="18.0" height="18.0" fill="#BFDBFE" stroke="#E5E7EB" stroke-width="0.5"/>
+<text x="230.0" y="165.5" class="cell-txt" fill="#1E293B">194</text>
+<rect x="239.0" y="154.0" width="18.0" height="18.0" fill="#BFDBFE" stroke="#E5E7EB" stroke-width="0.5"/>
+<text x="248.0" y="165.5" class="cell-txt" fill="#1E293B">194</text>
+<rect x="257.0" y="154.0" width="18.0" height="18.0" fill="#FEE2E2" stroke="#E5E7EB" stroke-width="0.5"/>
+<text x="266.0" y="165.5" class="cell-txt" fill="#991B1B">216</text>
+<rect x="275.0" y="154.0" width="18.0" height="18.0" fill="#FEE2E2" stroke="#E5E7EB" stroke-width="0.5"/>
+<text x="284.0" y="165.5" class="cell-txt" fill="#991B1B">216</text>
+<rect x="293.0" y="154.0" width="18.0" height="18.0" fill="#FEE2E2" stroke="#E5E7EB" stroke-width="0.5"/>
+<text x="302.0" y="165.5" class="cell-txt" fill="#991B1B">216</text>
+<rect x="95.0" y="172.0" width="18.0" height="18.0" fill="#1E3A8A" stroke="#E5E7EB" stroke-width="0.5"/>
+<text x="104.0" y="183.5" class="cell-txt" fill="#FFFFFF">192</text>
+<rect x="113.0" y="172.0" width="18.0" height="18.0" fill="#1E3A8A" stroke="#E5E7EB" stroke-width="0.5"/>
+<text x="122.0" y="183.5" class="cell-txt" fill="#FFFFFF">192</text>
+<rect x="131.0" y="172.0" width="18.0" height="18.0" fill="#1E3A8A" stroke="#E5E7EB" stroke-width="0.5"/>
+<text x="140.0" y="183.5" class="cell-txt" fill="#FFFFFF">192</text>
+<rect x="149.0" y="172.0" width="18.0" height="18.0" fill="#1E3A8A" stroke="#E5E7EB" stroke-width="0.5"/>
+<text x="158.0" y="183.5" class="cell-txt" fill="#FFFFFF">192</text>
+<rect x="167.0" y="172.0" width="18.0" height="18.0" fill="#BFDBFE" stroke="#E5E7EB" stroke-width="0.5"/>
+<text x="176.0" y="183.5" class="cell-txt" fill="#1E293B">194</text>
+<rect x="185.0" y="172.0" width="18.0" height="18.0" fill="#BFDBFE" stroke="#E5E7EB" stroke-width="0.5"/>
+<text x="194.0" y="183.5" class="cell-txt" fill="#1E293B">194</text>
+<rect x="203.0" y="172.0" width="18.0" height="18.0" fill="#BFDBFE" stroke="#E5E7EB" stroke-width="0.5"/>
+<text x="212.0" y="183.5" class="cell-txt" fill="#1E293B">194</text>
+<rect x="221.0" y="172.0" width="18.0" height="18.0" fill="#BFDBFE" stroke="#E5E7EB" stroke-width="0.5"/>
+<text x="230.0" y="183.5" class="cell-txt" fill="#1E293B">194</text>
+<rect x="239.0" y="172.0" width="18.0" height="18.0" fill="#BFDBFE" stroke="#E5E7EB" stroke-width="0.5"/>
+<text x="248.0" y="183.5" class="cell-txt" fill="#1E293B">194</text>
+<rect x="257.0" y="172.0" width="18.0" height="18.0" fill="#FEE2E2" stroke="#E5E7EB" stroke-width="0.5"/>
+<text x="266.0" y="183.5" class="cell-txt" fill="#991B1B">216</text>
+<rect x="275.0" y="172.0" width="18.0" height="18.0" fill="#FEE2E2" stroke="#E5E7EB" stroke-width="0.5"/>
+<text x="284.0" y="183.5" class="cell-txt" fill="#991B1B">216</text>
+<rect x="293.0" y="172.0" width="18.0" height="18.0" fill="#FEE2E2" stroke="#E5E7EB" stroke-width="0.5"/>
+<text x="302.0" y="183.5" class="cell-txt" fill="#991B1B">216</text>
+<rect x="95.0" y="190.0" width="18.0" height="18.0" fill="#BFDBFE" stroke="#E5E7EB" stroke-width="0.5"/>
+<text x="104.0" y="201.5" class="cell-txt" fill="#1E293B">194</text>
+<rect x="113.0" y="190.0" width="18.0" height="18.0" fill="#BFDBFE" stroke="#E5E7EB" stroke-width="0.5"/>
+<text x="122.0" y="201.5" class="cell-txt" fill="#1E293B">194</text>
+<rect x="131.0" y="190.0" width="18.0" height="18.0" fill="#BFDBFE" stroke="#E5E7EB" stroke-width="0.5"/>
+<text x="140.0" y="201.5" class="cell-txt" fill="#1E293B">194</text>
+<rect x="149.0" y="190.0" width="18.0" height="18.0" fill="#BFDBFE" stroke="#E5E7EB" stroke-width="0.5"/>
+<text x="158.0" y="201.5" class="cell-txt" fill="#1E293B">194</text>
+<rect x="167.0" y="190.0" width="18.0" height="18.0" fill="#1E3A8A" stroke="#E5E7EB" stroke-width="0.5"/>
+<text x="176.0" y="201.5" class="cell-txt" fill="#FFFFFF">144</text>
+<rect x="185.0" y="190.0" width="18.0" height="18.0" fill="#1E3A8A" stroke="#E5E7EB" stroke-width="0.5"/>
+<text x="194.0" y="201.5" class="cell-txt" fill="#FFFFFF">144</text>
+<rect x="203.0" y="190.0" width="18.0" height="18.0" fill="#1E3A8A" stroke="#E5E7EB" stroke-width="0.5"/>
+<text x="212.0" y="201.5" class="cell-txt" fill="#FFFFFF">144</text>
+<rect x="221.0" y="190.0" width="18.0" height="18.0" fill="#1E3A8A" stroke="#E5E7EB" stroke-width="0.5"/>
+<text x="230.0" y="201.5" class="cell-txt" fill="#FFFFFF">144</text>
+<rect x="239.0" y="190.0" width="18.0" height="18.0" fill="#1E3A8A" stroke="#E5E7EB" stroke-width="0.5"/>
+<text x="248.0" y="201.5" class="cell-txt" fill="#FFFFFF">144</text>
+<rect x="257.0" y="190.0" width="18.0" height="18.0" fill="#BFDBFE" stroke="#E5E7EB" stroke-width="0.5"/>
+<text x="266.0" y="201.5" class="cell-txt" fill="#1E293B">180</text>
+<rect x="275.0" y="190.0" width="18.0" height="18.0" fill="#BFDBFE" stroke="#E5E7EB" stroke-width="0.5"/>
+<text x="284.0" y="201.5" class="cell-txt" fill="#1E293B">180</text>
+<rect x="293.0" y="190.0" width="18.0" height="18.0" fill="#BFDBFE" stroke="#E5E7EB" stroke-width="0.5"/>
+<text x="302.0" y="201.5" class="cell-txt" fill="#1E293B">180</text>
+<rect x="95.0" y="208.0" width="18.0" height="18.0" fill="#BFDBFE" stroke="#E5E7EB" stroke-width="0.5"/>
+<text x="104.0" y="219.5" class="cell-txt" fill="#1E293B">194</text>
+<rect x="113.0" y="208.0" width="18.0" height="18.0" fill="#BFDBFE" stroke="#E5E7EB" stroke-width="0.5"/>
+<text x="122.0" y="219.5" class="cell-txt" fill="#1E293B">194</text>
+<rect x="131.0" y="208.0" width="18.0" height="18.0" fill="#BFDBFE" stroke="#E5E7EB" stroke-width="0.5"/>
+<text x="140.0" y="219.5" class="cell-txt" fill="#1E293B">194</text>
+<rect x="149.0" y="208.0" width="18.0" height="18.0" fill="#BFDBFE" stroke="#E5E7EB" stroke-width="0.5"/>
+<text x="158.0" y="219.5" class="cell-txt" fill="#1E293B">194</text>
+<rect x="167.0" y="208.0" width="18.0" height="18.0" fill="#1E3A8A" stroke="#E5E7EB" stroke-width="0.5"/>
+<text x="176.0" y="219.5" class="cell-txt" fill="#FFFFFF">144</text>
+<rect x="185.0" y="208.0" width="18.0" height="18.0" fill="#1E3A8A" stroke="#E5E7EB" stroke-width="0.5"/>
+<text x="194.0" y="219.5" class="cell-txt" fill="#FFFFFF">144</text>
+<rect x="203.0" y="208.0" width="18.0" height="18.0" fill="#1E3A8A" stroke="#E5E7EB" stroke-width="0.5"/>
+<text x="212.0" y="219.5" class="cell-txt" fill="#FFFFFF">144</text>
+<rect x="221.0" y="208.0" width="18.0" height="18.0" fill="#1E3A8A" stroke="#E5E7EB" stroke-width="0.5"/>
+<text x="230.0" y="219.5" class="cell-txt" fill="#FFFFFF">144</text>
+<rect x="239.0" y="208.0" width="18.0" height="18.0" fill="#1E3A8A" stroke="#E5E7EB" stroke-width="0.5"/>
+<text x="248.0" y="219.5" class="cell-txt" fill="#FFFFFF">144</text>
+<rect x="257.0" y="208.0" width="18.0" height="18.0" fill="#BFDBFE" stroke="#E5E7EB" stroke-width="0.5"/>
+<text x="266.0" y="219.5" class="cell-txt" fill="#1E293B">180</text>
+<rect x="275.0" y="208.0" width="18.0" height="18.0" fill="#BFDBFE" stroke="#E5E7EB" stroke-width="0.5"/>
+<text x="284.0" y="219.5" class="cell-txt" fill="#1E293B">180</text>
+<rect x="293.0" y="208.0" width="18.0" height="18.0" fill="#BFDBFE" stroke="#E5E7EB" stroke-width="0.5"/>
+<text x="302.0" y="219.5" class="cell-txt" fill="#1E293B">180</text>
+<rect x="95.0" y="226.0" width="18.0" height="18.0" fill="#BFDBFE" stroke="#E5E7EB" stroke-width="0.5"/>
+<text x="104.0" y="237.5" class="cell-txt" fill="#1E293B">194</text>
+<rect x="113.0" y="226.0" width="18.0" height="18.0" fill="#BFDBFE" stroke="#E5E7EB" stroke-width="0.5"/>
+<text x="122.0" y="237.5" class="cell-txt" fill="#1E293B">194</text>
+<rect x="131.0" y="226.0" width="18.0" height="18.0" fill="#BFDBFE" stroke="#E5E7EB" stroke-width="0.5"/>
+<text x="140.0" y="237.5" class="cell-txt" fill="#1E293B">194</text>
+<rect x="149.0" y="226.0" width="18.0" height="18.0" fill="#BFDBFE" stroke="#E5E7EB" stroke-width="0.5"/>
+<text x="158.0" y="237.5" class="cell-txt" fill="#1E293B">194</text>
+<rect x="167.0" y="226.0" width="18.0" height="18.0" fill="#1E3A8A" stroke="#E5E7EB" stroke-width="0.5"/>
+<text x="176.0" y="237.5" class="cell-txt" fill="#FFFFFF">144</text>
+<rect x="185.0" y="226.0" width="18.0" height="18.0" fill="#1E3A8A" stroke="#E5E7EB" stroke-width="0.5"/>
+<text x="194.0" y="237.5" class="cell-txt" fill="#FFFFFF">144</text>
+<rect x="203.0" y="226.0" width="18.0" height="18.0" fill="#1E3A8A" stroke="#E5E7EB" stroke-width="0.5"/>
+<text x="212.0" y="237.5" class="cell-txt" fill="#FFFFFF">144</text>
+<rect x="221.0" y="226.0" width="18.0" height="18.0" fill="#1E3A8A" stroke="#E5E7EB" stroke-width="0.5"/>
+<text x="230.0" y="237.5" class="cell-txt" fill="#FFFFFF">144</text>
+<rect x="239.0" y="226.0" width="18.0" height="18.0" fill="#1E3A8A" stroke="#E5E7EB" stroke-width="0.5"/>
+<text x="248.0" y="237.5" class="cell-txt" fill="#FFFFFF">144</text>
+<rect x="257.0" y="226.0" width="18.0" height="18.0" fill="#BFDBFE" stroke="#E5E7EB" stroke-width="0.5"/>
+<text x="266.0" y="237.5" class="cell-txt" fill="#1E293B">180</text>
+<rect x="275.0" y="226.0" width="18.0" height="18.0" fill="#BFDBFE" stroke="#E5E7EB" stroke-width="0.5"/>
+<text x="284.0" y="237.5" class="cell-txt" fill="#1E293B">180</text>
+<rect x="293.0" y="226.0" width="18.0" height="18.0" fill="#BFDBFE" stroke="#E5E7EB" stroke-width="0.5"/>
+<text x="302.0" y="237.5" class="cell-txt" fill="#1E293B">180</text>
+<rect x="95.0" y="244.0" width="18.0" height="18.0" fill="#BFDBFE" stroke="#E5E7EB" stroke-width="0.5"/>
+<text x="104.0" y="255.5" class="cell-txt" fill="#1E293B">194</text>
+<rect x="113.0" y="244.0" width="18.0" height="18.0" fill="#BFDBFE" stroke="#E5E7EB" stroke-width="0.5"/>
+<text x="122.0" y="255.5" class="cell-txt" fill="#1E293B">194</text>
+<rect x="131.0" y="244.0" width="18.0" height="18.0" fill="#BFDBFE" stroke="#E5E7EB" stroke-width="0.5"/>
+<text x="140.0" y="255.5" class="cell-txt" fill="#1E293B">194</text>
+<rect x="149.0" y="244.0" width="18.0" height="18.0" fill="#BFDBFE" stroke="#E5E7EB" stroke-width="0.5"/>
+<text x="158.0" y="255.5" class="cell-txt" fill="#1E293B">194</text>
+<rect x="167.0" y="244.0" width="18.0" height="18.0" fill="#1E3A8A" stroke="#E5E7EB" stroke-width="0.5"/>
+<text x="176.0" y="255.5" class="cell-txt" fill="#FFFFFF">144</text>
+<rect x="185.0" y="244.0" width="18.0" height="18.0" fill="#1E3A8A" stroke="#E5E7EB" stroke-width="0.5"/>
+<text x="194.0" y="255.5" class="cell-txt" fill="#FFFFFF">144</text>
+<rect x="203.0" y="244.0" width="18.0" height="18.0" fill="#1E3A8A" stroke="#E5E7EB" stroke-width="0.5"/>
+<text x="212.0" y="255.5" class="cell-txt" fill="#FFFFFF">144</text>
+<rect x="221.0" y="244.0" width="18.0" height="18.0" fill="#1E3A8A" stroke="#E5E7EB" stroke-width="0.5"/>
+<text x="230.0" y="255.5" class="cell-txt" fill="#FFFFFF">144</text>
+<rect x="239.0" y="244.0" width="18.0" height="18.0" fill="#1E3A8A" stroke="#E5E7EB" stroke-width="0.5"/>
+<text x="248.0" y="255.5" class="cell-txt" fill="#FFFFFF">144</text>
+<rect x="257.0" y="244.0" width="18.0" height="18.0" fill="#BFDBFE" stroke="#E5E7EB" stroke-width="0.5"/>
+<text x="266.0" y="255.5" class="cell-txt" fill="#1E293B">180</text>
+<rect x="275.0" y="244.0" width="18.0" height="18.0" fill="#BFDBFE" stroke="#E5E7EB" stroke-width="0.5"/>
+<text x="284.0" y="255.5" class="cell-txt" fill="#1E293B">180</text>
+<rect x="293.0" y="244.0" width="18.0" height="18.0" fill="#BFDBFE" stroke="#E5E7EB" stroke-width="0.5"/>
+<text x="302.0" y="255.5" class="cell-txt" fill="#1E293B">180</text>
+<rect x="95.0" y="262.0" width="18.0" height="18.0" fill="#BFDBFE" stroke="#E5E7EB" stroke-width="0.5"/>
+<text x="104.0" y="273.5" class="cell-txt" fill="#1E293B">194</text>
+<rect x="113.0" y="262.0" width="18.0" height="18.0" fill="#BFDBFE" stroke="#E5E7EB" stroke-width="0.5"/>
+<text x="122.0" y="273.5" class="cell-txt" fill="#1E293B">194</text>
+<rect x="131.0" y="262.0" width="18.0" height="18.0" fill="#BFDBFE" stroke="#E5E7EB" stroke-width="0.5"/>
+<text x="140.0" y="273.5" class="cell-txt" fill="#1E293B">194</text>
+<rect x="149.0" y="262.0" width="18.0" height="18.0" fill="#BFDBFE" stroke="#E5E7EB" stroke-width="0.5"/>
+<text x="158.0" y="273.5" class="cell-txt" fill="#1E293B">194</text>
+<rect x="167.0" y="262.0" width="18.0" height="18.0" fill="#1E3A8A" stroke="#E5E7EB" stroke-width="0.5"/>
+<text x="176.0" y="273.5" class="cell-txt" fill="#FFFFFF">144</text>
+<rect x="185.0" y="262.0" width="18.0" height="18.0" fill="#1E3A8A" stroke="#E5E7EB" stroke-width="0.5"/>
+<text x="194.0" y="273.5" class="cell-txt" fill="#FFFFFF">144</text>
+<rect x="203.0" y="262.0" width="18.0" height="18.0" fill="#1E3A8A" stroke="#E5E7EB" stroke-width="0.5"/>
+<text x="212.0" y="273.5" class="cell-txt" fill="#FFFFFF">144</text>
+<rect x="221.0" y="262.0" width="18.0" height="18.0" fill="#1E3A8A" stroke="#E5E7EB" stroke-width="0.5"/>
+<text x="230.0" y="273.5" class="cell-txt" fill="#FFFFFF">144</text>
+<rect x="239.0" y="262.0" width="18.0" height="18.0" fill="#1E3A8A" stroke="#E5E7EB" stroke-width="0.5"/>
+<text x="248.0" y="273.5" class="cell-txt" fill="#FFFFFF">144</text>
+<rect x="257.0" y="262.0" width="18.0" height="18.0" fill="#BFDBFE" stroke="#E5E7EB" stroke-width="0.5"/>
+<text x="266.0" y="273.5" class="cell-txt" fill="#1E293B">180</text>
+<rect x="275.0" y="262.0" width="18.0" height="18.0" fill="#BFDBFE" stroke="#E5E7EB" stroke-width="0.5"/>
+<text x="284.0" y="273.5" class="cell-txt" fill="#1E293B">180</text>
+<rect x="293.0" y="262.0" width="18.0" height="18.0" fill="#BFDBFE" stroke="#E5E7EB" stroke-width="0.5"/>
+<text x="302.0" y="273.5" class="cell-txt" fill="#1E293B">180</text>
+<rect x="95.0" y="280.0" width="18.0" height="18.0" fill="#FEE2E2" stroke="#E5E7EB" stroke-width="0.5"/>
+<text x="104.0" y="291.5" class="cell-txt" fill="#991B1B">216</text>
+<rect x="113.0" y="280.0" width="18.0" height="18.0" fill="#FEE2E2" stroke="#E5E7EB" stroke-width="0.5"/>
+<text x="122.0" y="291.5" class="cell-txt" fill="#991B1B">216</text>
+<rect x="131.0" y="280.0" width="18.0" height="18.0" fill="#FEE2E2" stroke="#E5E7EB" stroke-width="0.5"/>
+<text x="140.0" y="291.5" class="cell-txt" fill="#991B1B">216</text>
+<rect x="149.0" y="280.0" width="18.0" height="18.0" fill="#FEE2E2" stroke="#E5E7EB" stroke-width="0.5"/>
+<text x="158.0" y="291.5" class="cell-txt" fill="#991B1B">216</text>
+<rect x="167.0" y="280.0" width="18.0" height="18.0" fill="#BFDBFE" stroke="#E5E7EB" stroke-width="0.5"/>
+<text x="176.0" y="291.5" class="cell-txt" fill="#1E293B">180</text>
+<rect x="185.0" y="280.0" width="18.0" height="18.0" fill="#BFDBFE" stroke="#E5E7EB" stroke-width="0.5"/>
+<text x="194.0" y="291.5" class="cell-txt" fill="#1E293B">180</text>
+<rect x="203.0" y="280.0" width="18.0" height="18.0" fill="#BFDBFE" stroke="#E5E7EB" stroke-width="0.5"/>
+<text x="212.0" y="291.5" class="cell-txt" fill="#1E293B">180</text>
+<rect x="221.0" y="280.0" width="18.0" height="18.0" fill="#BFDBFE" stroke="#E5E7EB" stroke-width="0.5"/>
+<text x="230.0" y="291.5" class="cell-txt" fill="#1E293B">180</text>
+<rect x="239.0" y="280.0" width="18.0" height="18.0" fill="#BFDBFE" stroke="#E5E7EB" stroke-width="0.5"/>
+<text x="248.0" y="291.5" class="cell-txt" fill="#1E293B">180</text>
+<rect x="257.0" y="280.0" width="18.0" height="18.0" fill="#1E3A8A" stroke="#E5E7EB" stroke-width="0.5"/>
+<text x="266.0" y="291.5" class="cell-txt" fill="#FFFFFF">144</text>
+<rect x="275.0" y="280.0" width="18.0" height="18.0" fill="#1E3A8A" stroke="#E5E7EB" stroke-width="0.5"/>
+<text x="284.0" y="291.5" class="cell-txt" fill="#FFFFFF">144</text>
+<rect x="293.0" y="280.0" width="18.0" height="18.0" fill="#1E3A8A" stroke="#E5E7EB" stroke-width="0.5"/>
+<text x="302.0" y="291.5" class="cell-txt" fill="#FFFFFF">144</text>
+<rect x="95.0" y="298.0" width="18.0" height="18.0" fill="#FEE2E2" stroke="#E5E7EB" stroke-width="0.5"/>
+<text x="104.0" y="309.5" class="cell-txt" fill="#991B1B">216</text>
+<rect x="113.0" y="298.0" width="18.0" height="18.0" fill="#FEE2E2" stroke="#E5E7EB" stroke-width="0.5"/>
+<text x="122.0" y="309.5" class="cell-txt" fill="#991B1B">216</text>
+<rect x="131.0" y="298.0" width="18.0" height="18.0" fill="#FEE2E2" stroke="#E5E7EB" stroke-width="0.5"/>
+<text x="140.0" y="309.5" class="cell-txt" fill="#991B1B">216</text>
+<rect x="149.0" y="298.0" width="18.0" height="18.0" fill="#FEE2E2" stroke="#E5E7EB" stroke-width="0.5"/>
+<text x="158.0" y="309.5" class="cell-txt" fill="#991B1B">216</text>
+<rect x="167.0" y="298.0" width="18.0" height="18.0" fill="#BFDBFE" stroke="#E5E7EB" stroke-width="0.5"/>
+<text x="176.0" y="309.5" class="cell-txt" fill="#1E293B">180</text>
+<rect x="185.0" y="298.0" width="18.0" height="18.0" fill="#BFDBFE" stroke="#E5E7EB" stroke-width="0.5"/>
+<text x="194.0" y="309.5" class="cell-txt" fill="#1E293B">180</text>
+<rect x="203.0" y="298.0" width="18.0" height="18.0" fill="#BFDBFE" stroke="#E5E7EB" stroke-width="0.5"/>
+<text x="212.0" y="309.5" class="cell-txt" fill="#1E293B">180</text>
+<rect x="221.0" y="298.0" width="18.0" height="18.0" fill="#BFDBFE" stroke="#E5E7EB" stroke-width="0.5"/>
+<text x="230.0" y="309.5" class="cell-txt" fill="#1E293B">180</text>
+<rect x="239.0" y="298.0" width="18.0" height="18.0" fill="#BFDBFE" stroke="#E5E7EB" stroke-width="0.5"/>
+<text x="248.0" y="309.5" class="cell-txt" fill="#1E293B">180</text>
+<rect x="257.0" y="298.0" width="18.0" height="18.0" fill="#1E3A8A" stroke="#E5E7EB" stroke-width="0.5"/>
+<text x="266.0" y="309.5" class="cell-txt" fill="#FFFFFF">144</text>
+<rect x="275.0" y="298.0" width="18.0" height="18.0" fill="#1E3A8A" stroke="#E5E7EB" stroke-width="0.5"/>
+<text x="284.0" y="309.5" class="cell-txt" fill="#FFFFFF">144</text>
+<rect x="293.0" y="298.0" width="18.0" height="18.0" fill="#1E3A8A" stroke="#E5E7EB" stroke-width="0.5"/>
+<text x="302.0" y="309.5" class="cell-txt" fill="#FFFFFF">144</text>
+<rect x="95.0" y="316.0" width="18.0" height="18.0" fill="#FEE2E2" stroke="#E5E7EB" stroke-width="0.5"/>
+<text x="104.0" y="327.5" class="cell-txt" fill="#991B1B">216</text>
+<rect x="113.0" y="316.0" width="18.0" height="18.0" fill="#FEE2E2" stroke="#E5E7EB" stroke-width="0.5"/>
+<text x="122.0" y="327.5" class="cell-txt" fill="#991B1B">216</text>
+<rect x="131.0" y="316.0" width="18.0" height="18.0" fill="#FEE2E2" stroke="#E5E7EB" stroke-width="0.5"/>
+<text x="140.0" y="327.5" class="cell-txt" fill="#991B1B">216</text>
+<rect x="149.0" y="316.0" width="18.0" height="18.0" fill="#FEE2E2" stroke="#E5E7EB" stroke-width="0.5"/>
+<text x="158.0" y="327.5" class="cell-txt" fill="#991B1B">216</text>
+<rect x="167.0" y="316.0" width="18.0" height="18.0" fill="#BFDBFE" stroke="#E5E7EB" stroke-width="0.5"/>
+<text x="176.0" y="327.5" class="cell-txt" fill="#1E293B">180</text>
+<rect x="185.0" y="316.0" width="18.0" height="18.0" fill="#BFDBFE" stroke="#E5E7EB" stroke-width="0.5"/>
+<text x="194.0" y="327.5" class="cell-txt" fill="#1E293B">180</text>
+<rect x="203.0" y="316.0" width="18.0" height="18.0" fill="#BFDBFE" stroke="#E5E7EB" stroke-width="0.5"/>
+<text x="212.0" y="327.5" class="cell-txt" fill="#1E293B">180</text>
+<rect x="221.0" y="316.0" width="18.0" height="18.0" fill="#BFDBFE" stroke="#E5E7EB" stroke-width="0.5"/>
+<text x="230.0" y="327.5" class="cell-txt" fill="#1E293B">180</text>
+<rect x="239.0" y="316.0" width="18.0" height="18.0" fill="#BFDBFE" stroke="#E5E7EB" stroke-width="0.5"/>
+<text x="248.0" y="327.5" class="cell-txt" fill="#1E293B">180</text>
+<rect x="257.0" y="316.0" width="18.0" height="18.0" fill="#1E3A8A" stroke="#E5E7EB" stroke-width="0.5"/>
+<text x="266.0" y="327.5" class="cell-txt" fill="#FFFFFF">144</text>
+<rect x="275.0" y="316.0" width="18.0" height="18.0" fill="#1E3A8A" stroke="#E5E7EB" stroke-width="0.5"/>
+<text x="284.0" y="327.5" class="cell-txt" fill="#FFFFFF">144</text>
+<rect x="293.0" y="316.0" width="18.0" height="18.0" fill="#1E3A8A" stroke="#E5E7EB" stroke-width="0.5"/>
+<text x="302.0" y="327.5" class="cell-txt" fill="#FFFFFF">144</text>
+<text x="89" y="130.0" text-anchor="end" class="axis-bold" fill="#1E3A8A">f1</text>
+<text x="89" y="148.0" text-anchor="end" class="axis-bold" fill="#1E3A8A">f2</text>
+<text x="89" y="166.0" text-anchor="end" class="axis-bold" fill="#1E3A8A">f3</text>
+<text x="89" y="184.0" text-anchor="end" class="axis-bold" fill="#1E3A8A">f4</text>
+<text x="89" y="202.0" text-anchor="end" class="axis-bold" fill="#0284C7">f5</text>
+<text x="89" y="220.0" text-anchor="end" class="axis-bold" fill="#0284C7">f6</text>
+<text x="89" y="238.0" text-anchor="end" class="axis-bold" fill="#0284C7">f7</text>
+<text x="89" y="256.0" text-anchor="end" class="axis-bold" fill="#0284C7">f8</text>
+<text x="89" y="274.0" text-anchor="end" class="axis-bold" fill="#0284C7">f9</text>
+<text x="89" y="292.0" text-anchor="end" class="axis-bold" fill="#047857">f10</text>
+<text x="89" y="310.0" text-anchor="end" class="axis-bold" fill="#047857">f11</text>
+<text x="89" y="328.0" text-anchor="end" class="axis-bold" fill="#047857">f12</text>
+<text x="104.0" y="112" text-anchor="middle" class="axis-bold" fill="#1E3A8A">H</text>
+<text x="122.0" y="112" text-anchor="middle" class="axis-bold" fill="#1E3A8A">H</text>
+<text x="140.0" y="112" text-anchor="middle" class="axis-bold" fill="#1E3A8A">H</text>
+<text x="158.0" y="112" text-anchor="middle" class="axis-bold" fill="#1E3A8A">H</text>
+<text x="176.0" y="112" text-anchor="middle" class="axis-bold" fill="#0284C7">M</text>
+<text x="194.0" y="112" text-anchor="middle" class="axis-bold" fill="#0284C7">M</text>
+<text x="212.0" y="112" text-anchor="middle" class="axis-bold" fill="#0284C7">M</text>
+<text x="230.0" y="112" text-anchor="middle" class="axis-bold" fill="#0284C7">M</text>
+<text x="248.0" y="112" text-anchor="middle" class="axis-bold" fill="#0284C7">M</text>
+<text x="266.0" y="112" text-anchor="middle" class="axis-bold" fill="#047857">L</text>
+<text x="284.0" y="112" text-anchor="middle" class="axis-bold" fill="#047857">L</text>
+<text x="302.0" y="112" text-anchor="middle" class="axis-bold" fill="#047857">L</text>
+<path d="M 319 118 L 324 118 L 324 154.0 L 329 154.0 L 324 154.0 L 324 190.0 L 319 190.0" fill="none" stroke="#1E3A8A" stroke-width="1.2"/>
+<text x="333" y="157.0" class="axis-bold" fill="#1E3A8A">Heavy (33%)</text>
+<path d="M 319 190.0 L 324 190.0 L 324 235.0 L 329 235.0 L 324 235.0 L 324 280.0 L 319 280.0" fill="none" stroke="#0284C7" stroke-width="1.2"/>
+<text x="333" y="238.0" class="axis-bold" fill="#0284C7">Medium (42%)</text>
+<path d="M 319 280.0 L 324 280.0 L 324 307.0 L 329 307.0 L 324 307.0 L 324 334.0 L 319 334.0" fill="none" stroke="#047857" stroke-width="1.2"/>
+<text x="333" y="310.0" class="axis-bold" fill="#047857">Light (25%)</text>
+<text x="54" y="387" class="caption-note">High affinity (dark blue, 144&#8211;192 s) minimizes cross-class separation buffer void (216 s).</text>
+<text x="54" y="399" class="caption-note">Spectral permutation discovers wake categories without categorical size labels.</text>
+<rect x="490" y="62" width="430" height="345" fill="#FFFFFF" stroke="#D1D5DB" stroke-width="1.0"/>
+<text x="504" y="84" class="panel-hdr">(b) Emergent Parallel Runway Allocation</text>
+<text x="504" y="98" class="panel-sub">airland13 (N = 500 operations across R = 4 parallel runways)</text>
+<rect x="504" y="112" width="14" height="9" fill="#1E3A8A" stroke="#0F172A" stroke-width="0.8"/>
+<text x="522" y="120" class="legend-lbl">Heavy (H)</text>
+<rect x="599" y="112" width="14" height="9" fill="#0284C7" stroke="#0F172A" stroke-width="0.8"/>
+<text x="617" y="120" class="legend-lbl">Medium (M)</text>
+<rect x="699" y="112" width="14" height="9" fill="#047857" stroke="#0F172A" stroke-width="0.8"/>
+<text x="717" y="120" class="legend-lbl">Light (L)</text>
+<text x="600" y="156" text-anchor="end" class="axis-bold">Runway 0</text>
+<text x="600" y="168" text-anchor="end" class="panel-sub" style="font-size:7.5pt;">Heavy Trunk</text>
+<rect x="610" y="140" width="204.05" height="36" fill="#1E3A8A" stroke="#0F172A" stroke-width="0.8"/>
+<text x="712.025" y="162" class="bar-lbl">74%</text>
+<rect x="814.05" y="140" width="59.95" height="36" fill="#0284C7" stroke="#0F172A" stroke-width="0.8"/>
+<text x="844.025" y="162" class="bar-lbl">22%</text>
+<rect x="874.0" y="140" width="11.0" height="36" fill="#047857" stroke="#0F172A" stroke-width="0.8"/>
+<text x="600" y="204" text-anchor="end" class="axis-bold">Runway 1</text>
+<text x="600" y="216" text-anchor="end" class="panel-sub" style="font-size:7.5pt;">Heavy/Medium</text>
+<rect x="610" y="188" width="133.65" height="36" fill="#1E3A8A" stroke="#0F172A" stroke-width="0.8"/>
+<text x="676.825" y="210" class="bar-lbl">49%</text>
+<rect x="743.65" y="188" width="121.0" height="36" fill="#0284C7" stroke="#0F172A" stroke-width="0.8"/>
+<text x="804.15" y="210" class="bar-lbl">44%</text>
+<rect x="864.65" y="188" width="20.35" height="36" fill="#047857" stroke="#0F172A" stroke-width="0.8"/>
+<text x="600" y="252" text-anchor="end" class="axis-bold">Runway 2</text>
+<text x="600" y="264" text-anchor="end" class="panel-sub" style="font-size:7.5pt;">Medium Mainstream</text>
+<rect x="610" y="236" width="33.0" height="36" fill="#1E3A8A" stroke="#0F172A" stroke-width="0.8"/>
+<rect x="643.0" y="236" width="199.375" height="36" fill="#0284C7" stroke="#0F172A" stroke-width="0.8"/>
+<text x="742.6875" y="258" class="bar-lbl">72%</text>
+<rect x="842.375" y="236" width="42.625" height="36" fill="#047857" stroke="#0F172A" stroke-width="0.8"/>
+<text x="863.6875" y="258" class="bar-lbl">16%</text>
+<text x="600" y="300" text-anchor="end" class="axis-bold">Runway 3</text>
+<text x="600" y="312" text-anchor="end" class="panel-sub" style="font-size:7.5pt;">Light/Regional</text>
+<rect x="610" y="284" width="6.6000000000000005" height="36" fill="#1E3A8A" stroke="#0F172A" stroke-width="0.8"/>
+<rect x="616.6" y="284" width="106.15" height="36" fill="#0284C7" stroke="#0F172A" stroke-width="0.8"/>
+<text x="669.6750000000001" y="306" class="bar-lbl">39%</text>
+<rect x="722.75" y="284" width="162.25" height="36" fill="#047857" stroke="#0F172A" stroke-width="0.8"/>
+<text x="803.875" y="306" class="bar-lbl">59%</text>
+<line x1="610" y1="332" x2="885" y2="332" stroke="#475569" stroke-width="1.0"/>
+<line x1="610.0" y1="332" x2="610.0" y2="336" stroke="#475569" stroke-width="1.0"/>
+<text x="610.0" y="346" text-anchor="middle" class="axis-lbl" style="font-size:7.5pt;">0%</text>
+<line x1="678.75" y1="332" x2="678.75" y2="336" stroke="#475569" stroke-width="1.0"/>
+<text x="678.75" y="346" text-anchor="middle" class="axis-lbl" style="font-size:7.5pt;">25%</text>
+<line x1="747.5" y1="332" x2="747.5" y2="336" stroke="#475569" stroke-width="1.0"/>
+<text x="747.5" y="346" text-anchor="middle" class="axis-lbl" style="font-size:7.5pt;">50%</text>
+<line x1="816.25" y1="332" x2="816.25" y2="336" stroke="#475569" stroke-width="1.0"/>
+<text x="816.25" y="346" text-anchor="middle" class="axis-lbl" style="font-size:7.5pt;">75%</text>
+<line x1="885.0" y1="332" x2="885.0" y2="336" stroke="#475569" stroke-width="1.0"/>
+<text x="885.0" y="346" text-anchor="middle" class="axis-lbl" style="font-size:7.5pt;">100%</text>
+<text x="747.5" y="358" text-anchor="middle" class="axis-bold" style="font-size:8pt;">Runway Traffic Share (%)</text>
+<text x="504" y="387" class="caption-note">74.2% of Heavy traffic concentrates on Runway 0; 59.0% Light routes to Runway 3.</text>
+<text x="504" y="399" class="caption-note">Emergent segregation cuts suite wake-buffer loss by 78.4% without fixed runway rules.</text>
 </svg>
