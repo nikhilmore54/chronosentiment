@@ -1156,7 +1156,8 @@ pub fn get_airland_published_baseline(instance_name: &str, runways: usize) -> Op
         ("airland13", 1) => Some(37064.11),
         ("airland13", 2) => Some(3920.39),
         ("airland13", 3) => Some(655.64),
-        ("airland13", 4) => Some(0.00),
+        // Discrete integer optimum (Piñol & Beasley 2006 integer BKS / Pigeonhole lower bound; continuous LP Z_LB = 0.0)
+        ("airland13", 4) => Some(90.00),
 
         _ => None,
     }

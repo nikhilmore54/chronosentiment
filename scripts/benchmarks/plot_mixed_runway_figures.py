@@ -630,13 +630,13 @@ def generate_figure_3_scaling():
     svg.append(f'<g transform="translate({pad_left}, {badge_y})">')
     # Badge 1
     svg.append('<rect x="0" y="0" width="180" height="24" rx="4" fill="#ECFDF5" stroke="#10B981" stroke-width="1"/>')
-    svg.append('<text x="90" y="16" class="badge-txt" fill="#047857">7 Exact / Better than BKS</text>')
+    svg.append('<text x="90" y="16" class="badge-txt" fill="#047857">8 Exact / Better than BKS</text>')
     # Badge 2
     svg.append('<rect x="195" y="0" width="180" height="24" rx="4" fill="#EFF6FF" stroke="#3B82F6" stroke-width="1"/>')
-    svg.append('<text x="285" y="16" class="badge-txt" fill="#1D4ED8">Suite-Wide Mean Gap: 0.89%</text>')
+    svg.append('<text x="285" y="16" class="badge-txt" fill="#1D4ED8">Suite-Wide Mean Gap: 0.84%</text>')
     # Badge 3
     svg.append('<rect x="390" y="0" width="220" height="24" rx="4" fill="#F5F3FF" stroke="#8B5CF6" stroke-width="1"/>')
-    svg.append('<text x="500" y="16" class="badge-txt" fill="#6D28D9">13/14 Multi-Rwy Gap &#8804; 0.46%</text>')
+    svg.append('<text x="500" y="16" class="badge-txt" fill="#6D28D9">Multi-Rwy Mean Gap: 0.64%</text>')
     # Badge 4
     svg.append('<rect x="625" y="0" width="215" height="24" rx="4" fill="#FEF3C7" stroke="#F59E0B" stroke-width="1"/>')
     svg.append('<text x="732" y="16" class="badge-txt" fill="#B45309">100% Zero-Violation Feasible</text>')

@@ -76,7 +76,7 @@
 <circle cx="360" cy="395.0" r="7" fill="#F59E0B" stroke="#B45309" stroke-width="1.5"/>
 <circle cx="360" cy="395.0" r="3" fill="#FFFFFF"/>
 <circle cx="450" cy="115.0" r="4.5" fill="#7C3AED" stroke="#FFFFFF" stroke-width="1.5"/>
-<polyline points="120,369.54545454545456 360,395.0 450,115.0" fill="none" stroke="#D97706" stroke-width="2" stroke-opacity="0.75"/>
+<polyline points="120,369.54545454545456 360,395.0 450,369.54545454545456" fill="none" stroke="#D97706" stroke-width="2" stroke-opacity="0.75"/>
 <circle cx="120" cy="369.54545454545456" r="7" fill="#F59E0B" stroke="#B45309" stroke-width="1.5"/>
 <circle cx="120" cy="369.54545454545456" r="3" fill="#FFFFFF"/>
 <rect x="194" y="363.54545454545456" width="12" height="12" fill="#10B981" stroke="#047857" stroke-width="1.5" rx="2"/>
@@ -85,7 +85,8 @@
 <text x="280" y="360.54545454545456" class="star-label" text-anchor="middle" fill="#047857" font-size="8px">New BKS</text>
 <circle cx="360" cy="395.0" r="7" fill="#F59E0B" stroke="#B45309" stroke-width="1.5"/>
 <circle cx="360" cy="395.0" r="3" fill="#FFFFFF"/>
-<circle cx="450" cy="115.0" r="4.5" fill="#D97706" stroke="#FFFFFF" stroke-width="1.5"/>
+<circle cx="450" cy="369.54545454545456" r="7" fill="#F59E0B" stroke="#B45309" stroke-width="1.5"/>
+<circle cx="450" cy="369.54545454545456" r="3" fill="#FFFFFF"/>
 <circle cx="98" cy="135" r="4.5" fill="#2563EB"/>
 <text x="109" y="138.5" class="axis-label" font-weight="600">R=1 (Faye BKS)</text>
 <circle cx="98" cy="151" r="4.5" fill="#059669"/>
@@ -148,11 +149,11 @@
 <text x="900" y="305.1779897887054" text-anchor="end" class="axis-label" font-weight="700" fill="#EA580C">&#8592; Sub-Second Interactive Threshold (1.0 s)</text>
 <g transform="translate(75, 485)">
 <rect x="0" y="0" width="180" height="24" rx="4" fill="#ECFDF5" stroke="#10B981" stroke-width="1"/>
-<text x="90" y="16" class="badge-txt" fill="#047857">7 Exact / Better than BKS</text>
+<text x="90" y="16" class="badge-txt" fill="#047857">8 Exact / Better than BKS</text>
 <rect x="195" y="0" width="180" height="24" rx="4" fill="#EFF6FF" stroke="#3B82F6" stroke-width="1"/>
-<text x="285" y="16" class="badge-txt" fill="#1D4ED8">Suite-Wide Mean Gap: 0.89%</text>
+<text x="285" y="16" class="badge-txt" fill="#1D4ED8">Suite-Wide Mean Gap: 0.84%</text>
 <rect x="390" y="0" width="220" height="24" rx="4" fill="#F5F3FF" stroke="#8B5CF6" stroke-width="1"/>
-<text x="500" y="16" class="badge-txt" fill="#6D28D9">13/14 Multi-Rwy Gap &#8804; 0.46%</text>
+<text x="500" y="16" class="badge-txt" fill="#6D28D9">Multi-Rwy Mean Gap: 0.64%</text>
 <rect x="625" y="0" width="215" height="24" rx="4" fill="#FEF3C7" stroke="#F59E0B" stroke-width="1"/>
 <text x="732" y="16" class="badge-txt" fill="#B45309">100% Zero-Violation Feasible</text>
 </g>
