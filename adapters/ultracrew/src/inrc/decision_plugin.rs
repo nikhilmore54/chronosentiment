@@ -725,10 +725,13 @@ impl ReasoningEngine for CoralysInrcEngine {
         };
         let _ = optimizer.simulated_annealing(&mut best_genome, 2000, &mut rng);
 
-        // 3. Final Hard Constraint Clean Pass (guarantee 0 HC)
-        optimizer.repair_hard_constraints(&mut best_genome);
+        // 3. Final Hard Constraint Safety Check (guarantee 0 HC)
         let metric_report = coralys_moga::runtime::optimization::metric::MetricReport::default();
-        let final_eval = optimizer.evaluate(&InrcGenome { bits: best_genome.bits.clone() }, &metric_report);
+        let mut final_eval = optimizer.evaluate(&InrcGenome { bits: best_genome.bits.clone() }, &metric_report);
+        if !final_eval.is_feasible() {
+            optimizer.repair_hard_constraints(&mut best_genome);
+            final_eval = optimizer.evaluate(&InrcGenome { bits: best_genome.bits.clone() }, &metric_report);
+        }
 
         let action = InrcAction::SetGenome {
             bits: best_genome.bits.clone(),
