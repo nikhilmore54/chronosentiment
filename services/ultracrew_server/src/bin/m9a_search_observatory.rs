@@ -1,3 +1,4 @@
+#![allow(dead_code, unused_variables, unused_imports, unused_mut, unused_assignments)]
 use coralys_ecology::state::{SearchSnapshot, SearchStateObservatory};
 use coralys_moga::ecology::{EcologyMemory, distribution_gini};
 use coralys_moga::engine_proof::{Evaluator, EvolutionEngine, ParetoSolution};

@@ -467,6 +467,260 @@ pub fn evaluate_tick_policies(
     (action_b, action_c, factors_b, factors_c)
 }
 
+/// Track C v3 recommendation hygiene (2026-11-25).
+/// Evidence: live B fires were 99%+ isolated one-tick flickers (SHORT→NO_TRADE).
+/// Soft genome rules (Trend+Mom+Vol without MicroConfirm) + L1 qty flicker.
+/// Rev 2: confirm must span wall-clock; sticky arms on drop; rearm cooldown.
+/// Rev 3: tolerate brief MicroConfirm gaps (live max continuous span ≈2.3s).
+pub const REC_HYGIENE_PROTOCOL_ID: &str = "RP-608-SHADOW-TICK-REC-HYGIENE-001";
+pub const REC_HYGIENE_REV: u32 = 4;
+/// Consecutive same-direction tradeable evals required before emit.
+pub const REC_CONFIRM_TICKS: u32 = 3;
+/// Min wall-clock span from first candidate tick to confirm (ms).
+/// Rev3 soak: 8s unreachable (live max≈2.3s with 1.5s gaps) → 5s.
+pub const REC_CONFIRM_MIN_SPAN_MS: i64 = 5_000;
+/// Keep candidate across non-tradeable gaps up to this (ms).
+pub const REC_CONFIRM_GAP_TOLERANCE_MS: i64 = 5_000;
+/// Hold confirmed tradeable through NO_TRADE noise after signal drop (ms).
+pub const REC_STICKY_MS: i64 = 12_000;
+/// After sticky expires, block new confirm arm (ms).
+pub const REC_REARM_COOLDOWN_MS: i64 = 30_000;
+
+fn is_tradeable(action: &str) -> bool {
+    matches!(action, "LONG" | "SHORT")
+}
+
+/// Policy B tradeable requires aligned MicroConfirm (AskHeavy/BidHeavy).
+/// Downgrades soft genome rules that fire on Trend+Mom+Vol alone.
+pub fn microconfirm_gate_b(action_b: &str, factors_b: &[EvidenceFactor]) -> (String, bool) {
+    if !is_tradeable(action_b) {
+        return (action_b.to_string(), false);
+    }
+    let mc = factors_b.iter().find(|f| f.concept == "MicroConfirm");
+    let ok = match action_b {
+        "LONG" => mc
+            .map(|f| f.present && f.direction.as_deref() == Some("BidHeavy"))
+            .unwrap_or(false),
+        "SHORT" => mc
+            .map(|f| f.present && f.direction.as_deref() == Some("AskHeavy"))
+            .unwrap_or(false),
+        _ => false,
+    };
+    if ok {
+        (action_b.to_string(), false)
+    } else {
+        ("NO_TRADE".to_string(), true)
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+pub struct RecHygieneStamp {
+    pub protocol_id: String,
+    pub hygiene_rev: u32,
+    pub microconfirm_gated: bool,
+    pub confirm_pending: bool,
+    pub confirm_streak: u32,
+    pub confirm_span_ms: i64,
+    pub gap_tolerated: bool,
+    pub rearm_blocked: bool,
+    pub sticky_held: bool,
+    pub raw_b: String,
+    pub raw_c: String,
+    pub out_b: String,
+    pub out_c: String,
+}
+
+#[derive(Debug, Clone)]
+pub struct RecommendationStabilizer {
+    pub confirm_ticks: u32,
+    pub confirm_min_span_ms: i64,
+    pub confirm_gap_tolerance_ms: i64,
+    pub sticky_ms: i64,
+    pub rearm_cooldown_ms: i64,
+    candidate_b: Option<String>,
+    candidate_streak: u32,
+    candidate_first_ms: i64,
+    last_tradeable_ms: i64,
+    sticky_b: Option<String>,
+    sticky_c: Option<String>,
+    sticky_until_ms: i64,
+    rearm_after_ms: i64,
+}
+
+impl Default for RecommendationStabilizer {
+    fn default() -> Self {
+        Self {
+            confirm_ticks: REC_CONFIRM_TICKS,
+            confirm_min_span_ms: REC_CONFIRM_MIN_SPAN_MS,
+            confirm_gap_tolerance_ms: REC_CONFIRM_GAP_TOLERANCE_MS,
+            sticky_ms: REC_STICKY_MS,
+            rearm_cooldown_ms: REC_REARM_COOLDOWN_MS,
+            candidate_b: None,
+            candidate_streak: 0,
+            candidate_first_ms: 0,
+            last_tradeable_ms: 0,
+            sticky_b: None,
+            sticky_c: None,
+            sticky_until_ms: 0,
+            rearm_after_ms: 0,
+        }
+    }
+}
+
+impl RecommendationStabilizer {
+    /// Stabilize Policy B/C after raw genome eval (+ MicroConfirm gate on B).
+    pub fn update(
+        &mut self,
+        now_ms: i64,
+        raw_b: &str,
+        raw_c: &str,
+        factors_b: &[EvidenceFactor],
+    ) -> (String, String, RecHygieneStamp) {
+        let (gated_b, mc_gated) = microconfirm_gate_b(raw_b, factors_b);
+        let mut stamp = RecHygieneStamp {
+            protocol_id: REC_HYGIENE_PROTOCOL_ID.into(),
+            hygiene_rev: REC_HYGIENE_REV,
+            microconfirm_gated: mc_gated,
+            confirm_pending: false,
+            confirm_streak: 0,
+            confirm_span_ms: 0,
+            gap_tolerated: false,
+            rearm_blocked: false,
+            sticky_held: false,
+            raw_b: raw_b.to_string(),
+            raw_c: raw_c.to_string(),
+            out_b: gated_b.clone(),
+            out_c: raw_c.to_string(),
+        };
+
+        if is_tradeable(&gated_b) {
+            // Already confirmed this side — keep emitting while signal holds.
+            if self.sticky_b.as_deref() == Some(gated_b.as_str()) {
+                self.sticky_c = Some(raw_c.to_string());
+                self.sticky_until_ms = 0;
+                stamp.out_b = gated_b;
+                stamp.out_c = raw_c.to_string();
+                return (stamp.out_b.clone(), stamp.out_c.clone(), stamp);
+            }
+            if self.candidate_b.as_deref() == Some(gated_b.as_str()) {
+                self.candidate_streak = self.candidate_streak.saturating_add(1);
+            } else {
+                self.candidate_b = Some(gated_b.clone());
+                self.candidate_streak = 1;
+                self.candidate_first_ms = now_ms;
+            }
+            self.last_tradeable_ms = now_ms;
+            let span = (now_ms - self.candidate_first_ms).max(0);
+            stamp.confirm_streak = self.candidate_streak;
+            stamp.confirm_span_ms = span;
+            let rearm_blocked = now_ms < self.rearm_after_ms;
+            stamp.rearm_blocked = rearm_blocked;
+            let span_ok = span >= self.confirm_min_span_ms;
+            let ticks_ok = self.candidate_streak >= self.confirm_ticks;
+            if ticks_ok && span_ok && !rearm_blocked {
+                self.sticky_b = Some(gated_b.clone());
+                self.sticky_c = Some(raw_c.to_string());
+                // Sticky arms on drop, not while continuously tradeable.
+                self.sticky_until_ms = 0;
+                // Drop candidate so gap-tolerance cannot override sticky.
+                self.candidate_b = None;
+                self.candidate_streak = 0;
+                self.candidate_first_ms = 0;
+                self.last_tradeable_ms = 0;
+                stamp.out_b = gated_b;
+                stamp.out_c = raw_c.to_string();
+                return (stamp.out_b.clone(), stamp.out_c.clone(), stamp);
+            }
+            stamp.confirm_pending = true;
+            stamp.out_b = "NO_TRADE".into();
+            // Keep C observational; do not open on unconfirmed B.
+            return (stamp.out_b.clone(), stamp.out_c.clone(), stamp);
+        }
+
+        // Tolerate brief MC gaps without resetting the candidate (pre-confirm only).
+        // Live: span often crosses the threshold only on gap ticks — confirm when ready.
+        if self.candidate_b.is_some()
+            && self.sticky_b.is_none()
+            && self.last_tradeable_ms > 0
+            && (now_ms - self.last_tradeable_ms) <= self.confirm_gap_tolerance_ms
+        {
+            let span = (now_ms - self.candidate_first_ms).max(0);
+            stamp.confirm_streak = self.candidate_streak;
+            stamp.confirm_span_ms = span;
+            stamp.gap_tolerated = true;
+            let rearm_blocked = now_ms < self.rearm_after_ms;
+            stamp.rearm_blocked = rearm_blocked;
+            let span_ok = span >= self.confirm_min_span_ms;
+            let ticks_ok = self.candidate_streak >= self.confirm_ticks;
+            if ticks_ok && span_ok && !rearm_blocked {
+                let confirmed = self.candidate_b.clone().unwrap();
+                self.sticky_b = Some(confirmed.clone());
+                self.sticky_c = Some(raw_c.to_string());
+                self.sticky_until_ms = 0;
+                self.candidate_b = None;
+                self.candidate_streak = 0;
+                self.candidate_first_ms = 0;
+                self.last_tradeable_ms = 0;
+                stamp.confirm_pending = false;
+                stamp.out_b = confirmed;
+                stamp.out_c = raw_c.to_string();
+                return (stamp.out_b.clone(), stamp.out_c.clone(), stamp);
+            }
+            stamp.confirm_pending = true;
+            stamp.out_b = "NO_TRADE".into();
+            return (stamp.out_b.clone(), stamp.out_c.clone(), stamp);
+        }
+
+        self.candidate_b = None;
+        self.candidate_streak = 0;
+        self.candidate_first_ms = 0;
+        self.last_tradeable_ms = 0;
+        stamp.confirm_streak = 0;
+
+        if self.sticky_b.is_some() && !is_tradeable(&gated_b) {
+            if self.sticky_until_ms <= 0 {
+                self.sticky_until_ms = now_ms + self.sticky_ms;
+            }
+            if now_ms <= self.sticky_until_ms {
+                stamp.sticky_held = true;
+                stamp.out_b = self.sticky_b.clone().unwrap_or_else(|| "NO_TRADE".into());
+                stamp.out_c = self
+                    .sticky_c
+                    .clone()
+                    .unwrap_or_else(|| raw_c.to_string());
+                return (stamp.out_b.clone(), stamp.out_c.clone(), stamp);
+            }
+            self.rearm_after_ms = now_ms + self.rearm_cooldown_ms;
+        }
+        self.sticky_b = None;
+        self.sticky_c = None;
+        self.sticky_until_ms = 0;
+
+        stamp.out_b = gated_b;
+        stamp.out_c = raw_c.to_string();
+        (stamp.out_b.clone(), stamp.out_c.clone(), stamp)
+    }
+}
+
+/// Evaluate genomes then apply recommendation hygiene (MicroConfirm + confirm + sticky).
+pub fn evaluate_tick_policies_hygiened(
+    snap: &TickFeatureSnapshot,
+    policy_b_genome: &Value,
+    policy_c_genome: &Value,
+    stab: &mut RecommendationStabilizer,
+) -> (
+    String,
+    String,
+    Vec<EvidenceFactor>,
+    Vec<EvidenceFactor>,
+    RecHygieneStamp,
+) {
+    let (raw_b, raw_c, factors_b, factors_c) =
+        evaluate_tick_policies(snap, policy_b_genome, policy_c_genome);
+    let (b, c, stamp) = stab.update(snap.receive_time_ms, &raw_b, &raw_c, &factors_b);
+    (b, c, factors_b, factors_c, stamp)
+}
+
 #[derive(Debug, Clone)]
 pub struct TickEmissionGate {
     pub refractory_ms: f64,
@@ -623,5 +877,147 @@ mod tests {
         assert_eq!(reason2, "REFRACTORY");
         let (ok3, _) = gate.should_emit(2100, "SHORT", "NO_TRADE");
         assert!(ok3);
+    }
+
+    fn ask_heavy_factors() -> Vec<EvidenceFactor> {
+        vec![
+            EvidenceFactor {
+                concept: "Trend".into(),
+                present: true,
+                direction: Some("Bearish".into()),
+            },
+            EvidenceFactor {
+                concept: "Momentum".into(),
+                present: true,
+                direction: Some("Negative".into()),
+            },
+            EvidenceFactor {
+                concept: "Volatility".into(),
+                present: true,
+                direction: None,
+            },
+            EvidenceFactor {
+                concept: "MicroConfirm".into(),
+                present: true,
+                direction: Some("AskHeavy".into()),
+            },
+        ]
+    }
+
+    #[test]
+    fn microconfirm_gate_blocks_soft_short() {
+        let no_mc = vec![EvidenceFactor {
+            concept: "MicroConfirm".into(),
+            present: false,
+            direction: None,
+        }];
+        let (out, gated) = microconfirm_gate_b("SHORT", &no_mc);
+        assert_eq!(out, "NO_TRADE");
+        assert!(gated);
+        let (out2, gated2) = microconfirm_gate_b("SHORT", &ask_heavy_factors());
+        assert_eq!(out2, "SHORT");
+        assert!(!gated2);
+    }
+
+    #[test]
+    fn stabilizer_requires_confirm_ticks_then_sticky() {
+        let mut stab = RecommendationStabilizer {
+            confirm_ticks: 3,
+            confirm_min_span_ms: 5_000,
+            sticky_ms: 10_000,
+            rearm_cooldown_ms: 30_000,
+            ..Default::default()
+        };
+        let factors = ask_heavy_factors();
+        let (b1, _, s1) = stab.update(1000, "SHORT", "SHORT", &factors);
+        assert_eq!(b1, "NO_TRADE");
+        assert!(s1.confirm_pending);
+        let (b2, _, s2) = stab.update(1100, "SHORT", "SHORT", &factors);
+        assert_eq!(b2, "NO_TRADE");
+        assert_eq!(s2.confirm_streak, 2);
+        // 3 ticks but span only 200ms → still pending
+        let (b3fast, _, s3fast) = stab.update(1200, "SHORT", "SHORT", &factors);
+        assert_eq!(b3fast, "NO_TRADE");
+        assert!(s3fast.confirm_pending);
+        assert!(s3fast.confirm_span_ms < 5_000);
+        // Span clears → SHORT
+        let (b3, _, s3) = stab.update(1000 + 5_000, "SHORT", "SHORT", &factors);
+        assert_eq!(b3, "SHORT");
+        assert!(!s3.confirm_pending);
+        // Flicker NO_TRADE held by sticky (armed on drop)
+        let (b4, _, s4) = stab.update(1000 + 5_000 + 500, "NO_TRADE", "NO_TRADE", &factors);
+        assert_eq!(b4, "SHORT");
+        assert!(s4.sticky_held);
+        // After sticky expires → NO_TRADE
+        let drop_ms = 1000 + 5_000 + 500;
+        let (b5, _, s5) = stab.update(drop_ms + 10_001, "NO_TRADE", "NO_TRADE", &factors);
+        assert_eq!(b5, "NO_TRADE");
+        assert!(!s5.sticky_held);
+        // Rearm cooldown blocks immediate re-confirm even with span
+        let (b6, _, s6) = stab.update(drop_ms + 10_000 + 100, "SHORT", "SHORT", &factors);
+        assert_eq!(b6, "NO_TRADE");
+        assert!(s6.confirm_pending);
+        let t0 = drop_ms + 10_000 + 100;
+        let (_b7, _, _) = stab.update(t0 + 50, "SHORT", "SHORT", &factors);
+        let (_b8, _, _) = stab.update(t0 + 100, "SHORT", "SHORT", &factors);
+        let (b9, _, s9) = stab.update(t0 + 5_000, "SHORT", "SHORT", &factors);
+        assert_eq!(b9, "NO_TRADE");
+        assert!(s9.rearm_blocked || s9.confirm_pending);
+    }
+
+    #[test]
+    fn stabilizer_gap_tolerance_preserves_span() {
+        let mut stab = RecommendationStabilizer {
+            confirm_ticks: 3,
+            confirm_min_span_ms: 5_000,
+            confirm_gap_tolerance_ms: 5_000,
+            sticky_ms: 10_000,
+            rearm_cooldown_ms: 0,
+            ..Default::default()
+        };
+        let factors = ask_heavy_factors();
+        let no_mc = vec![EvidenceFactor {
+            concept: "MicroConfirm".into(),
+            present: false,
+            direction: None,
+        }];
+        let (_b, _, _) = stab.update(0, "SHORT", "SHORT", &factors);
+        let (_b, _, _) = stab.update(100, "SHORT", "SHORT", &factors);
+        let (_b, _, s_gap) = stab.update(500, "SHORT", "SHORT", &no_mc); // gated NO_TRADE
+        assert!(s_gap.gap_tolerated);
+        assert!(s_gap.confirm_pending);
+        // Resume AskHeavy; span continues from t=0
+        let (_b, _, _) = stab.update(1_000, "SHORT", "SHORT", &factors);
+        let (b, _, s) = stab.update(5_000, "SHORT", "SHORT", &factors);
+        assert_eq!(b, "SHORT");
+        assert!(s.confirm_span_ms >= 5_000);
+        assert_eq!(s.hygiene_rev, 4);
+    }
+
+    #[test]
+    fn stabilizer_confirms_on_gap_when_span_ready() {
+        let mut stab = RecommendationStabilizer {
+            confirm_ticks: 3,
+            confirm_min_span_ms: 5_000,
+            confirm_gap_tolerance_ms: 5_000,
+            sticky_ms: 10_000,
+            rearm_cooldown_ms: 0,
+            ..Default::default()
+        };
+        let factors = ask_heavy_factors();
+        let no_mc = vec![EvidenceFactor {
+            concept: "MicroConfirm".into(),
+            present: false,
+            direction: None,
+        }];
+        let (_b, _, _) = stab.update(0, "SHORT", "SHORT", &factors);
+        let (_b, _, _) = stab.update(100, "SHORT", "SHORT", &factors);
+        let (_b, _, _) = stab.update(200, "SHORT", "SHORT", &factors);
+        // Threshold crossed during MC gap (tradeable span would be <5s).
+        let (b, _, s) = stab.update(5_000, "NO_TRADE", "NO_TRADE", &no_mc);
+        assert_eq!(b, "SHORT");
+        assert!(s.gap_tolerated);
+        assert!(!s.confirm_pending);
+        assert!(s.confirm_span_ms >= 5_000);
     }
 }

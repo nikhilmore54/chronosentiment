@@ -1,3 +1,4 @@
+#![allow(dead_code, unused_variables, unused_imports, unused_mut, unused_assignments)]
 use std::cmp::Reverse;
 /// rp401d_ecmp_path_selection — RP-401D: ECMP-aware path selection
 ///

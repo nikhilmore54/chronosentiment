@@ -1,7 +1,23 @@
 # RP-608 Gate 2E — Crypto trade-pattern sealed package (2026-11-21)
 
 **Protocol:** `RP-608-GATE2E-CRYPTO-PATTERN-ALLOW-ONLY-001`  
-**Book:** `CRYPTO_PLAN` (PRIMARY) only — BASELINE twin remains ungated control  
+**Book:** `CRYPTO_PLAN` (PRIMARY) only — BASELINE twin remains ungated control
+
+## Live ALLOW cohort (2026-11-22 ~23:00 IST)
+
+Gate2E `allow_only` began opening NEUTRAL BACKOFF cells (mostly `EU|LONG|…|VUNK` / `US|LONG|…|VUNK`, live vol stamped separately).
+
+| Metric | Value |
+| --- | --- |
+| PLAN_CREATED since gate-on | **53** (1 still open) |
+| ALLOW closed | **52** · W/L **10/42** · wr **0.192** · payoff **3.51** · net **−20.3** |
+| vs BTC BASELINE since-gate | W/L 41/138 · net **−134** (more trades, worse net) |
+| Match mode | BACKOFF → mined NEUTRAL parent; `feature_pattern_id` has live V* |
+| Verdict | Gate thinned damage vs ungated · ALLOW cohort **not** yet positive expectancy → **no ADVANCE** / no gate loosen |
+| ETH PRIMARY | still **0** ALLOW (library INSUFFICIENT-only) |
+
+Status tool: full-file event scan (tail truncate was under-counting suppresses/creates).
+
 **Authority:** 0.0% paper  
 **Aligned with:** `.cursor/rules/chronosentiment-core.mdc` §3b–3c · `rp608_gate2_amendment_v2.md` · allow-only plan (no trade > bad trade)
 
@@ -19,9 +35,12 @@
 
 | Prediction | Action |
 | --- | --- |
-| `ALLOW` | Open |
+| `ALLOW` | Open — **only** when label is NEUTRAL **and** train `net_mean > 0` |
 | `STANDASIDE_ADVERSE_PATTERN` | Suppress `SUPPRESSED_TRADE_PATTERN` |
 | `ABSTAIN_INSUFFICIENT` | Suppress (fail-closed) |
+| `ABSTAIN_NEGATIVE_EXPECTANCY` | Suppress (NEUTRAL/other with `net_mean ≤ 0` or missing) |
+
+**2026-11-23 selection fix:** all five live NEUTRAL `VUNK` parents had `net_mean < 0` but were still ALLOW’d → trail-churn cohort (W/L≈0.19 net−20). Matcher now fail-closes those. OF ±0.30 / trail / stops unchanged (Gate 5).
 
 ## Stamp / evidence window
 

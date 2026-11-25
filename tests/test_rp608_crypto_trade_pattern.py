@@ -47,12 +47,20 @@ def _short_feats(**overrides):
     return base
 
 
-def _cell(feats, *, label: str, n: int, wr: float = 0.2):
+def _cell(
+    feats,
+    *,
+    label: str,
+    n: int,
+    wr: float = 0.2,
+    net_mean: float = -2.0,
+    payoff: float = 0.6,
+):
     key = build_entry_pattern_key(feats)
     return key, {
         "pattern_id": key,
         "label": label,
-        "train": {"n": n, "wr": wr, "payoff": 0.6, "net_mean": -2.0},
+        "train": {"n": n, "wr": wr, "payoff": payoff, "net_mean": net_mean},
     }
 
 
@@ -197,14 +205,29 @@ class TestMatchEntryGates(unittest.TestCase):
         self.assertEqual(stamp["prediction"], "STANDASIDE_ADVERSE_PATTERN")
         self.assertTrue(stamp["blocks_entry"])
 
-    def test_allow_only_allows_neutral(self):
+    def test_allow_only_allows_neutral_positive_net(self):
         live = _short_feats()
-        key, rec = _cell(live, label="NEUTRAL", n=40, wr=0.55)
+        key, rec = _cell(live, label="NEUTRAL", n=40, wr=0.55, net_mean=0.5)
         stamp = match_entry(
             library={"entry_patterns": {key: rec}}, feats=live, gate_mode="allow_only"
         )
         self.assertEqual(stamp["prediction"], "ALLOW")
         self.assertFalse(stamp["blocks_entry"])
+
+    def test_allow_only_blocks_neutral_nonpositive_net(self):
+        live = _short_feats()
+        key, rec = _cell(live, label="NEUTRAL", n=40, wr=0.55, net_mean=-0.9)
+        stamp = match_entry(
+            library={"entry_patterns": {key: rec}}, feats=live, gate_mode="allow_only"
+        )
+        self.assertEqual(stamp["prediction"], "ABSTAIN_NEGATIVE_EXPECTANCY")
+        self.assertTrue(stamp["blocks_entry"])
+        key0, rec0 = _cell(live, label="NEUTRAL", n=40, wr=0.55, net_mean=0.0)
+        stamp0 = match_entry(
+            library={"entry_patterns": {key0: rec0}}, feats=live, gate_mode="allow_only"
+        )
+        self.assertEqual(stamp0["prediction"], "ABSTAIN_NEGATIVE_EXPECTANCY")
+        self.assertTrue(stamp0["blocks_entry"])
 
     def test_off_never_blocks_adverse(self):
         live = _short_feats()
@@ -345,7 +368,9 @@ class TestParentCellBackoff(unittest.TestCase):
         large = dict(live)
         large["vol_surge"] = "LOW"
         k_small, r_small = _cell(small, label="ADVERSE", n=12, wr=0.1)
-        k_large, r_large = _cell(large, label="NEUTRAL", n=90, wr=0.55)
+        k_large, r_large = _cell(
+            large, label="NEUTRAL", n=90, wr=0.55, net_mean=0.75
+        )
         stamp = match_entry(
             library={"entry_patterns": {k_small: r_small, k_large: r_large}},
             feats=live,
@@ -387,7 +412,7 @@ class TestParentCellBackoff(unittest.TestCase):
                 key: {
                     "pattern_id": key,
                     "label": "NEUTRAL",
-                    "train": {"n": 20, "wr": 0.5, "payoff": 1.0, "net_mean": 0.0},
+                    "train": {"n": 20, "wr": 0.5, "payoff": 1.0, "net_mean": 0.4},
                 }
             }
         }
@@ -483,6 +508,9 @@ class TestGateEnv(unittest.TestCase):
         self.assertEqual(normalize_entry_gate_mode("garbage"), "off")
         self.assertTrue(entry_blocks_prediction("ABSTAIN_INSUFFICIENT", "allow_only"))
         self.assertTrue(entry_blocks_prediction("STANDASIDE_ADVERSE_PATTERN", "allow_only"))
+        self.assertTrue(
+            entry_blocks_prediction("ABSTAIN_NEGATIVE_EXPECTANCY", "allow_only")
+        )
         self.assertFalse(entry_blocks_prediction("ALLOW", "allow_only"))
         self.assertFalse(entry_blocks_prediction("ABSTAIN_INSUFFICIENT", "adverse"))
         self.assertTrue(entry_blocks_prediction("STANDASIDE_ADVERSE_PATTERN", "adverse"))

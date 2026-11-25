@@ -49,3 +49,23 @@ Suppress + shadow stamps now carry:
 | `live_vol_surge` / `live_vol_burst_20` | Gate 2E candle volume at suppress (≠ OFX) |
 
 Join / CF reads must use **live** vol, not the mined `pattern_id` tail. `allow_only` unchanged.
+
+## Live refresh (2026-11-22 ~13:13 IST)
+
+| Book | Finding |
+| --- | --- |
+| BTC PRIMARY | Thin-WR stamps today **109** (live_vol mix LOW/MED/HIGH). Dominant suppress still BACKOFF → mined `VUNK` parent with `live_vol=LOW` / `feature_pattern_id=…VLOW`. |
+| BTC shadow→BASELINE join (24h) | joined **35** · W/L **0/35** · net **−131.11** (all MED in joined set) → **no ADVANCE**; keep `allow_only`. |
+| ETH PRIMARY | No `gate2e_shadow_allows.jsonl` yet — suppress cohorts peak hist_wr≈0.29 (&lt;0.35 thin-WR floor). Shadow env default ON; nothing to stamp. |
+| Trail on BASELINE opens | Not armed: BTC fav≈28 &lt; arm≈81 (30% risk); ETH fav≈1.81 &lt; arm≈2.15. Manage marks fresh (disk age &lt;1s). |
+
+### Later same day (~13:48 IST / 08:18Z)
+
+| Book | Finding |
+| --- | --- |
+| BTC PRIMARY | Suppress mix **ABSTAIN 811 / ADVERSE 146** since gate-on — Gate2E adverse cells firing (`STANDASIDE_ADVERSE_PATTERN`). Still **0** PRIMARY opens. |
+| BTC BASELINE | Prior 60m hold TIME_EXIT’d; new shorts cycling; since-gate W/L **13/77** net **−120**. |
+| ETH BASELINE since gate | **8/8 losses** (trail churn + SL + TIME_EXIT) net ≈**−27** — ungated control still toxic; reinforces ETH `allow_only`. |
+| Soak 24h | nonempty books **100% rust** · `PASS_PARTIAL`. |
+
+Books never pooled. OF ±0.30 / Gate 5 unchanged.

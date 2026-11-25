@@ -43,7 +43,6 @@ use serde::Serialize;
 /// | V-014  | Warning  | Historical workload references an unknown worker ID |
 use std::collections::{HashMap, HashSet};
 
-use crate::config::FatigueConfig;
 use crate::models::Skill;
 use crate::public_contracts::ScheduleRequest;
 
@@ -495,6 +494,7 @@ pub fn validate_json_file(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::config::FatigueConfig;
     use crate::models::{Shift, Worker};
     use crate::public_contracts::{InrcScenario, ScheduleRequest};
     use std::collections::HashMap;

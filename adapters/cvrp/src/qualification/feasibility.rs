@@ -136,7 +136,7 @@ impl FeasibilityCertificate {
 
 /// FC-1: Structural Validation — O(n).
 /// Checks graph integrity, depot existence, customer numbering, demand validity.
-pub fn fc1_structural(instance: &CvrpInstance, name: &str) -> FcResult {
+pub fn fc1_structural(instance: &CvrpInstance, _name: &str) -> FcResult {
     // Depot must exist (non-zero id is conventional; we just check it's present)
     if instance.depot.id == 0
         && instance.depot.x == 0.0
@@ -176,7 +176,7 @@ pub fn fc1_structural(instance: &CvrpInstance, name: &str) -> FcResult {
 
     // For explicit matrix instances: matrix must be present and sized correctly
     if instance.distance_metric == DistanceMetric::ExplicitMatrix {
-        let n = instance.customers.len() + 1; // customers + depot
+        let _n = instance.customers.len() + 1; // customers + depot
         let dim = instance.explicit_matrix.len();
         if dim == 0 {
             return FcResult::fail("ExplicitMatrix instance has empty distance matrix");

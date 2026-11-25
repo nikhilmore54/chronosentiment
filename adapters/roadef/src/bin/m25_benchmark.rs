@@ -1,3 +1,4 @@
+#![allow(warnings)]
 use coralys_moga::ecology::{
     LifecycleState, Memory, MemoryPolicy, Observation, PolicyVault, VaultEntry,
 };

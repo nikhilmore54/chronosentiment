@@ -1,6 +1,6 @@
 use crate::pipeline::aggregation::generate_latest_signals_with_thresholds;
-use crate::pipeline::old::{SignalAction, TradeSignal};
-use crate::pipeline::reporting::{SignalsSnapshot, ThresholdSweepRow};
+use crate::pipeline::types::SignalAction;
+use crate::pipeline::reporting::ThresholdSweepRow;
 
 /// Runs a parameter sweep over confidence and score thresholds.
 /// Returns a sorted vector of `ThresholdSweepRow` results.

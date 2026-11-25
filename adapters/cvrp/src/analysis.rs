@@ -1,4 +1,4 @@
-use crate::{CvrpInstance, DistanceMetric, Node};
+use crate::{CvrpInstance, Node};
 use coralys_core::analysis::{
     ConfigurationPolicy, DifficultyAssessment, EvidenceLevel, InstanceAnalyzer, InstanceFeatures,
 };

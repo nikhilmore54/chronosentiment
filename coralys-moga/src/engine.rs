@@ -308,10 +308,6 @@ impl<
         // Demo header and timer start
         let start = std::time::Instant::now();
         // Diagnostic header removed for production demo
-        // Counters for each generation
-        let mut elite_preserved: usize;
-        let mut crossover_ops: usize;
-        let mut mutation_ops: usize;
         let mut global_best: Option<F::Evaluation> = None;
         let mut history = Vec::new();
         let mut average_history = Vec::new();
@@ -485,7 +481,6 @@ impl<
 
             let mut next_gen = Vec::with_capacity(config.population_size);
             // Preserve the top elite individuals as defined by config.elite_count.
-            elite_preserved = config.elite_count;
             if instrument {
                 let elite_slice = &evals[0..config.elite_count];
                 let elite_best_dist = elite_slice.first().map(|e| e.fitness()).unwrap_or(f64::NAN);
@@ -530,8 +525,6 @@ impl<
             next_gen.extend(unique_elites);
 
             let t_size = config.tournament_size.unwrap_or(3);
-            crossover_ops = 0;
-            mutation_ops = 0;
             while next_gen.len() < config.population_size {
                 let parent1 = self.tournament_selection(&evals, t_size, &mut rng);
                 let mut parent2 = self.tournament_selection(&evals, t_size, &mut rng);
@@ -547,7 +540,6 @@ impl<
                 let mut crossover_applied = false;
                 let (mut child, _child2) = if rng.r#gen::<f64>() < config.crossover_rate {
                     crossover_applied = true;
-                    crossover_ops += 1;
                     self.crossover
                         .crossover(parent1.genome(), parent2.genome(), &mut rng)
                 } else {
@@ -558,7 +550,6 @@ impl<
                 let mut mutation_applied = false;
                 if rng.r#gen::<f64>() < config.mutation_rate {
                     mutation_applied = true;
-                    mutation_ops += 1;
                     self.mutator.mutate(&mut child, &mut rng);
                 }
 

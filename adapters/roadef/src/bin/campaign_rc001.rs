@@ -1,3 +1,4 @@
+#![allow(dead_code, unused_variables, unused_imports, unused_mut, unused_assignments)]
 /// campaign_rc001 — RC-001: Load-Aware Greedy Constructor A/B Campaign
 ///
 /// Research question: Does replacing the random constructor (CB-000) with the

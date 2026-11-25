@@ -12,10 +12,15 @@ use std::env;
 use std::io::{self, BufRead, Read, Write};
 use std::process;
 
+use chronosentiment_adapter::nse_market_events::{
+    depth_snapshot_row_from_cache_tick, DEPTH_JOURNAL_PROTOCOL_ID,
+};
 use chronosentiment_adapter::product::{
-    build_tick_snapshot, evaluate_tick_policies, Gate2xBookKind, Gate2xFeatureSnapshot,
-    Gate2xPositionManager, OpenPlanState, PlanLifecycleConfig, PlanLifecycleManager, PlanQuote,
-    TickFeatureBuffer, TickQuote, CRYPTO_TICK_PROTOCOL_ID, PLAN_LIFECYCLE_PROTOCOL,
+    build_tick_snapshot, evaluate_tick_policies_hygiened, snapshot_to_json, Gate2xBookKind,
+    RecommendationStabilizer,
+    Gate2xFeatureSnapshot, Gate2xPositionManager, OpenPlanState, PlanLifecycleConfig,
+    PlanLifecycleManager, PlanQuote, TickFeatureBuffer, TickQuote, CRYPTO_TICK_PROTOCOL_ID,
+    PLAN_LIFECYCLE_PROTOCOL,
 };
 use serde::Deserialize;
 use serde_json::Value;
@@ -62,12 +67,22 @@ struct TickEvalRequest {
     buffer_quotes: Vec<TickQuote>,
 }
 
+/// Track B side-path: one JSONL line → Python-parity depth snapshot row.
+#[derive(Debug, Deserialize)]
+struct DepthSnapshotRequest {
+    symbol: String,
+    tick: Value,
+    #[serde(default)]
+    sample_utc_ms: Option<u64>,
+}
+
 fn main() {
     let args: Vec<String> = env::args().collect();
     let mut evidence_dir = "datasets/recommendation/historical_crypto".to_string();
     let mut manage_loop = false;
     let mut plan_lifecycle_loop = false;
     let mut tick_eval_loop = false;
+    let mut depth_snapshot_loop = false;
     let mut book_arg: Option<String> = None;
     let mut i = 1;
     while i < args.len() {
@@ -97,17 +112,21 @@ fn main() {
             "--tick-eval-loop" => {
                 tick_eval_loop = true;
             }
+            "--depth-snapshot-loop" => {
+                depth_snapshot_loop = true;
+            }
             "--version" => {
                 println!("{VERSION}");
                 process::exit(0);
             }
             "-h" | "--help" => {
                 eprintln!(
-                    "rp608_position_decide ({VERSION} / {MANAGE_VERSION} / {PLAN_LIFECYCLE_PROTOCOL} / {CRYPTO_TICK_PROTOCOL_ID})\n\
+                    "rp608_position_decide ({VERSION} / {MANAGE_VERSION} / {PLAN_LIFECYCLE_PROTOCOL} / {CRYPTO_TICK_PROTOCOL_ID} / {DEPTH_JOURNAL_PROTOCOL_ID})\n\
                      One-shot:              JSON stdin snapshot → JSON stdout decision\n\
                      Gate2X manage:         --manage-loop  JSONL → JSONL\n\
                      Plan lifecycle manage: --plan-lifecycle-loop  JSONL plan+quote → JSONL result\n\
                      Crypto tick eval:      --tick-eval-loop  JSONL quote+genomes → B/C actions\n\
+                     NSE depth side-path:   --depth-snapshot-loop  JSONL symbol+tick → depth row\n\
                      --evidence-dir DIR   REC001h JSONL directory (crypto or NSE)\n\
                      --book crypto|nse    force book (else inferred from evidence-dir)\n\
                      --version            print protocol id\n\
@@ -125,10 +144,50 @@ fn main() {
 
     let book = detect_book(&evidence_dir, book_arg.as_deref());
 
-    if tick_eval_loop {
-        eprintln!("[{CRYPTO_TICK_PROTOCOL_ID}] tick-eval-loop ready (Track C)");
+    if depth_snapshot_loop {
+        eprintln!("[{DEPTH_JOURNAL_PROTOCOL_ID}] depth-snapshot-loop ready (Track B side-path)");
         let stdin = io::stdin();
         let mut stdout = io::stdout();
+        for line in stdin.lock().lines() {
+            let line = match line {
+                Ok(l) => l,
+                Err(e) => {
+                    eprintln!("stdin read: {e}");
+                    process::exit(1);
+                }
+            };
+            if line.trim().is_empty() {
+                continue;
+            }
+            let req: DepthSnapshotRequest = match serde_json::from_str(&line) {
+                Ok(r) => r,
+                Err(e) => {
+                    eprintln!("parse depth-snapshot request: {e}");
+                    process::exit(1);
+                }
+            };
+            let sample_ms = req.sample_utc_ms.unwrap_or_else(|| {
+                std::time::SystemTime::now()
+                    .duration_since(std::time::UNIX_EPOCH)
+                    .map(|d| d.as_millis() as u64)
+                    .unwrap_or(0)
+            });
+            let out = depth_snapshot_row_from_cache_tick(&req.symbol, &req.tick, sample_ms);
+            if writeln!(stdout, "{out}").is_err() {
+                process::exit(1);
+            }
+            let _ = stdout.flush();
+        }
+        return;
+    }
+
+    if tick_eval_loop {
+        eprintln!(
+            "[{CRYPTO_TICK_PROTOCOL_ID}] tick-eval-loop ready (Track C + rec hygiene)"
+        );
+        let stdin = io::stdin();
+        let mut stdout = io::stdout();
+        let mut stab = RecommendationStabilizer::default();
         for line in stdin.lock().lines() {
             let line = match line {
                 Ok(l) => l,
@@ -153,12 +212,19 @@ fn main() {
             }
             buf.append(req.quote.clone());
             let snap = build_tick_snapshot(&req.quote, &buf, &req.closes);
-            let (action_b, action_c, _, _) =
-                evaluate_tick_policies(&snap, &req.policy_b_genome, &req.policy_c_genome);
+            let (action_b, action_c, _, _, hygiene) = evaluate_tick_policies_hygiened(
+                &snap,
+                &req.policy_b_genome,
+                &req.policy_c_genome,
+                &mut stab,
+            );
             let out = serde_json::json!({
                 "protocol_id": CRYPTO_TICK_PROTOCOL_ID,
+                "authority": "rust_crypto_tick_policy",
                 "policy_b_action": action_b,
                 "policy_c_action": action_c,
+                "features_tick": snapshot_to_json(&snap),
+                "rec_hygiene": hygiene,
                 "update_id": snap.update_id,
                 "mid_price": snap.mid_price,
                 "imbalance": snap.imbalance,

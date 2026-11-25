@@ -379,7 +379,7 @@ fn simulate_coralys_benchmark_solution(
     _pop_size: usize,
     seed: u64,
     credit_rigs: bool,
-    crew_avail: bool,
+    _crew_avail: bool,
     reserve_ratio: f64,
 ) -> (Vec<AirlineGanttRotation>, TwoTierAuditMatrix, Vec<ConvergencePoint>) {
     let n_crew = meta.crew_count;

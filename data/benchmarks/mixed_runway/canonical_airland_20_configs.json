@@ -10,33 +10,33 @@
     "is_feasible": true,
     "window_violations": 0,
     "separation_violations": 0,
-    "solve_time_ms": 466.6
+    "solve_time_ms": 456.5
   },
   {
     "instance": "airland9",
     "num_planes": 100,
     "runways": 2,
     "published_lit_z": 444.1,
-    "lit_source": "Pi\u00f1ol & Beasley (2006)",
+    "lit_source": "Piñol & Beasley (2006)",
     "coralys_z": 444.1000000000001,
     "optimality_gap_pct": 1.2799689002658864e-14,
     "is_feasible": true,
     "window_violations": 0,
     "separation_violations": 0,
-    "solve_time_ms": 2411.3
+    "solve_time_ms": 2346.4
   },
   {
     "instance": "airland9",
     "num_planes": 100,
     "runways": 3,
     "published_lit_z": 75.75,
-    "lit_source": "Pi\u00f1ol & Beasley (2006)",
+    "lit_source": "Piñol & Beasley (2006)",
     "coralys_z": 75.75,
     "optimality_gap_pct": 0.0,
     "is_feasible": true,
     "window_violations": 0,
     "separation_violations": 0,
-    "solve_time_ms": 1121.0
+    "solve_time_ms": 931.0
   },
   {
     "instance": "airland9",
@@ -49,7 +49,7 @@
     "is_feasible": true,
     "window_violations": 0,
     "separation_violations": 0,
-    "solve_time_ms": 396.6
+    "solve_time_ms": 328.9
   },
   {
     "instance": "airland10",
@@ -62,33 +62,33 @@
     "is_feasible": true,
     "window_violations": 0,
     "separation_violations": 0,
-    "solve_time_ms": 2434.0
+    "solve_time_ms": 2750.7
   },
   {
     "instance": "airland10",
     "num_planes": 150,
     "runways": 2,
     "published_lit_z": 1152.1,
-    "lit_source": "Pi\u00f1ol & Beasley (2006)",
+    "lit_source": "Piñol & Beasley (2006)",
     "coralys_z": 1143.6999999999998,
     "optimality_gap_pct": -0.729103376443025,
     "is_feasible": true,
     "window_violations": 0,
     "separation_violations": 0,
-    "solve_time_ms": 9682.2
+    "solve_time_ms": 9880.9
   },
   {
     "instance": "airland10",
     "num_planes": 150,
     "runways": 3,
     "published_lit_z": 188.6,
-    "lit_source": "Pi\u00f1ol & Beasley (2006)",
+    "lit_source": "Piñol & Beasley (2006)",
     "coralys_z": 205.21,
     "optimality_gap_pct": 8.80699893955462,
     "is_feasible": true,
     "window_violations": 0,
     "separation_violations": 0,
-    "solve_time_ms": 3152.1
+    "solve_time_ms": 3152.5
   },
   {
     "instance": "airland10",
@@ -101,7 +101,7 @@
     "is_feasible": true,
     "window_violations": 0,
     "separation_violations": 0,
-    "solve_time_ms": 1049.0
+    "solve_time_ms": 1074.7
   },
   {
     "instance": "airland11",
@@ -114,33 +114,33 @@
     "is_feasible": true,
     "window_violations": 0,
     "separation_violations": 0,
-    "solve_time_ms": 5309.7
+    "solve_time_ms": 5252.5
   },
   {
     "instance": "airland11",
     "num_planes": 200,
     "runways": 2,
     "published_lit_z": 1341.0,
-    "lit_source": "Pi\u00f1ol & Beasley (2006)",
+    "lit_source": "Piñol & Beasley (2006)",
     "coralys_z": 1330.9099999999996,
     "optimality_gap_pct": -0.7524235645041292,
     "is_feasible": true,
     "window_violations": 0,
     "separation_violations": 0,
-    "solve_time_ms": 15934.2
+    "solve_time_ms": 16352.6
   },
   {
     "instance": "airland11",
     "num_planes": 200,
     "runways": 3,
     "published_lit_z": 251.9,
-    "lit_source": "Pi\u00f1ol & Beasley (2006)",
+    "lit_source": "Piñol & Beasley (2006)",
     "coralys_z": 253.07000000000002,
     "optimality_gap_pct": 0.4644700277888114,
     "is_feasible": true,
     "window_violations": 0,
     "separation_violations": 0,
-    "solve_time_ms": 6237.6
+    "solve_time_ms": 6366.3
   },
   {
     "instance": "airland11",
@@ -153,7 +153,7 @@
     "is_feasible": true,
     "window_violations": 0,
     "separation_violations": 0,
-    "solve_time_ms": 2221.3
+    "solve_time_ms": 2276.9
   },
   {
     "instance": "airland12",
@@ -166,46 +166,46 @@
     "is_feasible": true,
     "window_violations": 0,
     "separation_violations": 0,
-    "solve_time_ms": 11158.7
+    "solve_time_ms": 12223.0
   },
   {
     "instance": "airland12",
     "num_planes": 250,
     "runways": 2,
     "published_lit_z": 1613.38,
-    "lit_source": "Pi\u00f1ol & Beasley (2006)",
+    "lit_source": "Piñol & Beasley (2006)",
     "coralys_z": 1695.62,
     "optimality_gap_pct": 5.097373216477195,
     "is_feasible": true,
     "window_violations": 0,
     "separation_violations": 0,
-    "solve_time_ms": 29785.7
+    "solve_time_ms": 33891.0
   },
   {
     "instance": "airland12",
     "num_planes": 250,
     "runways": 3,
     "published_lit_z": 242.8,
-    "lit_source": "Pi\u00f1ol & Beasley (2006)",
+    "lit_source": "Piñol & Beasley (2006)",
     "coralys_z": 228.94,
     "optimality_gap_pct": -5.708401976935755,
     "is_feasible": true,
     "window_violations": 0,
     "separation_violations": 0,
-    "solve_time_ms": 12724.4
+    "solve_time_ms": 12427.3
   },
   {
     "instance": "airland12",
     "num_planes": 250,
     "runways": 4,
     "published_lit_z": 2.49,
-    "lit_source": "Pi\u00f1ol & Beasley (2006)",
+    "lit_source": "Piñol & Beasley (2006)",
     "coralys_z": 2.44,
     "optimality_gap_pct": -2.0080321285140665,
     "is_feasible": true,
     "window_violations": 0,
     "separation_violations": 0,
-    "solve_time_ms": 6197.2
+    "solve_time_ms": 5800.1
   },
   {
     "instance": "airland13",
@@ -218,45 +218,45 @@
     "is_feasible": true,
     "window_violations": 0,
     "separation_violations": 0,
-    "solve_time_ms": 29580.1
+    "solve_time_ms": 30061.7
   },
   {
     "instance": "airland13",
     "num_planes": 500,
     "runways": 2,
     "published_lit_z": 3920.39,
-    "lit_source": "Pi\u00f1ol & Beasley (2006)",
+    "lit_source": "Piñol & Beasley (2006)",
     "coralys_z": 3928.3900000000012,
     "optimality_gap_pct": 0.2040613306329565,
     "is_feasible": true,
     "window_violations": 0,
     "separation_violations": 0,
-    "solve_time_ms": 143623.4
+    "solve_time_ms": 146665.2
   },
   {
     "instance": "airland13",
     "num_planes": 500,
     "runways": 3,
     "published_lit_z": 655.64,
-    "lit_source": "Pi\u00f1ol & Beasley (2006)",
+    "lit_source": "Piñol & Beasley (2006)",
     "coralys_z": 675.06,
     "optimality_gap_pct": 2.9619913367091635,
     "is_feasible": true,
     "window_violations": 0,
     "separation_violations": 0,
-    "solve_time_ms": 64063.8
+    "solve_time_ms": 68564.1
   },
   {
     "instance": "airland13",
     "num_planes": 500,
     "runways": 4,
     "published_lit_z": 90.0,
-    "lit_source": "Pi\u00f1ol & Beasley (2006)",
-    "coralys_z": 90.0,
-    "optimality_gap_pct": 0.0,
+    "lit_source": "Piñol & Beasley (2006)",
+    "coralys_z": 89.95,
+    "optimality_gap_pct": -0.0555555555555524,
     "is_feasible": true,
     "window_violations": 0,
     "separation_violations": 0,
-    "solve_time_ms": 41386.9
+    "solve_time_ms": 43517.2
   }
 ]

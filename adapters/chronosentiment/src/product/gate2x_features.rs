@@ -68,6 +68,11 @@ pub struct Gate2xParams {
     pub deep_giveback_frac: f64,
     pub deep_giveback_dwell_scale: f64,
     pub protocol: String,
+    /// Observational floor-lock twin (authority 0%): exit at protect floor
+    /// immediately — no soft-breach dwell / HARD_FLOOR bleed.
+    /// Stamp: `MFE_FLOOR_LOCK_AT_PROTECT`. Default false → PRIMARY/BASELINE/r50 unchanged.
+    #[serde(default)]
+    pub floor_lock_immediate: bool,
 }
 
 impl Default for Gate2xParams {
@@ -86,6 +91,39 @@ impl Default for Gate2xParams {
             deep_giveback_frac: 0.50,
             deep_giveback_dwell_scale: 0.40,
             protocol: "RP-608-GATE2X-MFE-GIVEBACK-001".into(),
+            floor_lock_immediate: false,
+        }
+    }
+}
+
+/// Named twin / book presets (R4). Python picks an id; Rust owns geometry.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Gate2xPresetId {
+    /// PRIMARY / BASELINE — ratchet 0.30, floor_lock off.
+    BaselineR30,
+    /// Observational r50 booking twin — ratchet 0.50, floor_lock off.
+    R50Booking,
+    /// Observational floor-lock twin — ratchet 0.50 + immediate protect exit.
+    FloorLockR50,
+}
+
+impl Gate2xPresetId {
+    pub fn parse(raw: &str) -> Option<Self> {
+        match raw.trim().to_ascii_lowercase().as_str() {
+            "baseline_r30" | "baseline" | "primary" | "r30" => Some(Self::BaselineR30),
+            "r50_booking" | "r50" | "gate2x_r50" => Some(Self::R50Booking),
+            "floor_lock_r50" | "floor_lock" | "floorlock" | "gate2x_floor_lock" => {
+                Some(Self::FloorLockR50)
+            }
+            _ => None,
+        }
+    }
+
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Self::BaselineR30 => "baseline_r30",
+            Self::R50Booking => "r50_booking",
+            Self::FloorLockR50 => "floor_lock_r50",
         }
     }
 }
@@ -102,6 +140,53 @@ impl Gate2xParams {
         Self {
             protocol: "RP-608-GATE2X-NSE-MFE-GIVEBACK-001".into(),
             ..Self::default()
+        }
+    }
+
+    /// Book-kind base (PRIMARY geometry) before twin preset overlays.
+    pub fn book_defaults(book: &str) -> Self {
+        match book.trim().to_ascii_lowercase().as_str() {
+            "nse" => Self::nse_defaults(),
+            _ => Self::crypto_defaults(),
+        }
+    }
+
+    /// Apply a named preset onto a book base (currency-agnostic).
+    pub fn from_preset(book: &str, preset: Gate2xPresetId) -> Self {
+        let base = Self::book_defaults(book);
+        match preset {
+            Gate2xPresetId::BaselineR30 => Self {
+                ratchet_peak_frac: 0.30,
+                floor_lock_immediate: false,
+                ..base
+            },
+            Gate2xPresetId::R50Booking => Self::r50_booking_defaults(base),
+            Gate2xPresetId::FloorLockR50 => Self::floor_lock_twin_defaults(base),
+        }
+    }
+
+    /// r50 booking twin (observational; authority 0%).
+    pub fn r50_booking_defaults(base: Self) -> Self {
+        Self {
+            floor_lock_immediate: false,
+            ratchet_peak_frac: 0.50,
+            protocol: "RP-608-GATE2X-R50-BOOKING-TWIN-001".into(),
+            ..base
+        }
+    }
+
+    /// Floor-lock twin preset (crypto / NSE share geometry; currency-agnostic).
+    ///
+    /// H11 (2026-11-25): `min_hold_s_before_exit=0` — a 120s min-hold let peak MFE
+    /// bleed through protect into a loss, then stamped `MFE_FLOOR_LOCK_AT_PROTECT` red.
+    /// Twin intent is lock-at-protect while still green; PRIMARY/BASELINE keep 120s.
+    pub fn floor_lock_twin_defaults(base: Self) -> Self {
+        Self {
+            floor_lock_immediate: true,
+            ratchet_peak_frac: 0.50,
+            min_hold_s_before_exit: 0.0,
+            protocol: "RP-608-GATE2X-FLOOR-LOCK-TWIN-001".into(),
+            ..base
         }
     }
 }

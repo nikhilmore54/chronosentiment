@@ -35,6 +35,7 @@
 //! | exit_reason = ArchiveLimit               | Capacity Failure                  |
 //! | feasible_count / archive_size < 5%       | Feasibility Representation Failure|
 
+#![allow(dead_code, unused_variables, unused_imports, unused_mut, unused_assignments)]
 use coralys_moga::ecology::champion::{ChampionStatus, ChampionTracker, ExitReason};
 use coralys_moga::engine_proof::{Evaluator, EvolutionEngine, ParetoSolution};
 use rand::Rng;

@@ -1,3 +1,4 @@
+#![allow(dead_code, unused_variables, unused_imports, unused_mut, unused_assignments)]
 /// phase10c6a_concentration.rs — P10-C6-A Concentration Characterization
 ///
 /// Governance: CHARACTERIZATION ONLY. No intervention. No routing change.

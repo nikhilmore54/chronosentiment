@@ -1,3 +1,4 @@
+#![allow(dead_code, unused_variables, unused_imports, unused_mut, unused_assignments)]
 /// phase7_loop_profile.rs — Phase 7 Evolution Loop Overhead Profile
 ///
 /// Governance protocol: OBSERVATIONAL — no code changes to production path.

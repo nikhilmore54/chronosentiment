@@ -1,6 +1,5 @@
 use crate::ApiError;
 use chronosentiment_core::{harness::run_simulation_harness, *};
-use chronosentiment_optimization::GaConfig;
 use rand::{Rng, SeedableRng};
 
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]

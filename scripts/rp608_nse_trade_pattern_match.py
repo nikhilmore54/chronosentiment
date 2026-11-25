@@ -4,7 +4,17 @@ RP-608 NSE A — live trade pattern matcher.
 
 ENTRY (Gate 2E observational):
   Match decision-time Coralys + pre-entry candle features to mined cohorts.
-  prediction ∈ {ALLOW, STANDASIDE_ADVERSE_PATTERN, ABSTAIN_INSUFFICIENT}
+  prediction ∈ {ALLOW, STANDASIDE_ADVERSE_PATTERN, ABSTAIN_INSUFFICIENT,
+                 ABSTAIN_NEGATIVE_EXPECTANCY}
+
+Env RP608_NSE_PATTERN_GATE:
+  0 / off              → stamp only
+  1 / adverse / true   → block STANDASIDE_ADVERSE only
+  2 / allow_only       → block unless ALLOW (crypto Gate2E parity)
+
+Gate2E selection (2026-11-23, same as crypto): NEUTRAL → ALLOW only when
+train net_mean > 0; else ABSTAIN_NEGATIVE_EXPECTANCY. No OF ±0.30 / traj /
+stop/target change (Gate 5).
 
 EXIT (Gate 2X observational):
   Match post-entry candle path to reverse cohorts.
@@ -37,9 +47,67 @@ from scripts.rp608_nse_trade_pattern_library import (
 )
 
 
-def entry_gate_enabled() -> bool:
-    raw = os.environ.get("RP608_NSE_PATTERN_GATE", "0").strip().lower()
-    return raw in {"1", "true", "on", "yes"}
+def normalize_entry_gate_mode(raw: Optional[str]) -> str:
+    """Return off | adverse | allow_only (crypto Gate2E parity)."""
+    v = (raw or "0").strip().lower()
+    if v in {"0", "off", "false", "no", ""}:
+        return "off"
+    if v in {"2", "allow_only", "allow-only", "strict"}:
+        return "allow_only"
+    if v in {"1", "true", "on", "yes", "adverse"}:
+        return "adverse"
+    return "off"
+
+
+def entry_gate_mode(override: Optional[str] = None) -> str:
+    if override is not None:
+        return normalize_entry_gate_mode(override)
+    return normalize_entry_gate_mode(os.environ.get("RP608_NSE_PATTERN_GATE", "0"))
+
+
+def entry_gate_mode_baseline(override: Optional[str] = None) -> str:
+    """BASELINE twin gate (crypto parity). Default off — ungated control."""
+    if override is not None:
+        return normalize_entry_gate_mode(override)
+    return normalize_entry_gate_mode(
+        os.environ.get("RP608_NSE_PATTERN_GATE_BASELINE", "0")
+    )
+
+
+def entry_gate_enabled(override: Optional[str] = None) -> bool:
+    """True when adverse or allow_only is active."""
+    return entry_gate_mode(override) != "off"
+
+
+def entry_blocks_prediction(prediction: str, mode: str) -> bool:
+    m = normalize_entry_gate_mode(mode)
+    if m == "off":
+        return False
+    if m == "adverse":
+        return prediction == "STANDASIDE_ADVERSE_PATTERN"
+    if m == "allow_only":
+        return prediction != "ALLOW"
+    return False
+
+
+def entry_prediction_from_label(
+    label: str, train: Optional[Dict[str, Any]] = None
+) -> str:
+    """NEUTRAL requires train net_mean > 0 for ALLOW (same rule as crypto)."""
+    lab = str(label or "INSUFFICIENT")
+    if lab == "ADVERSE":
+        return "STANDASIDE_ADVERSE_PATTERN"
+    if lab == "INSUFFICIENT":
+        return "ABSTAIN_INSUFFICIENT"
+    tr = train or {}
+    raw = tr.get("net_mean")
+    try:
+        net = float(raw) if raw is not None else None
+    except (TypeError, ValueError):
+        net = None
+    if net is None or net <= 0.0:
+        return "ABSTAIN_NEGATIVE_EXPECTANCY"
+    return "ALLOW"
 
 
 def exit_gate_enabled() -> bool:
@@ -171,6 +239,7 @@ def match_entry(
     library: Dict[str, Any],
     feats: Dict[str, Any],
     gate_on: Optional[bool] = None,
+    gate_mode: Optional[str] = None,
     include_volume: bool = True,
 ) -> Dict[str, Any]:
     patterns = library.get("entry_patterns") or {}
@@ -182,8 +251,19 @@ def match_entry(
     rec, mode, dropped = _pattern_lookup(
         patterns, exact, feats_use, min_n=10, include_volume=include_volume
     )
+    if gate_mode is not None:
+        gmode = normalize_entry_gate_mode(gate_mode)
+    elif gate_on is True:
+        gmode = "adverse"
+    elif gate_on is False:
+        gmode = "off"
+    else:
+        gmode = entry_gate_mode()
+    gate = gmode != "off"
     if rec is None:
-        stamp = {
+        prediction = "ABSTAIN_INSUFFICIENT"
+        blocks = entry_blocks_prediction(prediction, gmode)
+        return {
             "kind": "ENTRY",
             "pattern_id": exact,
             "match_mode": mode,
@@ -193,23 +273,18 @@ def match_entry(
             "hist_payoff": None,
             "hist_net": None,
             "label": "INSUFFICIENT",
-            "prediction": "ABSTAIN_INSUFFICIENT",
-            "blocks_entry": False,
-            "gate_enabled": bool(entry_gate_enabled() if gate_on is None else gate_on),
+            "prediction": prediction,
+            "blocks_entry": blocks,
+            "gate_enabled": gate,
+            "gate_mode": gmode,
+            "standaside_reason": "STANDASIDE_TRADE_PATTERN" if blocks else None,
             "symbol_banned": False,
         }
-        return stamp
 
     train = rec.get("train") or {}
     label = str(rec.get("label") or "INSUFFICIENT")
-    if label == "ADVERSE":
-        prediction = "STANDASIDE_ADVERSE_PATTERN"
-    elif label == "INSUFFICIENT":
-        prediction = "ABSTAIN_INSUFFICIENT"
-    else:
-        prediction = "ALLOW"
-    gate = bool(entry_gate_enabled() if gate_on is None else gate_on)
-    blocks = bool(gate and prediction == "STANDASIDE_ADVERSE_PATTERN")
+    prediction = entry_prediction_from_label(label, train)
+    blocks = entry_blocks_prediction(prediction, gmode)
     return {
         "kind": "ENTRY",
         "pattern_id": rec.get("pattern_id") or exact,
@@ -223,6 +298,7 @@ def match_entry(
         "prediction": prediction,
         "blocks_entry": blocks,
         "gate_enabled": gate,
+        "gate_mode": gmode,
         "standaside_reason": "STANDASIDE_TRADE_PATTERN" if blocks else None,
         "symbol_banned": False,
     }

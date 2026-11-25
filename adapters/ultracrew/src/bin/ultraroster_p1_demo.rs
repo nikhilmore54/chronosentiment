@@ -1,3 +1,4 @@
+#![allow(dead_code, unused_variables, unused_imports, unused_mut, unused_assignments)]
 use std::sync::{Arc, Mutex};
 use std::time::Instant;
 use ultracrew::models::{Shift, Worker, Skill};

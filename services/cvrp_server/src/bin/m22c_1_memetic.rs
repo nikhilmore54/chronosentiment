@@ -1,3 +1,4 @@
+#![allow(warnings)]
 use cvrp::CvrpCandidate;
 use rand::SeedableRng;
 use serde::Serialize;

@@ -39,8 +39,10 @@ impl Gate2xBookKind {
 pub struct Gate2xPositionManager {
     store: Rec001hStore,
     book: Gate2xBookKind,
-    /// Soft-breach / arm latch carried across manage ticks (per open position).
+    /// Soft-breach / arm latch carried across manage ticks (**same plan only**).
     last_soft: Gate2xSoftBreachState,
+    /// `decision_id` / plan_id that owns `last_soft` — never inherit across symbols.
+    last_plan_id: Option<String>,
     ticks: u64,
 }
 
@@ -52,6 +54,7 @@ impl Gate2xPositionManager {
             store,
             book,
             last_soft: Gate2xSoftBreachState::default(),
+            last_plan_id: None,
             ticks: 0,
         })
     }
@@ -71,12 +74,18 @@ impl Gate2xPositionManager {
     /// Clear latch when the executor closes / replaces the open position.
     pub fn reset_position_latch(&mut self) {
         self.last_soft = Gate2xSoftBreachState::default();
+        self.last_plan_id = None;
     }
 
     /// One manage tick: merge prior soft-breach latch if snapshot omits it, then decide.
     pub fn manage_tick(&mut self, mut snap: Gate2xFeatureSnapshot) -> Gate2xDecision {
         if snap.params.protocol.is_empty() {
             snap.params.protocol = self.book.default_protocol().to_string();
+        }
+        // Lifecycle loop multiplexes many plans on one manager — latch is per plan_id.
+        if self.last_plan_id.as_deref() != Some(snap.decision_id.as_str()) {
+            self.last_soft = Gate2xSoftBreachState::default();
+            self.last_plan_id = Some(snap.decision_id.clone());
         }
         if snap.soft_breach_since_ms.is_none() {
             snap.soft_breach_since_ms = self.last_soft.soft_breach_since_ms;
@@ -207,5 +216,47 @@ mod tests {
         let d = mgr.manage_tick(snap);
         assert_eq!(d.protocol, "RP-608-GATE2X-NSE-MFE-GIVEBACK-001");
         assert_eq!(mgr.book(), Gate2xBookKind::Nse);
+    }
+
+    #[test]
+    fn manage_tick_does_not_inherit_armed_across_plan_ids() {
+        // Lifecycle multiplexes many plans on one manager — armed latch must not
+        // leak from PLAN-A into PLAN-B (else premature HARD_FLOOR Coralys exits).
+        let dir = std::env::temp_dir().join("gate2x_manage_plan_iso");
+        let _ = std::fs::remove_dir_all(&dir);
+        std::fs::create_dir_all(&dir).unwrap();
+        write_min_store(&dir, "BTCUSDT", 40);
+        let mut mgr =
+            Gate2xPositionManager::load(dir.to_str().unwrap(), Gate2xBookKind::Crypto).unwrap();
+
+        let mut armed = base_snap(Gate2xBookKind::Crypto);
+        armed.decision_id = "PLAN-A".into();
+        armed.already_armed = true;
+        armed.peak_mfe = 10.0;
+        armed.current_mfe = 0.5; // through hard floor
+        armed.peak_tp_frac = 0.55;
+        armed.vol_surge = VolSurgeBucket::High;
+        let d_a = mgr.manage_tick(armed);
+        assert!(
+            matches!(
+                d_a.action,
+                CoralysPositionAction::Protect | CoralysPositionAction::Exit
+            ) || d_a.soft_breach.armed,
+            "PLAN-A should be armed/exit path: {} {:?}",
+            d_a.reason,
+            d_a.action
+        );
+
+        let mut other = base_snap(Gate2xBookKind::Crypto);
+        other.decision_id = "PLAN-B".into();
+        other.already_armed = false;
+        other.peak_mfe = 0.5; // below arm threshold
+        other.current_mfe = -1.0;
+        other.peak_tp_frac = 0.05; // below arm_min_tp_frac 0.40
+        other.vol_surge = VolSurgeBucket::Unk;
+        let d_b = mgr.manage_tick(other);
+        assert_eq!(d_b.reason, "GATE2X_NOT_ARMED");
+        assert!(!d_b.soft_breach.armed);
+        assert_eq!(d_b.action, CoralysPositionAction::Hold);
     }
 }

@@ -1559,12 +1559,30 @@ def get_nse_dashboard_state() -> Dict[str, Any]:
             g4_status = "NOT_EVALUATED"
             g4_reason = "Score unavailable"
 
-        # Determine terminal decision based on cleanly separated dimensions
+        # Terminal decision: prefer durable/provisional evaluator codes when present.
+        # Do NOT remap traj-clear Gate2E / Coralys standasides to QUALIFIED (G1–G5 alone
+        # omit those gates and falsely inflate fresh qualifies on the session board).
+        durable_code = str(ev.get("decision_code") or "")
+        durable_dec = ev.get("decision")
+        use_durable = bool(
+            eval_snapshot_fresh
+            and durable_code
+            and durable_code not in {"PENDING_RUN", "NO_EVALUATION", ""}
+        )
+
         if has_active_position:
             terminal_decision = "HOLD_POSITION"
             d_code = "EXISTING_POSITION_ACTIVE"
             entry_b = trade_info.get("entry_bar_idx") if trade_info else 18
             ev_explanation = f"Active simulated position managed (open since bar {entry_b})"
+        elif use_durable:
+            if durable_code == "QUALIFIED_MOMENTUM_BREAKOUT" or durable_dec == "RECOMMEND_LONG":
+                terminal_decision = "RECOMMEND_LONG"
+                d_code = "QUALIFIED_MOMENTUM_BREAKOUT"
+            else:
+                terminal_decision = durable_dec or "NO_TRADE"
+                d_code = durable_code
+            ev_explanation = ev.get("explanation") or ev_explanation
         elif is_data_fail:
             terminal_decision = "NO_TRADE"
             d_code = "DATA_QUALITY_FAILURE"
@@ -1586,6 +1604,7 @@ def get_nse_dashboard_state() -> Dict[str, Any]:
             d_code = "DATA_QUALITY_FAILURE"
             ev_explanation = ev_explanation or g5_reason
         elif g1_pass and g2_status == "NONE" and g3_status == "PASS" and g4_status == "PASS" and g5_status == "PASS":
+            # Legacy fallback only when evaluator stamp missing (pre-Gate2E snapshots).
             terminal_decision = "RECOMMEND_LONG"
             d_code = "QUALIFIED_MOMENTUM_BREAKOUT"
             ev_explanation = f"Momentum breakout traj15={score_val:+.4f} >= +0.0500 with {h_len} bars history"
@@ -1827,7 +1846,19 @@ def get_nse_dashboard_state() -> Dict[str, Any]:
                 "tradingsymbol": ev.get("tradingsymbol") or sym.replace(".NS", ""),
                 "decision": ev.get("decision"),
                 "decision_code": ev.get("decision_code"),
-                "card_kind": "QUALIFIED_HIGH_TARGET" if ev.get("decision") == "RECOMMEND_LONG" else "EVAL_HIGH_TARGET",
+                "card_kind": (
+                    "QUALIFIED_HIGH_TARGET"
+                    if ev.get("decision") == "RECOMMEND_LONG"
+                    else (
+                        "GATED_HIGH_TARGET"
+                        if ev.get("decision_code")
+                        in (
+                            "STANDASIDE_TRADE_PATTERN",
+                            "STANDASIDE_CORALYS_INPUT_GATE",
+                        )
+                        else "EVAL_HIGH_TARGET"
+                    )
+                ),
                 "provisional_rank": ev.get("provisional_rank"),
                 "score": ev.get("score"),
                 "reference_price": ev.get("reference_price"),
@@ -1836,6 +1867,7 @@ def get_nse_dashboard_state() -> Dict[str, Any]:
                 "half_spread_bps": ev.get("half_spread_bps"),
                 "entry_conditions": ev.get("entry_conditions"),
                 "invalidation": ev.get("invalidation"),
+                "decision_code": ev.get("decision_code"),
                 "risk_reward": rr,
                 **rec_time,
             })
@@ -4508,14 +4540,23 @@ DASHBOARD_HTML = """<!DOCTYPE html>
             regimeBadge.style.background = bg; regimeBadge.style.color = fg; regimeBadge.style.borderColor = bd;
           }
 
-          // Action Badges
-          updateActionBadge('action-policy-b', latest.policy_b_action);
+          // Action Badges — product surface prefers Gate2E disposition over raw Policy B.
+          // Raw policy_b_action remains on the card for research; actionable==false ⇒ STANDASIDE.
+          const dispB = latest.recommendation_disposition;
+          const actionableB = latest.recommendation_actionable;
+          const showB = (actionableB === false && dispB && dispB !== 'NO_TRADE')
+            ? 'STANDASIDE'
+            : (latest.policy_b_action || 'NO_TRADE');
+          updateActionBadge('action-policy-b', showB);
           updateActionBadge('action-policy-c', latest.policy_c_action);
 
           // Update Tooltip Contents for Policy B and Policy C
           const r = latest.reasoning || {};
-          document.getElementById('tip-b-action').textContent = latest.policy_b_action || 'NO_TRADE';
-          document.getElementById('tip-b-text').textContent = r.reason_b || 'No reasoning available.';
+          document.getElementById('tip-b-action').textContent = showB;
+          const tipB = (actionableB === false && (latest.gate2e_block_reason || dispB))
+            ? ('Gate2E ' + (dispB || 'STANDASIDE') + (latest.gate2e_block_reason ? (': ' + latest.gate2e_block_reason) : '') + ' · raw Policy B=' + (latest.policy_b_action || 'NO_TRADE'))
+            : (r.reason_b || 'No reasoning available.');
+          document.getElementById('tip-b-text').textContent = tipB;
           document.getElementById('tip-b-ret').textContent = (latest.ret_15m_bps !== undefined) ? latest.ret_15m_bps.toFixed(2) + ' bps' : '--';
           document.getElementById('tip-b-vol').textContent = r.volatility || '--';
           document.getElementById('tip-b-trend').textContent = r.trend ? r.trend.split('(')[0].trim() : '--';
@@ -5398,9 +5439,19 @@ DASHBOARD_HTML = """<!DOCTYPE html>
       function renderNseIdeaCard(qc, accent, rankIdx) {
         const rr = qc.risk_reward || {};
         const kind = qc.card_kind || (qc.decision === 'RECOMMEND_LONG' ? 'QUALIFIED' : 'ACTIVE');
-        const kindLabel = kind === 'QUALIFIED_HIGH_TARGET' || qc.decision === 'RECOMMEND_LONG'
-          ? `QUALIFY #${qc.provisional_rank || '—'}`
-          : (kind === 'ACTIVE_HIGH_TARGET' ? `ACTIVE · BAR ${qc.entry_bar_idx ?? '—'}` : kind);
+        let kindLabel;
+        if (kind === 'QUALIFIED_HIGH_TARGET' || qc.decision === 'RECOMMEND_LONG') {
+          kindLabel = `QUALIFY #${qc.provisional_rank || '—'}`;
+        } else if (kind === 'ACTIVE_HIGH_TARGET') {
+          kindLabel = `ACTIVE · BAR ${qc.entry_bar_idx ?? '—'}`;
+        } else if (kind === 'GATED_HIGH_TARGET') {
+          const dc = qc.decision_code || '';
+          kindLabel = dc === 'STANDASIDE_TRADE_PATTERN'
+            ? 'GATED · GATE2E'
+            : (dc === 'STANDASIDE_CORALYS_INPUT_GATE' ? 'GATED · CORALYS' : 'GATED');
+        } else {
+          kindLabel = kind;
+        }
         const scoreTxt = (qc.score != null && !Number.isNaN(Number(qc.score)))
           ? ((Number(qc.score) >= 0 ? '+' : '') + Number(qc.score).toFixed(4))
           : '--';
@@ -5474,11 +5525,17 @@ DASHBOARD_HTML = """<!DOCTYPE html>
         let recsHtml = '';
         if (highs.length > 0) {
           const sorted = sortNseIdeaCards(highs, mode);
-          recsHtml += `<div style="font-size:11px; color:var(--text-muted); margin-bottom:8px;">Ideas with frozen dynamic target &gt; <b style="color:#fff;">${floor} bps</b> · sorted by <b style="color:var(--accent-cyan);">${NSE_SORT_LABELS[mode] || mode}</b>. Each card shows <b style="color:var(--accent-cyan);">INTRADAY</b> + holding term.</div>`;
+          const nGatedCards = sorted.filter(c => c.card_kind === 'GATED_HIGH_TARGET').length;
+          const nFreshCards = sorted.filter(c => c.decision === 'RECOMMEND_LONG' || c.card_kind === 'QUALIFIED_HIGH_TARGET').length;
+          recsHtml += `<div style="font-size:11px; color:var(--text-muted); margin-bottom:8px;">Ideas with frozen dynamic target &gt; <b style="color:#fff;">${floor} bps</b> · sorted by <b style="color:var(--accent-cyan);">${NSE_SORT_LABELS[mode] || mode}</b>. Fresh qualifies: <b style="color:var(--accent-emerald);">${nFreshCards}</b> · traj-clear but Gate2E/Coralys gated (observational geometry only): <b style="color:#c4b5fd;">${nGatedCards}</b>.</div>`;
           recsHtml += '<div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(320px, 1fr)); gap:12px; max-height:520px; overflow:auto; padding-right:4px;">';
           sorted.forEach((qc, idx) => {
             const isFresh = qc.decision === 'RECOMMEND_LONG' || qc.card_kind === 'QUALIFIED_HIGH_TARGET';
-            recsHtml += renderNseIdeaCard(qc, isFresh ? 'rgba(16,185,129,0.3)' : 'rgba(6,182,212,0.25)', idx);
+            const isGated = qc.card_kind === 'GATED_HIGH_TARGET';
+            const accent = isFresh
+              ? 'rgba(16,185,129,0.3)'
+              : (isGated ? 'rgba(168,85,247,0.28)' : 'rgba(6,182,212,0.25)');
+            recsHtml += renderNseIdeaCard(qc, accent, idx);
           });
           recsHtml += '</div>';
         } else if (nQual > 0) {
@@ -5488,11 +5545,19 @@ DASHBOARD_HTML = """<!DOCTYPE html>
           sorted.forEach((qc, idx) => { recsHtml += renderNseIdeaCard(qc, null, idx); });
           recsHtml += '</div>';
         } else {
+          const rb0 = evSummary.rejection_breakdown || {};
+          const nPat = rb0.STANDASIDE_TRADE_PATTERN || 0;
+          const nCor = rb0.STANDASIDE_CORALYS_INPUT_GATE || 0;
+          const nGated = nPat + nCor;
           recsHtml = `
             <div style="background:rgba(255,255,255,0.02); border:1px solid rgba(255,255,255,0.06); border-radius:8px; padding:12px;">
               <div style="font-size:12px; font-weight:700; color:#fff;">No scrips with target &gt; ${floor} bps and no fresh qualifies this bar</div>
               <div style="font-size:11px; color:var(--text-dim); margin-top:3px;">
-                Fresh entry still requires <code style="color:var(--accent-cyan);">traj15 &gt;= +0.0500</code>. Open-position targets come from ATR/structure policy.
+                Fresh PRIMARY entry needs <code style="color:var(--accent-cyan);">traj15 &gt;= +0.0500</code>
+                + Coralys allow + Gate2E <code style="color:#c4b5fd;">allow_only</code>.
+                Momentum census Bullish can be &gt; 0 while fresh qualify stays 0 when traj-clear names are
+                <b style="color:#c4b5fd;">Gate2E pattern</b> (${nPat}) or <b style="color:var(--accent-amber);">Coralys</b> (${nCor}) standaside
+                (gated=${nGated}; books never pooled).
               </div>
             </div>`;
         }
@@ -5512,14 +5577,18 @@ DASHBOARD_HTML = """<!DOCTYPE html>
       }
       paintNseRecommendationBoard();
 
-      // Rejection Breakdown Chips (includes Coralys input standaside)
+      // Rejection Breakdown Chips (Coralys + Gate2E pattern; books never pooled)
       if (chipsContainer && evSummary.rejection_breakdown) {
         const rb = evSummary.rejection_breakdown;
+        const nPattern = rb.STANDASIDE_TRADE_PATTERN || 0;
+        const nCoralys = rb.STANDASIDE_CORALYS_INPUT_GATE || 0;
+        const nSub = rb.SUB_THRESHOLD_MOMENTUM || 0;
         chipsContainer.innerHTML = `
           <span style="font-weight:700; text-transform:uppercase; letter-spacing:0.5px; color:var(--text-muted); font-size:10px;">Rejection Breakdown:</span>
-          <span class="pill-sm" style="background:rgba(251,191,36,0.12); color:var(--accent-amber); border:1px solid rgba(251,191,36,0.3);">Coralys input: <b>${rb.STANDASIDE_CORALYS_INPUT_GATE || 0}</b></span>
+          <span class="pill-sm" style="background:rgba(168,85,247,0.12); color:#c4b5fd; border:1px solid rgba(168,85,247,0.35);" title="Gate2E allow_only / pattern standaside (traj may still be bullish)">Gate2E pattern: <b>${nPattern}</b></span>
+          <span class="pill-sm" style="background:rgba(251,191,36,0.12); color:var(--accent-amber); border:1px solid rgba(251,191,36,0.3);">Coralys input: <b>${nCoralys}</b></span>
           <span class="pill-sm" style="background:rgba(245,158,11,0.1); color:var(--accent-amber); border:1px solid rgba(245,158,11,0.2);">Cold Start: <b>${rb.COLD_START_INSUFFICIENT_HISTORY || 0}</b></span>
-          <span class="pill-sm" style="background:rgba(148,163,184,0.1); color:var(--text-dim); border:1px solid rgba(148,163,184,0.2);">Sub-Threshold: <b>${rb.SUB_THRESHOLD_MOMENTUM || 0}</b></span>
+          <span class="pill-sm" style="background:rgba(148,163,184,0.1); color:var(--text-dim); border:1px solid rgba(148,163,184,0.2);">Sub-Threshold: <b>${nSub}</b></span>
           <span class="pill-sm" style="background:rgba(244,63,94,0.1); color:var(--accent-rose); border:1px solid rgba(244,63,94,0.2);">Boundary: <b>${rb.INTRADAY_BOUNDARY_EXCLUDED || 0}</b></span>
           <span class="pill-sm" style="background:rgba(6,182,212,0.1); color:var(--accent-cyan); border:1px solid rgba(6,182,212,0.2);">Active: <b>${rb.EXISTING_POSITION_ACTIVE || 0}</b></span>
           <span class="pill-sm" style="background:rgba(239,68,68,0.1); color:var(--accent-rose); border:1px solid rgba(239,68,68,0.2);">Quote/Data: <b>${(rb.QUOTE_FEASIBILITY_FAILURE || 0) + (rb.DATA_QUALITY_FAILURE || 0)}</b></span>

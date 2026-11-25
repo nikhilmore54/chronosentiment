@@ -102,9 +102,14 @@ pub fn gate2x_decide(snap: &Gate2xFeatureSnapshot, store: &Rec001hStore) -> Gate
         return hold_decision(snap, "GATE2X_DISABLED", soft);
     }
 
-    let armed = snap.already_armed
-        || (snap.peak_mfe > snap.arm_threshold
-            && snap.peak_tp_frac >= snap.params.arm_min_tp_frac);
+    // Quality path must clear arm_min_tp_frac on this plan. `already_armed` alone
+    // is insufficient — lifecycle multiplexes plans and a stale/poisoned latch must
+    // not arm Protect on symbols that never reached the frac floor (peak_tp_frac is
+    // monotonic, so frac < arm_min means quality never happened here).
+    let quality_arm = snap.peak_mfe > snap.arm_threshold
+        && snap.peak_tp_frac >= snap.params.arm_min_tp_frac;
+    let armed = quality_arm
+        || (snap.already_armed && snap.peak_tp_frac >= snap.params.arm_min_tp_frac);
     soft.armed = armed;
     if armed {
         soft.protocol = Some(snap.params.protocol.clone());
@@ -114,7 +119,10 @@ pub fn gate2x_decide(snap: &Gate2xFeatureSnapshot, store: &Rec001hStore) -> Gate
         return hold_decision(snap, "GATE2X_NOT_ARMED", soft);
     }
 
-    if snap.hold_s < snap.params.min_hold_s_before_exit {
+    // Floor-lock twin bypasses min-hold (H11): protect must fire while still green.
+    if !snap.params.floor_lock_immediate
+        && snap.hold_s < snap.params.min_hold_s_before_exit
+    {
         return hold_decision(snap, "GATE2X_MIN_HOLD", soft);
     }
 
@@ -151,6 +159,25 @@ pub fn gate2x_decide(snap: &Gate2xFeatureSnapshot, store: &Rec001hStore) -> Gate
     };
     soft.giveback_frac = Some(giveback_frac);
     soft.soft_breach_vol_surge = Some(snap.vol_surge.as_str().to_string());
+
+    // Floor-lock twin: immediate Exit at protect floor (no dwell / HARD_FLOOR bleed).
+    // H11: only while current_mfe ≥ cost-clear/entry base — never stamp FLOOR_LOCK on a loss.
+    // Observational — authority stamped adapter_floor_lock_twin; default off.
+    if snap.params.floor_lock_immediate && snap.current_mfe + 1e-12 >= base_floor {
+        soft.soft_breach_since_ms = None;
+        soft.protocol = Some(snap.params.protocol.clone());
+        return Gate2xDecision {
+            action: CoralysPositionAction::Exit,
+            reason: "MFE_FLOOR_LOCK_AT_PROTECT".into(),
+            coralys_action: "Exit".into(),
+            recommendation_action: "FloorLockTwin".into(),
+            decision_id: snap.decision_id.clone(),
+            protocol: snap.params.protocol.clone(),
+            soft_breach: soft,
+            engine_insufficient: false,
+            authority: "adapter_floor_lock_twin".into(),
+        };
+    }
 
     // v1.5 hard floor: ratchet starts dwell for wick filter, but once MFE falls
     // through cost-clear / entry (base_floor) do not keep dwelling into a loss.
@@ -675,6 +702,116 @@ mod tests {
         let d = gate2x_decide(&snap, &store);
         assert_eq!(d.protocol, "RP-608-GATE2X-NSE-MFE-GIVEBACK-001");
         assert_adverse_fire(&d, "VOL_HIGH");
+    }
+
+    // ─── Floor-lock twin (R1 · authority 0%) ────────────────────────────────
+
+    #[test]
+    fn floor_lock_exits_at_protect_immediately() {
+        let (_dir, store) = load_store("floor_lock_exit");
+        // peak=10, ratchet 0.50 → protect=max(1.7,5.0)=5.0; cur=4.0 → Exit
+        let mut snap = base_snap(true, 4.0, VolSurgeBucket::Low);
+        snap.params = Gate2xParams::floor_lock_twin_defaults(Gate2xParams::crypto_defaults());
+        assert_eq!(snap.params.min_hold_s_before_exit, 0.0);
+        let d = gate2x_decide(&snap, &store);
+        assert_eq!(d.action, CoralysPositionAction::Exit);
+        assert_eq!(d.reason, "MFE_FLOOR_LOCK_AT_PROTECT");
+        assert_eq!(d.authority, "adapter_floor_lock_twin");
+        assert!((d.soft_breach.protect_floor.unwrap() - 5.0).abs() < 1e-9);
+        assert!(d.soft_breach.soft_breach_since_ms.is_none());
+    }
+
+    #[test]
+    fn floor_lock_does_not_stamp_when_below_cost_clear() {
+        let (_dir, store) = load_store("floor_lock_no_loss_lock");
+        // peak=10 → protect=5; cur=0.5 < cost-clear 1.7 → must not stamp FLOOR_LOCK
+        let mut snap = base_snap(true, 0.5, VolSurgeBucket::Low);
+        snap.params = Gate2xParams::floor_lock_twin_defaults(Gate2xParams::crypto_defaults());
+        let d = gate2x_decide(&snap, &store);
+        assert_ne!(d.reason, "MFE_FLOOR_LOCK_AT_PROTECT");
+        assert!(
+            d.reason.contains("HARD_FLOOR") || d.action != CoralysPositionAction::Hold,
+            "expected hard-floor / exit path, got {} {:?}",
+            d.reason,
+            d.action
+        );
+    }
+
+    #[test]
+    fn floor_lock_fires_before_legacy_120s_min_hold() {
+        let (_dir, store) = load_store("floor_lock_early");
+        let mut snap = base_snap(true, 4.0, VolSurgeBucket::Low);
+        snap.hold_s = 15.0; // would be blocked under crypto 120s min-hold
+        snap.params = Gate2xParams::floor_lock_twin_defaults(Gate2xParams::crypto_defaults());
+        let d = gate2x_decide(&snap, &store);
+        assert_eq!(d.reason, "MFE_FLOOR_LOCK_AT_PROTECT");
+    }
+
+    #[test]
+    fn floor_lock_holds_above_protect() {
+        let (_dir, store) = load_store("floor_lock_hold");
+        let mut snap = base_snap(true, 6.0, VolSurgeBucket::High);
+        snap.params = Gate2xParams::floor_lock_twin_defaults(Gate2xParams::crypto_defaults());
+        let d = gate2x_decide(&snap, &store);
+        assert_eq!(d.action, CoralysPositionAction::Hold);
+        assert_eq!(d.reason, "GATE2X_ABOVE_FLOOR");
+    }
+
+    #[test]
+    fn floor_lock_off_still_uses_hard_floor_not_floor_lock_stamp() {
+        let (_dir, store) = load_store("floor_lock_off");
+        // Default crypto: floor_lock_immediate=false; cur below cost-clear → HARD_FLOOR path
+        let snap = base_snap(true, 1.0, VolSurgeBucket::Low);
+        assert!(!snap.params.floor_lock_immediate);
+        let d = gate2x_decide(&snap, &store);
+        assert!(
+            d.reason.contains("HARD_FLOOR"),
+            "PRIMARY must not stamp FLOOR_LOCK; got {}",
+            d.reason
+        );
+        assert_ne!(d.reason, "MFE_FLOOR_LOCK_AT_PROTECT");
+    }
+
+    #[test]
+    fn floor_lock_params_default_serde_false() {
+        let raw = r#"{
+            "enabled": true,
+            "arm_min_tp_frac": 0.4,
+            "min_hold_s_before_exit": 120.0,
+            "meaningful_floor_bps": 5.0,
+            "protect_floor": "COST_CLEAR",
+            "reversal_volume_confirm": true,
+            "immediate_vol_surges": ["HIGH"],
+            "med_vol_dwell_ms": 40000,
+            "low_vol_dwell_ms": 90000,
+            "ratchet_peak_frac": 0.3,
+            "deep_giveback_frac": 0.5,
+            "deep_giveback_dwell_scale": 0.4,
+            "protocol": "RP-608-GATE2X-CRYPTO-MFE-GIVEBACK-001"
+        }"#;
+        let p: Gate2xParams = serde_json::from_str(raw).unwrap();
+        assert!(!p.floor_lock_immediate);
+    }
+
+    #[test]
+    fn r4_named_presets_geometry() {
+        use super::super::gate2x_features::Gate2xPresetId;
+        let bl = Gate2xParams::from_preset("crypto", Gate2xPresetId::BaselineR30);
+        assert!((bl.ratchet_peak_frac - 0.30).abs() < 1e-12);
+        assert!(!bl.floor_lock_immediate);
+        let r50 = Gate2xParams::from_preset("crypto", Gate2xPresetId::R50Booking);
+        assert!((r50.ratchet_peak_frac - 0.50).abs() < 1e-12);
+        assert!(!r50.floor_lock_immediate);
+        assert_eq!(r50.protocol, "RP-608-GATE2X-R50-BOOKING-TWIN-001");
+        let fl = Gate2xParams::from_preset("nse", Gate2xPresetId::FloorLockR50);
+        assert!(fl.floor_lock_immediate);
+        assert!((fl.ratchet_peak_frac - 0.50).abs() < 1e-12);
+        assert_eq!(fl.protocol, "RP-608-GATE2X-FLOOR-LOCK-TWIN-001");
+        assert!(fl.protocol.contains("FLOOR-LOCK"));
+        assert_eq!(
+            Gate2xPresetId::parse("floor_lock_r50"),
+            Some(Gate2xPresetId::FloorLockR50)
+        );
     }
 
     // legacy aliases kept for filter stability

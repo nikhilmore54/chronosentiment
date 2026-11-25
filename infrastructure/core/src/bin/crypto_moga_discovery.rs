@@ -1,3 +1,4 @@
+#![allow(dead_code, unused_variables, unused_imports, unused_mut, unused_assignments)]
 use chronosentiment_core::ese::ExecutionEngine;
 use chronosentiment_core::{MarketEvent, MarketEventType, Side};
 use coralys_ecology::models::{CognitionGeometry, MemoryState};
@@ -24,7 +25,7 @@ struct CryptoStateRecord {
 }
 
 #[derive(Debug, Clone)]
-struct PrecomputedState {
+pub struct PrecomputedState {
     timestamp: i64,
     va: f64,
     persistence: f64,

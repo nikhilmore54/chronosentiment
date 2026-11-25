@@ -3,7 +3,6 @@ use coralys_moga::engine::EvolutionEngine;
 use coralys_moga::traits::{
     CrossoverOperator, Evaluated, FitnessEvaluator, Genome, GenomeFactory, MutationOperator,
 };
-use rand::SeedableRng;
 use rand::rngs::StdRng;
 use std::time::Instant;
 

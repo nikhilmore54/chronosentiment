@@ -1,3 +1,4 @@
+#![allow(dead_code, unused_variables, unused_imports, unused_mut, unused_assignments)]
 /// phase10c4_threshold_sweep.rs — P10-C4 Threshold/Headroom Experiment
 ///
 /// Governance protocol: EXPERIMENTAL — adapter-only intervention.

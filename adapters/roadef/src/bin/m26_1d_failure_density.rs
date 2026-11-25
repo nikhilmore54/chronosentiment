@@ -1,3 +1,4 @@
+#![allow(dead_code, unused_variables, unused_imports, unused_mut, unused_assignments)]
 use roadef::evaluator::RoadefEvaluator;
 use roadef::graph::Digraph;
 use roadef::loader::{load_network, load_scenario, load_traffic_matrix};

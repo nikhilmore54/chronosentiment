@@ -1,3 +1,4 @@
+#![allow(dead_code, unused_variables, unused_imports, unused_mut, unused_assignments)]
 use std::cmp::Reverse;
 /// rp404c_bottleneck_link — RP-404C: Problem-Specific Neighbourhood (Bottleneck-Link Destroy)
 ///

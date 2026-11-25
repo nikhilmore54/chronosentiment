@@ -48,7 +48,7 @@ impl FitnessEvaluator<Candidate> for FinancialEvaluator {
         let mut trades = 0;
 
         // Traverse tick replay
-        while let Some(replayed) = engine.next_event() {
+        while let Some(_replayed) = engine.next_event() {
             // A real semantic scoring would evaluate candidate logic here, e.g. evaluate_market_conviction
             // For now, we simulate taking a trade on the first tick and closing on the second
             if candidate.base_edge > 0 {

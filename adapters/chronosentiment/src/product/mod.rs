@@ -81,15 +81,18 @@ pub use allocation_engine::{AllocationEngine, ALLOCATION_ENGINE_VERSION};
 pub use coralys_state_bridge::*;
 pub use gate2x_decide::{gate2x_decide, Gate2xDecision};
 pub use gate2x_features::{
-    Gate2xFeatureSnapshot, Gate2xParams, Gate2xSoftBreachState, ProtectFloorMode, VolSurgeBucket,
+    Gate2xFeatureSnapshot, Gate2xParams, Gate2xPresetId, Gate2xSoftBreachState, ProtectFloorMode,
+    VolSurgeBucket,
 };
 pub use gate2x_position_manage::{Gate2xBookKind, Gate2xPositionManager};
 pub use rp608_plan_lifecycle::{
     OpenPlanState, PlanLifecycleConfig, PlanLifecycleManager, PlanQuote, PLAN_LIFECYCLE_PROTOCOL,
 };
 pub use crypto_tick_policy::{
-    build_tick_snapshot, evaluate_tick_policies, validate_tick_quote, TickEmissionGate,
-    TickFeatureBuffer, TickFeatureSnapshot, TickQuote, PROTOCOL_ID as CRYPTO_TICK_PROTOCOL_ID,
+    build_tick_snapshot, evaluate_tick_policies, evaluate_tick_policies_hygiened,
+    microconfirm_gate_b, snapshot_to_json, validate_tick_quote, RecHygieneStamp,
+    RecommendationStabilizer, TickEmissionGate, TickFeatureBuffer, TickFeatureSnapshot, TickQuote,
+    PROTOCOL_ID as CRYPTO_TICK_PROTOCOL_ID, REC_HYGIENE_PROTOCOL_ID,
 };
 pub use intraday_decision::{DecisionBrief, ExecutionFacts, load_intraday_briefs};
 pub use deferred_live::{

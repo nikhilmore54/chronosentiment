@@ -14,7 +14,7 @@ use tower_http::cors::{Any, CorsLayer};
 use chronosentiment_adapter::evidence::{EvidenceItem, EvidenceSourceType};
 use chronosentiment_adapter::hypothesis::InvestmentThesis;
 use chronosentiment_adapter::workspace::InvestmentWorkspace;
-use serde::{Deserialize, Serialize};
+use serde::Deserialize;
 use std::collections::HashMap;
 use std::sync::Arc;
 use tokio::sync::RwLock;

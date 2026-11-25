@@ -145,9 +145,25 @@ class PlanLifecycleSession:
                 self._stdin.flush()
                 line = self._stdout.readline()
                 if not line:
+                    err = ""
+                    try:
+                        if self._proc.stderr:
+                            err = (self._proc.stderr.readline() or "")[:400]
+                    except Exception:
+                        pass
+                    if err:
+                        print(
+                            f"[plan_lifecycle] tick empty stdout book={self.book}: {err}",
+                            flush=True,
+                        )
+                    self.close()
                     return None
                 return json.loads(line)
-            except Exception:
+            except Exception as exc:
+                print(
+                    f"[plan_lifecycle] tick failed book={self.book}: {type(exc).__name__}: {exc}",
+                    flush=True,
+                )
                 self.close()
                 return None
 
@@ -174,9 +190,12 @@ def get_session(book: str = "crypto", evidence_dir: Optional[str] = None) -> Opt
     bin_path = resolve_lifecycle_bin()
     if not bin_path:
         return None
-    ev = evidence_dir or (
-        DEFAULT_CRYPTO_EVIDENCE if book == "crypto" else DEFAULT_NSE_EVIDENCE
-    )
+    if evidence_dir:
+        ev = evidence_dir
+    elif book == "crypto":
+        ev = os.environ.get("RP608_CRYPTO_REC001H_DIR", DEFAULT_CRYPTO_EVIDENCE)
+    else:
+        ev = os.environ.get("RP608_NSE_REC001H_DIR", DEFAULT_NSE_EVIDENCE)
     key = (bin_path, ev, book)
     with _LOCK:
         sess = _SESSIONS.get(key)
@@ -248,6 +267,7 @@ def plan_from_overlay(plan: Dict[str, Any], *, book: str = "crypto") -> Dict[str
         "expiry_time_ms": int(expiry or 0),
         "tp_level": int(plan.get("tp_level") or 0),
         "adaptive_tp_armed": bool(plan.get("adaptive_tp_armed")),
+        "adaptive_partial_latch_armed": bool(plan.get("adaptive_partial_latch_armed")),
         "trailing_sl_armed": bool(plan.get("trailing_sl_armed")),
         "mfe_exec_price": mfe,
         "mae_exec_price": mae,
@@ -263,6 +283,21 @@ def plan_from_overlay(plan: Dict[str, Any], *, book: str = "crypto") -> Dict[str
             or plan.get("vol_surge")
         ),
         "book": book,
+        # R4: named preset preferred; legacy field overrides still accepted.
+        "gate2x_preset": (
+            str(plan["gate2x_preset"]).strip() if plan.get("gate2x_preset") else None
+        )
+        or None,
+        "gate2x_floor_lock_immediate": bool(plan.get("gate2x_floor_lock_immediate")),
+        "gate2x_ratchet_peak_frac": (
+            float(plan["gate2x_ratchet_peak_frac"])
+            if plan.get("gate2x_ratchet_peak_frac") is not None
+            else None
+        ),
+        "gate2x_protocol": (
+            str(plan.get("gate2x_protocol") or plan.get("gate2x_mfe_giveback_protocol") or "")
+            or None
+        ),
     }
 
 
@@ -279,6 +314,7 @@ def merge_lifecycle_into_plan(
         ("profit_target_price", "profit_target_price"),
         ("tp_level", "tp_level"),
         ("adaptive_tp_armed", "adaptive_tp_armed"),
+        ("adaptive_partial_latch_armed", "adaptive_partial_latch_armed"),
         ("trailing_sl_armed", "trailing_sl_armed"),
         ("mfe_exec_price", "mfe_exec_price"),
         ("mae_exec_price", "mae_exec_price"),

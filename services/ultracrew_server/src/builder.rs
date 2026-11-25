@@ -1,5 +1,5 @@
-use std::collections::{HashMap, HashSet};
-use ultracrew::inrc::models::{InrcContract, InrcNurse, InrcScenario};
+use std::collections::HashMap;
+use ultracrew::inrc::models::InrcScenario;
 
 // Phase 1: Skeleton Coverage
 pub fn assign_skeleton(scenario: &InrcScenario) -> HashMap<String, Vec<String>> {

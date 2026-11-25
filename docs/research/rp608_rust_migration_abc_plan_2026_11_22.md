@@ -59,13 +59,27 @@ flowchart LR
 
 **A status:** Soft cutover green on BASELINE + ETH; **hard fail-closed (`REQUIRE_RUST`) enabled on Pi**. Soak not closed until multi-day PRIMARY/NSE evidence + Python manage bodies retired.
 
-### Current state
+### Mark / MFE persist (2026-11-22 ~13:03 IST)
+
+Daemon reloaded overlay JSON every 5s and often wiped unsaved `last_mark` / MFE / MAE / Gate2X peaks on OPEN plans (disk looked frozen for tens of minutes while live SL/TP still used quote).
+
+| Change | Where |
+| --- | --- |
+| Preserve in-memory OPEN plan on reload when `plan_id` matches | `TradePlanOverlayManager.reload_state_from_disk` · daemon bookTicker path |
+| Throttle-persist marks (~1s) + path stamps | `evaluate_market_tick` |
+| Persist rust hold excursion / trail / latch fields | `_try_rust_plan_lifecycle` hold path |
+| Audit books | authority audit now includes `CRYPTO_ETH_BASELINE` |
+| Unit | `test_reload_state_preserves_open_mark_progress` |
+
+**Soak hint (24h):** nonempty books **100% rust** → `PASS_PARTIAL` (PRIMARY silent under Gate2E `allow_only` is expected). **Met 2026-11-24** → Track A manage retirement executed.
+
+### Current state (Track A manage retirement **done** 2026-11-24)
 
 | Layer | Owner today |
 | --- | --- |
 | Adaptive TP + hard SL/TP + Gate 2X Protect/Exit + trailing SL | Rust `PlanLifecycleManager` via `rp608_position_decide --plan-lifecycle-loop` |
 | WS, entries, journals, OF paper, OFX | Python |
-| Python Adaptive / Gate2X bodies | Still present as **fallback** when Rust missing / loop fails |
+| Python Adaptive / Gate2X bodies | **Unreachable** when `PLAN_LIFECYCLE=1` (unit-test path only at `=0`); REQUIRE_RUST still fail-closed |
 
 Key files:
 - Rust: [`adapters/chronosentiment/src/product/rp608_plan_lifecycle.rs`](../../adapters/chronosentiment/src/product/rp608_plan_lifecycle.rs), [`…/bin/rp608_position_decide.rs`](../../adapters/chronosentiment/src/bin/rp608_position_decide.rs)
@@ -85,18 +99,18 @@ Key files:
    - Client: `require_rust_lifecycle()` / `log_require_rust_block()` in `scripts/rp608_plan_lifecycle_client.py`; overlay + NSE manage paths honor it.  
    - Keep Python path for TIME_EXIT / NSE bar horizon only where cutover doc already allows.
 
-3. **Retire Python manage bodies**  
-   - After soak green: delete or `# retired` the Python Adaptive TP + Gate2X manage loops behind `_rust_hold` in overlay / NSE daemon; leave thin stubs that only call Rust client.  
-   - Update [`rp608_rust_plan_lifecycle_cutover.md`](rp608_rust_plan_lifecycle_cutover.md): mark “Python manage retired”; WS/daemon port still out of scope.
+3. **Retire Python manage bodies** — **done 2026-11-24**  
+   - Overlay / NSE: `_skip_python_lifecycle` / early-return when `PLAN_LIFECYCLE=1`; Adaptive/Gate2X/SL-TP manage unreachable under live env.  
+   - Cutover doc marks “Python manage retired”; WS/daemon port still Track C.
 
-4. **Tests**  
+4. **Tests** — **done**  
    - Existing Rust goldens in `product::gate2x_*` / `rp608_plan_lifecycle` remain gate.  
-   - Overlay unit tests keep `RP608_PLAN_LIFECYCLE=0` for pure Python geometry where needed; add one test that with require-rust + missing bin → no Python giveback mutation.
+   - Overlay unit tests keep `RP608_PLAN_LIFECYCLE=0` for pure Python geometry; require-rust + missing bin → no Python giveback mutation; obsolete Adaptive TP-extension tests skipped (Coralys).
 
 ### Exit criteria (A done)
 
-- Pi crypto + NSE closed trades show rust authority; zero fallback manages under require-rust.  
-- Python Adaptive/Gate2X **manage** code paths removed or unreachable.  
+- Pi crypto + NSE closed trades show rust authority; zero fallback manages under require-rust. **PASS_PARTIAL** crypto BASELINE/ETH; NSE stamp next session.  
+- Python Adaptive/Gate2X **manage** code paths unreachable under `PLAN_LIFECYCLE=1`.  
 - OF ±0.30 / Gate 5 params unchanged.
 
 ---
@@ -113,7 +127,7 @@ Key files:
 | Rust production writer | **None** (P0–P3 library only) |
 | OF paper ledger | Still Python (P3 hold — dual-write forbidden) |
 
-**B status:** Not started on Pi; first flip target remains depth journal only after governance pack.
+**B status (2026-11-25):** Governance + side-path + offline replay **PASS_OFFLINE_REPLAY** (300/300 on Pi). Live `depth_snapshots.rust.jsonl` still needs next NSE sample window; flip held until `PASS_SIDE_PATH_PARITY`.
 
 ### Current state
 
@@ -166,14 +180,17 @@ First safe writer (observational only): **depth journal** `depth_snapshots.jsonl
 | BTC daemon | Active; tick path Python |
 | ETH twin | Active; 152+ cards; same Python tick path; Gate 2E forced off |
 
-**C status (2026-11-22):** Rust module `product::crypto_tick_policy` + unit tests landed; daemon still Python (`RP608_CRYPTO_TICK_POLICY` default). Next: `--tick-eval-loop` + Pi soak. See `rp608_crypto_tick_policy_rust_port_2026_11_22.md`.
+**C status (2026-11-25):** Pi BTC+ETH **default-on** `RP608_CRYPTO_TICK_POLICY=rust` after compare soak (0 diverge). See `rp608_crypto_tick_policy_rust_port_2026_11_22.md`.
 
 ### Current state
 
-All tick decision clock logic is Python: [`scripts/rp608_crypto_tick_policy.py`](../../scripts/rp608_crypto_tick_policy.py)  
-Consumed by [`scripts/run_rp608_shadow_daemon.py`](../../scripts/run_rp608_shadow_daemon.py) (`evaluate_on_tick`).  
-No Rust module yet. Champions SHA-locked; protocol `RP-608-SHADOW-TICK-001`.  
-ETH twin uses same daemon with `--symbol` — port must be symbol-agnostic.
+| Layer | Owner |
+| --- | --- |
+| Features + Policy B/C eval | Rust on Pi (`rust`); Python fallback if bin down |
+| Emission gate, ATR/15m, overlay/OF/OFX | Python |
+| Env | Pi systemd `=rust`; local/dev default still `python` if unset |
+
+Champions SHA-locked; protocol `RP-608-SHADOW-TICK-001`. ETH twin shares client; books/state dirs separate.
 
 ### Deliverables
 
@@ -244,7 +261,7 @@ ETH twin uses same daemon with `--symbol` — port must be symbol-agnostic.
 
 ## Acceptance checklist
 
-- [ ] A: rust authority soak crypto + NSE; Python manage retired; require-rust on Pi  
-- [ ] C: Rust tick policy + differential + daemon env; BTC/ETH using Rust  
-- [ ] B: governance note; depth journal Rust-only on Pi; paper ledger still Python  
+- [x] A: rust authority soak crypto (`PASS_PARTIAL`); Python manage retired under `PLAN_LIFECYCLE=1`; require-rust on Pi (NSE multi-day stamp ongoing)  
+- [x] C: Rust tick policy + CLI + daemon env; Pi BTC/ETH default-on `rust` (2026-11-25)  
+- [ ] B: governance pack + side-path wire done; Pi compare soak → Rust-only depth flip pending; paper ledger still Python  
 - [ ] Docs updated; no OF/Gate5/OFX boundary regressions  

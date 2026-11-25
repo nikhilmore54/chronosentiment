@@ -1,3 +1,4 @@
+#![allow(dead_code, unused_variables, unused_imports, unused_mut, unused_assignments)]
 use std::collections::hash_map::DefaultHasher;
 /// campaign_rc004c — RC-004C: Constructor Forensics
 ///

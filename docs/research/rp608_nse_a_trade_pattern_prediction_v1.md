@@ -10,7 +10,7 @@
 
 Two uses of the same past-trade memory — **not** scrip ban lists:
 
-1. **ENTRY (Gate 2E):** match live decision-time Coralys + **pre-entry candle path** to historical cohorts → predict ALLOW / STANDASIDE / ABSTAIN from W/L (payoff+net disclosed).
+1. **ENTRY (Gate 2E):** match live decision-time Coralys + **pre-entry candle path** to historical cohorts → predict ALLOW / STANDASIDE / ABSTAIN / ABSTAIN_NEGATIVE_EXPECTANCY from W/L (payoff+net disclosed). NEUTRAL → ALLOW only when train **net_mean > 0** (crypto Gate2E parity, 2026-11-23).
 2. **EXIT (Gate 2X observational):** match **post-entry candle path** (where trades historically reversed after green MFE) → stamp HOLD / EXIT_REVERSE / ABSTAIN. Frozen stops/targets/holds unchanged unless Gate 5; optional paper-only `RP608_NSE_PATTERN_EXIT_GATE=1`.
 
 ## Non-goals
@@ -64,24 +64,37 @@ python3 scripts/rp608_nse_trade_pattern_library.py \
 
 ## Live wiring
 
-| Env | Default | Effect |
+| Env | Default / live | Effect |
 | --- | --- | --- |
-| `RP608_NSE_PATTERN_GATE` | `0` | When `1`, ADVERSE entry match → `STANDASIDE_TRADE_PATTERN` |
+| `RP608_NSE_PATTERN_GATE` | **`allow_only`** (systemd 2026-11-23) | PRIMARY book Gate2E: `0`/`off` stamp only · `1`/`adverse` · **`allow_only`/`2` block unless ALLOW** |
+| `RP608_NSE_PATTERN_GATE_BASELINE` | **`0`** | BASELINE twin ungated control (crypto parity) |
 | `RP608_NSE_PATTERN_EXIT_GATE` | `0` | When `1`, reverse exit match may close paper with `PATTERN_REVERSE` |
 
-Stamps: `trade_pattern_match` on evaluations / opens; `trade_pattern_exit` on open manages.
+**Dual books (crypto-style trade + baseline):**
+
+| Book | Dir / journal | Pattern axes | Gate |
+| --- | --- | --- | --- |
+| `NSE_ESTIMAND_A` (PRIMARY) | `…/nse/rp608_nse_trade_journal.jsonl` | volume axes | `allow_only` |
+| `NSE_ESTIMAND_A_BASELINE_PARALLEL` | `…/nse/estimand_a_baseline_parallel_v1/rp608_nse_trade_journal.jsonl` | pre-volume key | `0` (ungated) |
+
+Same traj15 / Coralys / OF±0.30 / stops / TICK_PATH fills; independent active maps + journals; **never pooled**. Gate G4 quote freshness is vs **wall clock** (not bar open).
+
+**Gate2E selection:** `NEUTRAL` → `ALLOW` only if train `net_mean > 0`; else `ABSTAIN_NEGATIVE_EXPECTANCY` (fail-closed under `allow_only`). No OF ±0.30 / traj / stop/target change (Gate 5).
+
+Stamps: `trade_pattern_match` on evaluations / opens; `trade_pattern_exit` on open manages; nested `baseline_parallel` on PRIMARY stamps.
 
 Coralys V6 ToA/jitter/trend + missing-candle fetch **kept**. Per-symbol session re-entry hardblocks **removed** (churn is a pattern feature).
 
 ## Gate status
 
-- Gate 2E package: ship library + holdout W/L memo after next multi-session mine with candle join coverage.
+- Gate 2E live: PRIMARY `allow_only` + net_mean>0 ALLOW; BASELINE ungated twin — thinning expected; ADVANCE still needs holdout W/L+payoff+net **per book**.
 - Gate 2X: exit reverse stamps are observational until a sealed exit-geometry review + Gate 5.
 - Coverage floor for advance: per Gate 2 amendment v2 (≥ min(40% book, n≥80) on holdout preferred cohort).
 
 ## Code
 
 - `scripts/rp608_nse_trade_pattern_library.py`
-- `scripts/rp608_nse_trade_pattern_match.py`
-- Daemon: `scripts/run_rp608_nse_shadow_daemon.py`
+- `scripts/rp608_nse_trade_pattern_match.py` (`entry_gate_mode_baseline`)
+- Daemon: `scripts/run_rp608_nse_shadow_daemon.py` (`active_trades` + `active_trades_baseline`)
+- systemd: `etc/systemd/system/rp608-nse-shadow-daemon.service`
 - Tests: `tests/test_rp608_nse_trade_pattern.py`

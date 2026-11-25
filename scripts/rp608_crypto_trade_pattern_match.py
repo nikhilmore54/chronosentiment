@@ -2,8 +2,13 @@
 """
 RP-608 Crypto plan — live trade pattern matcher.
 
-ENTRY: ALLOW / STANDASIDE_ADVERSE_PATTERN / ABSTAIN_INSUFFICIENT
+ENTRY: ALLOW / STANDASIDE_ADVERSE_PATTERN / ABSTAIN_INSUFFICIENT /
+       ABSTAIN_NEGATIVE_EXPECTANCY
 EXIT:  HOLD / EXIT_REVERSE_PATTERN / ABSTAIN_INSUFFICIENT
+
+Gate2E selection (2026-11-23): NEUTRAL/ALLOW only when train net_mean > 0.
+Negative or missing hist net → ABSTAIN_NEGATIVE_EXPECTANCY (fail-closed under
+allow_only). Does not change OF ±0.30 / trail / stops (Gate 5).
 
 Env RP608_CRYPTO_PATTERN_GATE:
   0 / off              → stamp only
@@ -80,6 +85,28 @@ def entry_blocks_prediction(prediction: str, mode: str) -> bool:
     if m == "allow_only":
         return prediction != "ALLOW"
     return False
+
+
+def entry_prediction_from_label(label: str, train: Optional[Dict[str, Any]] = None) -> str:
+    """Map library label (+ train net) → live prediction.
+
+    NEUTRAL is not sufficient for ALLOW: mined net_mean must be strictly > 0.
+    (RP-608 Gate2E 2026-11-23 — stop opening negative-expectancy BACKOFF parents.)
+    """
+    lab = str(label or "INSUFFICIENT")
+    if lab == "ADVERSE":
+        return "STANDASIDE_ADVERSE_PATTERN"
+    if lab == "INSUFFICIENT":
+        return "ABSTAIN_INSUFFICIENT"
+    tr = train or {}
+    raw = tr.get("net_mean")
+    try:
+        net = float(raw) if raw is not None else None
+    except (TypeError, ValueError):
+        net = None
+    if net is None or net <= 0.0:
+        return "ABSTAIN_NEGATIVE_EXPECTANCY"
+    return "ALLOW"
 
 
 def exit_gate_enabled() -> bool:
@@ -487,12 +514,7 @@ def match_entry(
         }
     train = rec.get("train") or {}
     label = str(rec.get("label") or "INSUFFICIENT")
-    if label == "ADVERSE":
-        prediction = "STANDASIDE_ADVERSE_PATTERN"
-    elif label == "INSUFFICIENT":
-        prediction = "ABSTAIN_INSUFFICIENT"
-    else:
-        prediction = "ALLOW"
+    prediction = entry_prediction_from_label(label, train)
     blocks = entry_blocks_prediction(prediction, gmode)
     return {
         "kind": "ENTRY",

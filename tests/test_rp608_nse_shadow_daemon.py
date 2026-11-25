@@ -935,8 +935,15 @@ class TestRP608NSEShadowDaemon(unittest.TestCase):
         self.assertEqual(e_zero["decision"], "NO_TRADE")
         self.assertEqual(e_zero["decision_code"], "QUOTE_FEASIBILITY_FAILURE")
 
-        # Case D: Stale Quote (Age > 60000ms) -> Rejected by Gate G4
-        q_stale = TopOfBookQuote(timestamp_utc_ms=(6 * 900000) - 120000, bid_price=3138.0, ask_price=3140.0, bid_qty=50, ask_qty=50)
+        # Case D: Stale Quote (Age > 60000ms vs wall clock) -> Rejected by Gate G4
+        import time as _time
+        q_stale = TopOfBookQuote(
+            timestamp_utc_ms=int(_time.time() * 1000) - 120_000,
+            bid_price=3138.0,
+            ask_price=3140.0,
+            bid_qty=50,
+            ask_qty=50,
+        )
         daemon.evaluate_symbol_bar(sym, bar_idx=6, latest_bar=b6, quote=q_stale)
         e_stale = daemon.last_evaluations[sym]
         self.assertEqual(e_stale["decision"], "NO_TRADE")
@@ -1172,6 +1179,12 @@ class TestNSEAdaptiveTP(unittest.TestCase):
     def tearDown(self):
         shutil.rmtree(self.test_dir, ignore_errors=True)
 
+    def _python_adaptive_manage(self, daemon):
+        """Force Python Adaptive/Gate2X path (Rust covered by lib tests)."""
+        return unittest.mock.patch.object(
+            daemon, "_try_rust_nse_plan_lifecycle", return_value=None
+        )
+
     def _nse_adaptive_trade(self, entry: float = 1000.0, atr: float = 20.0) -> dict:
         return {
             "trade_id": "nse_adaptive_test_1",
@@ -1191,88 +1204,39 @@ class TestNSEAdaptiveTP(unittest.TestCase):
             "entry_timestamp_utc_ms": int(time.time() * 1000),
         }
 
-    def test_adaptive_tp_extends_not_closes_on_first_touch(self):
-        """Gate 5 NSE Adaptive TP: first TP touch extends + locks SL; trade stays open."""
+    def test_adaptive_coralys_floor_trails_not_blind_atr(self):
+        """Gate 5 Adaptive: SL ratchets to Coralys floor, not MFE−0.5×ATR."""
         daemon = RP608NSEShadowDaemon(output_dir=self.test_dir, single_bar_test=True)
-        trade = self._nse_adaptive_trade()
-        tp0 = float(trade["target_price"])
+        trade = self._nse_adaptive_trade(entry=1000.0, atr=20.0)
+        entry = float(trade["entry_price"])
         atr = float(trade["atr_14"])
-        daemon.active_trades["RELIANCE.NS"] = trade
-        closed = []
+        tp0 = float(trade["target_price"])
+        qty = float(trade["quantity"])
+        orig_sl = float(trade["stop_loss_price"])
+        trade["original_stop_loss_price"] = orig_sl
+        trade["gate2x_mfe_armed"] = True
+        # Protect floor locks ~half the TP span in INR.
+        floor_inr = 0.5 * (tp0 - entry) * qty
+        trade["gate2x_protect_floor_inr"] = floor_inr
+        mfe = round(tp0 + 5.0, 2)
+        trade["mfe_price"] = mfe
+        mutated = daemon._adaptive_tp_nse_try_extend(
+            trade, mark=mfe - 1.0, path_high=mfe, now_ms=int(time.time() * 1000)
+        )
+        self.assertTrue(mutated)
+        expected = round(entry + floor_inr / qty, 2)
+        blind = round(mfe - 0.5 * atr, 2)
+        self.assertAlmostEqual(float(trade["stop_loss_price"]), expected, places=2)
+        self.assertNotAlmostEqual(float(trade["stop_loss_price"]), blind, places=2)
+        self.assertNotAlmostEqual(float(trade["stop_loss_price"]), tp0, places=2)
+        self.assertTrue(trade.get("adaptive_tp_armed"))
 
-        def _capture_close(t, exit_price, exit_bar, exit_reason, **kwargs):
-            closed.append({"reason": exit_reason, "price": exit_price, **t})
-
-        with unittest.mock.patch.object(daemon, "_close_trade", side_effect=_capture_close):
-            with unittest.mock.patch.object(
-                daemon, "_gate2x_nse_update_mfe_giveback", return_value=None
-            ):
-                still_open = not daemon._manage_estimand_a_open_on_mark(
-                    symbol="RELIANCE.NS",
-                    mark=tp0 + 0.5,
-                    mark_src="TEST",
-                    now_ms=int(time.time() * 1000) + 5_000,
-                    bar_idx=6,
-                )
-        self.assertTrue(still_open)
-        self.assertEqual(closed, [])
-        active = daemon.active_trades["RELIANCE.NS"]
-        self.assertEqual(int(active["tp_level"]), 1)
-        self.assertTrue(active["adaptive_tp_armed"])
-        self.assertEqual(active.get("adaptive_tp_protocol"), ADAPTIVE_TP_PROTOCOL)
-        self.assertAlmostEqual(float(active["target_price"]), round(tp0 + 0.5 * atr, 2), places=2)
-        self.assertAlmostEqual(float(active["stop_loss_price"]), tp0, places=2)
-
-    def test_adaptive_tp_max_extensions_hard_take_profit(self):
-        """After max extensions, further TP touch closes TAKE_PROFIT."""
+    def test_adaptive_does_not_hard_close_on_tp_touch(self):
+        """Under Adaptive, TP hit stays open — Coralys owns continue vs exit."""
         daemon = RP608NSEShadowDaemon(output_dir=self.test_dir, single_bar_test=True)
         trade = self._nse_adaptive_trade(entry=1000.0, atr=20.0)
         tp0 = float(trade["target_price"])
-        atr = float(trade["atr_14"])
-        deep = tp0 + (ADAPTIVE_TP_MAX_EXTENSIONS * 0.5 * atr) + 1.0
-        daemon.active_trades["RELIANCE.NS"] = trade
-        closed = []
-
-        def _capture_close(t, exit_price, exit_bar, exit_reason, **kwargs):
-            closed.append(
-                {
-                    "reason": exit_reason,
-                    "price": exit_price,
-                    "detail": t.get("exit_reason_detail"),
-                    "tp_level": t.get("tp_level"),
-                }
-            )
-
-        with unittest.mock.patch.object(daemon, "_close_trade", side_effect=_capture_close):
-            with unittest.mock.patch.object(
-                daemon, "_gate2x_nse_update_mfe_giveback", return_value=None
-            ):
-                closed_flag = daemon._manage_estimand_a_open_on_mark(
-                    symbol="RELIANCE.NS",
-                    mark=deep,
-                    mark_src="TEST",
-                    now_ms=int(time.time() * 1000) + 5_000,
-                    bar_idx=6,
-                )
-        self.assertTrue(closed_flag)
-        self.assertEqual(len(closed), 1)
-        self.assertEqual(closed[0]["reason"], "TAKE_PROFIT")
-        self.assertEqual(closed[0]["detail"], "ADAPTIVE_TP_MAX_EXTENSIONS")
-        self.assertEqual(int(closed[0]["tp_level"]), ADAPTIVE_TP_MAX_EXTENSIONS)
-
-    def test_adaptive_tp_locked_sl_exits_on_giveback_to_prior_tp(self):
-        """After extend, pullback to locked prior-TP SL closes STOP_LOSS (profit lock)."""
-        daemon = RP608NSEShadowDaemon(output_dir=self.test_dir, single_bar_test=True)
-        trade = self._nse_adaptive_trade(entry=1000.0, atr=20.0)
-        tp0 = float(trade["target_price"])
-        atr = float(trade["atr_14"])
-        trade["tp_level"] = 1
-        trade["adaptive_tp_armed"] = True
-        trade["target_price"] = round(tp0 + 0.5 * atr, 2)
-        trade["stop_loss_price"] = tp0
-        locked_sl = float(trade["stop_loss_price"])
-        # MFE between locked SL and runner TP so manage does not re-extend.
-        trade["mfe_price"] = locked_sl + 1.0
+        trade["original_stop_loss_price"] = float(trade["stop_loss_price"])
         daemon.active_trades["RELIANCE.NS"] = trade
         closed = []
 
@@ -1283,16 +1247,60 @@ class TestNSEAdaptiveTP(unittest.TestCase):
             with unittest.mock.patch.object(
                 daemon, "_gate2x_nse_update_mfe_giveback", return_value=None
             ):
-                closed_flag = daemon._manage_estimand_a_open_on_mark(
-                    symbol="RELIANCE.NS",
-                    mark=locked_sl - 0.5,
-                    mark_src="TEST",
-                    now_ms=int(time.time() * 1000) + 5_000,
-                    bar_idx=6,
-                )
+                with self._python_adaptive_manage(daemon):
+                    still_open = not daemon._manage_estimand_a_open_on_mark(
+                        symbol="RELIANCE.NS",
+                        mark=tp0 + 0.5,
+                        mark_src="TEST",
+                        now_ms=int(time.time() * 1000) + 5_000,
+                        bar_idx=6,
+                    )
+        self.assertTrue(still_open)
+        self.assertEqual(closed, [])
+        active = daemon.active_trades["RELIANCE.NS"]
+        self.assertEqual(int(active.get("tp_level") or 0), 0)
+        # No blind ATR trail without Coralys floors.
+        self.assertAlmostEqual(
+            float(active["stop_loss_price"]),
+            float(trade["original_stop_loss_price"]),
+            places=2,
+        )
+
+    def test_adaptive_coralys_protect_exits_on_doubt(self):
+        """Coralys/Gate2X Protect under Adaptive → intelligent exit (not dumb trail)."""
+        daemon = RP608NSEShadowDaemon(output_dir=self.test_dir, single_bar_test=True)
+        trade = self._nse_adaptive_trade(entry=1000.0, atr=20.0)
+        trade["original_stop_loss_price"] = float(trade["stop_loss_price"])
+        trade["mfe_price"] = 1030.0
+        daemon.active_trades["RELIANCE.NS"] = trade
+        closed = []
+
+        def _capture_close(t, exit_price, exit_bar, exit_reason, **kwargs):
+            closed.append(
+                {
+                    "reason": exit_reason,
+                    "price": exit_price,
+                    "detail": t.get("exit_reason_detail"),
+                }
+            )
+
+        with unittest.mock.patch.object(daemon, "_close_trade", side_effect=_capture_close):
+            with unittest.mock.patch.object(
+                daemon,
+                "_gate2x_nse_update_mfe_giveback",
+                return_value="MFE_GIVEBACK_TO_COST_CLEAR",
+            ):
+                with self._python_adaptive_manage(daemon):
+                    closed_flag = daemon._manage_estimand_a_open_on_mark(
+                        symbol="RELIANCE.NS",
+                        mark=1005.0,
+                        mark_src="TEST",
+                        now_ms=int(time.time() * 1000) + 180_000,
+                        bar_idx=6,
+                    )
         self.assertTrue(closed_flag)
-        self.assertEqual(closed[0]["reason"], "STOP_LOSS")
-        self.assertAlmostEqual(float(closed[0]["price"]), locked_sl, places=2)
+        self.assertEqual(closed[0]["reason"], "GATE2X_MFE_GIVEBACK_PROTECT")
+        self.assertTrue(str(closed[0].get("detail") or "").startswith("ADAPTIVE_CORALYS_"))
 
 
 class MockKiteHistoricalAdapter:

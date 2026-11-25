@@ -1,3 +1,4 @@
+#![allow(dead_code, unused_variables, unused_imports, unused_mut, unused_assignments)]
 use std::cmp::Reverse;
 /// rp405_adaptive -- RP-405: Adaptive Operator Selection (Hyper-Heuristic)
 /// Classification: Research binary (RP-405).

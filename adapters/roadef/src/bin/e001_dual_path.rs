@@ -16,6 +16,7 @@
 //! Defaults: setA-04 setA-10
 //! Exit 0 = all PASS, Exit 1 = any FAIL or load error.
 
+#![allow(dead_code, unused_variables, unused_imports, unused_mut, unused_assignments)]
 use roadef::evaluator::RoadefEvaluator;
 use roadef::loader::{load_network, load_scenario, load_traffic_matrix};
 use roadef::models::Solution;

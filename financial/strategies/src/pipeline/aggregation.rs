@@ -2,7 +2,7 @@ use chronosentiment_core::market_adapter::{convert_series_to_events, Candle};
 use chronosentiment_core::{MarketEvent, SimEvent};
 use std::collections::HashMap;
 
-use crate::pipeline::old::{TradeSignal, DEFAULT_CONFIDENCE_FLOOR, DEFAULT_SCORE_FLOOR};
+use crate::pipeline::types::{TradeSignal, DEFAULT_CONFIDENCE_FLOOR, DEFAULT_SCORE_FLOOR};
 use crate::pipeline::reporting::{
     EdgeLossBreakdown, MetricAggregation, SignalMeta, SignalsSnapshot,
 };

@@ -321,8 +321,8 @@ impl UltraCrewMutator {
 mod hc1_coverage_tests {
     use super::*;
     use crate::inrc::models::{
-        InrcContract, InrcForbiddenSuccession, InrcNurse, InrcRequirement, InrcRequirementLevel,
-        InrcScenario, InrcShiftOffRequest, InrcShiftType, InrcWeekData,
+        InrcContract, InrcNurse, InrcRequirement, InrcRequirementLevel,
+        InrcScenario, InrcShiftType, InrcWeekData,
     };
     use coralys_moga::engine_proof::Evaluator;
 

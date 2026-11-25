@@ -1,3 +1,4 @@
+#![allow(dead_code, unused_variables, unused_imports, unused_mut, unused_assignments)]
 use std::cmp::Reverse;
 /// rp403v1_validate_rp401c — RP-403 Validation Task V1: RP-401C Behavioural Equivalence
 ///

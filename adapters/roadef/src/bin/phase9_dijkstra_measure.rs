@@ -1,3 +1,4 @@
+#![allow(dead_code, unused_variables, unused_imports, unused_mut, unused_assignments)]
 /// phase9_dijkstra_measure.rs — H6-revised Dijkstra Cache Precondition Measurement
 ///
 /// Governance protocol: OBSERVATIONAL — measurement-only binary.

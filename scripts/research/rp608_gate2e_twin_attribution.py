@@ -122,9 +122,24 @@ def main() -> int:
         default="live_capture/shadow_validation/crypto",
     )
     ap.add_argument(
+        "--eth-root",
+        default="live_capture/shadow_validation/crypto_eth",
+        help="ETH twin root (separate book; never pooled with BTC)",
+    )
+    ap.add_argument(
         "--allow-only-utc",
         default=DEFAULT_ALLOW_ONLY_UTC,
-        help="ISO UTC when PRIMARY allow_only went live",
+        help="ISO UTC when BTC PRIMARY allow_only went live",
+    )
+    ap.add_argument(
+        "--eth-allow-only-utc",
+        default="2026-11-22T06:31:00Z",
+        help="ISO UTC when ETH PRIMARY allow_only + symbol library went live",
+    )
+    ap.add_argument(
+        "--skip-eth",
+        action="store_true",
+        help="BTC-only report",
     )
     args = ap.parse_args()
     since = _parse_utc(args.allow_only_utc)
@@ -133,7 +148,7 @@ def main() -> int:
     baseline_ev = (
         root / "trade_plan_overlay_baseline_parallel_v1" / "trade_plan_events.jsonl"
     )
-    out = {
+    out: Dict[str, Any] = {
         "allow_only_since_utc": since.isoformat(),
         "primary": {
             **count_entry_events(primary_ev, since),
@@ -152,17 +167,66 @@ def main() -> int:
             "gate": "0",
         },
     }
+    if not args.skip_eth:
+        eth_root = Path(args.eth_root)
+        eth_since = _parse_utc(args.eth_allow_only_utc)
+        out["eth_allow_only_since_utc"] = eth_since.isoformat()
+        out["eth_primary"] = {
+            **count_entry_events(
+                eth_root / "trade_plan_overlay_v1" / "trade_plan_events.jsonl",
+                eth_since,
+            ),
+            **book_open_flat(
+                eth_root / "trade_plan_overlay_v1" / "overlay_state.json"
+            ),
+            "book": "CRYPTO_PLAN_ETHUSDT",
+            "gate": "allow_only",
+            "library": str(
+                eth_root / "rp608_crypto_plan_trade_pattern_library.json"
+            ),
+            "library_exists": (
+                eth_root / "rp608_crypto_plan_trade_pattern_library.json"
+            ).exists(),
+        }
+        out["eth_baseline"] = {
+            **count_entry_events(
+                eth_root
+                / "trade_plan_overlay_baseline_parallel_v1"
+                / "trade_plan_events.jsonl",
+                eth_since,
+            ),
+            **book_open_flat(
+                eth_root
+                / "trade_plan_overlay_baseline_parallel_v1"
+                / "overlay_state.json"
+            ),
+            "book": "CRYPTO_PLAN_BASELINE_PARALLEL_ETHUSDT",
+            "gate": "0",
+        }
     print(json.dumps(out, indent=2))
     p, b = out["primary"], out["baseline"]
     print("\n# Gate2E twin (never pooled) · since allow_only")
     print(
-        f"PRIMARY  state={p.get('state')} create={p['plan_created']} "
+        f"BTC PRIMARY  state={p.get('state')} create={p['plan_created']} "
         f"suppress={p['suppressed_trade_pattern']}"
     )
     print(
-        f"BASELINE state={b.get('state')} create={b['plan_created']} "
+        f"BTC BASELINE state={b.get('state')} create={b['plan_created']} "
         f"suppress={b['suppressed_trade_pattern']}"
     )
+    if "eth_primary" in out:
+        e = out["eth_primary"]
+        print(
+            f"ETH PRIMARY  state={e.get('state')} create={e['plan_created']} "
+            f"suppress={e['suppressed_trade_pattern']} "
+            f"lib={'yes' if e.get('library_exists') else 'no'}"
+        )
+    if "eth_baseline" in out:
+        eb = out["eth_baseline"]
+        print(
+            f"ETH BASELINE state={eb.get('state')} create={eb['plan_created']} "
+            f"suppress={eb['suppressed_trade_pattern']} (gate=0 control)"
+        )
     return 0
 
 

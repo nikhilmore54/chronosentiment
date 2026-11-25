@@ -1,3 +1,4 @@
+#![allow(dead_code, unused_variables, unused_imports, unused_mut, unused_assignments)]
 /// phase10c2_penalty_sweep.rs — P10-C2 Saturation-Penalty Sweep Experiment
 ///
 /// Governance protocol: EXPERIMENTAL — adapter-only intervention.

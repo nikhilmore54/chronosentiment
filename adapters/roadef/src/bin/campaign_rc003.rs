@@ -1,3 +1,4 @@
+#![allow(dead_code, unused_variables, unused_imports, unused_mut, unused_assignments)]
 /// campaign_rc003 — RC-003: Lexicographic Objective Validation
 ///
 /// Research question: Does the Coralys surrogate scalar objective preserve the official

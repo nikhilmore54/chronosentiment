@@ -1,3 +1,4 @@
+#![allow(dead_code, unused_variables, unused_imports, unused_mut, unused_assignments)]
 /// phase3_rayon_ab.rs — Phase 3 Rayon A/B Invariant + Performance Harness
 ///
 /// Governance protocol:

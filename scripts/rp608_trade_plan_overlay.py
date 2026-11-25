@@ -48,6 +48,19 @@ from scripts.rp608_crypto_trade_pattern_match import (
     matches_shadow_allow_if_n10_wr_gt_035,
     normalize_entry_gate_mode as crypto_normalize_entry_gate_mode,
 )
+from scripts.rp608_gate2e_shadow_insufficient import (
+    build_gate2e_shadow_insufficient_stamp,
+    gate2e_shadow_insufficient_enabled,
+    matches_shadow_observe_abstain_insufficient,
+)
+from scripts.rp608_gate2e_regime_align import (
+    evaluate_regime_align,
+    regime_dict_from_card,
+)
+from scripts.rp608_gate2e_rejected_cf import (
+    build_rejected_cf_stamp,
+    rejected_cf_applies_to_book,
+)
 from scripts.rp608_crypto_trade_pattern_library import (
     default_baseline_library_path as crypto_baseline_pattern_library_path,
     default_library_path as crypto_pattern_library_path,
@@ -165,7 +178,47 @@ def of_paper_quality_gate_enabled() -> bool:
     """RP608_OF_PAPER_QUALITY_GATE: 0=stamp-only, 1=suppress open (default 1)."""
     raw = os.environ.get("RP608_OF_PAPER_QUALITY_GATE", "1").strip().lower()
     return raw not in {"0", "off", "false", "no"}
+
+
+def plan_require_of_enabled() -> bool:
+    """
+    Gate 2E: RP608_CRYPTO_PLAN_REQUIRE_OF — suppress plan opens without L1 OF support.
+
+    Evidence (BTC BASELINE 24h 2026-11-25): OF_FALSE 0/30 WR · −$92; OF_TRUE still
+    mixed but not 0%. Does NOT change OF ±0.30 construct (`.cursor/rules/rp608-ofx.mdc`).
+    Applies uniformly so BL/FL/R50 pairing stays intact. Default off until Pi arms it.
+    """
+    raw = os.environ.get("RP608_CRYPTO_PLAN_REQUIRE_OF", "0").strip().lower()
+    return raw in {"1", "true", "yes", "on"}
+
+
+def plan_b_persist_min_fires() -> int:
+    """
+    Gate 2E: RP608_CRYPTO_PLAN_B_PERSIST_MIN_FIRES — min same-direction Policy B
+    fires in the lookback window (including this card) required to open.
+
+    Evidence (BTC BL 8h 2026-11-25): 26/26 opens were isolated one-shot B flickers
+    (99.3% of tradeable B cards have NO_TRADE neighbors). fires60≥2 CF: PASS n=6
+    net −$2.50 vs FAIL n=20 net −$49.90. Default 0 = stamp-only.
+    """
+    raw = os.environ.get("RP608_CRYPTO_PLAN_B_PERSIST_MIN_FIRES", "0").strip()
+    try:
+        return max(0, int(raw))
+    except (TypeError, ValueError):
+        return 0
+
+
+def plan_b_persist_window_s() -> float:
+    raw = os.environ.get("RP608_CRYPTO_PLAN_B_PERSIST_WINDOW_S", "60").strip()
+    try:
+        return max(1.0, float(raw))
+    except (TypeError, ValueError):
+        return 60.0
+
+
 CONFIG_FILE = OVERLAY_DIR / "overlay_config.json"
+PLAN_REQUIRE_OF_PROTOCOL_ID = "RP-608-GATE2E-PLAN-REQUIRE-OF-001"
+PLAN_B_PERSIST_PROTOCOL_ID = "RP-608-GATE2E-PLAN-B-PERSIST-001"
 
 
 def _iso_utc_ms(ms: int) -> str:
@@ -451,13 +504,18 @@ CONFIG: Dict[str, Any] = {
     "atr_geometry_source": "completed_15m_atr14",
     "stop_multiplier": 1.0,
     "target_multiplier": 1.5,
-    # Gate 5 Adaptive TP (2026-11-21): first TP still 1.5×ATR; on touch extend
-    # +0.5×ATR and lock SL to prior TP (Gate 2X continue-vs-exit). Crypto twins.
+    # Gate 5 Adaptive (2026-11-23): Coralys/Gate2X intelligent trail.
+    # Exit on Coralys Protect/Exit (reversal doubt); SL ratchets only to Coralys
+    # protect/ratchet floors — not blind ATR. TP runner-only under Adaptive.
     "adaptive_tp_enabled": True,
     "adaptive_tp_extend_atr_mult": 0.5,
     "adaptive_tp_max_extensions": 3,
     "adaptive_tp_protocol": "RP-608-GATE5-CRYPTO-ADAPTIVE-TP-001",
-    # Favorable-only trailing SL (Rust lifecycle): never worse than original stop.
+    "adaptive_partial_latch_enabled": False,
+    "adaptive_dumb_atr_trail": False,
+    "adaptive_partial_latch_arm_tp_frac": 0.70,
+    "adaptive_partial_latch_lock_tp_frac": 0.50,
+    # Standalone ATR trail only when Adaptive is off.
     "trailing_sl_enabled": True,
     "trailing_sl_atr_mult": 0.5,
     "trailing_sl_arm_risk_frac": 0.30,
@@ -501,12 +559,22 @@ CONFIG: Dict[str, Any] = {
     "gate2x_reversal_med_vol_dwell_ms": 40_000,
     "gate2x_reversal_low_vol_dwell_ms": 90_000,  # LOW + UNK
     # v1.3: ratchet floor with peak MFE; shorten dwell on deep giveback.
+    # R4: Rust Gate2xPresetId — baseline_r30 | r50_booking | floor_lock_r50
+    "gate2x_preset": "baseline_r30",
     "gate2x_ratchet_peak_frac": 0.30,  # floor = max(cost_clear, 0.30×peak_mfe)
+    # Gate 2X r50 booking twin (2026-11-24): sensible lock of printed MFE.
+    # Live PRIMARY/BASELINE stay 0.30 until Gate 5; r50 twin only.
+    "gate2x_ratchet_peak_frac_r50": 0.50,
+    # Gate 2X floor-lock twin (2026-11-24): exit at protect floor immediately —
+    # no dwell/bleed to COST_CLEAR HARD_FLOOR. Observational only (authority 0%).
+    "gate2x_floor_lock_immediate": False,
+    "gate2x_floor_lock_protocol": "RP-608-GATE2X-FLOOR-LOCK-TWIN-001",
     "gate2x_deep_giveback_frac": 0.50,  # (peak-cur)/peak
     "gate2x_deep_giveback_dwell_scale": 0.40,  # multiply dwell when deep
     # v1.5: once through cost_clear during soft-breach, Exit now (no dwell bleed).
     # Stamped in Rust gate2x_decide as MFE_GIVEBACK_TO_COST_CLEAR_HARD_FLOOR.
     "gate2x_mfe_giveback_protocol": "RP-608-GATE2X-CRYPTO-MFE-GIVEBACK-001",
+    "gate2x_r50_booking_protocol": "RP-608-GATE2X-R50-BOOKING-TWIN-001",
     "simulated_notional_usdt": 1000.0,
     "price_tick_size": 0.01,
     "taker_fee_bps": 5.0,
@@ -780,6 +848,7 @@ class TradePlanOverlayManager:
         volume_pattern_axes: bool = True,
         pattern_library_path: Optional[Path] = None,
         pattern_entry_gate_mode: Optional[str] = None,
+        config_overrides: Optional[Dict[str, Any]] = None,
     ):
         self.base_dir = Path(base_dir) if base_dir else OVERLAY_DIR
         self.base_dir.mkdir(parents=True, exist_ok=True)
@@ -792,6 +861,8 @@ class TradePlanOverlayManager:
         self._pattern_library_path_override = (
             Path(pattern_library_path) if pattern_library_path else None
         )
+        # Per-manager Gate 2X / Adaptive overrides (r50 booking twin). Never mutates global CONFIG.
+        self._config_overrides: Dict[str, Any] = dict(config_overrides or {})
         self.state_file = self.base_dir / "overlay_state.json"
         self.events_file = self.base_dir / "trade_plan_events.jsonl"
         self.outcomes_file = self.base_dir / "trade_plan_outcomes.jsonl"
@@ -800,8 +871,17 @@ class TradePlanOverlayManager:
         self.of_open_state_file = self.base_dir / "of_paper_trades_open.json"
         # Gate 2E observational thin-WR shadow allows (stamp-only; never opens).
         self.gate2e_shadow_allows_file = self.base_dir / "gate2e_shadow_allows.jsonl"
+        # Gate 2E cold-start ABSTAIN_INSUFFICIENT observe (incl. cohort_n=0).
+        self.gate2e_shadow_insufficient_file = (
+            self.base_dir / "gate2e_shadow_insufficient.jsonl"
+        )
+        # Gate 2E rejected-trade CF ledger (PRIMARY standaside → twin PnL join).
+        self.gate2e_rejected_cf_file = self.base_dir / "gate2e_rejected_cf.jsonl"
         self.config_file = self.base_dir / "overlay_config.json"
         self._save_config_if_missing()
+        self._sync_runtime_config_to_disk()
+        # Gate 2E B-persist: recent (ts_ms, policy_b_action) for fire-count CF / suppress.
+        self._recent_policy_b: List[Tuple[int, str]] = []
         self.state: Dict[str, Any] = self._load_state()
         if "of_outcomes_summary" not in self.state:
             self.state["of_outcomes_summary"] = {
@@ -830,6 +910,95 @@ class TradePlanOverlayManager:
         self._pattern_library_mtime: float = 0.0
         self._pattern_stop_dirs_by_day: Dict[str, set] = {}
         self._bootstrap_pattern_stop_dirs()
+
+    def _cfg(self, key: str, default: Any = None) -> Any:
+        """Instance config: overrides first, then global CONFIG (PRIMARY defaults)."""
+        if key in self._config_overrides:
+            return self._config_overrides[key]
+        return CONFIG.get(key, default)
+
+    def _plan_require_of(self) -> bool:
+        """Override `plan_require_of` wins; else RP608_CRYPTO_PLAN_REQUIRE_OF env."""
+        if "plan_require_of" in self._config_overrides:
+            return bool(self._config_overrides["plan_require_of"])
+        return plan_require_of_enabled()
+
+    def _b_persist_min_fires(self) -> int:
+        if "b_persist_min_fires" in self._config_overrides:
+            try:
+                return max(0, int(self._config_overrides["b_persist_min_fires"]))
+            except (TypeError, ValueError):
+                return 0
+        return plan_b_persist_min_fires()
+
+    def _note_policy_b(self, now_ms: int, action: str) -> None:
+        a = str(action or "").upper()
+        if a not in ("LONG", "SHORT"):
+            return
+        self._recent_policy_b.append((int(now_ms), a))
+        window_ms = int(plan_b_persist_window_s() * 1000) * 3  # keep extra headroom
+        cutoff = int(now_ms) - window_ms
+        self._recent_policy_b = [x for x in self._recent_policy_b if x[0] >= cutoff]
+
+    def _b_persist_stamp(self, now_ms: int, direction: str) -> Dict[str, Any]:
+        d = str(direction or "").upper()
+        window_s = plan_b_persist_window_s()
+        window_ms = int(window_s * 1000)
+        cutoff = int(now_ms) - window_ms
+        fires = [
+            ts
+            for ts, act in self._recent_policy_b
+            if ts >= cutoff and act == d
+        ]
+        prior = [ts for ts in fires if ts < int(now_ms)]
+        min_fires = self._b_persist_min_fires()
+        count = len(fires)
+        return {
+            "protocol_id": PLAN_B_PERSIST_PROTOCOL_ID,
+            "direction": d,
+            "window_s": window_s,
+            "fires_in_window": count,
+            "prior_fires": len(prior),
+            "min_fires": min_fires,
+            "isolated_oneshot": count <= 1,
+            "blocks_entry": bool(min_fires > 0 and count < min_fires),
+            "block_reason": (
+                "B_PERSIST_INSUFFICIENT_FIRES"
+                if (min_fires > 0 and count < min_fires)
+                else None
+            ),
+        }
+
+    def _stamp_gate2x_runtime_on_plan(self, plan: Dict[str, Any]) -> None:
+        """Persist twin preset / floor-lock flags on OPEN so state matches Rust tick."""
+        preset = self._cfg("gate2x_preset")
+        if preset:
+            plan["gate2x_preset"] = str(preset).strip()
+        if bool(self._cfg("gate2x_floor_lock_immediate")):
+            plan["gate2x_floor_lock_immediate"] = True
+            plan["gate2x_preset"] = plan.get("gate2x_preset") or "floor_lock_r50"
+            plan["gate2x_protocol"] = self._cfg("gate2x_floor_lock_protocol") or (
+                "RP-608-GATE2X-FLOOR-LOCK-TWIN-001"
+            )
+            try:
+                plan["gate2x_ratchet_peak_frac"] = float(
+                    self._cfg("gate2x_ratchet_peak_frac") or 0.50
+                )
+            except (TypeError, ValueError):
+                plan["gate2x_ratchet_peak_frac"] = 0.50
+        elif preset or self._cfg("gate2x_ratchet_peak_frac") is not None:
+            try:
+                plan["gate2x_ratchet_peak_frac"] = float(
+                    self._cfg("gate2x_ratchet_peak_frac")
+                    if self._cfg("gate2x_ratchet_peak_frac") is not None
+                    else CONFIG.get("gate2x_ratchet_peak_frac")
+                    or 0.30
+                )
+            except (TypeError, ValueError):
+                pass
+            proto = self._cfg("gate2x_mfe_giveback_protocol")
+            if proto:
+                plan["gate2x_protocol"] = proto
 
     def _crypto_pattern_lib(self) -> Dict[str, Any]:
         if self._pattern_library_path_override is not None:
@@ -1077,7 +1246,7 @@ class TradePlanOverlayManager:
             plan.get("simulated_notional_usdt") or CONFIG.get("simulated_notional_usdt") or 1000.0
         )
         rt_bps = float(CONFIG.get("round_trip_friction_bps") or 12.0)
-        floor_bps = float(CONFIG.get("gate2x_mfe_meaningful_floor_bps") or 5.0)
+        floor_bps = float(self._cfg("gate2x_mfe_meaningful_floor_bps") or 5.0)
         friction = notional * (rt_bps / 10000.0)
         floor = notional * (floor_bps / 10000.0)
         return max(friction, floor)
@@ -1131,7 +1300,48 @@ class TradePlanOverlayManager:
                     "lifecycle bin missing or lacks --plan-lifecycle-loop",
                 )
             return None
-        rust_plan = plan_from_overlay(plan, book="crypto")
+        # Persist twin preset onto long-lived OPEN plans opened before stamp landed.
+        if bool(self._cfg("gate2x_floor_lock_immediate")) and not plan.get(
+            "gate2x_floor_lock_immediate"
+        ):
+            self._stamp_gate2x_runtime_on_plan(plan)
+        elif self._cfg("gate2x_preset") and not plan.get("gate2x_preset"):
+            self._stamp_gate2x_runtime_on_plan(plan)
+
+        plan_for_rust = dict(plan)
+        # R4: named Rust preset (preferred). Legacy field overrides kept as fallback.
+        preset = self._cfg("gate2x_preset")
+        if preset:
+            plan_for_rust["gate2x_preset"] = str(preset).strip()
+        elif bool(self._cfg("gate2x_floor_lock_immediate")):
+            plan_for_rust["gate2x_preset"] = "floor_lock_r50"
+            plan_for_rust["gate2x_floor_lock_immediate"] = True
+            try:
+                plan_for_rust["gate2x_ratchet_peak_frac"] = float(
+                    self._cfg("gate2x_ratchet_peak_frac") or 0.50
+                )
+            except (TypeError, ValueError):
+                plan_for_rust["gate2x_ratchet_peak_frac"] = 0.50
+            plan_for_rust["gate2x_protocol"] = (
+                self._cfg("gate2x_floor_lock_protocol")
+                or "RP-608-GATE2X-FLOOR-LOCK-TWIN-001"
+            )
+        else:
+            try:
+                r = float(self._cfg("gate2x_ratchet_peak_frac") or 0.30)
+            except (TypeError, ValueError):
+                r = 0.30
+            if abs(r - 0.50) < 1e-9:
+                plan_for_rust["gate2x_preset"] = "r50_booking"
+                plan_for_rust["gate2x_ratchet_peak_frac"] = r
+                plan_for_rust["gate2x_protocol"] = (
+                    self._cfg("gate2x_r50_booking_protocol")
+                    or self._cfg("gate2x_mfe_giveback_protocol")
+                    or "RP-608-GATE2X-R50-BOOKING-TWIN-001"
+                )
+            else:
+                plan_for_rust["gate2x_preset"] = "baseline_r30"
+        rust_plan = plan_from_overlay(plan_for_rust, book="crypto")
         quote = {
             "best_bid_price": bid,
             "best_ask_price": ask,
@@ -1151,13 +1361,23 @@ class TradePlanOverlayManager:
         merged = merge_lifecycle_into_plan(plan, result, book="crypto")
         self.state["active_plan"] = merged
         if not result.get("closed"):
-            # Persist Adaptive TP / Gate2X latch fields from Rust hold ticks.
-            if (
-                merged.get("tp_level") != plan.get("tp_level")
-                or merged.get("stop_loss_price") != plan.get("stop_loss_price")
-                or merged.get("profit_target_price") != plan.get("profit_target_price")
-                or merged.get("gate2x_mfe_armed") != plan.get("gate2x_mfe_armed")
-            ):
+            # Persist Adaptive TP / Gate2X / trail / excursion fields from Rust hold.
+            # Marks/MFE must survive daemon periodic disk reload (same plan_id OPEN).
+            _hold_keys = (
+                "tp_level",
+                "stop_loss_price",
+                "profit_target_price",
+                "gate2x_mfe_armed",
+                "trailing_sl_armed",
+                "adaptive_tp_armed",
+                "mfe_exec_price",
+                "mae_exec_price",
+                "gate2x_peak_mfe_usdt",
+                "gate2x_peak_tp_frac",
+                "last_mark_price",
+                "last_mark_time_ms",
+            )
+            if any(merged.get(k) != plan.get(k) for k in _hold_keys):
                 self._save_state()
             return None  # hold — caller skips Python lifecycle when authority set
 
@@ -1177,7 +1397,15 @@ class TradePlanOverlayManager:
         if result.get("exit_reason_detail"):
             merged["exit_reason_detail"] = result["exit_reason_detail"]
         if terminal_state == "CLOSED_GIVEBACK":
-            merged["gate2x_protocol"] = CONFIG.get("gate2x_mfe_giveback_protocol")
+            if bool(self._cfg("gate2x_floor_lock_immediate")):
+                merged["gate2x_protocol"] = self._cfg("gate2x_floor_lock_protocol") or (
+                    self._cfg("gate2x_mfe_giveback_protocol")
+                )
+            else:
+                merged["gate2x_protocol"] = self._cfg("gate2x_mfe_giveback_protocol")
+            merged["gate2x_ratchet_peak_frac"] = float(
+                self._cfg("gate2x_ratchet_peak_frac") or 0.30
+            )
         net_pnl = result.get("net_pnl")
         if net_pnl is None:
             if direction == "LONG":
@@ -1262,77 +1490,88 @@ class TradePlanOverlayManager:
         high: float,
     ) -> bool:
         """
-        Gate 5 Adaptive TP: on TP touch, extend target + lock SL (no close).
+        Gate 5 Adaptive: Coralys floor trail (not TP latch / not blind ATR).
 
-        Returns True if at least one extension was applied. Mutates plan in place.
-        Ratchets multiple levels in one tick while path still tags the new TP,
-        up to adaptive_tp_max_extensions.
+        Ratchets SL to Gate2X protect|ratchet floors. `hit_tp` ignored.
+        Parity with Rust `apply_adaptive_coralys_floor_trail`.
+        Track A: no-op when PLAN_LIFECYCLE=1 (Rust owns Adaptive).
         """
-        if not hit_tp or not bool(CONFIG.get("adaptive_tp_enabled")):
+        if plan_lifecycle_enabled():
+            return False
+        _ = (hit_tp, low, high, bid, ask)
+        if not bool(CONFIG.get("adaptive_tp_enabled")):
             return False
         try:
-            atr = float(plan.get("atr_14") or 0.0)
-            tp = float(plan["profit_target_price"])
+            entry = float(plan["entry_price"])
             sl = float(plan["stop_loss_price"])
-            level = int(plan.get("tp_level") or 0)
+            qty = float(plan.get("simulated_quantity") or 0.0)
         except (TypeError, ValueError, KeyError):
             return False
-        max_ext = int(CONFIG.get("adaptive_tp_max_extensions") or 3)
-        step_mult = float(CONFIG.get("adaptive_tp_extend_atr_mult") or 0.5)
-        if atr <= 0 or step_mult <= 0 or level >= max_ext:
+        orig = plan.get("original_stop_loss_price")
+        try:
+            orig_f = float(orig) if orig is not None else sl
+        except (TypeError, ValueError):
+            orig_f = sl
+        plan["original_stop_loss_price"] = orig_f
+        if entry <= 0 or qty <= 0:
             return False
-
-        step = step_mult * atr
-        extended = False
         mfe_px = plan.get("mfe_exec_price")
         try:
-            mfe_f = float(mfe_px) if mfe_px is not None else None
+            mfe_f = float(mfe_px) if mfe_px is not None else entry
         except (TypeError, ValueError):
-            mfe_f = None
+            mfe_f = entry
 
-        while level < max_ext:
-            still_hit = False
-            if direction == "LONG":
-                still_hit = bid >= tp or high >= tp or (
-                    mfe_f is not None and mfe_f >= tp
+        floor = plan.get("gate2x_protect_floor_usdt")
+        if floor is None:
+            floor = plan.get("gate2x_ratchet_floor_usdt")
+        armed = bool(plan.get("gate2x_mfe_armed") or plan.get("adaptive_tp_armed"))
+        proposed = None
+        if armed and floor is not None:
+            try:
+                floor_f = float(floor)
+            except (TypeError, ValueError):
+                floor_f = 0.0
+            if floor_f > 0:
+                if direction == "LONG":
+                    proposed = round_tick(max(orig_f, entry + floor_f / qty))
+                else:
+                    proposed = round_tick(min(orig_f, entry - floor_f / qty))
+
+        if proposed is None and bool(CONFIG.get("adaptive_dumb_atr_trail")):
+            atr = float(plan.get("atr_14") or 0.0)
+            risk = (entry - orig_f) if direction == "LONG" else (orig_f - entry)
+            fav = (mfe_f - entry) if direction == "LONG" else (entry - mfe_f)
+            arm = risk * float(CONFIG.get("trailing_sl_arm_risk_frac") or 0.30)
+            if risk > 0 and fav >= arm:
+                trail_dist = (
+                    float(CONFIG.get("trailing_sl_atr_mult") or 0.5) * atr
+                    if atr > 0
+                    else risk * 0.5
                 )
-            else:
-                still_hit = ask <= tp or low <= tp or (
-                    mfe_f is not None and mfe_f <= tp
-                )
-            if not still_hit:
-                break
+                if trail_dist > 0:
+                    if direction == "LONG":
+                        proposed = round_tick(max(orig_f, mfe_f - trail_dist))
+                    else:
+                        proposed = round_tick(min(orig_f, mfe_f + trail_dist))
 
-            prior_tp = tp
-            if direction == "LONG":
-                new_tp = round_tick(prior_tp + step)
-                new_sl = round_tick(prior_tp)
-                # Never loosen: SL only rises for LONG
-                if new_sl < sl:
-                    new_sl = sl
-            else:
-                new_tp = round_tick(prior_tp - step)
-                new_sl = round_tick(prior_tp)
-                # Never loosen: SL only falls for SHORT
-                if new_sl > sl:
-                    new_sl = sl
-
-            level += 1
-            tp = new_tp
-            sl = new_sl
-            plan["profit_target_price"] = tp
-            plan["stop_loss_price"] = sl
-            plan["tp_level"] = level
-            plan["adaptive_tp_armed"] = True
-            plan["adaptive_tp_touch_ms"] = now_ms
-            plan["adaptive_tp_protocol"] = CONFIG.get("adaptive_tp_protocol")
-            plan["adaptive_tp_last_locked_tp"] = prior_tp
-            extended = True
-
-        if extended:
-            self.state["active_plan"] = plan
-            self._save_state()
-        return extended
+        if proposed is None:
+            if armed:
+                plan["adaptive_tp_armed"] = True
+            return False
+        if direction == "LONG":
+            if proposed <= sl or proposed >= mfe_f:
+                return False
+        elif proposed >= sl or proposed <= mfe_f:
+            return False
+        plan["stop_loss_price"] = proposed
+        plan["adaptive_tp_armed"] = True
+        plan["trailing_sl_armed"] = True
+        plan["adaptive_partial_latch_armed"] = False
+        plan["adaptive_tp_touch_ms"] = now_ms
+        plan["adaptive_tp_protocol"] = CONFIG.get("adaptive_tp_protocol")
+        self.state["active_plan"] = plan
+        self._save_state()
+        return True
 
     def _gate2x_update_mfe_giveback(
         self, plan: Dict[str, Any], *, exec_px: float, now_ms: Optional[int] = None
@@ -1342,8 +1581,11 @@ class TradePlanOverlayManager:
 
         Python tracks peak MFE / tp_frac only; Hold|Protect|Exit comes from
         `rp608_position_decide` → `gate2x_decide` → RecommendationEngineV1.
+        Track A: no-op when PLAN_LIFECYCLE=1 (Rust owns Gate2X manage).
         """
-        if not bool(CONFIG.get("gate2x_mfe_giveback_protect_enabled")):
+        if plan_lifecycle_enabled():
+            return None
+        if not bool(self._cfg("gate2x_mfe_giveback_protect_enabled")):
             return None
         direction = str(plan.get("direction") or "")
         try:
@@ -1398,6 +1640,9 @@ class TradePlanOverlayManager:
             return None
         plan["gate2x_current_mfe_usdt"] = round(cur_mfe, 4)
 
+        # R3: floor-lock Exit lives in Rust gate2x_decide (floor_lock_immediate).
+        # Python giveback path is PRIMARY/BASELINE/r50 fallback only.
+
         since = plan.get("gate2x_soft_breach_since_ms")
         try:
             since_i = int(since) if since is not None else None
@@ -1405,7 +1650,7 @@ class TradePlanOverlayManager:
             since_i = None
 
         protocol = str(
-            CONFIG.get("gate2x_mfe_giveback_protocol")
+            self._cfg("gate2x_mfe_giveback_protocol")
             or "RP-608-GATE2X-CRYPTO-MFE-GIVEBACK-001"
         )
         try:
@@ -1433,30 +1678,30 @@ class TradePlanOverlayManager:
             adaptive_armed=bool(plan.get("adaptive_tp_armed")) or tp_level_i >= 1,
             params={
                 "enabled": True,
-                "arm_min_tp_frac": float(CONFIG.get("gate2x_arm_min_tp_frac") or 0.40),
+                "arm_min_tp_frac": float(self._cfg("gate2x_arm_min_tp_frac") or 0.40),
                 "min_hold_s_before_exit": float(
-                    CONFIG.get("gate2x_min_hold_s_before_exit") or 120.0
+                    self._cfg("gate2x_min_hold_s_before_exit") or 120.0
                 ),
                 "meaningful_floor_bps": float(
-                    CONFIG.get("gate2x_mfe_meaningful_floor_bps") or 5.0
+                    self._cfg("gate2x_mfe_meaningful_floor_bps") or 5.0
                 ),
-                "protect_floor": str(CONFIG.get("gate2x_protect_floor") or "COST_CLEAR"),
+                "protect_floor": str(self._cfg("gate2x_protect_floor") or "COST_CLEAR"),
                 "reversal_volume_confirm": bool(
-                    CONFIG.get("gate2x_reversal_volume_confirm_enabled")
+                    self._cfg("gate2x_reversal_volume_confirm_enabled")
                 ),
                 "immediate_vol_surges": list(
-                    CONFIG.get("gate2x_reversal_immediate_vol_surges") or ["HIGH"]
+                    self._cfg("gate2x_reversal_immediate_vol_surges") or ["HIGH"]
                 ),
                 "med_vol_dwell_ms": int(
-                    CONFIG.get("gate2x_reversal_med_vol_dwell_ms") or 40_000
+                    self._cfg("gate2x_reversal_med_vol_dwell_ms") or 40_000
                 ),
                 "low_vol_dwell_ms": int(
-                    CONFIG.get("gate2x_reversal_low_vol_dwell_ms") or 90_000
+                    self._cfg("gate2x_reversal_low_vol_dwell_ms") or 90_000
                 ),
-                "ratchet_peak_frac": float(CONFIG.get("gate2x_ratchet_peak_frac") or 0.30),
-                "deep_giveback_frac": float(CONFIG.get("gate2x_deep_giveback_frac") or 0.50),
+                "ratchet_peak_frac": float(self._cfg("gate2x_ratchet_peak_frac") or 0.30),
+                "deep_giveback_frac": float(self._cfg("gate2x_deep_giveback_frac") or 0.50),
                 "deep_giveback_dwell_scale": float(
-                    CONFIG.get("gate2x_deep_giveback_dwell_scale") or 0.40
+                    self._cfg("gate2x_deep_giveback_dwell_scale") or 0.40
                 ),
             },
         )
@@ -1522,6 +1767,52 @@ class TradePlanOverlayManager:
         if not self.config_file.exists():
             with open(self.config_file, "w", encoding="utf-8") as f:
                 json.dump(CONFIG, f, indent=2)
+
+    def _sync_runtime_config_to_disk(self) -> None:
+        """
+        Merge instance overrides into overlay_config.json so ops/readers see the
+        live twin preset (floor_lock_immediate, ratchet, gate2x_preset) — not stale
+        PRIMARY defaults left by a first-write of global CONFIG.
+        """
+        if not self._config_overrides:
+            return
+        try:
+            disk: Dict[str, Any] = {}
+            if self.config_file.exists():
+                with open(self.config_file, "r", encoding="utf-8") as f:
+                    loaded = json.load(f)
+                if isinstance(loaded, dict):
+                    disk = loaded
+            merged = dict(CONFIG)
+            merged.update(disk)
+            merged.update(self._config_overrides)
+            with open(self.config_file, "w", encoding="utf-8") as f:
+                json.dump(merged, f, indent=2)
+        except Exception as exc:
+            print(f"[overlay_config] sync overrides skipped: {exc}", flush=True)
+
+    def reload_state_from_disk(self, *, preserve_open_progress: bool = True) -> None:
+        """
+        Reload overlay JSON from disk without clobbering in-memory OPEN mark/MFE.
+
+        Daemon bookTicker path reloads every few seconds so external readers see
+        durable state — but hold-tick marks were often not yet flushed. Replacing
+        an identical OPEN plan_id with a staler disk copy resets Gate2X peaks and
+        last_mark (Track A soak fidelity). Keep memory plan when plan_id matches.
+        """
+        mem_plan = (self.state or {}).get("active_plan")
+        disk = self._load_state()
+        disk_plan = disk.get("active_plan") if isinstance(disk, dict) else None
+        if (
+            preserve_open_progress
+            and isinstance(mem_plan, dict)
+            and mem_plan.get("state") == "OPEN"
+            and isinstance(disk_plan, dict)
+            and disk_plan.get("state") == "OPEN"
+            and disk_plan.get("plan_id") == mem_plan.get("plan_id")
+        ):
+            disk["active_plan"] = mem_plan
+        self.state = disk
 
     def _load_state(self) -> Dict[str, Any]:
         if self.state_file.exists():
@@ -2242,6 +2533,55 @@ class TradePlanOverlayManager:
 
         now = int(now_ms if now_ms is not None else time.time() * 1000)
         entry_candle = candle_mark or build_of_candle_mark(now_ms=now)
+
+        # Gate 2E regime-align on OF paper opens (PRIMARY; ±0.30 mark unchanged).
+        of_regime_card = {}
+        if isinstance(candle_mark, dict):
+            of_regime_card = candle_mark
+        # Prefer last decision-card regime fields parked on state when present.
+        parked = self.state.get("last_decision_regime")
+        if isinstance(parked, dict):
+            of_regime_card = {**of_regime_card, **parked}
+        of_align = evaluate_regime_align(
+            direction=str(direction).upper(),
+            regime=regime_dict_from_card(of_regime_card),
+            book_id=self.book_id,
+        )
+        if of_align.get("blocks_entry"):
+            summ = self.state.setdefault("of_outcomes_summary", {})
+            summ["gate2e_regime_align_suppressions"] = int(
+                summ.get("gate2e_regime_align_suppressions") or 0
+            ) + 1
+            guard = str(of_align.get("guard") or "DIRECTIONAL")
+            if guard == "DI_SKEW":
+                summ["gate2e_di_skew_suppressions"] = int(
+                    summ.get("gate2e_di_skew_suppressions") or 0
+                ) + 1
+            self.state["last_of_paper_open_suppressed"] = {
+                "reason": of_align.get("block_reason"),
+                "direction": str(direction).upper(),
+                "regime_align": of_align,
+                "guard": guard,
+                "suppressed_ms": now,
+                "would_have_opened": True,
+                "protocol_id": of_align.get("protocol_id"),
+                "note": (
+                    "OF paper open suppressed — adverse DI skew / DIRECTIONAL; "
+                    "OF ±0.30 unchanged"
+                ),
+            }
+            self._log_event(
+                "OF_PAPER_OPEN_SUPPRESSED_DI_SKEW"
+                if guard == "DI_SKEW"
+                else "OF_PAPER_OPEN_SUPPRESSED_REGIME_ALIGN",
+                {
+                    "direction": str(direction).upper(),
+                    "plan_id": plan_id,
+                    "state": "OF_REGIME_ALIGN_SUPPRESSED",
+                },
+                {"regime_align": of_align, "book_id": self.book_id},
+            )
+            return existing if isinstance(existing, dict) else None
 
         # Anti-churn: at most one OF paper open per 15m bar
         if CONFIG.get("of_paper_one_per_15m_bar", True):
@@ -2988,6 +3328,120 @@ class TradePlanOverlayManager:
         }
         return stamp
 
+    def _maybe_log_gate2e_shadow_insufficient(
+        self,
+        pattern_stamp: Dict[str, Any],
+        plan: Dict[str, Any],
+        suppressed_ms: int,
+    ) -> Optional[Dict[str, Any]]:
+        """Stamp-only cold-start ABSTAIN_INSUFFICIENT (incl. cohort_n=0).
+
+        Never opens a trade. Does not change live allow_only.
+        Default env ON (RP608_GATE2E_SHADOW_INSUFFICIENT=1).
+        """
+        if not gate2e_shadow_insufficient_enabled():
+            return None
+        if not matches_shadow_observe_abstain_insufficient(pattern_stamp):
+            return None
+        _bid = str(self.book_id)
+        _crypto_twins = {
+            "CRYPTO_PLAN": "CRYPTO_PLAN_BASELINE_PARALLEL",
+            "CRYPTO_PLAN_ETHUSDT": "CRYPTO_PLAN_BASELINE_PARALLEL_ETHUSDT",
+        }
+        twin_book = str(
+            getattr(self, "twin_book_id", None)
+            or plan.get("twin_book")
+            or _crypto_twins.get(_bid)
+            or (
+                f"{_bid}_BASELINE_PARALLEL"
+                if "BASELINE" not in _bid.upper()
+                else _bid
+            )
+        )
+        stamp = build_gate2e_shadow_insufficient_stamp(
+            pattern_stamp=pattern_stamp,
+            book_id=str(self.book_id),
+            twin_book=twin_book,
+            suppressed_ms=suppressed_ms,
+            symbol=plan.get("symbol"),
+            direction=plan.get("direction"),
+            plan_id=plan.get("plan_id"),
+            decision_bar_idx=plan.get("bar_idx") or plan.get("entry_bar_idx"),
+            source="live_suppress",
+            extra={
+                "live_vol_surge": pattern_stamp.get("live_vol_surge")
+                or plan.get("vol_surge"),
+                "live_vol_burst_20": pattern_stamp.get("live_vol_burst_20")
+                if pattern_stamp.get("live_vol_burst_20") is not None
+                else plan.get("vol_burst_20"),
+                "entry_price": plan.get("entry_price"),
+            },
+        )
+        stamp["timestamp_utc"] = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
+        with open(self.gate2e_shadow_insufficient_file, "a", encoding="utf-8") as f:
+            f.write(json.dumps(stamp) + "\n")
+        summ = self.state.setdefault("outcomes_summary", {})
+        summ["gate2e_shadow_insufficient_stamps"] = int(
+            summ.get("gate2e_shadow_insufficient_stamps") or 0
+        ) + 1
+        self.state["last_gate2e_shadow_insufficient"] = {
+            "shadow_rule_id": stamp.get("shadow_rule_id"),
+            "pattern_id": stamp.get("pattern_id"),
+            "plan_id": stamp.get("plan_id"),
+            "cohort_n": stamp.get("cohort_n"),
+            "suppressed_ms": stamp.get("suppressed_ms"),
+        }
+        return stamp
+
+    def _log_gate2e_rejected_cf(
+        self,
+        *,
+        reject_reason: str,
+        suppressed_ms: int,
+        direction: Any = None,
+        plan: Optional[Dict[str, Any]] = None,
+        detail: Optional[str] = None,
+        pattern_stamp: Optional[Dict[str, Any]] = None,
+        regime_align: Optional[Dict[str, Any]] = None,
+        extra: Optional[Dict[str, Any]] = None,
+    ) -> Optional[Dict[str, Any]]:
+        """Append PRIMARY reject stamp for later twin CF PnL join (authority 0%)."""
+        if not rejected_cf_applies_to_book(self.book_id):
+            return None
+        plan_d = dict(plan or {})
+        if not plan_d.get("symbol"):
+            plan_d["symbol"] = self.symbol
+        stamp = build_rejected_cf_stamp(
+            reject_reason=reject_reason,
+            book_id=str(self.book_id),
+            suppressed_ms=int(suppressed_ms),
+            direction=direction or plan_d.get("direction"),
+            plan=plan_d,
+            detail=detail,
+            pattern_stamp=pattern_stamp,
+            regime_align=regime_align,
+            extra=extra,
+        )
+        stamp["timestamp_utc"] = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
+        with open(self.gate2e_rejected_cf_file, "a", encoding="utf-8") as f:
+            f.write(json.dumps(stamp) + "\n")
+        summ = self.state.setdefault("outcomes_summary", {})
+        summ["gate2e_rejected_cf_stamps"] = int(
+            summ.get("gate2e_rejected_cf_stamps") or 0
+        ) + 1
+        by_reason = summ.setdefault("gate2e_rejected_cf_by_reason", {})
+        rr = str(stamp.get("reject_reason") or "?")
+        by_reason[rr] = int(by_reason.get(rr) or 0) + 1
+        self.state["last_gate2e_rejected_cf"] = {
+            "reject_reason": stamp.get("reject_reason"),
+            "direction": stamp.get("direction"),
+            "plan_id": stamp.get("plan_id"),
+            "suppressed_ms": stamp.get("suppressed_ms"),
+            "detail": stamp.get("detail") or stamp.get("block_reason"),
+            "twin_book": stamp.get("twin_book"),
+        }
+        return stamp
+
     def _log_outcome(self, outcome_data: Dict[str, Any]):
         with open(self.outcomes_file, "a", encoding="utf-8") as f:
             f.write(json.dumps(outcome_data) + "\n")
@@ -3330,7 +3784,28 @@ class TradePlanOverlayManager:
         if close_time_ms < 1792972800000:
             return None
 
+        # Park Stage-1 regime telemetry for OF paper align (same card fields).
+        if isinstance(card, dict) and card.get("regime_state") is not None:
+            self.state["last_decision_regime"] = {
+                "regime_state": card.get("regime_state"),
+                "regime_reason": card.get("regime_reason"),
+                "directional_efficiency_er": card.get("directional_efficiency_er"),
+                "relative_volatility": card.get("relative_volatility"),
+                "adx_14": card.get("adx_14"),
+                "plus_di": card.get("plus_di"),
+                "minus_di": card.get("minus_di"),
+                "regime_trend_dir": card.get("regime_trend_dir"),
+            }
+
         direction = card.get("policy_b_action")
+        # Always note tradeable B for persist CF (even if we later suppress / busy).
+        _note_ms = int(
+            (current_quote or {}).get("exchange_event_time_ms")
+            or card.get("close_time_ms")
+            or time.time() * 1000
+        )
+        if direction in ("LONG", "SHORT"):
+            self._note_policy_b(_note_ms, str(direction))
         if direction not in ("LONG", "SHORT"):
             # If no new signal, preserve and return existing active plan
             active = self.state.get("active_plan")
@@ -3384,6 +3859,14 @@ class TradePlanOverlayManager:
                     "card_bar_idx": card.get("bar_idx"),
                 },
             )
+            self._log_gate2e_rejected_cf(
+                reject_reason="COOLDOWN",
+                suppressed_ms=now_ms,
+                direction=direction,
+                plan={"direction": direction, "symbol": self.symbol, "bar_idx": card.get("bar_idx")},
+                detail=str((cool or {}).get("reason") or "FAST_SL_COOLDOWN"),
+                extra={"cooldown": cool},
+            )
             self._save_state()
             return None
 
@@ -3393,12 +3876,96 @@ class TradePlanOverlayManager:
             return None
         plan["book_id"] = self.book_id
         plan["volume_pattern_axes"] = bool(self.volume_pattern_axes)
+        self._stamp_gate2x_runtime_on_plan(plan)
         if not self.volume_pattern_axes:
             # Baseline twin: keep pre-volume plan geometry; no OHLCV surge latch.
             plan["vol_burst_20"] = None
             plan["vol_surge"] = "UNK"
             plan["exit_vol_burst_20"] = None
             plan["exit_vol_surge"] = "UNK"
+
+        # Gate 2E: Policy B persist (multi-fire). Stamp always; suppress when env min>0.
+        b_persist = self._b_persist_stamp(now_ms, str(direction))
+        plan["b_persist"] = b_persist
+        card["b_persist"] = b_persist
+        if b_persist.get("blocks_entry"):
+            self.state["suppressed_signals_count"] = int(
+                self.state.get("suppressed_signals_count") or 0
+            ) + 1
+            summ = self.state.setdefault("outcomes_summary", {})
+            summ["gate2e_b_persist_suppressions"] = int(
+                summ.get("gate2e_b_persist_suppressions") or 0
+            ) + 1
+            self.state["last_suppressed_b_persist"] = {
+                "direction": direction,
+                "suppressed_ms": now_ms,
+                "book_id": self.book_id,
+                **b_persist,
+            }
+            self._log_event(
+                "SUPPRESSED_GATE2E_B_PERSIST",
+                plan,
+                {
+                    "b_persist": b_persist,
+                    "book_id": self.book_id,
+                    "card_bar_idx": card.get("bar_idx"),
+                },
+            )
+            self._log_gate2e_rejected_cf(
+                reject_reason="B_PERSIST",
+                suppressed_ms=now_ms,
+                direction=direction,
+                plan=plan,
+                detail=str(b_persist.get("block_reason") or "B_PERSIST"),
+                extra={"b_persist": b_persist},
+            )
+            self._save_state()
+            return None
+
+        # Gate 2E: require L1 OF support at open (env / override). Twin-safe — same
+        # filter on every manager when armed. No OF ±0.30 / Gate 5 geometry change.
+        if self._plan_require_of() and not bool(plan.get("order_flow_supported")):
+            self.state["suppressed_signals_count"] = int(
+                self.state.get("suppressed_signals_count") or 0
+            ) + 1
+            summ = self.state.setdefault("outcomes_summary", {})
+            summ["gate2e_of_require_suppressions"] = int(
+                summ.get("gate2e_of_require_suppressions") or 0
+            ) + 1
+            of_stamp = {
+                "order_flow_supported": bool(plan.get("order_flow_supported")),
+                "order_flow_label": plan.get("order_flow_label"),
+                "order_flow_imbalance": plan.get("order_flow_imbalance"),
+                "order_flow_source": plan.get("order_flow_source"),
+                "protocol_id": PLAN_REQUIRE_OF_PROTOCOL_ID,
+                "block_reason": "OF_NOT_SUPPORTED_AT_OPEN",
+            }
+            plan["of_require_align"] = of_stamp
+            self.state["last_suppressed_of_require"] = {
+                "direction": direction,
+                "suppressed_ms": now_ms,
+                "book_id": self.book_id,
+                **of_stamp,
+            }
+            self._log_event(
+                "SUPPRESSED_GATE2E_OF_REQUIRE",
+                plan,
+                {
+                    "of_require_align": of_stamp,
+                    "book_id": self.book_id,
+                    "card_bar_idx": card.get("bar_idx"),
+                },
+            )
+            self._log_gate2e_rejected_cf(
+                reject_reason="OF_REQUIRE",
+                suppressed_ms=now_ms,
+                direction=direction,
+                plan=plan,
+                detail="OF_NOT_SUPPORTED_AT_OPEN",
+                extra={"of_require_align": of_stamp},
+            )
+            self._save_state()
+            return None
 
         # Gate 2E: do not open if forming path already through proposed stop.
         # Observational dual-stamp (tick/last vs forming H/L) — live authority unchanged.
@@ -3427,6 +3994,74 @@ class TradePlanOverlayManager:
                     "diverge_kind": dual.get("diverge_kind"),
                     "path_dual_stamp_protocol": dual.get("protocol_id"),
                 },
+            )
+            self._log_gate2e_rejected_cf(
+                reject_reason="PATH",
+                suppressed_ms=now_ms,
+                direction=direction,
+                plan=plan,
+                detail=str(path_invalid),
+                extra={
+                    "tick_path_invalid": dual.get("tick_path_invalid"),
+                    "diverge_kind": dual.get("diverge_kind"),
+                },
+            )
+            self._save_state()
+            return None
+
+        # Gate 2E regime-align + DI skew (decision-engine tune):
+        # DIRECTIONAL adverse, or SIDEWAYS/TRANSITIONING with large DI skew fighting side.
+        # PRIMARY only by default; BASELINE/r50 twins remain ungated for CF.
+        regime_stamp = evaluate_regime_align(
+            direction=str(direction),
+            regime=regime_dict_from_card(card),
+            book_id=self.book_id,
+        )
+        plan["regime_align"] = regime_stamp
+        card["regime_align"] = regime_stamp
+        if regime_stamp.get("blocks_entry"):
+            self.state["suppressed_signals_count"] = int(
+                self.state.get("suppressed_signals_count") or 0
+            ) + 1
+            summ = self.state.setdefault("outcomes_summary", {})
+            summ["gate2e_regime_align_suppressions"] = int(
+                summ.get("gate2e_regime_align_suppressions") or 0
+            ) + 1
+            guard = str(regime_stamp.get("guard") or "DIRECTIONAL")
+            if guard == "DI_SKEW":
+                summ["gate2e_di_skew_suppressions"] = int(
+                    summ.get("gate2e_di_skew_suppressions") or 0
+                ) + 1
+                event_name = "SUPPRESSED_GATE2E_DI_SKEW"
+            else:
+                event_name = "SUPPRESSED_GATE2E_REGIME_ALIGN"
+            self.state["last_suppressed_regime_align"] = {
+                "direction": direction,
+                "regime_state": regime_stamp.get("regime_state"),
+                "trend_dir": regime_stamp.get("trend_dir"),
+                "block_reason": regime_stamp.get("block_reason"),
+                "guard": guard,
+                "di_skew": regime_stamp.get("di_skew"),
+                "suppressed_ms": now_ms,
+                "book_id": self.book_id,
+                "protocol_id": regime_stamp.get("protocol_id"),
+            }
+            self._log_event(
+                event_name,
+                plan,
+                {
+                    "regime_align": regime_stamp,
+                    "book_id": self.book_id,
+                    "card_bar_idx": card.get("bar_idx"),
+                },
+            )
+            self._log_gate2e_rejected_cf(
+                reject_reason="DI_SKEW" if guard == "DI_SKEW" else "REGIME_DIRECTIONAL",
+                suppressed_ms=now_ms,
+                direction=direction,
+                plan=plan,
+                detail=str(regime_stamp.get("block_reason") or guard),
+                regime_align=regime_stamp,
             )
             self._save_state()
             return None
@@ -3492,6 +4127,26 @@ class TradePlanOverlayManager:
                 self._maybe_log_gate2e_shadow_allow(
                     pattern_stamp, plan, suppressed_ms=now_ms
                 )
+                # Observational cold-start INSUFFICIENT (incl. n=0; authority 0%).
+                self._maybe_log_gate2e_shadow_insufficient(
+                    pattern_stamp, plan, suppressed_ms=now_ms
+                )
+                # Rejected-trade CF ledger → join BASELINE twin PnL later.
+                self._log_gate2e_rejected_cf(
+                    reject_reason="PATTERN",
+                    suppressed_ms=now_ms,
+                    direction=plan.get("direction"),
+                    plan=plan,
+                    detail=str(
+                        pattern_stamp.get("prediction")
+                        or "STANDASIDE_TRADE_PATTERN"
+                    ),
+                    pattern_stamp=pattern_stamp,
+                    extra={
+                        "live_vol_surge": suppress_snap.get("live_vol_surge"),
+                        "live_vol_burst_20": suppress_snap.get("live_vol_burst_20"),
+                    },
+                )
                 self._save_state()
                 return None
         except Exception as pat_exc:
@@ -3507,6 +4162,7 @@ class TradePlanOverlayManager:
                 "order_flow_supported": plan.get("order_flow_supported"),
                 "order_flow_imbalance": plan.get("order_flow_imbalance"),
                 "trade_pattern_match": plan.get("trade_pattern_match"),
+                "b_persist": plan.get("b_persist"),
                 "book_id": self.book_id,
             },
         )
@@ -3547,6 +4203,17 @@ class TradePlanOverlayManager:
         """
         now = int(now_ms if now_ms is not None else time.time() * 1000)
         card = card or {}
+        if isinstance(card, dict) and card.get("regime_state") is not None:
+            self.state["last_decision_regime"] = {
+                "regime_state": card.get("regime_state"),
+                "regime_reason": card.get("regime_reason"),
+                "directional_efficiency_er": card.get("directional_efficiency_er"),
+                "relative_volatility": card.get("relative_volatility"),
+                "adx_14": card.get("adx_14"),
+                "plus_di": card.get("plus_di"),
+                "minus_di": card.get("minus_di"),
+                "regime_trend_dir": card.get("regime_trend_dir"),
+            }
         # Size/entry need L1 qty — prefer live quote, else card execution_quote
         if not isinstance(quote, dict) or not quote:
             cq = card.get("execution_quote")
@@ -3767,11 +4434,17 @@ class TradePlanOverlayManager:
             bool(plan.get("path_h_revisit_seen")) != prev_rev
         )
         self.state["active_plan"] = plan
-        # Persist path stamps so periodic daemon state reload cannot wipe them.
-        if path_stamp_flipped:
+        # Persist path stamps + throttled marks so periodic daemon reload cannot
+        # wipe excursion / last_mark (REQUIRE_RUST Gate2X peaks need continuity).
+        last_mark_flush = int(getattr(self, "_last_mark_flush_ms", 0) or 0)
+        mark_flush_due = (now_ms - last_mark_flush) >= 1000
+        if path_stamp_flipped or mark_flush_due:
+            self._last_mark_flush_ms = now_ms
             self._save_state()
 
-        # Rust cutover: plan lifecycle (Adaptive TP + SL/TP + Gate 2X) in-process.
+        # R3: floor-lock twin is Rust-owned (gate2x_floor_lock_immediate params
+        # stamped in _try_rust_plan_lifecycle). Adverse extremes in quote L/H.
+        giveback_reason = None
         rust_closed = self._try_rust_plan_lifecycle(
             plan, q, now_ms=now_ms, bid=bid, ask=ask, low=low, high=high
         )
@@ -3779,47 +4452,48 @@ class TradePlanOverlayManager:
             return rust_closed
         plan = self.state.get("active_plan") or plan
         _rust_hold = plan.get("plan_lifecycle_authority") == "rust_rp608_plan_lifecycle"
-        # REQUIRE_RUST: missing bin / loop fail → no silent Python Adaptive/Gate2X/SL-TP.
+        # Track A retire: when PLAN_LIFECYCLE=1, Rust owns Adaptive/Gate2X/SL-TP.
+        # Python manage bodies only for RP608_PLAN_LIFECYCLE=0 (unit tests).
+        # REQUIRE_RUST: missing bin → fail-closed (no silent Python manage).
         _require_rust_blocked = bool(plan_lifecycle_require_rust() and not _rust_hold)
-        _skip_python_lifecycle = _rust_hold or _require_rust_blocked
+        _skip_python_lifecycle = bool(
+            plan_lifecycle_enabled() or _rust_hold or _require_rust_blocked
+        )
 
-        giveback_reason = None
-        if not _skip_python_lifecycle:
-            # Gate 5 Adaptive TP: extend target + lock SL before Gate 2X decide.
-            # Re-read TP/SL after ratchet so protect geometry sees the runner.
-            _tp0 = float(plan["profit_target_price"])
-            _hit_tp0 = False
-            if direction == "LONG":
-                _hit_tp0 = (
-                    bid >= _tp0
-                    or high >= _tp0
-                    or float(plan["mfe_exec_price"]) >= _tp0
-                )
-            else:
-                _hit_tp0 = (
-                    ask <= _tp0
-                    or low <= _tp0
-                    or float(plan["mfe_exec_price"]) <= _tp0
-                )
-            if _hit_tp0:
-                self._adaptive_tp_try_extend(
+        if not _skip_python_lifecycle and not giveback_reason:
+            # Coralys/Gate2X first — Adaptive intelligence (doubt → Protect/Exit).
+            giveback_reason = self._gate2x_update_mfe_giveback(
+                plan, exec_px=exec_px, now_ms=now_ms
+            )
+            if not giveback_reason:
+                _tp0 = float(plan["profit_target_price"])
+                _hit_tp0 = False
+                if direction == "LONG":
+                    _hit_tp0 = (
+                        bid >= _tp0
+                        or high >= _tp0
+                        or float(plan["mfe_exec_price"]) >= _tp0
+                    )
+                else:
+                    _hit_tp0 = (
+                        ask <= _tp0
+                        or low <= _tp0
+                        or float(plan["mfe_exec_price"]) <= _tp0
+                    )
+                # Coralys floor trail on Hold (not blind ATR / not TP latch).
+                if self._adaptive_tp_try_extend(
                     plan,
                     direction=direction,
-                    hit_tp=True,
+                    hit_tp=_hit_tp0,
                     now_ms=now_ms,
                     bid=bid,
                     ask=ask,
                     low=low,
                     high=high,
-                )
-                plan = self.state.get("active_plan") or plan
-                sl = float(plan["stop_loss_price"])
-                tp = float(plan["profit_target_price"])
-
-            # Gate 2X: quality-path protect (arm at tp_frac+cost; exit at cost-clear floor).
-            giveback_reason = self._gate2x_update_mfe_giveback(
-                plan, exec_px=exec_px, now_ms=now_ms
-            )
+                ):
+                    plan = self.state.get("active_plan") or plan
+                    sl = float(plan["stop_loss_price"])
+                    tp = float(plan["profit_target_price"])
             self.state["active_plan"] = plan
         if giveback_reason:
             terminal_state = "CLOSED_GIVEBACK"
@@ -3829,8 +4503,23 @@ class TradePlanOverlayManager:
             plan["exit_price"] = round_tick(exit_price)
             plan["exit_time_ms"] = now_ms
             plan["holding_duration_seconds"] = round((now_ms - entry_ms) / 1000.0, 1)
-            plan["exit_reason_detail"] = giveback_reason
-            plan["gate2x_protocol"] = CONFIG.get("gate2x_mfe_giveback_protocol")
+            _fl_stamp = "FLOOR_LOCK" in str(giveback_reason)
+            if _fl_stamp:
+                # Keep raw twin stamp for scorecard (do not Adaptive-prefix).
+                plan["exit_reason_detail"] = giveback_reason
+                plan["gate2x_protocol"] = self._cfg("gate2x_floor_lock_protocol") or (
+                    self._cfg("gate2x_mfe_giveback_protocol")
+                )
+            elif bool(CONFIG.get("adaptive_tp_enabled")):
+                plan["adaptive_tp_armed"] = True
+                plan["exit_reason_detail"] = f"ADAPTIVE_CORALYS_{giveback_reason}"
+                plan["gate2x_protocol"] = self._cfg("gate2x_mfe_giveback_protocol")
+            else:
+                plan["exit_reason_detail"] = giveback_reason
+                plan["gate2x_protocol"] = self._cfg("gate2x_mfe_giveback_protocol")
+            plan["gate2x_ratchet_peak_frac"] = float(
+                self._cfg("gate2x_ratchet_peak_frac") or 0.30
+            )
             if direction == "LONG":
                 gross_pnl = (plan["exit_price"] - entry_price) * qty
             else:
@@ -3957,7 +4646,13 @@ class TradePlanOverlayManager:
             except (TypeError, ValueError):
                 tp_level = 0
             adaptive_on = bool(CONFIG.get("adaptive_tp_enabled"))
-            max_ext = int(CONFIG.get("adaptive_tp_max_extensions") or 3)
+            try:
+                orig_sl = float(plan.get("original_stop_loss_price") or sl)
+            except (TypeError, ValueError):
+                orig_sl = sl
+            sl_still_original = (
+                sl <= orig_sl + 1e-9 if direction == "LONG" else sl + 1e-9 >= orig_sl
+            )
 
             hit_tp = False
             hit_sl = False
@@ -3965,34 +4660,25 @@ class TradePlanOverlayManager:
             if direction == "LONG":
                 if bid >= tp or high >= tp or float(plan["mfe_exec_price"]) >= tp:
                     hit_tp = True
-                if bid <= sl or low <= sl or float(plan["mae_exec_price"]) <= sl:
+                mae = float(plan["mae_exec_price"])
+                if bid <= sl or low <= sl or (sl_still_original and mae <= sl):
                     hit_sl = True
                 exit_price = sl if hit_sl else (tp if hit_tp else bid)
             else:  # SHORT — buy-to-cover on ask
                 if ask <= tp or low <= tp or float(plan["mfe_exec_price"]) <= tp:
                     hit_tp = True
-                if ask >= sl or high >= sl or float(plan["mae_exec_price"]) >= sl:
+                mae = float(plan["mae_exec_price"])
+                if ask >= sl or high >= sl or (sl_still_original and mae >= sl):
                     hit_sl = True
                 exit_price = sl if hit_sl else (tp if hit_tp else ask)
 
-            # Adaptive runner still below max: TP touch already extended — do not close.
-            if (
-                adaptive_on
-                and hit_tp
-                and not hit_sl
-                and tp_level < max_ext
-            ):
+            # Adaptive tick-trail: TP is runner-only — no hard TP / no TP latch.
+            if adaptive_on:
                 hit_tp = False
 
             ambiguous = bool(hit_tp and hit_sl)
             tie_break = str(CONFIG.get("ambiguous_tie_break") or "TP").upper()
-            # After adaptive arm, prefer locked SL on ambiguous TP∧SL.
-            if ambiguous and tp_level >= 1:
-                tie_break = "SL"
-                plan["ambiguous_resolved_as"] = "SL_ADAPTIVE_LOCK"
             if ambiguous:
-                # Gate 5 policy G: prefer TP (pre-adaptive). Legacy SL if configured
-                # or adaptive lock armed (tp_level >= 1).
                 self.state["outcomes_summary"]["ambiguous_hits"] += 1
                 if tie_break == "SL":
                     terminal_state = "CLOSED_SL"
@@ -4007,11 +4693,8 @@ class TradePlanOverlayManager:
                     plan["gate5_policy_g"] = CONFIG.get("gate5_policy_g")
                     self.state["outcomes_summary"]["tp_hits"] += 1
             elif hit_tp:
-                # Hard TP close: adaptive off, or max extensions exhausted.
                 terminal_state = "CLOSED_TP"
                 exit_reason = "PROFIT_TARGET_HIT"
-                if adaptive_on and tp_level >= max_ext:
-                    plan["exit_reason_detail"] = "ADAPTIVE_TP_MAX_EXTENSIONS"
                 self.state["outcomes_summary"]["tp_hits"] += 1
                 exit_price = tp
             elif hit_sl:

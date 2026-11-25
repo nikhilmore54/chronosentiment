@@ -1,3 +1,4 @@
+#![allow(dead_code, unused_variables, unused_imports, unused_mut, unused_assignments)]
 use std::cmp::Reverse;
 /// rp406b_bottleneck_relief -- RP-406B: Bottleneck-Relief Micro-Repair
 /// Classification: Research binary (RP-406B).

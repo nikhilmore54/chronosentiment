@@ -337,7 +337,8 @@ def classify_market_regime(
             "vol_ratio": vol_ratio,
             "adx": adx,
             "plus_di": plus_di,
-            "minus_di": minus_di
+            "minus_di": minus_di,
+            "trend_dir": trend_dir,
         }
 
     # Step 4: Default Remaining Permutations to Transitioning

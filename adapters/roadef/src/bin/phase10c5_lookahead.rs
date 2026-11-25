@@ -1,3 +1,4 @@
+#![allow(dead_code, unused_variables, unused_imports, unused_mut, unused_assignments)]
 /// phase10c5_lookahead.rs — P10-C5 Sequence-Aware Look-Ahead Routing
 ///
 /// Governance protocol: EXPERIMENTAL — adapter-only intervention.

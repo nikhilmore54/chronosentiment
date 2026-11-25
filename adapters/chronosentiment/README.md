@@ -60,6 +60,16 @@ cargo build -p chronosentiment_adapter --release --bin rp608_position_decide
 | `deferred_live_decision_loop` | DEFERRED / PRODUCT | As-of prospective loop |
 | `deferred_live_yahoo` | DEFERRED | Yahoo feed helper |
 
+## Cargo `[[bin]]` lanes (47 total · CLEAN-003 follow-up index)
+
+| Lane | Count | Where |
+| --- | --- | --- |
+| default (explicit `[[bin]]`) | 1 | `rp608_position_decide` — also auto-discovers other `src/bin/*` |
+| `legacy-lake` | 29 | `legacy/bin/*` (B3/B4 + CS-P heritage) |
+| `research` | 17 | `research/bin/*` (G-GATE / RP-608 lab) |
+
+Collapsing these into a workspace subcrate / manifest include remains **deferred** (needs separate authorize). Skim `Cargo.toml` sections labeled legacy-lake / research.
+
 ## Hygiene
 
 - Plan: `docs/CS-P-CLEAN-003_CHRONOSENTIMENT_ADAPTER_HYGIENE.md`

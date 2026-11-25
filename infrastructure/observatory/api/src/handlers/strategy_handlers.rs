@@ -12,7 +12,6 @@ use crate::{
         // Canonical schema types
         CanonicalInspectResponse,
         CanonicalPortfolioState,
-        CanonicalPosition,
         CertificationState,
         CompareStrategiesRequest,
         CompareStrategiesResponse,

@@ -60,7 +60,7 @@ where
     };
     let comparator = make_comparator(config.comparator_mode);
 
-    let mut evaluation_cache: std::collections::HashMap<RoadefGenome, RoadefEvaluation> =
+    let mut _evaluation_cache: std::collections::HashMap<RoadefGenome, RoadefEvaluation> =
         std::collections::HashMap::new();
     let t0 = Instant::now();
 
@@ -292,7 +292,7 @@ where
     let mut best_found_at_gen = 0usize;
     let mut stagnation = 0usize;
     let mut gen = 0usize;
-    let mut termination_reason = String::new(); // set before every break in the loop below
+    let termination_reason: String; // set before every break in the loop below
                                                 // RP-410C: monotonically increasing candidate counter for genealogy reconstruction.
     let mut candidate_counter: u64 = 0;
 
@@ -319,10 +319,8 @@ where
     let _ = writeln!(log_sink, "=========================================");
     let _ = writeln!(log_sink, "");
 
-    let mut trajectory: Vec<crate::moga_impl::GenerationSummary> = Vec::new();
+    let mut _trajectory: Vec<crate::moga_impl::GenerationSummary> = Vec::new();
     loop {
-        let gen_start = std::time::Instant::now();
-
         // --- Termination check ---
         if gen >= config.generation_limit {
             termination_reason = format!("GenerationLimit({})", config.generation_limit);
@@ -349,8 +347,7 @@ where
         let mut t_selection_ms: f64 = 0.0;
         let mut t_crossover_ms: f64 = 0.0;
         let mut t_mutation_ms: f64 = 0.0;
-        let mut t_eval_ms: f64 = 0.0;
-        let mut t_telemetry_ms: f64 = 0.0;
+        let mut _t_telemetry_ms: f64 = 0.0;
 
         // RP-410: per-generation improvement histogram counters (reset each generation)
         let mut gen_moves_peak: u32 = 0;
@@ -676,97 +673,93 @@ where
                 let pa = evals[pa_idx].genome().clone();
                 let pb = evals[pb_idx].genome().clone();
                 let (mut ca, mut cb) = crossover.crossover(&pa, &pb, &mut rng);
-                let mut ca_tag: &'static str = "crossover";
-                let mut cb_tag: &'static str = "crossover";
 
                 // Step 1: optional mutation (before repair).
                 if rng.gen_bool(config.mutation_rate) {
                     mutator.mutate(&mut ca, &mut rng);
-                    ca_tag = "crossover+mutation";
                 }
                 if rng.gen_bool(config.mutation_rate) {
                     mutator.mutate(&mut cb, &mut rng);
-                    cb_tag = "crossover+mutation";
                 }
 
                 // Step 2: pipeline repair & improvement (Option 2: redundant check elimination).
                 // process_offspring performs feasibility check and invokes repair if needed.
                 crate::operators::take_repair_invoked();
                 let t_proc_ca = Instant::now();
-                match pipeline.process_offspring(&mut ca) {
+                let ca_tag = match pipeline.process_offspring(&mut ca) {
                     Ok(true) => {
                         let t_elapsed = t_proc_ca.elapsed().as_secs_f64() * 1000.0;
                         if crate::operators::take_repair_invoked() {
-                            ca_tag = "repair_succeeded";
                             p10b_infeasible_entering_repair += 1;
                             p10b_repair_attempts += 1;
                             p10b_repair_successes += 1;
                             p10b_repair_ms += t_elapsed;
+                            "repair_succeeded"
                         } else {
-                            ca_tag = "improvement_applied";
                             p10b_feasible_entering_repair += 1;
                             p10b_improve_ms += t_elapsed;
+                            "improvement_applied"
                         }
                     }
                     Ok(false) => {
                         let t_elapsed = t_proc_ca.elapsed().as_secs_f64() * 1000.0;
                         ca = pa.clone();
-                        ca_tag = "repair_failed";
                         p10b_infeasible_entering_repair += 1;
                         p10b_repair_attempts += 1;
                         p10b_repair_failures += 1;
                         p10b_repair_ms += t_elapsed;
+                        "repair_failed"
                     }
                     Err(e) => {
                         let t_elapsed = t_proc_ca.elapsed().as_secs_f64() * 1000.0;
                         let _ = writeln!(log_sink, "[pipeline] operator error on ca: {}", e);
                         ca = pa.clone();
-                        ca_tag = "operator_error";
                         p10b_infeasible_entering_repair += 1;
                         p10b_repair_attempts += 1;
                         p10b_repair_failures += 1;
                         p10b_repair_ms += t_elapsed;
+                        "operator_error"
                     }
-                }
+                };
 
                 // Step 2 for cb: pipeline repair & improvement (Option 2: redundant check elimination).
                 crate::operators::take_repair_invoked();
                 let t_proc_cb = Instant::now();
-                match pipeline.process_offspring(&mut cb) {
+                let cb_tag = match pipeline.process_offspring(&mut cb) {
                     Ok(true) => {
                         let t_elapsed = t_proc_cb.elapsed().as_secs_f64() * 1000.0;
                         if crate::operators::take_repair_invoked() {
-                            cb_tag = "repair_succeeded";
                             p10b_infeasible_entering_repair += 1;
                             p10b_repair_attempts += 1;
                             p10b_repair_successes += 1;
                             p10b_repair_ms += t_elapsed;
+                            "repair_succeeded"
                         } else {
-                            cb_tag = "improvement_applied";
                             p10b_feasible_entering_repair += 1;
                             p10b_improve_ms += t_elapsed;
+                            "improvement_applied"
                         }
                     }
                     Ok(false) => {
                         let t_elapsed = t_proc_cb.elapsed().as_secs_f64() * 1000.0;
                         cb = pb.clone();
-                        cb_tag = "repair_failed";
                         p10b_infeasible_entering_repair += 1;
                         p10b_repair_attempts += 1;
                         p10b_repair_failures += 1;
                         p10b_repair_ms += t_elapsed;
+                        "repair_failed"
                     }
                     Err(e) => {
                         let t_elapsed = t_proc_cb.elapsed().as_secs_f64() * 1000.0;
                         let _ = writeln!(log_sink, "[pipeline] operator error on cb: {}", e);
                         cb = pb.clone();
-                        cb_tag = "operator_error";
                         p10b_infeasible_entering_repair += 1;
                         p10b_repair_attempts += 1;
                         p10b_repair_failures += 1;
                         p10b_repair_ms += t_elapsed;
+                        "operator_error"
                     }
-                }
+                };
                 t_crossover_ms += t_xo.elapsed().as_secs_f64() * 1000.0;
 
                 gen_crossover_count += 1;
@@ -789,43 +782,42 @@ where
 
                 // pipeline repair/improvement for child (Option 2: redundant check elimination)
                 crate::operators::take_repair_invoked();
-                let mut child_tag = "mutation";
                 let t_proc_child = Instant::now();
-                match pipeline.process_offspring(&mut child) {
+                let child_tag = match pipeline.process_offspring(&mut child) {
                     Ok(true) => {
                         let t_elapsed = t_proc_child.elapsed().as_secs_f64() * 1000.0;
                         if crate::operators::take_repair_invoked() {
-                            child_tag = "repair_succeeded";
                             p10b_infeasible_entering_repair += 1;
                             p10b_repair_attempts += 1;
                             p10b_repair_successes += 1;
                             p10b_repair_ms += t_elapsed;
+                            "repair_succeeded"
                         } else {
-                            child_tag = "improvement_applied";
                             p10b_feasible_entering_repair += 1;
                             p10b_improve_ms += t_elapsed;
+                            "improvement_applied"
                         }
                     }
                     Ok(false) => {
                         let t_elapsed = t_proc_child.elapsed().as_secs_f64() * 1000.0;
                         child = evals[pa_idx].genome().clone();
-                        child_tag = "repair_failed";
                         p10b_infeasible_entering_repair += 1;
                         p10b_repair_attempts += 1;
                         p10b_repair_failures += 1;
                         p10b_repair_ms += t_elapsed;
+                        "repair_failed"
                     }
                     Err(e) => {
                         let t_elapsed = t_proc_child.elapsed().as_secs_f64() * 1000.0;
                         let _ = writeln!(log_sink, "[pipeline] operator error on mut: {}", e);
                         child = evals[pa_idx].genome().clone();
-                        child_tag = "operator_error";
                         p10b_infeasible_entering_repair += 1;
                         p10b_repair_attempts += 1;
                         p10b_repair_failures += 1;
                         p10b_repair_ms += t_elapsed;
+                        "operator_error"
                     }
-                }
+                };
 
                 gen_mutation_count += 1;
                 next_pop.push((child, child_tag, pa_cid, 0u64, tourn_id, true));
@@ -852,8 +844,6 @@ where
                                                    // origin index: 0=initial, 1=crossover, 2=mutation, 3=elite
                                                    // class index:  0=epsilon, 1=minor, 2=major, 3=structural
 
-        let t_eval_start = std::time::Instant::now();
-        let t_eval_start = std::time::Instant::now();
         let mut new_evals_with_meta: Vec<(RoadefEvaluation, u64, u64, u64, u64)> = next_pop
             .into_iter()
             .map(|(g, tag, p1, p2, tid, _won)| {
@@ -1105,7 +1095,7 @@ where
                 p10c0_sum_max_sat_after,
             };
             telemetry.emit_generation(&gen_rec);
-            t_telemetry_ms += t_tel_start.elapsed().as_secs_f64() * 1000.0;
+            _t_telemetry_ms += t_tel_start.elapsed().as_secs_f64() * 1000.0;
         }
 
         evals = new_evals;
@@ -1422,7 +1412,7 @@ pub fn run_pipeline_evolution_v2<M>(
     initial_population: crate::moga_impl::InitialPopulation<RoadefGenome>,
     instance_name: &str,
     log_sink: &mut dyn Write,
-    telemetry: &mut dyn TelemetrySink,
+    _telemetry: &mut dyn TelemetrySink,
     // Phase 3: when true, cache-miss evaluations are dispatched in parallel via Rayon.
     // When false, the L1 sequential baseline is used (identical search trajectory).
     use_rayon: bool,
@@ -1435,7 +1425,7 @@ where
         None => StdRng::from_entropy(),
     };
 
-    let run_uuid = {
+    let _run_uuid = {
         let b: [u8; 16] = rng.gen();
         format!(
             "{:08x}-{:04x}-4{:03x}-{:04x}-{:012x}",
@@ -1539,7 +1529,7 @@ where
         global_best = Some(evals[0].clone());
     }
 
-    let mut t_health = Instant::now();
+    let _t_health = Instant::now();
     let mut no_improvement_count = 0;
     let mut generations_run = 0;
     let mut termination_reason = "GenerationLimit".to_string();
@@ -1563,7 +1553,7 @@ where
         let mut t_improve_ms: f64 = 0.0;
         let mut t_sort_ms: f64 = 0.0;
         let mut t_selection_ms: f64 = 0.0;
-        let mut t_feasibility_ms: f64 = 0.0;
+        let t_feasibility_ms: f64 = 0.0;
         let mut t_staging_ms: f64 = 0.0;
 
         generations_run += 1;
@@ -1589,10 +1579,10 @@ where
 
         let mut n_crossover = 0;
         let mut n_mutation = 0;
-        let mut n_cross_repair = 0;
-        let mut n_mut_repair = 0;
-        let mut n_cross_maj = 0;
-        let mut n_mut_maj = 0;
+        let n_cross_repair = 0;
+        let n_mut_repair = 0;
+        let n_cross_maj = 0;
+        let n_mut_maj = 0;
 
         // -----------------------------------------------------------------------
         // Phase 3 (Rayon): parallel evaluation of the offspring batch.
@@ -1661,26 +1651,22 @@ where
                 // (coralys-core/src/pipeline.rs line 25), so the pre-check was a
                 // redundant evaluate_violations() call per offspring.
                 // Tag and timing attribution now derived from process_offspring result only.
-                let mut tag = "crossover_mutation";
                 // Phase 8: time process_offspring (repair + improve) call only.
                 let t_proc_start = Instant::now();
                 let proc_result = pipeline_obj.process_offspring(&mut child);
                 let t_proc_elapsed = t_proc_start.elapsed().as_secs_f64() * 1000.0;
-                let success = match proc_result {
+                let (success, tag) = match proc_result {
                     Ok(true) => {
                         t_improve_ms += t_proc_elapsed;
-                        tag = "pipeline_improved";
-                        true
+                        (true, "pipeline_improved")
                     }
                     Ok(false) => {
                         t_repair_ms += t_proc_elapsed;
-                        tag = "pipeline_repair_failed";
-                        false
+                        (false, "pipeline_repair_failed")
                     }
                     Err(_) => {
                         t_repair_ms += t_proc_elapsed;
-                        tag = "pipeline_operator_error";
-                        false
+                        (false, "pipeline_operator_error")
                     }
                 };
 
@@ -1720,26 +1706,22 @@ where
                 t_mutation_ms += t_mut_start.elapsed().as_secs_f64() * 1000.0;
 
                 // P9-H3: removed standalone is_feasible() pre-check (same as crossover path).
-                let mut tag = "mutation";
                 // Phase 8: time process_offspring (repair + improve) call only.
                 let t_proc_start = Instant::now();
                 let proc_result = pipeline_obj.process_offspring(&mut child);
                 let t_proc_elapsed = t_proc_start.elapsed().as_secs_f64() * 1000.0;
-                let success = match proc_result {
+                let (success, tag) = match proc_result {
                     Ok(true) => {
                         t_improve_ms += t_proc_elapsed;
-                        tag = "pipeline_improved";
-                        true
+                        (true, "pipeline_improved")
                     }
                     Ok(false) => {
                         t_repair_ms += t_proc_elapsed;
-                        tag = "pipeline_repair_failed";
-                        false
+                        (false, "pipeline_repair_failed")
                     }
                     Err(_) => {
                         t_repair_ms += t_proc_elapsed;
-                        tag = "pipeline_operator_error";
-                        false
+                        (false, "pipeline_operator_error")
                     }
                 };
 

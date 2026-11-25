@@ -5,7 +5,7 @@ use crate::optimization::ScheduleGenome;
 /// MRV (Minimum Remaining Values) DFS Global Constructor
 /// Discovers a feasible genome by scheduling strictly zero-violation assignments.
 pub fn generate_feasible_seed(shifts: &[Shift], workers: &[Worker], min_rest_hours: u64, hc3_limit: u64, budget_ms: u128) -> Option<ScheduleGenome> {
-    let num_shifts = shifts.len();
+    let _num_shifts = shifts.len();
     let max_worker_id = workers.iter().map(|w| w.id).max().unwrap_or(0) as usize;
     
     // Quick structural capacity check for mathematically impossible scenarios

@@ -1,3 +1,4 @@
+#![allow(dead_code, unused_variables, unused_imports, unused_mut, unused_assignments)]
 use coralys_moga::engine_proof::{Evaluator, EvolutionEngine, ParetoSolution};
 use rand::Rng;
 use rand::SeedableRng;

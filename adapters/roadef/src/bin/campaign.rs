@@ -1,3 +1,4 @@
+#![allow(dead_code, unused_variables, unused_imports, unused_mut, unused_assignments)]
 /// ROADEF 2026 Baseline Campaign Runner — M19B
 ///
 /// Runs all 20 setA instances through the Coralys MOGA optimizer.

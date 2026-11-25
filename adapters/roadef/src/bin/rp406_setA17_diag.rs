@@ -1,3 +1,4 @@
+#![allow(dead_code, unused_variables, unused_imports, unused_mut, unused_assignments)]
 use std::cmp::Reverse;
 /// rp406_setA17_diag -- RP-406A: setA-17 Feasibility Frontier Investigation
 /// Diagnostic binary: identifies the root cause of inf objective on setA-17.

@@ -12,6 +12,7 @@ replenishment, and price response can later be measured while price is still wea
 from __future__ import annotations
 
 import json
+import os
 import threading
 import time
 from datetime import datetime, timezone
@@ -20,6 +21,18 @@ from typing import Any, Dict, List, Mapping, Optional, Sequence
 
 PROTOCOL_ID = "RP-608-NSE-OF-BOOK-INTELLIGENCE-001"
 DEFAULT_MIN_INTERVAL_MS = 5_000
+
+
+def _depth_writer_mode() -> str:
+    try:
+        from scripts.rp608_nse_depth_journal_client import depth_writer_mode
+
+        return depth_writer_mode()
+    except Exception:
+        raw = (os.environ.get("RP608_NSE_DEPTH_WRITER") or "python").strip().lower()
+        if raw in {"compare", "side_by_side", "sbs", "rust", "rs"}:
+            return "compare" if raw not in {"rust", "rs"} else "rust"
+        return "python"
 
 
 def _level_tuple(levels: Any) -> List[Dict[str, float]]:
@@ -107,6 +120,8 @@ class NseOfBookDepthHistoryJournal:
         self.root = Path(root)
         self.root.mkdir(parents=True, exist_ok=True)
         self.path = self.root / "depth_snapshots.jsonl"
+        # Track B side-path only — never dual-write authoritative file.
+        self.rust_side_path = self.root / "depth_snapshots.rust.jsonl"
         self.coverage_path = self.root / "depth_capture_coverage.json"
         self.min_interval_ms = int(min_interval_ms)
         self.enabled = bool(enabled)
@@ -116,6 +131,7 @@ class NseOfBookDepthHistoryJournal:
             "protocol_id": PROTOCOL_ID,
             "phase": "PHASE_1_DURABLE_L1_L5_HISTORY",
             "snapshots_written": 0,
+            "rust_side_snapshots_written": 0,
             "samples_taken": 0,
             "samples_skipped_interval": 0,
             "rows_missing_level_qty": 0,
@@ -124,6 +140,7 @@ class NseOfBookDepthHistoryJournal:
             "rows_with_l2_plus_ask_qty": 0,
             "last_sample_utc": None,
             "last_symbols_sampled": 0,
+            "depth_writer_mode": _depth_writer_mode(),
         }
 
     def maybe_sample(
@@ -171,18 +188,82 @@ class NseOfBookDepthHistoryJournal:
                 self._write_coverage_unlocked()
                 return 0
 
-            with self.path.open("a", encoding="utf-8") as f:
-                for row in rows:
-                    f.write(json.dumps(row, separators=(",", ":")) + "\n")
-                f.flush()
+            mode = _depth_writer_mode()
+            self._stats["depth_writer_mode"] = mode
+            # Authoritative path: Python unless explicit rust flip (post-soak only).
+            write_python_auth = mode != "rust"
+            if write_python_auth:
+                with self.path.open("a", encoding="utf-8") as f:
+                    for row in rows:
+                        f.write(json.dumps(row, separators=(",", ":")) + "\n")
+                    f.flush()
+                self._stats["snapshots_written"] = int(self._stats["snapshots_written"]) + len(
+                    rows
+                )
 
-            self._stats["snapshots_written"] = int(self._stats["snapshots_written"]) + len(rows)
+            if mode in {"compare", "rust"}:
+                rust_n = self._append_rust_side_unlocked(
+                    ticks_by_symbol=ticks_by_symbol, sample_utc_ms=now
+                )
+                if mode == "rust" and rust_n <= 0:
+                    # Fail-closed: do not leave a hole — fall back to Python auth write.
+                    print(
+                        "[nse_depth_journal] rust flip failed; writing Python authoritative rows",
+                        flush=True,
+                    )
+                    with self.path.open("a", encoding="utf-8") as f:
+                        for row in rows:
+                            f.write(json.dumps(row, separators=(",", ":")) + "\n")
+                        f.flush()
+                    self._stats["snapshots_written"] = int(
+                        self._stats["snapshots_written"]
+                    ) + len(rows)
+
             self._stats["last_sample_utc"] = datetime.fromtimestamp(
                 now / 1000.0, tz=timezone.utc
             ).isoformat()
             self._stats["last_symbols_sampled"] = len(rows)
             self._write_coverage_unlocked()
             return len(rows)
+
+    def _append_rust_side_unlocked(
+        self,
+        *,
+        ticks_by_symbol: Mapping[str, Mapping[str, Any]],
+        sample_utc_ms: int,
+    ) -> int:
+        """Append Rust-built rows to side path (compare) or auth path (rust flip)."""
+        try:
+            from scripts.rp608_nse_depth_journal_client import rust_depth_row
+        except Exception as exc:
+            print(f"[nse_depth_journal] rust client import failed: {exc}", flush=True)
+            return 0
+        mode = _depth_writer_mode()
+        out_path = self.path if mode == "rust" else self.rust_side_path
+        n = 0
+        try:
+            with out_path.open("a", encoding="utf-8") as f:
+                for sym, tick in ticks_by_symbol.items():
+                    if not isinstance(tick, Mapping):
+                        continue
+                    row = rust_depth_row(
+                        symbol=str(sym),
+                        tick=dict(tick),
+                        sample_utc_ms=int(sample_utc_ms),
+                    )
+                    if not row:
+                        continue
+                    f.write(json.dumps(row, separators=(",", ":")) + "\n")
+                    n += 1
+                f.flush()
+        except Exception as exc:
+            print(f"[nse_depth_journal] rust side append failed: {exc}", flush=True)
+            return 0
+        if n:
+            self._stats["rust_side_snapshots_written"] = int(
+                self._stats.get("rust_side_snapshots_written") or 0
+            ) + n
+        return n
 
     def _write_coverage_unlocked(self) -> None:
         payload = dict(self._stats)

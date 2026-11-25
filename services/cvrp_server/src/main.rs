@@ -6,9 +6,9 @@ use axum::{
     routing::{get, post},
 };
 use rand::Rng;
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
 use std::sync::Arc;
-use tokio::sync::{Mutex, broadcast};
+use tokio::sync::Mutex;
 
 pub trait ReachabilityPredictor {
     fn predict_elite_prob(&self, parent_dist: f64, damage: f64) -> f64;
@@ -69,13 +69,13 @@ use std::cmp::Ordering;
 use tower_http::cors::{Any, CorsLayer};
 
 use coralys_ecology::diagnostics::{
-    AccumulationFailureDetector, CandidateObservation, DiagnosticDetector, DiagnosticResult,
+    AccumulationFailureDetector, CandidateObservation, DiagnosticDetector,
     EcologyLockInDetector, EcologyState, ObjectiveVector, OperatorExpressivenessFailureDetector,
     SearchObservation,
 };
 use coralys_moga::runtime::optimization::metric::MetricReport;
 use coralys_moga::traits::{
-    CrossoverOperator, Evaluated, FitnessEvaluator, Genome, GenomeFactory, ImprovementOperator,
+    CrossoverOperator, Evaluated, FitnessEvaluator, GenomeFactory,
 };
 use coralys_recommendation::{EcologyRecommender, RecommendationReport};
 use std::collections::hash_map::DefaultHasher;
@@ -296,7 +296,7 @@ async fn run_evolution_loop(state: AppState) {
         "ExtremeLocal" => cvrp::RadiusPolicy::ExtremeLocal,
         _ => cvrp::RadiusPolicy::Control,
     };
-    let mut mutator: Box<
+    let mutator: Box<
         dyn coralys_moga::traits::MutationOperator<cvrp::CvrpCandidate> + Send + Sync,
     > = if std::env::var("USE_ROUTE_AWARE_MUTATOR").is_ok() {
         Box::new(cvrp::moga_impl::CvrpRouteAwareMutator {
@@ -324,8 +324,8 @@ async fn run_evolution_loop(state: AppState) {
         num_customers: instance.customers.len(),
     };
 
-    let mut accum_detector = AccumulationFailureDetector::new(0, 0.75);
-    let mut lockin_detector = EcologyLockInDetector::new(0, 0.15, 100);
+    let accum_detector = AccumulationFailureDetector::new(0, 0.75);
+    let lockin_detector = EcologyLockInDetector::new(0, 0.15, 100);
     let rec_engine = EcologyRecommender::new(0.5, 100);
     let mut innovation_tracker = coralys_core::memory::InnovationTracker::new();
     let mut progress_tracker = coralys_ecology::progress::ProgressTracker::new();
@@ -355,7 +355,7 @@ async fn run_evolution_loop(state: AppState) {
         .collect();
 
     let mut telemetry = Vec::new();
-    let mut ecology_state = EcologyState::new(10000);
+    let ecology_state = EcologyState::new(10000);
     let mut global_best_fitness = f64::NEG_INFINITY;
     let mut generations_since_improvement = 0;
 
@@ -371,7 +371,7 @@ async fn run_evolution_loop(state: AppState) {
             break;
         }
 
-        let current_entropy = *state.entropy_scale.lock().await;
+        let _current_entropy = *state.entropy_scale.lock().await;
         // mutator.entropy_scale = current_entropy;
 
         if generation % 100 == 0 {
@@ -421,11 +421,11 @@ async fn run_evolution_loop(state: AppState) {
         let gen_best = evals[0].clone();
 
         let archive_best_before = global_best_fitness;
-        let mut improved_this_gen = false;
+        let mut _improved_this_gen = false;
 
         if gen_best.fitness() > global_best_fitness {
             global_best_fitness = gen_best.fitness();
-            improved_this_gen = true;
+            _improved_this_gen = true;
             generations_since_improvement = 0;
         } else {
             generations_since_improvement += 1;

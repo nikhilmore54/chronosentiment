@@ -9,8 +9,10 @@
 | --- | --- |
 | Rust module `product::crypto_tick_policy` | **Landed** — validate, buffer, snapshot, evidence, policy eval, emission gate |
 | Differential / unit tests | `cargo test … crypto_tick_policy` |
-| Daemon cutover | **Not yet** — live still Python; env `RP608_CRYPTO_TICK_POLICY` reserved (default `python`) |
-| Client stub | `scripts/rp608_crypto_tick_policy_client.py` |
+| CLI `--tick-eval-loop` | **Landed** — JSONL quote+buffer+genomes → B/C + `features_tick` |
+| Client | `scripts/rp608_crypto_tick_policy_client.py` — persistent loop session |
+| Daemon wire | **Landed 2026-11-24** — `RP608_CRYPTO_TICK_POLICY=python\|rust\|compare` (default `python`) |
+| Pi soak / default-on | **Done 2026-11-25** — compare soak 0 diverge (BTC/ETH); systemd `RP608_CRYPTO_TICK_POLICY=rust` |
 
 ## Note on 0.30
 
@@ -18,6 +20,6 @@
 
 ## Next
 
-1. Add `--tick-eval-loop` on `rp608_position_decide` (JSONL quotes → B/C actions).  
-2. Wire `run_rp608_shadow_daemon.py` behind env; side-by-side soak BTC+ETH.  
-3. Default-on after zero divergence.
+1. Keep soak audit for regressions (`rp608_crypto_tick_policy_soak_audit.py`).  
+2. Python evaluate path = fallback only when bin/loop down.  
+3. Track C exit met for crypto tick core; full WS/daemon port remains out of scope.

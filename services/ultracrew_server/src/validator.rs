@@ -80,7 +80,7 @@ pub fn validate_schedule(
                     }
 
                     // Check skills
-                    let clean_shift = shift
+                    let _clean_shift = shift
                         .replace("NEW-", "")
                         .replace("RECOVERED-", "")
                         .replace("RETURNED-", "");

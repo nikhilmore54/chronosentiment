@@ -19,7 +19,7 @@ pub fn get_split_strategy() -> SplitStrategy {
 use coralys_core::operators::ConstraintModel;
 use coralys_moga::runtime::optimization::metric::MetricReport;
 use coralys_moga::traits::{
-    CrossoverOperator, Evaluated, FitnessEvaluator, ImprovementOperator, MutationOperator,
+    CrossoverOperator, Evaluated, FitnessEvaluator, MutationOperator,
 };
 
 use crate::{CvrpCandidate, CvrpEvaluation, CvrpInstance};
@@ -267,7 +267,7 @@ impl MutationOperator<CvrpCandidate> for CvrpMutator {
             let cust_i = candidate.permutation[i];
             let neighbors = &self.nearest_neighbors[cust_i];
 
-            let mut j_cust = match self.radius_policy {
+            let j_cust = match self.radius_policy {
                 crate::RadiusPolicy::Control => candidate.permutation[rng.gen_range(0..size)],
                 crate::RadiusPolicy::LocalBiased => {
                     let p = rng.gen_range(0..100);
@@ -680,7 +680,6 @@ impl coralys_core::operators::ImprovementOperator<CvrpCandidate, CvrpConstraintM
             }
         }
 
-        let mut current_best = route_distances.iter().sum::<f64>();
         let mut improving = true;
         while improving {
             improving = false;
@@ -715,7 +714,6 @@ impl coralys_core::operators::ImprovementOperator<CvrpCandidate, CvrpConstraintM
                             if delta < -1e-9 {
                                 routes[r][i..=j].reverse();
                                 route_distances[r] += delta;
-                                current_best += delta;
                                 improving = true;
                                 break 'outer;
                             }
@@ -777,7 +775,6 @@ impl coralys_core::operators::ImprovementOperator<CvrpCandidate, CvrpConstraintM
                             if delta < -1e-9 {
                                 routes[r].swap(i, j);
                                 route_distances[r] += delta;
-                                current_best += delta;
                                 improving = true;
                                 break 'outer;
                             }
@@ -799,7 +796,6 @@ impl coralys_core::operators::ImprovementOperator<CvrpCandidate, CvrpConstraintM
                             if delta < -1e-9 {
                                 routes[r] = test_route;
                                 route_distances[r] = new_r_dist;
-                                current_best += delta;
                                 improving = true;
                                 break 'outer;
                             }
@@ -878,7 +874,6 @@ impl coralys_core::operators::ImprovementOperator<CvrpCandidate, CvrpConstraintM
                                     routes[r2].insert(j, val);
                                     route_distances[r1] += removal_delta_r1;
                                     route_distances[r2] += insertion_delta_r2;
-                                    current_best += delta;
                                     improving = true;
                                     break 'outer;
                                 }
@@ -966,7 +961,6 @@ impl coralys_core::operators::ImprovementOperator<CvrpCandidate, CvrpConstraintM
                                     routes[r2][j] = c1;
                                     route_distances[r1] += new_r1 - old_r1;
                                     route_distances[r2] += new_r2 - old_r2;
-                                    current_best += delta;
                                     improving = true;
                                     break 'outer;
                                 }
@@ -1016,7 +1010,7 @@ impl MutationOperator<CvrpCandidate> for CvrpRouteAwareMutator {
             routes.push(current_route);
         }
 
-        let mut valid_routes: Vec<usize> = routes
+        let valid_routes: Vec<usize> = routes
             .iter()
             .enumerate()
             .filter(|(_, r)| r.len() >= 2)
@@ -1174,7 +1168,7 @@ impl coralys_core::operators::RepairOperator<CvrpCandidate, CvrpConstraintModel>
             for cust in small_route {
                 let demand = self.instance.customers[cust].demand;
                 let mut found = false;
-                for (r_idx, (r, load)) in routes.iter_mut().enumerate() {
+                for (r, load) in routes.iter_mut() {
                     if *load + demand <= self.instance.capacity {
                         r.push(cust);
                         *load += demand;

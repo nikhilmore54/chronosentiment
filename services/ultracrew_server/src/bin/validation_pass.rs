@@ -1,3 +1,4 @@
+#![allow(dead_code, unused_variables, unused_imports, unused_mut, unused_assignments)]
 use coralys_moga::ecology::metrics::{compute_pearson, compute_spearman, rank_array};
 use coralys_moga::ecology::{EcologyObserver, ExternalObserver};
 use coralys_moga::engine_proof::{Evaluator, EvolutionEngine, ParetoSolution};

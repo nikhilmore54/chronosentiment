@@ -99,6 +99,10 @@ class TickFeatureBuffer:
         while self._buf and self._buf[0].event_time_ms < cutoff:
             self._buf.popleft()
 
+    def quotes(self) -> List[TickQuote]:
+        """Frozen window contents (oldest→newest) for Rust tick-eval buffer_quotes."""
+        return list(self._buf)
+
     def history_sec(self) -> float:
         if len(self._buf) < 2:
             return 0.0
@@ -321,6 +325,195 @@ def evaluate_tick_policies(
     action_b = evaluate_policy_rules(policy_b_genome, factors_b)
     action_c = evaluate_policy_rules(policy_c_genome, factors_c)
     return action_b, action_c, factors_b, factors_c
+
+
+REC_HYGIENE_PROTOCOL_ID = "RP-608-SHADOW-TICK-REC-HYGIENE-001"
+REC_HYGIENE_REV = 4
+REC_CONFIRM_TICKS = 3
+# Live evidence 2026-11-25: 3 WS packets pass confirm in <100ms → SHORT every sticky cycle.
+# Rev3 soak: even with 1.5s gaps, live max wall span≈2.3s — still never hit 8s.
+REC_CONFIRM_MIN_SPAN_MS = 5_000
+REC_CONFIRM_GAP_TOLERANCE_MS = 5_000
+REC_STICKY_MS = 12_000
+# After sticky expires, block re-arm so L1 AskHeavy cannot re-fire immediately.
+REC_REARM_COOLDOWN_MS = 30_000
+
+
+def _is_tradeable(action: str) -> bool:
+    return str(action or "").upper() in ("LONG", "SHORT")
+
+
+def microconfirm_gate_b(
+    action_b: str, factors_b: List[Dict[str, Any]]
+) -> Tuple[str, bool]:
+    """Downgrade soft B LONG/SHORT lacking aligned MicroConfirm."""
+    a = str(action_b or "NO_TRADE").upper()
+    if not _is_tradeable(a):
+        return a, False
+    mc = next((f for f in factors_b if f.get("concept") == "MicroConfirm"), None)
+    if a == "LONG":
+        ok = bool(mc and mc.get("present") and mc.get("direction") == "BidHeavy")
+    elif a == "SHORT":
+        ok = bool(mc and mc.get("present") and mc.get("direction") == "AskHeavy")
+    else:
+        ok = False
+    return (a, False) if ok else ("NO_TRADE", True)
+
+
+@dataclass
+class RecommendationStabilizer:
+    """
+    Track C v3: MicroConfirm + N tradeable evals spanning min wall-clock,
+    with brief gap tolerance (L1 MC flicker), sticky on drop, rearm cooldown.
+    Matches Rust RecommendationStabilizer.
+    """
+
+    confirm_ticks: int = REC_CONFIRM_TICKS
+    confirm_min_span_ms: int = REC_CONFIRM_MIN_SPAN_MS
+    confirm_gap_tolerance_ms: int = REC_CONFIRM_GAP_TOLERANCE_MS
+    sticky_ms: int = REC_STICKY_MS
+    rearm_cooldown_ms: int = REC_REARM_COOLDOWN_MS
+    candidate_b: Optional[str] = None
+    candidate_streak: int = 0
+    candidate_first_ms: int = 0
+    last_tradeable_ms: int = 0
+    sticky_b: Optional[str] = None
+    sticky_c: Optional[str] = None
+    sticky_until_ms: int = 0
+    rearm_after_ms: int = 0
+
+    def update(
+        self,
+        now_ms: int,
+        raw_b: str,
+        raw_c: str,
+        factors_b: List[Dict[str, Any]],
+    ) -> Tuple[str, str, Dict[str, Any]]:
+        now_ms = int(now_ms)
+        gated_b, mc_gated = microconfirm_gate_b(raw_b, factors_b)
+        stamp: Dict[str, Any] = {
+            "protocol_id": REC_HYGIENE_PROTOCOL_ID,
+            "hygiene_rev": REC_HYGIENE_REV,
+            "microconfirm_gated": mc_gated,
+            "confirm_pending": False,
+            "confirm_streak": 0,
+            "confirm_span_ms": 0,
+            "gap_tolerated": False,
+            "rearm_blocked": False,
+            "sticky_held": False,
+            "raw_b": raw_b,
+            "raw_c": raw_c,
+            "out_b": gated_b,
+            "out_c": raw_c,
+        }
+        if _is_tradeable(gated_b):
+            # Already confirmed this side — keep emitting while signal holds.
+            if self.sticky_b == gated_b:
+                self.sticky_c = raw_c
+                self.sticky_until_ms = 0
+                stamp["out_b"] = gated_b
+                stamp["out_c"] = raw_c
+                return gated_b, raw_c, stamp
+            if self.candidate_b == gated_b:
+                self.candidate_streak += 1
+            else:
+                self.candidate_b = gated_b
+                self.candidate_streak = 1
+                self.candidate_first_ms = now_ms
+            self.last_tradeable_ms = now_ms
+            span = max(0, now_ms - int(self.candidate_first_ms))
+            stamp["confirm_streak"] = self.candidate_streak
+            stamp["confirm_span_ms"] = span
+            rearm_blocked = now_ms < int(self.rearm_after_ms or 0)
+            stamp["rearm_blocked"] = rearm_blocked
+            span_ok = span >= int(self.confirm_min_span_ms)
+            ticks_ok = self.candidate_streak >= int(self.confirm_ticks)
+            if ticks_ok and span_ok and not rearm_blocked:
+                self.sticky_b = gated_b
+                self.sticky_c = raw_c
+                # Sticky arms on drop, not while continuously tradeable.
+                self.sticky_until_ms = 0
+                # Drop candidate so gap-tolerance cannot override sticky.
+                self.candidate_b = None
+                self.candidate_streak = 0
+                self.candidate_first_ms = 0
+                self.last_tradeable_ms = 0
+                stamp["out_b"] = gated_b
+                stamp["out_c"] = raw_c
+                return gated_b, raw_c, stamp
+            stamp["confirm_pending"] = True
+            stamp["out_b"] = "NO_TRADE"
+            return "NO_TRADE", raw_c, stamp
+
+        # Non-tradeable: tolerate brief MC gaps without resetting the candidate.
+        # Only while still confirming (not after sticky_b is armed).
+        # Live: span often crosses the threshold only on gap ticks (tradeable max
+        # span stayed <5s) — allow confirm when streak+span already met.
+        if (
+            self.candidate_b
+            and not self.sticky_b
+            and int(self.last_tradeable_ms or 0) > 0
+            and (now_ms - int(self.last_tradeable_ms))
+            <= int(self.confirm_gap_tolerance_ms)
+        ):
+            span = max(0, now_ms - int(self.candidate_first_ms))
+            stamp["confirm_streak"] = self.candidate_streak
+            stamp["confirm_span_ms"] = span
+            stamp["gap_tolerated"] = True
+            rearm_blocked = now_ms < int(self.rearm_after_ms or 0)
+            stamp["rearm_blocked"] = rearm_blocked
+            span_ok = span >= int(self.confirm_min_span_ms)
+            ticks_ok = self.candidate_streak >= int(self.confirm_ticks)
+            if ticks_ok and span_ok and not rearm_blocked:
+                confirmed = self.candidate_b
+                self.sticky_b = confirmed
+                self.sticky_c = raw_c
+                self.sticky_until_ms = 0
+                self.candidate_b = None
+                self.candidate_streak = 0
+                self.candidate_first_ms = 0
+                self.last_tradeable_ms = 0
+                stamp["confirm_pending"] = False
+                stamp["out_b"] = confirmed
+                stamp["out_c"] = raw_c
+                return confirmed, raw_c, stamp
+            stamp["confirm_pending"] = True
+            stamp["out_b"] = "NO_TRADE"
+            return "NO_TRADE", raw_c, stamp
+
+        self.candidate_b = None
+        self.candidate_streak = 0
+        self.candidate_first_ms = 0
+        self.last_tradeable_ms = 0
+        if self.sticky_b and not _is_tradeable(gated_b):
+            if int(self.sticky_until_ms or 0) <= 0:
+                self.sticky_until_ms = now_ms + int(self.sticky_ms)
+            if now_ms <= int(self.sticky_until_ms):
+                stamp["sticky_held"] = True
+                stamp["out_b"] = self.sticky_b
+                stamp["out_c"] = self.sticky_c or raw_c
+                return stamp["out_b"], stamp["out_c"], stamp
+            self.rearm_after_ms = now_ms + int(self.rearm_cooldown_ms)
+        self.sticky_b = None
+        self.sticky_c = None
+        self.sticky_until_ms = 0
+        stamp["out_b"] = gated_b
+        stamp["out_c"] = raw_c
+        return gated_b, raw_c, stamp
+
+
+def evaluate_tick_policies_hygiened(
+    snap: TickFeatureSnapshot,
+    policy_b_genome: Dict[str, Any],
+    policy_c_genome: Dict[str, Any],
+    stab: RecommendationStabilizer,
+) -> Tuple[str, str, List[Dict[str, Any]], List[Dict[str, Any]], Dict[str, Any]]:
+    raw_b, raw_c, factors_b, factors_c = evaluate_tick_policies(
+        snap, policy_b_genome, policy_c_genome
+    )
+    now_ms = int(getattr(snap, "receive_time_ms", 0) or 0)
+    b, c, stamp = stab.update(now_ms, raw_b, raw_c, factors_b)
+    return b, c, factors_b, factors_c, stamp
 
 
 @dataclass

@@ -206,6 +206,7 @@ pub struct ScheduleContext {
 pub struct ScheduleOptimizer {
     pub context: Arc<ScheduleContext>,
     // Internal deterministic RNG used for mutation/crossover
+    #[allow(dead_code)]
     deterministic_rng: StdRng,
 }
 

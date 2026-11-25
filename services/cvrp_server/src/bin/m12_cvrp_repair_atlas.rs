@@ -1,3 +1,4 @@
+#![allow(warnings)]
 use coralys_moga::observatory::{ReachabilityObservation, ReachabilityProbe};
 use coralys_moga::traits::{
     CrossoverOperator, FitnessEvaluator, GenomeFactory, LocalSearchOperator, MutationOperator,

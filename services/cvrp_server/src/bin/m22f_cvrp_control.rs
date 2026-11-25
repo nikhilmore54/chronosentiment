@@ -1,3 +1,4 @@
+#![allow(dead_code, unused_variables, unused_imports, unused_mut, unused_assignments)]
 use coralys_moga::traits::{Evaluated, FitnessEvaluator, GenomeFactory};
 use cvrp::moga_impl::CvrpEvaluator;
 use cvrp::{CvrpGenomeFactory, CvrpInstance};

@@ -17,7 +17,9 @@ pub mod push_eval;
 pub mod stale;
 
 pub use decode::{decode_full_mode_frame, decode_full_mode_packet, DecodeError};
-pub use depth_journal::{depth_snapshot_from_event, DepthSnapshotRecord};
+pub use depth_journal::{
+    depth_snapshot_from_event, depth_snapshot_row_from_cache_tick, DepthSnapshotRecord, PROTOCOL_ID as DEPTH_JOURNAL_PROTOCOL_ID,
+};
 pub use engine::{AcceptedEvent, EngineConfig, LinkedObservation, MarketEventEngine};
 pub use event::{DepthLevel, MarketEvent, SourceProvenance};
 pub use of_mark::{

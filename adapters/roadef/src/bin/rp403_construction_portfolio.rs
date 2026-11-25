@@ -1,3 +1,4 @@
+#![allow(dead_code, unused_variables, unused_imports, unused_mut, unused_assignments)]
 use std::cmp::Reverse;
 /// rp403_construction_portfolio — RP-403: Construction Strategy Evaluation and Selection
 ///

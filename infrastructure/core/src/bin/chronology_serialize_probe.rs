@@ -4,6 +4,7 @@
 //!   NormalizedTick -> serde_json -> line bytes -> chronology_hash
 //! against frozen fixture excerpts. Does not grant producer authority.
 
+#![allow(dead_code, unused_variables, unused_imports, unused_mut, unused_assignments)]
 use clap::Parser;
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};

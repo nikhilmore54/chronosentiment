@@ -1,6 +1,8 @@
-// roadef_qualification.rs – Qualification entry point for Set‑B instances
-// Accepts: NET TM SCENARIO OUTPUT
-// Uses the exact frozen per‑instance solver pipeline from campaign_engine.rs
+// roadef_qualification.rs – Official ROADEF 2026 Qualification Solver
+// Accepts: <net> <tm> <scenario> <output> [-t <time_limit>] [-s <seed>] [--threads <threads>]
+// Supports both positional arguments and flag-based arguments.
+// Integrates exact degree-1 topological floor detection, budget-gated surgical detours,
+// shared greedy routing, and strict lexicographical acceptance gating.
 
 use std::collections::HashSet;
 use std::fs::File;
@@ -12,10 +14,117 @@ use roadef::loader::{load_network, load_scenario, load_traffic_matrix};
 use roadef::models::{Network, Solution, SrPath};
 
 // ---------------------------------------------------------------------------
-// Per‑instance solver (copied from campaign_engine.rs without modification)
+// Lexicographical Comparison Helper
+// ---------------------------------------------------------------------------
+fn is_lex_strictly_better(v_cand: &[f64], v_ref: &[f64]) -> bool {
+    let tol = 1e-6;
+    let n = v_cand.len().min(v_ref.len());
+    for i in 0..n {
+        let diff = v_cand[i] - v_ref[i];
+        if diff < -tol {
+            return true;
+        } else if diff > tol {
+            return false;
+        }
+    }
+    v_cand.len() < v_ref.len()
+}
+
+// ---------------------------------------------------------------------------
+// Topological Invariant Lower Bound Computation
+// ---------------------------------------------------------------------------
+fn compute_topological_floor(
+    net: &Network,
+    tm: &roadef::models::TrafficMatrix,
+    scenario: &roadef::models::Scenario,
+    num_slots: usize,
+) -> f64 {
+    let mut link_caps: std::collections::HashMap<u64, f64> = std::collections::HashMap::new();
+    for link in &net.links {
+        link_caps.insert(link.id, link.capacity);
+    }
+    let mut max_floor = 0.0f64;
+    for t in 0..num_slots {
+        let disabled_in_slot: HashSet<u64> = scenario
+            .interventions
+            .iter()
+            .filter(|i| i.t == t)
+            .flat_map(|i| i.links.iter().copied())
+            .collect();
+        let mut active_out: std::collections::HashMap<u64, Vec<u64>> =
+            std::collections::HashMap::new();
+        let mut active_in: std::collections::HashMap<u64, Vec<u64>> =
+            std::collections::HashMap::new();
+        for link in &net.links {
+            if disabled_in_slot.contains(&link.id) || link.capacity <= 0.0 {
+                continue;
+            }
+            active_out.entry(link.from).or_default().push(link.id);
+            active_in.entry(link.to).or_default().push(link.id);
+        }
+        let mut forced_loads: std::collections::HashMap<u64, f64> =
+            std::collections::HashMap::new();
+        for d in &tm.demands {
+            let vol = if t < d.v.len() { d.v[t] } else { 0.0 };
+            if vol <= 0.0 {
+                continue;
+            }
+            let s_out = active_out.get(&d.s);
+            let t_in = active_in.get(&d.t);
+            let out_lid = if let Some(arcs) = s_out {
+                if arcs.len() == 1 {
+                    Some(arcs[0])
+                } else {
+                    None
+                }
+            } else {
+                None
+            };
+            let in_lid = if let Some(arcs) = t_in {
+                if arcs.len() == 1 {
+                    Some(arcs[0])
+                } else {
+                    None
+                }
+            } else {
+                None
+            };
+            match (out_lid, in_lid) {
+                (Some(o), Some(i)) => {
+                    if o == i {
+                        *forced_loads.entry(o).or_insert(0.0) += vol;
+                    } else {
+                        *forced_loads.entry(o).or_insert(0.0) += vol;
+                        *forced_loads.entry(i).or_insert(0.0) += vol;
+                    }
+                }
+                (Some(o), None) => {
+                    *forced_loads.entry(o).or_insert(0.0) += vol;
+                }
+                (None, Some(i)) => {
+                    *forced_loads.entry(i).or_insert(0.0) += vol;
+                }
+                (None, None) => {}
+            }
+        }
+        for (lid, load) in forced_loads {
+            if let Some(&cap) = link_caps.get(&lid) {
+                if cap > 0.0 {
+                    let sat = load / cap;
+                    if sat > max_floor {
+                        max_floor = sat;
+                    }
+                }
+            }
+        }
+    }
+    max_floor
+}
+
+// ---------------------------------------------------------------------------
+// Per-instance solver pipeline
 // ---------------------------------------------------------------------------
 fn run_instance(net: &Network, tm: &roadef::models::TrafficMatrix, scenario: &roadef::models::Scenario, out_path: &str) -> anyhow::Result<()> {
-    // Derived parameters
     let num_demands = tm.demands.len();
     let num_slots = tm.num_time_slots;
     let max_seg = if scenario.max_segments >= 0 {
@@ -23,87 +132,105 @@ fn run_instance(net: &Network, tm: &roadef::models::TrafficMatrix, scenario: &ro
     } else {
         100
     };
-    let _budget_t1 = scenario.budget.iter().find(|b| b.t == 1).map(|b| b.value).unwrap_or(0);
 
-    // Disabled links across all time slots
-    let disabled_all: HashSet<u64> = scenario.interventions.iter().flat_map(|i| i.links.iter().copied()).collect();
+    let evaluator = RoadefEvaluator::new(net, tm.clone(), scenario.clone());
 
-    // Greedy shared assignment with per-slot flow tracking and bottleneck rip-up & reroute
-    let shared_assign = solve_greedy(&net, &tm.demands, num_slots, scenario, &disabled_all, max_seg);
+    // 1. Evaluate canonical empty ECMP baseline
+    let empty_sol = Solution { srpaths: vec![] };
+    let (empty_res, _) = evaluator.evaluate_solution_cached(&empty_sol);
+    let mut best_srpaths: Vec<SrPath> = Vec::new();
+    let mut best_res = roadef::evaluator::EvaluationResult { valid: empty_res.valid, obj: empty_res.obj };
+    let mut best_lex = evaluator.compute_lex_vector(&empty_sol);
+    let best_mlu = best_lex.as_ref().and_then(|v| v.first().copied()).unwrap_or(0.0);
 
-    // Build srpaths for all time slots (identical waypoints ensure 0 reconfiguration distance)
-    let mut srpaths: Vec<SrPath> = Vec::new();
-    for d_idx in 0..num_demands {
-        if let Some(w) = shared_assign.get(&d_idx) {
-            if !w.is_empty() {
-                for slot in 0..num_slots {
-                    srpaths.push(SrPath { d: d_idx, t: slot, w: w.clone() });
+    // Compute theoretical degree-1 leaf cut-edge saturation floor
+    let topo_floor = compute_topological_floor(net, tm, scenario, num_slots);
+
+    // 2. Budget-gated surgical 1-hop detour pass from empty baseline
+    if best_mlu >= 0.9999 || best_res.obj >= 999_999.0 {
+        let mut detour_paths = Vec::new();
+        let mut detour_res = roadef::evaluator::EvaluationResult { valid: best_res.valid, obj: best_res.obj };
+        run_surgical_detours(
+            net,
+            tm,
+            scenario,
+            &evaluator,
+            &mut detour_paths,
+            &mut detour_res,
+            num_slots,
+            max_seg,
+        );
+        if detour_res.valid && !detour_paths.is_empty() {
+            if let Some(lex) = evaluator.compute_lex_vector(&Solution { srpaths: detour_paths.clone() }) {
+                if best_lex.is_none() || is_lex_strictly_better(&lex, best_lex.as_ref().unwrap()) {
+                    println!("Detour from empty improved: obj={:.4}", detour_res.obj);
+                    best_srpaths = detour_paths;
+                    best_res = detour_res;
+                    best_lex = Some(lex);
                 }
             }
         }
     }
 
-    // Evaluate using cached backward Dijkstra (20x faster on large fleets)
-    let evaluator = RoadefEvaluator::new(&net, tm.clone(), scenario.clone());
-    let solution = Solution { srpaths: srpaths.clone() };
-    let (mut result, _) = evaluator.evaluate_solution_cached(&solution);
+    let cur_mlu = best_lex.as_ref().and_then(|v| v.first().copied()).unwrap_or(0.0);
 
-    // If initial solution is not finite, run budget-gated surgical detours on core overloads
-    if !result.valid || result.obj.is_infinite() {
-        run_surgical_detours(
-            &net,
-            tm,
-            scenario,
-            &evaluator,
-            &mut srpaths,
-            &mut result,
-            num_slots,
-            max_seg,
-        );
-    }
-    // Secondary fallback: if still infinite, start from default ECMP baseline (empty srpaths)
-    if !result.valid || result.obj.is_infinite() {
-        let mut empty_paths = Vec::new();
-        let (mut empty_res, _) = evaluator.evaluate_solution_cached(&Solution { srpaths: vec![] });
-        run_surgical_detours(
-            &net,
-            tm,
-            scenario,
-            &evaluator,
-            &mut empty_paths,
-            &mut empty_res,
-            num_slots,
-            max_seg,
-        );
-        if empty_res.valid && empty_res.obj.is_finite() {
-            srpaths = empty_paths;
-            result = empty_res;
+    // 3. Skip heavy greedy search if already matching topological global optimum or high demand fleet with finite detour
+    let skip_greedy = (cur_mlu <= topo_floor + 1e-6 && topo_floor >= 0.99)
+        || (num_demands > 10_000 && cur_mlu <= 0.995 && best_res.valid)
+        || (num_demands > 6_000 && cur_mlu < 0.98 && !best_srpaths.is_empty());
+
+    if !skip_greedy {
+        let disabled_all: HashSet<u64> = scenario.interventions.iter().flat_map(|i| i.links.iter().copied()).collect();
+        let shared_assign = solve_greedy(net, &tm.demands, num_slots, scenario, &disabled_all, max_seg);
+
+        let mut greedy_paths: Vec<SrPath> = Vec::new();
+        for d_idx in 0..num_demands {
+            if let Some(w) = shared_assign.get(&d_idx) {
+                if !w.is_empty() {
+                    for slot in 0..num_slots {
+                        greedy_paths.push(SrPath { d: d_idx, t: slot, w: w.clone() });
+                    }
+                }
+            }
+        }
+
+        let cand_sol = Solution { srpaths: greedy_paths.clone() };
+        let (mut cand_res, _) = evaluator.evaluate_solution_cached(&cand_sol);
+        let cand_mlu = evaluator.compute_lex_vector(&cand_sol).as_ref().and_then(|v| v.first().copied()).unwrap_or(0.0);
+
+        if cand_res.valid && (cand_mlu >= 0.85 || cand_res.obj >= 999_999.0) {
+            run_surgical_detours(
+                net,
+                tm,
+                scenario,
+                &evaluator,
+                &mut greedy_paths,
+                &mut cand_res,
+                num_slots,
+                max_seg,
+            );
+        }
+
+        if cand_res.valid {
+            if let Some(cand_lex) = evaluator.compute_lex_vector(&Solution { srpaths: greedy_paths.clone() }) {
+                if best_lex.is_none() || is_lex_strictly_better(&cand_lex, best_lex.as_ref().unwrap()) {
+                    println!("Greedy solution accepted: obj={:.4}", cand_res.obj);
+                    best_srpaths = greedy_paths;
+                    best_res = cand_res;
+                    best_lex = Some(cand_lex);
+                } else {
+                    println!("Greedy solution rejected by lexicographical gate (regressed downstream ranks)");
+                }
+            }
         }
     }
 
-    let empty_sol = Solution { srpaths: vec![] };
-    let (empty_result, _) = evaluator.evaluate_solution_cached(&empty_sol);
-
-    let final_srpaths = if !result.valid {
-        println!("INVALID → empty (obj={:.4})", empty_result.obj);
-        vec![]
-    } else if result.obj.is_finite() && (empty_result.obj.is_infinite() || result.obj <= empty_result.obj) {
-        println!("obj={:.4} (empty={:.4})", result.obj, empty_result.obj);
-        srpaths
-    } else if result.obj.is_infinite() && empty_result.obj.is_finite() {
-        println!("inf → empty (obj={:.4})", empty_result.obj);
-        vec![]
-    } else if result.obj.is_infinite() && empty_result.obj.is_infinite() {
-        println!("obj=inf (empty=inf, keeping ours)");
-        srpaths
-    } else {
-        println!("obj={:.4} worse than empty={:.4} → using empty", result.obj, empty_result.obj);
-        vec![]
-    };
+    let final_mlu = best_lex.as_ref().and_then(|v| v.first().copied()).unwrap_or(0.0);
+    println!("Final solution: valid={} mlu={:.6} srpaths={}", best_res.valid, final_mlu, best_srpaths.len());
 
     // Serialize JSON
     let sol_json = serde_json::json!({
-        "srpaths": final_srpaths.iter().map(|p| serde_json::json!({
+        "srpaths": best_srpaths.iter().map(|p| serde_json::json!({
             "d": p.d,
             "t": p.t,
             "w": p.w
@@ -127,7 +254,8 @@ fn run_surgical_detours(
     num_slots: usize,
     _max_segments: usize,
 ) {
-    if result.valid && result.obj.is_finite() {
+    if result.valid && result.obj < 999_999.0 {
+        // Already finite and sub-saturation
         return;
     }
 
@@ -233,7 +361,7 @@ fn run_surgical_detours(
             None => continue,
         };
 
-        let disabled_in_slot: HashSet<u64> = scenario.interventions.iter()
+        let _disabled_in_slot: HashSet<u64> = scenario.interventions.iter()
             .filter(|i| i.t == t)
             .flat_map(|i| i.links.iter().copied())
             .collect();
@@ -248,23 +376,23 @@ fn run_surgical_detours(
         top_slot_demands.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap_or(std::cmp::Ordering::Equal));
         top_slot_demands.truncate(40);
 
-        let mut cand_demands: Vec<(usize, f64)> = top_slot_demands.into_iter()
-            .filter(|&(d_idx, _vol)| {
-                let d = &tm.demands[d_idx];
-                if d.s == u || d.t == v {
-                    return true;
-                }
-                if let Some(path) = dijkstra_path(net, d.s, d.t, &disabled_in_slot) {
-                    for w in path.windows(2) {
-                        if w[0] == u && w[1] == v {
-                            return true;
-                        }
+        let mut cand_demands: Vec<(usize, f64)> = Vec::new();
+        for &(d_idx, vol) in &top_slot_demands {
+            let d = &tm.demands[d_idx];
+            if d.s == u || d.t == v {
+                cand_demands.push((d_idx, vol));
+            }
+        }
+        if cand_demands.len() < 10 {
+            for &(d_idx, vol) in &top_slot_demands {
+                if !cand_demands.iter().any(|&(idx, _)| idx == d_idx) {
+                    cand_demands.push((d_idx, vol));
+                    if cand_demands.len() >= 15 {
+                        break;
                     }
                 }
-                false
-            })
-            .collect();
-        cand_demands.truncate(15);
+            }
+        }
 
         // Candidate waypoints:
         // - u and v themselves
@@ -315,13 +443,18 @@ fn run_surgical_detours(
                 }
 
                 let cand_sol = Solution { srpaths: cand_srpaths.clone() };
-                let (cand_res, _) = evaluator.evaluate_solution_cached(&cand_sol);
-                if cand_res.valid && cand_res.obj.is_finite() {
-                    println!("Surgical detour success: d={} t={} wp=[{}] -> obj={:.6}", d_idx, t, wp, cand_res.obj);
-                    *srpaths = cand_srpaths;
-                    *result = cand_res;
-                    flipped = true;
-                    break;
+                // Fast check slot t loads first before full 12-slot evaluation:
+                if let Some(cand_slot_loads) = evaluator.compute_loads(t, &cand_sol) {
+                    if cand_slot_loads.mlu < loads.mlu - 1e-6 {
+                        let (cand_res, _) = evaluator.evaluate_solution_cached(&cand_sol);
+                        if cand_res.valid && cand_res.obj < result.obj {
+                            println!("Surgical detour success: d={} t={} wp=[{}] -> mlu={:.6} obj={:.6}", d_idx, t, wp, cand_slot_loads.mlu, cand_res.obj);
+                            *srpaths = cand_srpaths;
+                            *result = roadef::evaluator::EvaluationResult { valid: cand_res.valid, obj: cand_res.obj };
+                            flipped = true;
+                            break;
+                        }
+                    }
                 }
             }
             if flipped {
@@ -743,18 +876,72 @@ fn load_aware_path(
 
 fn main() -> anyhow::Result<()> {
     let args: Vec<String> = env::args().collect();
-    if args.len() != 5 {
-        eprintln!("Usage: {} <net> <tm> <scenario> <output>", args[0]);
+    let mut net_path = String::new();
+    let mut tm_path = String::new();
+    let mut sc_path = String::new();
+    let mut out_path = String::new();
+    let mut _time_limit: Option<f64> = None;
+    let mut _seed: Option<u64> = None;
+    let mut num_threads: usize = 1;
+
+    let mut positional = Vec::new();
+    let mut i = 1;
+    while i < args.len() {
+        match args[i].as_str() {
+            "--net" | "-n" => {
+                i += 1;
+                if i < args.len() { net_path = args[i].clone(); }
+            }
+            "--tm" | "-m" => {
+                i += 1;
+                if i < args.len() { tm_path = args[i].clone(); }
+            }
+            "--scenario" | "--sc" | "-c" => {
+                i += 1;
+                if i < args.len() { sc_path = args[i].clone(); }
+            }
+            "--output" | "--srpaths" | "-o" => {
+                i += 1;
+                if i < args.len() { out_path = args[i].clone(); }
+            }
+            "-t" | "--time" | "--time-limit" => {
+                i += 1;
+                if i < args.len() { _time_limit = args[i].parse().ok(); }
+            }
+            "-s" | "--seed" => {
+                i += 1;
+                if i < args.len() { _seed = args[i].parse().ok(); }
+            }
+            "--threads" | "-j" => {
+                i += 1;
+                if i < args.len() { num_threads = args[i].parse().unwrap_or(1); }
+            }
+            other => {
+                if !other.starts_with('-') {
+                    positional.push(other.to_string());
+                }
+            }
+        }
+        i += 1;
+    }
+
+    if net_path.is_empty() && !positional.is_empty() { net_path = positional[0].clone(); }
+    if tm_path.is_empty() && positional.len() >= 2 { tm_path = positional[1].clone(); }
+    if sc_path.is_empty() && positional.len() >= 3 { sc_path = positional[2].clone(); }
+    if out_path.is_empty() && positional.len() >= 4 { out_path = positional[3].clone(); }
+
+    if net_path.is_empty() || tm_path.is_empty() || sc_path.is_empty() || out_path.is_empty() {
+        eprintln!("Usage: {} <net> <tm> <scenario> <output> [-t <time>] [-s <seed>] [--threads <threads>]", args[0]);
+        eprintln!("   or: {} --net <net> --tm <tm> --scenario <scenario> --output <output>", args[0]);
         std::process::exit(1);
     }
-    let net_path = &args[1];
-    let tm_path = &args[2];
-    let sc_path = &args[3];
-    let out_path = &args[4];
 
-    let net = load_network(net_path)?;
-    let tm = load_traffic_matrix(tm_path)?;
-    let scenario = load_scenario(sc_path)?;
+    // Set rayon thread pool for controlled single-threaded or thread-capped execution
+    let _ = rayon::ThreadPoolBuilder::new().num_threads(num_threads).build_global();
 
-    run_instance(&net, &tm, &scenario, out_path)
+    let net = load_network(&net_path)?;
+    let tm = load_traffic_matrix(&tm_path)?;
+    let scenario = load_scenario(&sc_path)?;
+
+    run_instance(&net, &tm, &scenario, &out_path)
 }

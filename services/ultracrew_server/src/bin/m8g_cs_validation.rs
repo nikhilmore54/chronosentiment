@@ -1,3 +1,4 @@
+#![allow(dead_code, unused_variables, unused_imports, unused_mut, unused_assignments)]
 use chronosentiment_optimization::{
     Candidate, CandidateEvaluation, FitnessEvaluator, GaConfig, crossover, initialize_population,
     mutate_candidate, tournament_selection,

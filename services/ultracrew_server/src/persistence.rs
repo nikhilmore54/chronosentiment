@@ -2,7 +2,7 @@ use serde::{Deserialize, Serialize};
 use serde_json;
 use std::fs::{self, File};
 use std::io::{BufReader, BufWriter};
-use std::path::{Path, PathBuf};
+use std::path::Path;
 
 fn ensure_dir(path: &Path) {
     if let Err(e) = fs::create_dir_all(path) {

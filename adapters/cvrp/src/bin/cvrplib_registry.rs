@@ -1,3 +1,5 @@
+#![allow(dead_code)]
+
 /// CVRPLIB Benchmark Metadata Registry — Two-Layer Architecture
 ///
 /// Layer 1: BenchmarkMetadata — operational data the solver needs to execute a benchmark.

@@ -200,7 +200,7 @@ impl Partitioner for AdaptiveTemporalPartitioner {
             }
             
             // Compute D_crossover
-            let mut crossover_edges = 0;
+            let mut _crossover_edges = 0;
             for s1 in test_core {
                 for s2 in &test_halo {
                     let overlap = !(s1.start_hour + s1.duration_hours <= s2.start_hour || s2.start_hour + s2.duration_hours <= s1.start_hour);
@@ -208,7 +208,7 @@ impl Partitioner for AdaptiveTemporalPartitioner {
                         (s1.start_hour + s1.duration_hours <= s2.start_hour && s2.start_hour - (s1.start_hour + s1.duration_hours) < 8) ||
                         (s2.start_hour + s2.duration_hours <= s1.start_hour && s1.start_hour - (s2.start_hour + s2.duration_hours) < 8)
                     );
-                    if overlap || rest_violation { crossover_edges += 1; }
+                    if overlap || rest_violation { _crossover_edges += 1; }
                 }
             }
             
@@ -249,7 +249,7 @@ impl Partitioner for AdaptiveTemporalPartitioner {
         if start_idx < sorted_shifts.len() {
             let actual_core = &sorted_shifts[start_idx..];
             let actual_window_start = actual_core.first().unwrap().start_hour;
-            let actual_window_end = u64::MAX;
+            let _actual_window_end = u64::MAX;
             
             let actual_halo_start = actual_window_start.saturating_sub(self.halo_hours);
             

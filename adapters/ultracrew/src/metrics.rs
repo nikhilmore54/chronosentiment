@@ -30,7 +30,7 @@ impl MetricEngine<ScheduleGenome> for UltraCrewMetricEngine {
         let mut skill_coverage = 0;
         let total_shifts = self.context.shifts.len();
 
-        for (worker_id, shifts) in &worker_shifts {
+        for (_worker_id, shifts) in &worker_shifts {
             let mut sorted_shifts = shifts.clone();
             sorted_shifts.sort_by_key(|s| s.start_hour);
 

@@ -1,3 +1,4 @@
+#![allow(dead_code, unused_variables, unused_imports, unused_mut, unused_assignments)]
 /// campaign_rc006a_diag — RC-006A Phase 1: Invariant Corruption Diagnostic
 ///
 /// Runs only setA-18 and setA-20 (the two instances with IFR=1.00 but final valid=false)

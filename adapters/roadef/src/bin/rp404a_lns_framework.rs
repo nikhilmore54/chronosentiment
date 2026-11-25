@@ -1,3 +1,4 @@
+#![allow(dead_code, unused_variables, unused_imports, unused_mut, unused_assignments)]
 use std::cmp::Reverse;
 /// rp404a_lns_framework — RP-404A: Large Neighbourhood Search Framework
 ///

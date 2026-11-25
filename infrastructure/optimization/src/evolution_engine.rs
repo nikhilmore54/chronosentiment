@@ -6,7 +6,7 @@ use serde::{Deserialize, Serialize};
 use std::cmp::Ordering;
 
 use coralys_moga::config::EvolutionConfig;
-use coralys_moga::engine::{EvolutionEngine, GaResult as CoralysGaResult};
+use coralys_moga::engine::EvolutionEngine;
 use coralys_moga::runtime::optimization::metric::MetricReport;
 use coralys_moga::traits::{
     CrossoverOperator, Evaluated, FitnessEvaluator as CoralysFitnessEvaluator, Genome,

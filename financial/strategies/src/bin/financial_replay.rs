@@ -1,3 +1,4 @@
+#![allow(dead_code, unused_variables, unused_imports, unused_mut, unused_assignments)]
 use clap::Parser;
 use serde::Deserialize;
 use sha2::{Digest, Sha256};

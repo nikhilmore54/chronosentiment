@@ -1,3 +1,4 @@
+#![allow(dead_code, unused_variables, unused_imports, unused_mut, unused_assignments)]
 use clap::Parser;
 use coralys_ecology::models::CognitionGeometry;
 use coralys_ecology::models::MemoryState;

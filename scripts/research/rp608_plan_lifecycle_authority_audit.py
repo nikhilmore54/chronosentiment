@@ -25,6 +25,8 @@ WORKSPACE = Path(__file__).resolve().parents[2]
 CRYPTO = WORKSPACE / "live_capture" / "shadow_validation" / "crypto"
 IST = timezone(timedelta(hours=5, minutes=30))
 
+ETH = WORKSPACE / "live_capture" / "shadow_validation" / "crypto_eth"
+
 BOOKS = (
     ("CRYPTO_PRIMARY", CRYPTO / "trade_plan_overlay_v1" / "trade_plan_outcomes.jsonl"),
     (
@@ -32,12 +34,33 @@ BOOKS = (
         CRYPTO / "trade_plan_overlay_baseline_parallel_v1" / "trade_plan_outcomes.jsonl",
     ),
     (
+        "CRYPTO_R50",
+        CRYPTO / "trade_plan_overlay_gate2x_r50_parallel_v1" / "trade_plan_outcomes.jsonl",
+    ),
+    (
+        "CRYPTO_FLOOR_LOCK",
+        CRYPTO
+        / "trade_plan_overlay_gate2x_floorlock_parallel_v1"
+        / "trade_plan_outcomes.jsonl",
+    ),
+    (
         "CRYPTO_ETH_PRIMARY",
-        WORKSPACE
-        / "live_capture"
-        / "shadow_validation"
-        / "crypto_eth"
-        / "trade_plan_overlay_v1"
+        ETH / "trade_plan_overlay_v1" / "trade_plan_outcomes.jsonl",
+    ),
+    (
+        "CRYPTO_ETH_BASELINE",
+        ETH
+        / "trade_plan_overlay_baseline_parallel_v1"
+        / "trade_plan_outcomes.jsonl",
+    ),
+    (
+        "CRYPTO_ETH_R50",
+        ETH / "trade_plan_overlay_gate2x_r50_parallel_v1" / "trade_plan_outcomes.jsonl",
+    ),
+    (
+        "CRYPTO_ETH_FLOOR_LOCK",
+        ETH
+        / "trade_plan_overlay_gate2x_floorlock_parallel_v1"
         / "trade_plan_outcomes.jsonl",
     ),
 )
@@ -187,8 +210,8 @@ def main() -> int:
             f"hint={report['track_a_soak_hint']}"
         )
         print(
-            "next: confirm systemd REQUIRE_RUST=1 + multi-day rust authority; "
-            "then retire Python Adaptive/Gate2X manage bodies "
+            "next: Track A manage retirement done (PLAN_LIFECYCLE=1); "
+            "keep multi-day rust authority / NSE stamp; Track C = WS/daemon port "
             "(see docs/research/rp608_rust_migration_abc_plan_2026_11_22.md)"
         )
     return 0

@@ -1,4 +1,4 @@
-use crate::ecmp::{expand_sr_path, expand_sr_path_cached};
+use crate::ecmp::expand_sr_path_cached;
 use crate::evaluator::RoadefEvaluator;
 use crate::moga_impl::RoadefGenome;
 use crate::path::SrPathBit;

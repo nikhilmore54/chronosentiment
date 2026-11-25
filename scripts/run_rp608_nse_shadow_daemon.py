@@ -215,11 +215,21 @@ from scripts.rp608_nse_coralys_input_context import (  # noqa: E402
 )
 from scripts.rp608_nse_trade_pattern_match import (  # noqa: E402
     entry_gate_enabled as pattern_entry_gate_enabled,
+    entry_gate_mode as pattern_entry_gate_mode,
+    entry_gate_mode_baseline as pattern_entry_gate_mode_baseline,
     exit_gate_enabled as pattern_exit_gate_enabled,
     features_from_coralys_and_candles,
     load_library as load_trade_pattern_library,
     match_entry as match_trade_pattern_entry,
     match_exit as match_trade_pattern_exit,
+)
+from scripts.rp608_gate2e_shadow_insufficient import (  # noqa: E402
+    build_gate2e_shadow_insufficient_stamp,
+    gate2e_shadow_insufficient_enabled,
+    matches_shadow_observe_abstain_insufficient,
+)
+from scripts.rp608_gate2e_regime_align import (  # noqa: E402
+    evaluate_regime_align,
 )
 from scripts.rp608_nse_trade_pattern_library import (  # noqa: E402
     default_library_path as trade_pattern_library_path,
@@ -265,6 +275,20 @@ GATE2X_REVERSAL_IMMEDIATE_SURGES = {
 } or {"HIGH"}
 # v1.3: ratchet floor + deep-giveback dwell scale.
 GATE2X_RATCHET_PEAK_FRAC = float(os.environ.get("RP608_NSE_GATE2X_RATCHET_FRAC", "0.30"))
+# Gate 2X r50 booking twin (2026-11-24): sensible MFE lock; PRIMARY/BASELINE stay 0.30.
+GATE2X_RATCHET_PEAK_FRAC_R50 = float(
+    os.environ.get("RP608_NSE_GATE2X_RATCHET_FRAC_R50", "0.50")
+)
+GATE2X_R50_BOOKING_PROTOCOL = "RP-608-GATE2X-R50-BOOKING-TWIN-001"
+# Gate 2X floor-lock twin (2026-11-24): same ungated entry as BASELINE; exit at
+# protect floor immediately (no COST_CLEAR HARD_FLOOR bleed). Authority 0%.
+GATE2X_FLOOR_LOCK_TWIN_ENABLED = os.environ.get(
+    "RP608_NSE_GATE2X_FLOOR_LOCK_TWIN", "1"
+).strip().lower() not in {"0", "false", "no", "off"}
+GATE2X_FLOOR_LOCK_RATCHET = float(
+    os.environ.get("RP608_NSE_GATE2X_FLOOR_LOCK_RATCHET", "0.50")
+)
+GATE2X_FLOOR_LOCK_PROTOCOL = "RP-608-GATE2X-FLOOR-LOCK-TWIN-001"
 GATE2X_DEEP_GIVEBACK_FRAC = float(os.environ.get("RP608_NSE_GATE2X_DEEP_GB_FRAC", "0.50"))
 GATE2X_DEEP_GIVEBACK_DWELL_SCALE = float(
     os.environ.get("RP608_NSE_GATE2X_DEEP_GB_DWELL_SCALE", "0.40")
@@ -285,6 +309,17 @@ ADAPTIVE_TP_EXTEND_PCT = float(
     os.environ.get("RP608_NSE_ADAPTIVE_TP_PCT", "0.005")
 )  # fallback step when atr_14 missing (0.5% of entry)
 ADAPTIVE_TP_PROTOCOL = "RP-608-GATE5-NSE-ADAPTIVE-TP-001"
+# Adaptive = Coralys/Gate2X intelligent trail (not blind ATR). Legacy latches off.
+ADAPTIVE_PARTIAL_LATCH_ENABLED = os.environ.get(
+    "RP608_NSE_ADAPTIVE_PARTIAL_LATCH", "0"
+).strip().lower() in {"1", "true", "yes", "on"}
+ADAPTIVE_DUMB_ATR_TRAIL = os.environ.get(
+    "RP608_NSE_ADAPTIVE_DUMB_ATR_TRAIL", "0"
+).strip().lower() in {"1", "true", "yes", "on"}
+ADAPTIVE_TRAIL_ATR_MULT = float(os.environ.get("RP608_NSE_ADAPTIVE_TRAIL_ATR_MULT", "0.5"))
+ADAPTIVE_TRAIL_ARM_RISK_FRAC = float(
+    os.environ.get("RP608_NSE_ADAPTIVE_TRAIL_ARM_RISK_FRAC", "0.30")
+)
 
 
 def _nse_vol_surge_bucket(ratio: Optional[float]) -> str:
@@ -330,6 +365,23 @@ DEFAULT_CHECKPOINT_PATH = DEFAULT_OUTPUT_DIR / "rp608_nse_checkpoint.json"
 DEFAULT_TELEMETRY_LOG_PATH = DEFAULT_OUTPUT_DIR / "rp608_nse_shadow_telemetry.jsonl"
 DEFAULT_DECISION_CARDS_PATH = DEFAULT_OUTPUT_DIR / "rp608_nse_decision_cards.jsonl"
 DEFAULT_TRADE_JOURNAL_PATH = DEFAULT_OUTPUT_DIR / "rp608_nse_trade_journal.jsonl"
+# Gate2E BASELINE twin journal (crypto-style; never pooled with PRIMARY Estimand A).
+DEFAULT_BASELINE_TWIN_DIR = DEFAULT_OUTPUT_DIR / "estimand_a_baseline_parallel_v1"
+DEFAULT_TRADE_JOURNAL_BASELINE_PATH = (
+    DEFAULT_BASELINE_TWIN_DIR / "rp608_nse_trade_journal.jsonl"
+)
+NSE_BOOK_PRIMARY = "NSE_ESTIMAND_A"
+NSE_BOOK_BASELINE = "NSE_ESTIMAND_A_BASELINE_PARALLEL"
+NSE_BOOK_G2X_R50 = "NSE_ESTIMAND_A_GATE2X_R50_PARALLEL"
+NSE_BOOK_G2X_FLOOR_LOCK = "NSE_ESTIMAND_A_GATE2X_FLOOR_LOCK_PARALLEL"
+# PRIMARY (Gate2E) + BASELINE (ungated r30) + Gate2X r50 + floor-lock twin.
+# Floor-lock optional via RP608_NSE_GATE2X_FLOOR_LOCK_TWIN (default on).
+_ESTIMAND_BOOK_KEYS_CORE = ("primary", "baseline", "gate2x_r50")
+ESTIMAND_BOOK_KEYS = (
+    _ESTIMAND_BOOK_KEYS_CORE + ("gate2x_floor_lock",)
+    if GATE2X_FLOOR_LOCK_TWIN_ENABLED
+    else _ESTIMAND_BOOK_KEYS_CORE
+)
 DEFAULT_OPPORTUNITY_LOG_PATH = DEFAULT_OUTPUT_DIR / "rp608_nse_opportunity_registry.jsonl"
 DEFAULT_INSTRUMENT_MAP_CACHE = DEFAULT_OUTPUT_DIR / "kite_nse_instrument_map.json"
 DEFAULT_KITE_READINESS_REPORT = DEFAULT_OUTPUT_DIR / "kite_readiness_report.json"
@@ -1045,9 +1097,56 @@ class RP608NSEShadowDaemon:
         self.telemetry_path = self.output_dir / "rp608_nse_shadow_telemetry.jsonl"
         self.decision_cards_path = self.output_dir / "rp608_nse_decision_cards.jsonl"
         self.trade_journal_path = self.output_dir / "rp608_nse_trade_journal.jsonl"
+        # Gate2E BASELINE twin (crypto parity): ungated control; never pooled with PRIMARY.
+        self.baseline_twin_dir = self.output_dir / "estimand_a_baseline_parallel_v1"
+        self.baseline_twin_dir.mkdir(parents=True, exist_ok=True)
+        self.trade_journal_baseline_path = (
+            self.baseline_twin_dir / "rp608_nse_trade_journal.jsonl"
+        )
+        # Gate 2X r50 booking twin: same ungated entry as BASELINE; ratchet 0.50.
+        self.g2x_r50_twin_dir = self.output_dir / "estimand_a_gate2x_r50_parallel_v1"
+        self.g2x_r50_twin_dir.mkdir(parents=True, exist_ok=True)
+        self.trade_journal_g2x_r50_path = (
+            self.g2x_r50_twin_dir / "rp608_nse_trade_journal.jsonl"
+        )
+        # Gate 2X floor-lock twin: ungated entry; immediate protect-floor exit.
+        self.g2x_floor_lock_twin_dir = (
+            self.output_dir / "estimand_a_gate2x_floorlock_parallel_v1"
+        )
+        self.trade_journal_g2x_floor_lock_path = (
+            self.g2x_floor_lock_twin_dir / "rp608_nse_trade_journal.jsonl"
+        )
+        if GATE2X_FLOOR_LOCK_TWIN_ENABLED:
+            self.g2x_floor_lock_twin_dir.mkdir(parents=True, exist_ok=True)
+        self._primary_gate_mode = pattern_entry_gate_mode()
+        self._baseline_gate_mode = pattern_entry_gate_mode_baseline()
+        print(
+            f"[gate2e_twin] PRIMARY book={NSE_BOOK_PRIMARY} gate={self._primary_gate_mode!r} "
+            f"BASELINE book={NSE_BOOK_BASELINE} gate={self._baseline_gate_mode!r} "
+            f"dir={self.baseline_twin_dir}",
+            flush=True,
+        )
+        print(
+            f"[gate2x_r50_twin] book={NSE_BOOK_G2X_R50} gate={self._baseline_gate_mode!r} "
+            f"ratchet={GATE2X_RATCHET_PEAK_FRAC_R50} dir={self.g2x_r50_twin_dir} "
+            f"(PRIMARY/BASELINE r30 unchanged)",
+            flush=True,
+        )
+        if GATE2X_FLOOR_LOCK_TWIN_ENABLED:
+            print(
+                f"[gate2x_floorlock_twin] book={NSE_BOOK_G2X_FLOOR_LOCK} "
+                f"gate={self._baseline_gate_mode!r} ratchet={GATE2X_FLOOR_LOCK_RATCHET} "
+                f"dir={self.g2x_floor_lock_twin_dir} "
+                f"(immediate protect floor; PRIMARY/BASELINE/r50 unchanged)",
+                flush=True,
+            )
         self.opportunity_path = self.output_dir / "rp608_nse_opportunity_registry.jsonl"
         self.evaluations_path = self.output_dir / "rp608_nse_evaluations.jsonl"
         self.latest_evaluations_path = self.output_dir / "rp608_nse_latest_evaluations.json"
+        # Gate2E cold-start ABSTAIN_INSUFFICIENT observe (PRIMARY; stamp-only).
+        self.gate2e_shadow_insufficient_path = (
+            self.output_dir / "gate2e_shadow_insufficient.jsonl"
+        )
         self.bar_history_path = self.output_dir / "rp608_nse_bar_history.json"
         self.pending_evaluations_path = self.output_dir / "rp608_nse_pending_evaluations.json"
         self.next_session_recs_path = self.output_dir / "rp608_nse_next_session_recommendations.json"
@@ -1059,6 +1158,9 @@ class RP608NSEShadowDaemon:
         self._coralys_prior_logged_for: Optional[str] = None
         # Closed Estimand A trade_ids already journaled (prevents midbar re-entry churn).
         self._journaled_trade_ids: set[str] = set()
+        self._journaled_trade_ids_baseline: set[str] = set()
+        self._journaled_trade_ids_g2x_r50: set[str] = set()
+        self._journaled_trade_ids_g2x_floor_lock: set[str] = set()
         # Pattern gate: session-level "prior stop in similar ToA/traj family" (NOT symbol bans).
         self._pattern_session_date: Optional[str] = None
         self._pattern_session_stop_families: set[str] = set()
@@ -1092,8 +1194,23 @@ class RP608NSEShadowDaemon:
         if purged:
             print(f"[bar_history] purged {purged} quote-snapshot/dupe bars after load", flush=True)
         # Forward outcome pending queue and active trades restored from durable storage across restarts:
-        self.pending_directional_evals, self.active_trades = self.load_pending_evaluations()
-        self._journaled_trade_ids = self._load_journaled_trade_ids()
+        (
+            self.pending_directional_evals,
+            self.active_trades,
+            self.active_trades_baseline,
+            self.active_trades_g2x_r50,
+            self.active_trades_g2x_floor_lock,
+        ) = self.load_pending_evaluations()
+        self._journaled_trade_ids = self._load_journaled_trade_ids(self.trade_journal_path)
+        self._journaled_trade_ids_baseline = self._load_journaled_trade_ids(
+            self.trade_journal_baseline_path
+        )
+        self._journaled_trade_ids_g2x_r50 = self._load_journaled_trade_ids(
+            self.trade_journal_g2x_r50_path
+        )
+        self._journaled_trade_ids_g2x_floor_lock = self._load_journaled_trade_ids(
+            self.trade_journal_g2x_floor_lock_path
+        )
         self._bootstrap_pattern_session_stop_families()
         # Scrip-level decision ledger cache: {symbol: evaluation_record}
         self.last_evaluations: Dict[str, Dict[str, Any]] = {}
@@ -1397,10 +1514,21 @@ class RP608NSEShadowDaemon:
             ]
         self.atomic_commit_json(self.bar_history_path, raw_dict)
 
-    def load_pending_evaluations(self) -> Tuple[Dict[int, Dict[str, Dict[str, Any]]], Dict[str, Dict[str, Any]]]:
-        """Loads pending forward directional evaluations and active trades from durable storage."""
+    def load_pending_evaluations(
+        self,
+    ) -> Tuple[
+        Dict[int, Dict[str, Dict[str, Any]]],
+        Dict[str, Dict[str, Any]],
+        Dict[str, Dict[str, Any]],
+        Dict[str, Dict[str, Any]],
+        Dict[str, Dict[str, Any]],
+    ]:
+        """Loads pending forward evals + PRIMARY/BASELINE/r50/floor-lock actives (never pooled)."""
         pending_evals: Dict[int, Dict[str, Dict[str, Any]]] = {}
         active_trades: Dict[str, Dict[str, Any]] = {}
+        active_trades_baseline: Dict[str, Dict[str, Any]] = {}
+        active_trades_g2x_r50: Dict[str, Dict[str, Any]] = {}
+        active_trades_g2x_floor_lock: Dict[str, Dict[str, Any]] = {}
         if hasattr(self, "pending_evaluations_path") and self.pending_evaluations_path.exists():
             try:
                 with open(self.pending_evaluations_path, "r", encoding="utf-8") as f:
@@ -1408,15 +1536,26 @@ class RP608NSEShadowDaemon:
                 raw_pending = data.get("pending_directional_evals", {})
                 for k, v in raw_pending.items():
                     pending_evals[int(k)] = v
-                active_trades = data.get("active_trades", {})
+                active_trades = data.get("active_trades", {}) or {}
+                active_trades_baseline = data.get("active_trades_baseline", {}) or {}
+                active_trades_g2x_r50 = data.get("active_trades_g2x_r50", {}) or {}
+                active_trades_g2x_floor_lock = (
+                    data.get("active_trades_g2x_floor_lock", {}) or {}
+                )
             except Exception as e:
                 print(f"[!] Warning: Failed to load pending evaluations from {self.pending_evaluations_path}: {e}", file=sys.stderr)
-        return pending_evals, active_trades
+        return (
+            pending_evals,
+            active_trades,
+            active_trades_baseline,
+            active_trades_g2x_r50,
+            active_trades_g2x_floor_lock,
+        )
 
-    def _load_journaled_trade_ids(self) -> set:
-        """Load Estimand A trade_ids already present in the trade journal."""
+    def _load_journaled_trade_ids(self, journal_path: Optional[Path] = None) -> set:
+        """Load Estimand A trade_ids already present in a trade journal (any twin book)."""
         ids: set = set()
-        path = getattr(self, "trade_journal_path", None)
+        path = journal_path if journal_path is not None else getattr(self, "trade_journal_path", None)
         if path is None or not Path(path).exists():
             return ids
         try:
@@ -1435,6 +1574,160 @@ class RP608NSEShadowDaemon:
         except OSError as e:
             print(f"[!] Warning: Failed to load trade_ids from {path}: {e}", file=sys.stderr)
         return ids
+
+    @staticmethod
+    def _estimand_normalize_book(book: str) -> str:
+        b = str(book or "primary").strip().lower()
+        if b in {
+            "baseline",
+            "bl",
+            "nse_estimand_a_baseline_parallel",
+            NSE_BOOK_BASELINE.lower(),
+        }:
+            return "baseline"
+        if b in {
+            "gate2x_r50",
+            "r50",
+            "g2x_r50",
+            "nse_estimand_a_gate2x_r50_parallel",
+            NSE_BOOK_G2X_R50.lower(),
+        }:
+            return "gate2x_r50"
+        if b in {
+            "gate2x_floor_lock",
+            "floor_lock",
+            "floorlock",
+            "g2x_floor_lock",
+            "nse_estimand_a_gate2x_floor_lock_parallel",
+            NSE_BOOK_G2X_FLOOR_LOCK.lower(),
+        }:
+            return "gate2x_floor_lock"
+        return "primary"
+
+    @classmethod
+    def _estimand_book_is_baseline(cls, book: str) -> bool:
+        return cls._estimand_normalize_book(book) == "baseline"
+
+    @classmethod
+    def _estimand_book_is_g2x_r50(cls, book: str) -> bool:
+        return cls._estimand_normalize_book(book) == "gate2x_r50"
+
+    @classmethod
+    def _estimand_book_is_g2x_floor_lock(cls, book: str) -> bool:
+        return cls._estimand_normalize_book(book) == "gate2x_floor_lock"
+
+    @classmethod
+    def _estimand_entry_like_baseline(cls, book: str) -> bool:
+        """BASELINE + r50 + floor-lock twins share ungated entry; exit geometry differs."""
+        return cls._estimand_normalize_book(book) in (
+            "baseline",
+            "gate2x_r50",
+            "gate2x_floor_lock",
+        )
+
+    def _estimand_active_trades(self, book: str = "primary") -> Dict[str, Dict[str, Any]]:
+        key = self._estimand_normalize_book(book)
+        if key == "baseline":
+            return self.active_trades_baseline
+        if key == "gate2x_r50":
+            return self.active_trades_g2x_r50
+        if key == "gate2x_floor_lock":
+            return self.active_trades_g2x_floor_lock
+        return self.active_trades
+
+    def _estimand_journaled_ids(self, book: str = "primary") -> set:
+        key = self._estimand_normalize_book(book)
+        if key == "baseline":
+            return self._journaled_trade_ids_baseline
+        if key == "gate2x_r50":
+            return self._journaled_trade_ids_g2x_r50
+        if key == "gate2x_floor_lock":
+            return self._journaled_trade_ids_g2x_floor_lock
+        return self._journaled_trade_ids
+
+    def _estimand_journal_path(self, book: str = "primary") -> Path:
+        key = self._estimand_normalize_book(book)
+        if key == "baseline":
+            return self.trade_journal_baseline_path
+        if key == "gate2x_r50":
+            return self.trade_journal_g2x_r50_path
+        if key == "gate2x_floor_lock":
+            return self.trade_journal_g2x_floor_lock_path
+        return self.trade_journal_path
+
+    def _estimand_book_id(self, book: str = "primary") -> str:
+        key = self._estimand_normalize_book(book)
+        if key == "baseline":
+            return NSE_BOOK_BASELINE
+        if key == "gate2x_r50":
+            return NSE_BOOK_G2X_R50
+        if key == "gate2x_floor_lock":
+            return NSE_BOOK_G2X_FLOOR_LOCK
+        return NSE_BOOK_PRIMARY
+
+    def _estimand_gate_mode_for_book(self, book: str = "primary") -> str:
+        if self._estimand_entry_like_baseline(book):
+            return self._baseline_gate_mode
+        return self._primary_gate_mode
+
+    def _estimand_ratchet_frac(self, book: str = "primary") -> float:
+        if self._estimand_book_is_g2x_floor_lock(book):
+            return float(GATE2X_FLOOR_LOCK_RATCHET)
+        if self._estimand_book_is_g2x_r50(book):
+            return float(GATE2X_RATCHET_PEAK_FRAC_R50)
+        return float(GATE2X_RATCHET_PEAK_FRAC)
+
+    def _estimand_gate2x_protocol(self, book: str = "primary") -> str:
+        if self._estimand_book_is_g2x_floor_lock(book):
+            return GATE2X_FLOOR_LOCK_PROTOCOL
+        if self._estimand_book_is_g2x_r50(book):
+            return GATE2X_R50_BOOKING_PROTOCOL
+        return GATE2X_MFE_GIVEBACK_PROTOCOL
+
+    def _estimand_gate2x_preset(self, book: str = "primary") -> str:
+        """R4 Rust Gate2xPresetId — books never share one corrective."""
+        if self._estimand_book_is_g2x_floor_lock(book):
+            return "floor_lock_r50"
+        if self._estimand_book_is_g2x_r50(book):
+            return "r50_booking"
+        return "baseline_r30"
+
+    def _estimand_trade_id(self, *, book: str, signal_bar_idx: int, symbol: str) -> str:
+        key = self._estimand_normalize_book(book)
+        if key == "baseline":
+            return f"nse_bl_trade_{self.state.session_idx}_{int(signal_bar_idx)}_{symbol}"
+        if key == "gate2x_r50":
+            return f"nse_r50_trade_{self.state.session_idx}_{int(signal_bar_idx)}_{symbol}"
+        if key == "gate2x_floor_lock":
+            return f"nse_fl_trade_{self.state.session_idx}_{int(signal_bar_idx)}_{symbol}"
+        return f"nse_trade_{self.state.session_idx}_{int(signal_bar_idx)}_{symbol}"
+
+    def _estimand_active_count(self) -> int:
+        return (
+            len(self.active_trades)
+            + len(self.active_trades_baseline)
+            + len(self.active_trades_g2x_r50)
+            + len(self.active_trades_g2x_floor_lock)
+        )
+
+    def _regime_align_for_long(
+        self, *, book: str, history: Optional[List[Any]] = None
+    ) -> Dict[str, Any]:
+        """Gate2E PRIMARY: block NSE LONG on DIRECTIONAL BEARISH or DI-skew adverse.
+
+        BASELINE / g2x_r50 books stay ungated (CF) via regime_align_applies_to_book.
+        """
+        book_id = self._estimand_book_id(book)
+        regime: Dict[str, Any]
+        try:
+            regime = classify_market_regime(history or [])
+        except Exception:
+            regime = {"regime": "UNAVAILABLE", "reason": "CLASSIFIER_ERROR"}
+        return evaluate_regime_align(
+            direction="LONG",
+            regime=regime if isinstance(regime, dict) else None,
+            book_id=book_id,
+        )
 
     def _ist_session_date_str(self, ts_ms: Optional[int] = None) -> str:
         ist = timezone(timedelta(hours=5, minutes=30))
@@ -1578,15 +1871,24 @@ class RP608NSEShadowDaemon:
             bars_for_symbol_session=bars or None,
         )
         lib = self._load_trade_pattern_library()
-        # Primary = volume axes; parallel baseline stamp = pre-volume key (never pooled).
+        # PRIMARY = volume axes + Gate2E allow_only; BASELINE twin = pre-volume + ungated
+        # control (crypto Gate2E parity). Books never pooled.
         primary = match_trade_pattern_entry(
-            library=lib, feats=feats, include_volume=True
+            library=lib,
+            feats=feats,
+            include_volume=True,
+            gate_mode=self._primary_gate_mode,
         )
         baseline = match_trade_pattern_entry(
-            library=lib, feats=feats, include_volume=False
+            library=lib,
+            feats=feats,
+            include_volume=False,
+            gate_mode=self._baseline_gate_mode,
         )
+        primary["book"] = NSE_BOOK_PRIMARY
+        baseline["book"] = NSE_BOOK_BASELINE
         primary["baseline_parallel"] = baseline
-        primary["twin_book"] = "NSE_A_PATTERN_BASELINE_PARALLEL"
+        primary["twin_book"] = NSE_BOOK_BASELINE
         return primary
 
     def _match_exit_pattern_for_trade(
@@ -1630,7 +1932,7 @@ class RP608NSEShadowDaemon:
             include_volume=False,
         )
         primary["baseline_parallel"] = baseline
-        primary["twin_book"] = "NSE_A_PATTERN_BASELINE_PARALLEL"
+        primary["twin_book"] = NSE_BOOK_BASELINE
         return primary
 
     def save_pending_evaluations(self):
@@ -1638,6 +1940,9 @@ class RP608NSEShadowDaemon:
         payload = {
             "pending_directional_evals": {str(k): v for k, v in self.pending_directional_evals.items()},
             "active_trades": self.active_trades,
+            "active_trades_baseline": self.active_trades_baseline,
+            "active_trades_g2x_r50": self.active_trades_g2x_r50,
+            "active_trades_g2x_floor_lock": self.active_trades_g2x_floor_lock,
             "updated_at_utc_ms": int(time.time() * 1000),
             "updated_at_iso": datetime.now(timezone.utc).isoformat()
         }
@@ -2050,6 +2355,50 @@ class RP608NSEShadowDaemon:
             f.write(json.dumps(record, separators=(",", ":")) + "\n")
             f.flush()
 
+    def _maybe_log_gate2e_shadow_insufficient(
+        self,
+        *,
+        symbol: str,
+        pattern_stamp: Dict[str, Any],
+        suppressed_ms: int,
+        decision_bar_idx: Optional[int] = None,
+        source: str = "live_suppress",
+        direction: str = "LONG",
+        session_phase: Optional[str] = None,
+        require_blocks_entry: bool = True,
+    ) -> Optional[Dict[str, Any]]:
+        """Stamp-only cold-start ABSTAIN_INSUFFICIENT on PRIMARY (authority 0%).
+
+        Never opens a trade. Does not change live allow_only.
+        """
+        if not gate2e_shadow_insufficient_enabled():
+            return None
+        if not isinstance(pattern_stamp, dict):
+            return None
+        if pattern_stamp.get("book") == NSE_BOOK_BASELINE:
+            return None
+        if not matches_shadow_observe_abstain_insufficient(pattern_stamp):
+            return None
+        if require_blocks_entry and not bool(pattern_stamp.get("blocks_entry")):
+            return None
+        stamp = build_gate2e_shadow_insufficient_stamp(
+            pattern_stamp=pattern_stamp,
+            book_id=NSE_BOOK_PRIMARY,
+            twin_book=NSE_BOOK_BASELINE,
+            suppressed_ms=int(suppressed_ms),
+            symbol=symbol,
+            direction=direction,
+            plan_id=None,
+            decision_bar_idx=decision_bar_idx,
+            source=source,
+            extra={"session_phase": session_phase} if session_phase else None,
+        )
+        stamp["timestamp_utc"] = datetime.now(timezone.utc).strftime(
+            "%Y-%m-%dT%H:%M:%SZ"
+        )
+        self.append_jsonl(self.gate2e_shadow_insufficient_path, stamp)
+        return stamp
+
     def append_opportunity_drop(self, drop_type: str, reason: str, symbol: str = "ALL", **kwargs):
         """Logs an unexecutable or dropped opportunity to the opportunity ledger."""
         rec = {
@@ -2426,14 +2775,19 @@ class RP608NSEShadowDaemon:
             and coralys_input_gate_enabled()
             and not bool(input_ctx.get("allow_long_entry"))
         )
-        input_gate_blocks = bool(coralys_blocks or pattern_blocks)
+        # Gate2E regime-align (PRIMARY): block LONG into DIRECTIONAL BEARISH.
+        regime_align_stamp = self._regime_align_for_long(book="primary", history=history)
+        regime_blocks = bool(signal_entry and regime_align_stamp.get("blocks_entry"))
+        input_gate_blocks = bool(coralys_blocks or pattern_blocks or regime_blocks)
 
         # Gate G4 Quote Validation (Freshness, Non-Zero, Uncrossed Top-of-Book)
+        # Freshness is vs wall clock — NOT vs bar open (15m bar age ≠ stale L1).
         MAX_QUOTE_AGE_MS = 60000  # 60s max permitted age
         is_fresh = True
         quote_age_ms = None
-        if quote and quote.timestamp_utc_ms > 0 and latest_bar.timestamp_utc_ms > 0:
-            quote_age_ms = abs(latest_bar.timestamp_utc_ms - quote.timestamp_utc_ms)
+        if quote and quote.timestamp_utc_ms > 0:
+            wall_ms = int(time.time() * 1000)
+            quote_age_ms = abs(wall_ms - int(quote.timestamp_utc_ms))
             if quote_age_ms > MAX_QUOTE_AGE_MS:
                 is_fresh = False
 
@@ -2508,282 +2862,306 @@ class RP608NSEShadowDaemon:
         # close uses OHLC path-through (not close-only) + horizon / square-off.
         # Stop/target *levels* remain frozen (Gate 5) — fidelity only.
         # Provisional midbar must NOT open/close (prevents day-OHLC re-entry churn).
+        # PRIMARY (Gate2E) + BASELINE twin (ungated control) — never pooled.
         bar_hi = float(getattr(latest_bar, "high", p_ref) or p_ref)
         bar_lo = float(getattr(latest_bar, "low", p_ref) or p_ref)
 
-        if not mutate_trades:
-            # Observation-only: leave active_trades untouched on provisional polls.
-            pass
-        # Mandatory square-off at Bar 23 close (15:00 IST) — adapt to 15:00–15:15
-        # closing window / F&O continuous halt (do not carry into CAS).
-        elif bar_idx >= MANDATORY_SQUARE_OFF_BAR and symbol in self.active_trades:
-            with self._estimand_a_lock:
-                trade = self.active_trades.pop(symbol, None)
-                if trade is not None:
-                    self._close_trade(
-                        trade,
-                        exit_price=p_ref,
-                        exit_bar=bar_idx,
-                        exit_reason="MANDATORY_INTRADAY_SQUARE_OFF",
-                        exit_path="BAR_CLOSE",
-                        exit_mark_source="BAR_CLOSE",
-                    )
-
-        # Check existing open trade for exit conditions (OHLC path-through).
-        # Lock vs WS tick fill/manage thread.
-        elif symbol in self.active_trades:
-            with self._estimand_a_lock:
-                trade = self.active_trades.get(symbol)
-                if trade is None:
-                    pass
+        if mutate_trades:
+            for book in ESTIMAND_BOOK_KEYS:
+                active = self._estimand_active_trades(book)
+                journaled = self._estimand_journaled_ids(book)
+                if book == "primary":
+                    stamp = pattern_stamp
+                    gate_blocks = input_gate_blocks
                 else:
-                    entry_p = trade["entry_price"]
-                    # Excursions from bar high/low (path), not close alone.
-                    if bar_hi > trade["mfe_price"]:
-                        trade["mfe_price"] = bar_hi
-                    if bar_lo < trade["mae_price"]:
-                        trade["mae_price"] = bar_lo
-                    if p_ref > trade["mfe_price"]:
-                        trade["mfe_price"] = p_ref
-                    if p_ref < trade["mae_price"]:
-                        trade["mae_price"] = p_ref
+                    # BASELINE + r50 + floor-lock: ungated twin stamp (entry parity).
+                    stamp = pattern_stamp.get("baseline_parallel") or {}
+                    gate_blocks = bool(coralys_blocks or stamp.get("blocks_entry"))
 
-                    bars_held = bar_idx - trade["entry_bar_idx"]
-                    # Upgrade legacy open trades (fixed ±1%/1.5%) once to entry-frozen dynamic bounds.
-                    if trade.get("stop_loss_price") is None and EXIT_POLICY == "DYNAMIC_OHLCV_STRUCTURE_V1":
-                        fric = max(9.0, float(trade.get("half_spread_bps") or 2.5) * 2.0 + 8.0)
-                        ub = self.resolve_exit_boundaries(symbol, entry_p, history, fric)
-                        trade["stop_loss_price"] = ub["stop_price"]
-                        trade["target_price"] = ub["target_price"]
-                        trade["stop_loss_bps"] = ub["stop_bps"]
-                        trade["target_bps"] = ub["target_bps"]
-                        trade["atr_14"] = ub.get("atr_14")
-                        trade["exit_policy"] = ub.get("policy_id")
-                        trade["exit_trend_label"] = ub.get("trend_label")
-                        trade["exit_fallback_reason"] = ub.get("fallback_reason")
-                        trade["bounds_upgraded_at_bar"] = bar_idx
-                    # Prefer entry-frozen dynamic bounds; Arm A % only if still unset.
-                    # Gate 5 Adaptive TP: extend + lock SL on path-through TP before exits.
-                    allow_ohlc_path = bars_held >= 1
-                    try:
-                        self._latch_nse_gate2x_bar_volume(trade, history)
-                    except Exception:
-                        pass
-
-                    rust_bar = None
-                    if allow_ohlc_path:
-                        rust_bar = self._try_rust_nse_plan_lifecycle(
-                            trade,
-                            mark=float(p_ref),
-                            path_high=float(bar_hi),
-                            path_low=float(bar_lo),
-                            now_ms=int(t_decision),
-                        )
-                    closed_this_bar = False
-                    if rust_bar is not None and rust_bar.get("closed"):
-                        _term, exit_reason = map_lifecycle_close(rust_bar, book="nse")
-                        closed = self.active_trades.pop(symbol)
-                        if rust_bar.get("exit_reason_detail"):
-                            closed["exit_reason_detail"] = rust_bar["exit_reason_detail"]
-                        exit_px = float(
-                            rust_bar["exit_price"]
-                            if rust_bar.get("exit_price") is not None
-                            else p_ref
-                        )
-                        if exit_reason == "STOP_LOSS":
-                            path, src = "BAR_OHLC_PATH", "BAR_LOW"
-                        elif exit_reason == "TAKE_PROFIT":
-                            path, src = "BAR_OHLC_PATH", "BAR_HIGH"
-                        elif exit_reason == "GATE2X_MFE_GIVEBACK_PROTECT":
-                            path, src = "BAR_CLOSE_GATE2X", "BAR_CLOSE"
-                        else:
-                            path, src = "BAR_CLOSE", "BAR_CLOSE"
-                        self._close_trade(
-                            closed,
-                            exit_price=exit_px,
-                            exit_bar=bar_idx,
-                            exit_reason=exit_reason,
-                            exit_path=path,
-                            exit_mark_source=src,
-                        )
-                        closed_this_bar = True
-                    elif rust_bar is None:
-                        # REQUIRE_RUST: no silent Python Adaptive/Gate2X/SL-TP manage.
-                        # MAX_HOLD_HORIZON_180M below remains Python (cutover).
-                        _nse_require_block = bool(plan_lifecycle_require_rust())
-                        if not _nse_require_block:
-                            if allow_ohlc_path:
-                                self._adaptive_tp_nse_try_extend(
-                                    trade,
-                                    mark=float(p_ref),
-                                    path_high=float(bar_hi),
-                                    now_ms=int(t_decision),
-                                )
-                            sl_price = float(
-                                trade.get("stop_loss_price") or (entry_p * ARM_A_STOP_MULT)
-                            )
-                            tp_price = float(
-                                trade.get("target_price") or (entry_p * ARM_A_TARGET_MULT)
-                            )
-                            try:
-                                tp_level = int(trade.get("tp_level") or 0)
-                            except (TypeError, ValueError):
-                                tp_level = 0
-
-                            # Path-through only after entry bar (entry-bar H/L is not post-entry path).
-                            hit_sl = allow_ohlc_path and bar_lo <= sl_price
-                            hit_tp = allow_ohlc_path and bar_hi >= tp_price
-                            if (
-                                ADAPTIVE_TP_ENABLED
-                                and hit_tp
-                                and not hit_sl
-                                and tp_level < ADAPTIVE_TP_MAX_EXTENSIONS
-                            ):
-                                hit_tp = False
-                            if hit_sl and hit_tp and tp_level >= 1:
-                                hit_tp = False
-                                trade["ambiguous_resolved_as"] = "SL_ADAPTIVE_LOCK"
-                            try:
-                                giveback = self._gate2x_nse_update_mfe_giveback(
-                                    trade, mark=float(p_ref), now_ms=int(t_decision)
-                                )
-                            except Exception:
-                                giveback = None
-                            if giveback and not (hit_sl or hit_tp):
-                                self._close_trade(
-                                    self.active_trades.pop(symbol),
-                                    exit_price=float(p_ref),
-                                    exit_bar=bar_idx,
-                                    exit_reason="GATE2X_MFE_GIVEBACK_PROTECT",
-                                    exit_path="BAR_CLOSE_GATE2X",
-                                    exit_mark_source="BAR_CLOSE",
-                                )
-                                closed_this_bar = True
-                            elif hit_sl:
-                                self._close_trade(
-                                    self.active_trades.pop(symbol),
-                                    exit_price=sl_price,
-                                    exit_bar=bar_idx,
-                                    exit_reason="STOP_LOSS",
-                                    exit_path="BAR_OHLC_PATH",
-                                    exit_mark_source="BAR_LOW",
-                                )
-                                closed_this_bar = True
-                            elif hit_tp:
-                                closed = self.active_trades.pop(symbol)
-                                if (
-                                    ADAPTIVE_TP_ENABLED
-                                    and tp_level >= ADAPTIVE_TP_MAX_EXTENSIONS
-                                ):
-                                    closed["exit_reason_detail"] = "ADAPTIVE_TP_MAX_EXTENSIONS"
-                                self._close_trade(
-                                    closed,
-                                    exit_price=tp_price,
-                                    exit_bar=bar_idx,
-                                    exit_reason="TAKE_PROFIT",
-                                    exit_path="BAR_OHLC_PATH",
-                                    exit_mark_source="BAR_HIGH",
-                                )
-                                closed_this_bar = True
-
-                    if not closed_this_bar and symbol in self.active_trades:
-                        if bars_held >= 12:
+                # Mandatory square-off at Bar 23 close (15:00 IST)
+                if bar_idx >= MANDATORY_SQUARE_OFF_BAR and symbol in active:
+                    with self._estimand_a_lock:
+                        trade = active.pop(symbol, None)
+                        if trade is not None:
                             self._close_trade(
-                                self.active_trades.pop(symbol),
+                                trade,
                                 exit_price=p_ref,
                                 exit_bar=bar_idx,
-                                exit_reason="MAX_HOLD_HORIZON_180M",
+                                exit_reason="MANDATORY_INTRADAY_SQUARE_OFF",
                                 exit_path="BAR_CLOSE",
                                 exit_mark_source="BAR_CLOSE",
+                                book=book,
                             )
-                        elif bars_held >= 4 and p_ref > entry_p:
+                    continue
+
+                # Check existing open trade for exit conditions (OHLC path-through).
+                if symbol in active:
+                    with self._estimand_a_lock:
+                        trade = active.get(symbol)
+                        if trade is None:
+                            continue
+                        entry_p = trade["entry_price"]
+                        if bar_hi > trade["mfe_price"]:
+                            trade["mfe_price"] = bar_hi
+                        if bar_lo < trade["mae_price"]:
+                            trade["mae_price"] = bar_lo
+                        if p_ref > trade["mfe_price"]:
+                            trade["mfe_price"] = p_ref
+                        if p_ref < trade["mae_price"]:
+                            trade["mae_price"] = p_ref
+
+                        bars_held = bar_idx - trade["entry_bar_idx"]
+                        if trade.get("stop_loss_price") is None and EXIT_POLICY == "DYNAMIC_OHLCV_STRUCTURE_V1":
+                            fric = max(9.0, float(trade.get("half_spread_bps") or 2.5) * 2.0 + 8.0)
+                            ub = self.resolve_exit_boundaries(symbol, entry_p, history, fric)
+                            trade["stop_loss_price"] = ub["stop_price"]
+                            trade["target_price"] = ub["target_price"]
+                            trade["stop_loss_bps"] = ub["stop_bps"]
+                            trade["target_bps"] = ub["target_bps"]
+                            trade["atr_14"] = ub.get("atr_14")
+                            trade["exit_policy"] = ub.get("policy_id")
+                            trade["exit_trend_label"] = ub.get("trend_label")
+                            trade["exit_fallback_reason"] = ub.get("fallback_reason")
+                            trade["bounds_upgraded_at_bar"] = bar_idx
+                        allow_ohlc_path = bars_held >= 1
+                        try:
+                            self._latch_nse_gate2x_bar_volume(trade, history)
+                        except Exception:
+                            pass
+
+                        rust_bar = None
+                        closed_this_bar = False
+                        # R3: floor-lock twin is Rust-owned (params on trade).
+                        if allow_ohlc_path:
+                            rust_bar = self._try_rust_nse_plan_lifecycle(
+                                trade,
+                                mark=float(p_ref),
+                                path_high=float(bar_hi),
+                                path_low=float(bar_lo),
+                                now_ms=int(t_decision),
+                            )
+                        if (
+                            not closed_this_bar
+                            and rust_bar is not None
+                            and rust_bar.get("closed")
+                        ):
+                            _term, exit_reason = map_lifecycle_close(rust_bar, book="nse")
+                            closed = active.pop(symbol)
+                            if rust_bar.get("exit_reason_detail"):
+                                closed["exit_reason_detail"] = rust_bar["exit_reason_detail"]
+                            exit_px = float(
+                                rust_bar["exit_price"]
+                                if rust_bar.get("exit_price") is not None
+                                else p_ref
+                            )
+                            if exit_reason == "STOP_LOSS":
+                                path, src = "BAR_OHLC_PATH", "BAR_LOW"
+                            elif exit_reason == "TAKE_PROFIT":
+                                path, src = "BAR_OHLC_PATH", "BAR_HIGH"
+                            elif exit_reason == "GATE2X_MFE_GIVEBACK_PROTECT":
+                                path, src = "BAR_CLOSE_GATE2X", "BAR_CLOSE"
+                            else:
+                                path, src = "BAR_CLOSE", "BAR_CLOSE"
                             self._close_trade(
-                                self.active_trades.pop(symbol),
-                                exit_price=p_ref,
+                                closed,
+                                exit_price=exit_px,
                                 exit_bar=bar_idx,
-                                exit_reason="TARGET_HORIZON_60M",
-                                exit_path="BAR_CLOSE",
-                                exit_mark_source="BAR_CLOSE",
+                                exit_reason=exit_reason,
+                                exit_path=path,
+                                exit_mark_source=src,
+                                book=book,
                             )
-                        else:
-                            # Gate 2X observational exit-pattern stamp; optional paper early exit.
-                            try:
-                                exit_stamp = self._match_exit_pattern_for_trade(
-                                    symbol=symbol,
-                                    trade=trade,
-                                    bar_idx=bar_idx,
-                                )
-                                trade["trade_pattern_exit"] = exit_stamp
-                                if (
-                                    bars_held >= 1
-                                    and exit_stamp.get("apply_early_exit")
-                                    and pattern_exit_gate_enabled()
-                                ):
-                                    self._close_trade(
-                                        self.active_trades.pop(symbol),
-                                        exit_price=p_ref,
-                                        exit_bar=bar_idx,
-                                        exit_reason="PATTERN_REVERSE",
-                                        exit_path="BAR_CLOSE_PATTERN",
-                                        exit_mark_source="BAR_CLOSE",
+                            closed_this_bar = True
+                        elif not closed_this_bar and rust_bar is None:
+                            # Track A: Python Adaptive/Gate2X/SL only if PLAN_LIFECYCLE=0.
+                            _nse_require_block = bool(
+                                plan_lifecycle_enabled() or plan_lifecycle_require_rust()
+                            )
+                            if not _nse_require_block:
+                                try:
+                                    giveback = self._gate2x_nse_update_mfe_giveback(
+                                        trade, mark=float(p_ref), now_ms=int(t_decision)
                                     )
-                            except Exception:
-                                pass
+                                except Exception:
+                                    giveback = None
+                                if giveback:
+                                    closed = active.pop(symbol)
+                                    if ADAPTIVE_TP_ENABLED:
+                                        closed["adaptive_tp_armed"] = True
+                                        closed["exit_reason_detail"] = (
+                                            f"ADAPTIVE_CORALYS_{giveback}"
+                                        )
+                                    self._close_trade(
+                                        closed,
+                                        exit_price=float(p_ref),
+                                        exit_bar=bar_idx,
+                                        exit_reason="GATE2X_MFE_GIVEBACK_PROTECT",
+                                        exit_path="BAR_CLOSE_GATE2X",
+                                        exit_mark_source="BAR_CLOSE",
+                                        book=book,
+                                    )
+                                    closed_this_bar = True
+                                else:
+                                    if allow_ohlc_path:
+                                        self._adaptive_tp_nse_try_extend(
+                                            trade,
+                                            mark=float(p_ref),
+                                            path_high=float(bar_hi),
+                                            now_ms=int(t_decision),
+                                        )
+                                    sl_price = float(
+                                        trade.get("stop_loss_price")
+                                        or (entry_p * ARM_A_STOP_MULT)
+                                    )
+                                    tp_price = float(
+                                        trade.get("target_price")
+                                        or (entry_p * ARM_A_TARGET_MULT)
+                                    )
+                                    hit_sl = allow_ohlc_path and bar_lo <= sl_price
+                                    hit_tp = allow_ohlc_path and bar_hi >= tp_price
+                                    if ADAPTIVE_TP_ENABLED:
+                                        hit_tp = False
+                                    if hit_sl:
+                                        exit_reason = (
+                                            "TRAILING_STOP"
+                                            if trade.get("trailing_sl_armed")
+                                            or trade.get("adaptive_tp_armed")
+                                            else "STOP_LOSS"
+                                        )
+                                        self._close_trade(
+                                            active.pop(symbol),
+                                            exit_price=sl_price,
+                                            exit_bar=bar_idx,
+                                            exit_reason=exit_reason,
+                                            exit_path="BAR_OHLC_PATH",
+                                            exit_mark_source="BAR_LOW",
+                                            book=book,
+                                        )
+                                        closed_this_bar = True
+                                    elif hit_tp:
+                                        self._close_trade(
+                                            active.pop(symbol),
+                                            exit_price=tp_price,
+                                            exit_bar=bar_idx,
+                                            exit_reason="TAKE_PROFIT",
+                                            exit_path="BAR_OHLC_PATH",
+                                            exit_mark_source="BAR_HIGH",
+                                            book=book,
+                                        )
+                                        closed_this_bar = True
 
-        # Entry on durable bar close only when ENTRY_PATH=BAR_CLOSE (legacy).
-        # TICK_PATH fills on each WS L1 tick after durable arms signal_bar (not here).
-        elif (
-            ENTRY_PATH == "BAR_CLOSE"
-            and signal_entry
-            and (not input_gate_blocks)
-            and (1 <= bar_idx <= MAX_NEW_ENTRY_BAR)
-            and symbol not in self.active_trades
-        ):
-            trade_id = f"nse_trade_{self.state.session_idx}_{bar_idx}_{symbol}"
-            with self._estimand_a_lock:
+                        if not closed_this_bar and symbol in active:
+                            if bars_held >= 12:
+                                self._close_trade(
+                                    active.pop(symbol),
+                                    exit_price=p_ref,
+                                    exit_bar=bar_idx,
+                                    exit_reason="MAX_HOLD_HORIZON_180M",
+                                    exit_path="BAR_CLOSE",
+                                    exit_mark_source="BAR_CLOSE",
+                                    book=book,
+                                )
+                            elif bars_held >= 4 and p_ref > entry_p:
+                                self._close_trade(
+                                    active.pop(symbol),
+                                    exit_price=p_ref,
+                                    exit_bar=bar_idx,
+                                    exit_reason="TARGET_HORIZON_60M",
+                                    exit_path="BAR_CLOSE",
+                                    exit_mark_source="BAR_CLOSE",
+                                    book=book,
+                                )
+                            else:
+                                try:
+                                    exit_stamp = self._match_exit_pattern_for_trade(
+                                        symbol=symbol,
+                                        trade=trade,
+                                        bar_idx=bar_idx,
+                                    )
+                                    if self._estimand_entry_like_baseline(book):
+                                        exit_stamp = exit_stamp.get("baseline_parallel") or exit_stamp
+                                    trade["trade_pattern_exit"] = exit_stamp
+                                    if (
+                                        bars_held >= 1
+                                        and exit_stamp.get("apply_early_exit")
+                                        and pattern_exit_gate_enabled()
+                                    ):
+                                        self._close_trade(
+                                            active.pop(symbol),
+                                            exit_price=p_ref,
+                                            exit_bar=bar_idx,
+                                            exit_reason="PATTERN_REVERSE",
+                                            exit_path="BAR_CLOSE_PATTERN",
+                                            exit_mark_source="BAR_CLOSE",
+                                            book=book,
+                                        )
+                                except Exception:
+                                    pass
+                    continue
+
+                # Entry on durable bar close only when ENTRY_PATH=BAR_CLOSE (legacy).
+                # TICK_PATH fills on each WS L1 tick after durable arms signal_bar (not here).
                 if (
-                    trade_id not in self._journaled_trade_ids
-                    and symbol not in self.active_trades
+                    ENTRY_PATH == "BAR_CLOSE"
+                    and signal_entry
+                    and (not gate_blocks)
+                    and (1 <= bar_idx <= MAX_NEW_ENTRY_BAR)
+                    and symbol not in active
                 ):
-                    qty = max(1.0, math.floor(DEFAULT_NOTIONAL_PER_TRADE_INR / p_ref))
-                    half_spread = quote.half_spread_bps if (quote and quote.half_spread_bps > 0) else 2.5
-                    friction_proxy_bps = max(9.0, float(half_spread) * 2.0 + 8.0)
-                    bounds = self.resolve_exit_boundaries(symbol, p_ref, history, friction_proxy_bps)
-                    self.active_trades[symbol] = {
-                        "protocol_id": PROTOCOL_ID,
-                        "estimand": "ESTIMAND_A",
-                        "trade_id": trade_id,
-                        "symbol": symbol,
-                        "side": "LONG",
-                        "session_idx": self.state.session_idx,
-                        "entry_bar_idx": bar_idx,
-                        "entry_timestamp_utc_ms": t_decision,
-                        "entry_price": p_ref,
-                        "quantity": qty,
-                        "half_spread_bps": half_spread,
-                        "mfe_price": p_ref,
-                        "mae_price": p_ref,
-                        "forecast_prob": FORECAST_LONG_PROB,
-                        "reference_training_prevalence": ESTIMAND_A_TRAIN_PREVALENCE,
-                        "balanced_accuracy": None,  # Strictly None / N/A for Estimand A
-                        "stop_loss_price": bounds["stop_price"],
-                        "target_price": bounds["target_price"],
-                        "stop_loss_bps": bounds["stop_bps"],
-                        "target_bps": bounds["target_bps"],
-                        "atr_14": bounds.get("atr_14"),
-                        "tp_level": 0,
-                        "adaptive_tp_armed": False,
-                        "adaptive_tp_protocol": ADAPTIVE_TP_PROTOCOL,
-                        "exit_policy": bounds.get("policy_id"),
-                        "exit_trend_label": bounds.get("trend_label"),
-                        "exit_fallback_reason": bounds.get("fallback_reason"),
-                        "entry_path": "BAR_CLOSE",
-                        "management_path": "TICK_PATH",
-                        "coralys_input_context": input_ctx,
-                        "trade_pattern_match": pattern_stamp,
-                    }
+                    trade_id = self._estimand_trade_id(
+                        book=book, signal_bar_idx=bar_idx, symbol=symbol
+                    )
+                    with self._estimand_a_lock:
+                        if trade_id not in journaled and symbol not in active:
+                            qty = max(1.0, math.floor(DEFAULT_NOTIONAL_PER_TRADE_INR / p_ref))
+                            half_spread = quote.half_spread_bps if (quote and quote.half_spread_bps > 0) else 2.5
+                            friction_proxy_bps = max(9.0, float(half_spread) * 2.0 + 8.0)
+                            bounds = self.resolve_exit_boundaries(symbol, p_ref, history, friction_proxy_bps)
+                            active[symbol] = {
+                                "protocol_id": PROTOCOL_ID,
+                                "estimand": "ESTIMAND_A",
+                                "book": self._estimand_book_id(book),
+                                "gate2x_ratchet_peak_frac": self._estimand_ratchet_frac(book),
+                                "gate2x_protocol": self._estimand_gate2x_protocol(book),
+                                "gate2x_floor_lock_immediate": self._estimand_book_is_g2x_floor_lock(
+                                    book
+                                ),
+                                "gate2x_preset": self._estimand_gate2x_preset(book),
+                                "trade_id": trade_id,
+                                "symbol": symbol,
+                                "side": "LONG",
+                                "session_idx": self.state.session_idx,
+                                "entry_bar_idx": bar_idx,
+                                "entry_timestamp_utc_ms": t_decision,
+                                "entry_price": p_ref,
+                                "quantity": qty,
+                                "half_spread_bps": half_spread,
+                                "mfe_price": p_ref,
+                                "mae_price": p_ref,
+                                "forecast_prob": FORECAST_LONG_PROB,
+                                "reference_training_prevalence": ESTIMAND_A_TRAIN_PREVALENCE,
+                                "balanced_accuracy": None,
+                                "stop_loss_price": bounds["stop_price"],
+                                "target_price": bounds["target_price"],
+                                "stop_loss_bps": bounds["stop_bps"],
+                                "target_bps": bounds["target_bps"],
+                                "atr_14": bounds.get("atr_14"),
+                                "tp_level": 0,
+                                "adaptive_tp_armed": False,
+                                "adaptive_tp_protocol": ADAPTIVE_TP_PROTOCOL,
+                                "exit_policy": bounds.get("policy_id"),
+                                "exit_trend_label": bounds.get("trend_label"),
+                                "exit_fallback_reason": bounds.get("fallback_reason"),
+                                "entry_path": "BAR_CLOSE",
+                                "management_path": "TICK_PATH",
+                                "coralys_input_context": input_ctx,
+                                "trade_pattern_match": stamp,
+                                "regime_align": self._regime_align_for_long(
+                                    book=book, history=history
+                                ),
+                            }
 
-        self.state.active_positions_count = len(self.active_trades)
+        self.state.active_positions_count = self._estimand_active_count()
 
         # ─── Scrip-Level Decision Record (RP-608 Observational Decision Ledger) ───
         # Determine explicit decision code and explanation matching exact evaluator branches
@@ -2831,7 +3209,28 @@ class RP608NSEShadowDaemon:
                 explanation = "Invalid top-of-book quote fails Gate G4 execution feasibility"
             decision = "NO_TRADE"
         elif input_gate_blocks:
-            if pattern_blocks and not coralys_blocks:
+            if regime_blocks and not coralys_blocks and not pattern_blocks:
+                _ra_guard = str(regime_align_stamp.get("guard") or "")
+                if _ra_guard == "DI_SKEW" or "DI_SKEW" in str(
+                    regime_align_stamp.get("block_reason") or ""
+                ):
+                    decision_code = "STANDASIDE_DI_SKEW"
+                    explanation = (
+                        f"Gate2E DI-skew standaside "
+                        f"(regime={regime_align_stamp.get('regime_state')}; "
+                        f"trend={regime_align_stamp.get('trend_dir')}; "
+                        f"di_skew={regime_align_stamp.get('di_skew')}; "
+                        f"reason={regime_align_stamp.get('block_reason')})"
+                    )
+                else:
+                    decision_code = "STANDASIDE_REGIME_ALIGN"
+                    explanation = (
+                        f"Gate2E regime-align standaside "
+                        f"(regime={regime_align_stamp.get('regime_state')}; "
+                        f"trend={regime_align_stamp.get('trend_dir')}; "
+                        f"reason={regime_align_stamp.get('block_reason')})"
+                    )
+            elif pattern_blocks and not coralys_blocks:
                 decision_code = "STANDASIDE_TRADE_PATTERN"
                 explanation = (
                     f"Past-trade entry pattern standaside "
@@ -2861,7 +3260,21 @@ class RP608NSEShadowDaemon:
             f"p <= entry_price * {ARM_A_STOP_MULT:.3f} ({ARM_A_STOP_BPS:.0f} bps stop) "
             f"or 4-bar hold without gain or max 12 bars"
         )
-        if decision == "RECOMMEND_LONG":
+        # Stamp ATR/structure geometry for traj-clear names even when Gate2E/Coralys
+        # standaside (board high-target surface; does not authorize entry / Gate 5 frozen).
+        _stamp_rr = decision == "RECOMMEND_LONG" or (
+            float(traj15) >= 0.05
+            and bool(has_valid_quote)
+            and bool(g3_m.get("g3_ready"))
+            and decision_code
+            in (
+                "STANDASIDE_TRADE_PATTERN",
+                "STANDASIDE_CORALYS_INPUT_GATE",
+                "STANDASIDE_REGIME_ALIGN",
+                "QUALIFIED_MOMENTUM_BREAKOUT",
+            )
+        )
+        if _stamp_rr:
             qty = max(1.0, math.floor(DEFAULT_NOTIONAL_PER_TRADE_INR / p_ref))
             half_spread = quote.half_spread_bps if quote else 2.5
             friction_proxy_bps = max(9.0, float(half_spread) * 2.0 + 8.0)
@@ -2905,7 +3318,8 @@ class RP608NSEShadowDaemon:
                 "estimated_friction_inr": round(tot_fric, 2),
                 "net_reward_bps": round(tgt_bps - eff_fric, 2),
                 "net_risk_bps": round(sl_bps + eff_fric, 2),
-                "net_rr_ratio": round((tgt_bps - eff_fric) / (sl_bps + eff_fric + 1e-9), 2)
+                "net_rr_ratio": round((tgt_bps - eff_fric) / (sl_bps + eff_fric + 1e-9), 2),
+                "geometry_observational": decision != "RECOMMEND_LONG",
             }
             inval_text = (
                 f"p <= ₹{stop_p:.2f} (−{sl_bps:.0f} bps, {bounds.get('policy_id')}) "
@@ -2998,7 +3412,10 @@ class RP608NSEShadowDaemon:
             "coralys_input_gate_blocks": bool(coralys_blocks),
             "trade_pattern_match": pattern_stamp,
             "trade_pattern_gate_enabled": pattern_entry_gate_enabled(),
+            "trade_pattern_gate_mode": pattern_entry_gate_mode(),
             "trade_pattern_gate_blocks": bool(pattern_blocks),
+            "regime_align": regime_align_stamp,
+            "regime_align_blocks": bool(regime_blocks),
         }
         # Observational regime telemetry on completed-bar history only (Phase 1–2).
         # Must not alter decision / entry / exit / cost fields above.
@@ -3022,6 +3439,29 @@ class RP608NSEShadowDaemon:
             eval_record = attach_regime_telemetry(eval_record, None, enabled=False)
         card_b["evaluation"] = eval_record
         self.last_evaluations[symbol] = eval_record
+
+        # Gate2E observe: PRIMARY ABSTAIN_INSUFFICIENT suppress (stamp-only).
+        if (
+            decision_code == "STANDASIDE_TRADE_PATTERN"
+            and pattern_blocks
+            and matches_shadow_observe_abstain_insufficient(pattern_stamp)
+        ):
+            try:
+                self._maybe_log_gate2e_shadow_insufficient(
+                    symbol=symbol,
+                    pattern_stamp=pattern_stamp,
+                    suppressed_ms=int(t_decision) if t_decision else int(time.time() * 1000),
+                    decision_bar_idx=int(bar_idx),
+                    source="live_suppress",
+                    direction="LONG",
+                    session_phase=(
+                        str(input_ctx.get("session_phase"))
+                        if isinstance(input_ctx, dict) and input_ctx.get("session_phase")
+                        else None
+                    ),
+                )
+            except Exception:
+                pass
 
         # Prospective V1 research journals (0.0% authority; only if NSE STARTED):
         # 1) full per-symbol recommendation tape (all decisions, not only RECOMMEND_LONG)
@@ -3243,14 +3683,18 @@ class RP608NSEShadowDaemon:
         mark: float,
         mark_src: str,
         now_ms: int,
+        book: str = "primary",
     ) -> bool:
         """
         Tick-path entry: traj15 from completed bars; fill at live L1/last.
-        One trade_id per session/signal_bar/symbol (no bar-close fill).
+        One trade_id per session/signal_bar/symbol/book (no bar-close fill).
+        PRIMARY and BASELINE are independent books (never pooled).
         """
         if ENTRY_PATH != "TICK_PATH":
             return False
-        if symbol in self.active_trades:
+        active = self._estimand_active_trades(book)
+        journaled = self._estimand_journaled_ids(book)
+        if symbol in active:
             return False
         if not (1 <= int(signal_bar_idx) <= MAX_NEW_ENTRY_BAR):
             return False
@@ -3264,8 +3708,10 @@ class RP608NSEShadowDaemon:
         if bid <= 0 or ask <= 0 or ask <= bid:
             return False
 
-        trade_id = f"nse_trade_{self.state.session_idx}_{int(signal_bar_idx)}_{symbol}"
-        if trade_id in self._journaled_trade_ids:
+        trade_id = self._estimand_trade_id(
+            book=book, signal_bar_idx=int(signal_bar_idx), symbol=symbol
+        )
+        if trade_id in journaled:
             return False
 
         session_bars = self._session_bars_for_g3(symbol)
@@ -3308,26 +3754,61 @@ class RP608NSEShadowDaemon:
             traj15=traj15,
             signal_long=True,
         )
-        pattern_stamp = self._match_trade_pattern(
+        pattern_full = self._match_trade_pattern(
             input_ctx=input_ctx,
             traj15=traj15,
             bar_idx=int(signal_bar_idx),
             decision_ts_ist=decision_ts_ist,
             symbol=symbol,
         )
+        if self._estimand_entry_like_baseline(book):
+            pattern_stamp = pattern_full.get("baseline_parallel") or pattern_full
+        else:
+            pattern_stamp = pattern_full
         if coralys_input_gate_enabled() and not bool(input_ctx.get("allow_long_entry")):
             return False
         if pattern_stamp.get("blocks_entry"):
+            # PRIMARY cold-start observe (TICK_PATH); BASELINE/r50 may still open.
+            if not self._estimand_entry_like_baseline(book):
+                try:
+                    self._maybe_log_gate2e_shadow_insufficient(
+                        symbol=symbol,
+                        pattern_stamp=pattern_stamp
+                        if pattern_stamp is pattern_full
+                        else pattern_full,
+                        suppressed_ms=int(now_ms),
+                        decision_bar_idx=int(signal_bar_idx),
+                        source="tick_path_suppress",
+                        direction="LONG",
+                        session_phase=(
+                            str(input_ctx.get("session_phase"))
+                            if isinstance(input_ctx, dict) and input_ctx.get("session_phase")
+                            else None
+                        ),
+                    )
+                except Exception:
+                    pass
+            return False
+
+        history = self.price_history.get(symbol) or []
+        regime_align = self._regime_align_for_long(book=book, history=history)
+        if regime_align.get("blocks_entry"):
             return False
 
         half_spread = float(getattr(quote, "half_spread_bps", 0) or 0) or 2.5
         friction_proxy_bps = max(9.0, float(half_spread) * 2.0 + 8.0)
-        history = self.price_history.get(symbol) or []
         bounds = self.resolve_exit_boundaries(symbol, mark, history, friction_proxy_bps)
         qty = max(1.0, math.floor(DEFAULT_NOTIONAL_PER_TRADE_INR / mark))
-        self.active_trades[symbol] = {
+        book_id = self._estimand_book_id(book)
+        ratchet_frac = self._estimand_ratchet_frac(book)
+        active[symbol] = {
             "protocol_id": PROTOCOL_ID,
             "estimand": "ESTIMAND_A",
+            "book": book_id,
+            "gate2x_ratchet_peak_frac": ratchet_frac,
+            "gate2x_protocol": self._estimand_gate2x_protocol(book),
+            "gate2x_floor_lock_immediate": self._estimand_book_is_g2x_floor_lock(book),
+            "gate2x_preset": self._estimand_gate2x_preset(book),
             "trade_id": trade_id,
             "symbol": symbol,
             "side": "LONG",
@@ -3359,6 +3840,7 @@ class RP608NSEShadowDaemon:
             "traj15_at_entry": round(traj15, 6),
             "coralys_input_context": input_ctx,
             "trade_pattern_match": pattern_stamp,
+            "regime_align": regime_align,
             "entry_trade_like": True,
         }
         return True
@@ -3380,7 +3862,7 @@ class RP608NSEShadowDaemon:
         if (not force) and (now_m - float(self._estimand_a_last_persist_mono or 0.0) < 1.0):
             return
         self._estimand_a_last_persist_mono = now_m
-        self.state.active_positions_count = len(self.active_trades)
+        self.state.active_positions_count = self._estimand_active_count()
         try:
             self.save_pending_evaluations()
         except Exception as exc:
@@ -3400,70 +3882,77 @@ class RP608NSEShadowDaemon:
         now_ms: Optional[int] = None,
     ) -> bool:
         """
-        Gate 5 Adaptive TP (NSE Estimand A LONG): on TP touch, extend + lock SL.
+        Gate 5 Adaptive (NSE LONG): Coralys-intelligent floor trail.
 
-        Same geometry as crypto: +0.5×ATR per level (max 3); never loosen SL.
-        Falls back to +0.5% of entry when atr_14 is unavailable (Arm A fixed).
-        Returns True if at least one extension was applied.
+        Ratchets SL only to Gate2X/Coralys protect|ratchet floors (INR→price).
+        Does **not** blind-ATR chase MFE; does **not** latch on TP touch.
+        Coralys Protect/Exit (via Gate2X) owns reversal-doubt exits.
+        Parity with Rust `apply_adaptive_coralys_floor_trail`.
+        Track A: no-op when PLAN_LIFECYCLE=1 (Rust owns Adaptive).
         """
+        if plan_lifecycle_enabled():
+            return False
         if not ADAPTIVE_TP_ENABLED:
             return False
+        _ = path_high
         try:
             entry_p = float(trade.get("entry_price") or 0.0)
-            tp = float(
-                trade.get("target_price")
-                or (entry_p * ARM_A_TARGET_MULT if entry_p else 0.0)
-            )
+            qty = float(trade.get("quantity") or 0.0)
             sl = float(
                 trade.get("stop_loss_price")
                 or (entry_p * ARM_A_STOP_MULT if entry_p else 0.0)
             )
-            level = int(trade.get("tp_level") or 0)
-            atr = float(trade.get("atr_14") or 0.0)
+            orig = trade.get("original_stop_loss_price")
+            if orig is None:
+                orig = sl
+            orig = float(orig)
             mfe_px = float(trade.get("mfe_price") or mark or 0.0)
         except (TypeError, ValueError):
             return False
-        if entry_p <= 0 or tp <= 0 or level >= ADAPTIVE_TP_MAX_EXTENSIONS:
+        if entry_p <= 0 or qty <= 0:
             return False
+        trade["original_stop_loss_price"] = orig
 
-        step = (
-            ADAPTIVE_TP_EXTEND_ATR_MULT * atr
-            if atr > 0
-            else ADAPTIVE_TP_EXTEND_PCT * entry_p
-        )
-        if step <= 0:
+        # Prefer Coralys floors; optional legacy dumb ATR only if explicitly enabled.
+        floor_inr = trade.get("gate2x_protect_floor_inr")
+        if floor_inr is None:
+            floor_inr = trade.get("gate2x_ratchet_floor_inr")
+        armed = bool(trade.get("gate2x_mfe_armed") or trade.get("adaptive_tp_armed"))
+        proposed = None
+        if armed and floor_inr is not None:
+            try:
+                floor_f = float(floor_inr)
+            except (TypeError, ValueError):
+                floor_f = 0.0
+            if floor_f > 0:
+                proposed = round(max(orig, entry_p + floor_f / qty), 2)
+
+        if proposed is None and ADAPTIVE_DUMB_ATR_TRAIL:
+            atr = float(trade.get("atr_14") or 0.0)
+            risk = entry_p - orig
+            fav = mfe_px - entry_p
+            if risk > 0 and fav >= risk * ADAPTIVE_TRAIL_ARM_RISK_FRAC:
+                trail_dist = (
+                    ADAPTIVE_TRAIL_ATR_MULT * atr
+                    if atr > 0
+                    else ADAPTIVE_TP_EXTEND_PCT * entry_p
+                )
+                if trail_dist > 0:
+                    proposed = round(max(orig, mfe_px - trail_dist), 2)
+
+        if proposed is None or proposed <= sl or proposed >= mfe_px:
+            if armed:
+                trade["adaptive_tp_armed"] = True
             return False
-
-        hi = float(path_high) if path_high is not None else float(mark)
-        extended = False
         ts = int(now_ms if now_ms is not None else time.time() * 1000)
-
-        while level < ADAPTIVE_TP_MAX_EXTENSIONS:
-            still_hit = float(mark) >= tp or hi >= tp or mfe_px >= tp
-            if not still_hit:
-                break
-            prior_tp = tp
-            new_tp = round(prior_tp + step, 2)
-            new_sl = round(prior_tp, 2)
-            # Never loosen: SL only rises for LONG
-            if new_sl < sl:
-                new_sl = sl
-            level += 1
-            tp = new_tp
-            sl = new_sl
-            trade["target_price"] = tp
-            trade["stop_loss_price"] = sl
-            trade["tp_level"] = level
-            trade["adaptive_tp_armed"] = True
-            trade["adaptive_tp_touch_ms"] = ts
-            trade["adaptive_tp_protocol"] = ADAPTIVE_TP_PROTOCOL
-            trade["adaptive_tp_last_locked_tp"] = prior_tp
-            # Refresh bps vs entry for telemetry (observational).
-            if entry_p > 0:
-                trade["target_bps"] = round((tp / entry_p - 1.0) * 10000.0, 2)
-                trade["stop_loss_bps"] = round((1.0 - sl / entry_p) * 10000.0, 2)
-            extended = True
-        return extended
+        trade["stop_loss_price"] = proposed
+        trade["adaptive_tp_armed"] = True
+        trade["trailing_sl_armed"] = True
+        trade["adaptive_partial_latch_armed"] = False
+        trade["adaptive_tp_touch_ms"] = ts
+        trade["adaptive_tp_protocol"] = ADAPTIVE_TP_PROTOCOL
+        trade["stop_loss_bps"] = round((1.0 - proposed / entry_p) * 10000.0, 2)
+        return True
 
     def _gate2x_nse_arm_threshold_inr(self, trade: Dict[str, Any]) -> float:
         entry_p = float(trade.get("entry_price") or 0.0)
@@ -3485,7 +3974,10 @@ class RP608NSEShadowDaemon:
 
         Peak MFE/tp_frac tracked locally; Protect/Exit only from
         `rp608_position_decide` → `gate2x_decide` → RecommendationEngineV1.
+        Track A: no-op when PLAN_LIFECYCLE=1 (Rust owns Gate2X manage).
         """
+        if plan_lifecycle_enabled():
+            return None
         if not GATE2X_MFE_GIVEBACK_ENABLED:
             return None
         try:
@@ -3565,7 +4057,7 @@ class RP608NSEShadowDaemon:
             ),
             soft_breach_since_ms=since_i,
             now_ms=int(now_ms),
-            protocol=GATE2X_MFE_GIVEBACK_PROTOCOL,
+            protocol=self._estimand_gate2x_protocol(str(trade.get("book") or "primary")),
             tp_level=tp_level_i,
             adaptive_armed=bool(trade.get("adaptive_tp_armed")) or tp_level_i >= 1,
             params={
@@ -3578,7 +4070,9 @@ class RP608NSEShadowDaemon:
                 "immediate_vol_surges": sorted(GATE2X_REVERSAL_IMMEDIATE_SURGES),
                 "med_vol_dwell_ms": int(GATE2X_REVERSAL_MED_VOL_DWELL_MS),
                 "low_vol_dwell_ms": int(GATE2X_REVERSAL_LOW_VOL_DWELL_MS),
-                "ratchet_peak_frac": float(GATE2X_RATCHET_PEAK_FRAC),
+                "ratchet_peak_frac": float(
+                    self._estimand_ratchet_frac(str(trade.get("book") or "primary"))
+                ),
                 "deep_giveback_frac": float(GATE2X_DEEP_GIVEBACK_FRAC),
                 "deep_giveback_dwell_scale": float(GATE2X_DEEP_GIVEBACK_DWELL_SCALE),
             },
@@ -3596,7 +4090,12 @@ class RP608NSEShadowDaemon:
             trade["gate2x_mfe_armed_tp_frac"] = round(
                 float(trade.get("gate2x_peak_tp_frac") or 0.0), 4
             )
-            trade["gate2x_protocol"] = GATE2X_MFE_GIVEBACK_PROTOCOL
+            trade["gate2x_protocol"] = self._estimand_gate2x_protocol(
+                str(trade.get("book") or "primary")
+            )
+            trade["gate2x_ratchet_peak_frac"] = float(
+                self._estimand_ratchet_frac(str(trade.get("book") or "primary"))
+            )
 
         if action in ("Protect", "Exit"):
             detail = reason or "MFE_GIVEBACK_TO_COST_CLEAR"
@@ -3645,7 +4144,8 @@ class RP608NSEShadowDaemon:
                     "RP608_PLAN_LIFECYCLE disabled while REQUIRE_RUST=1",
                 )
             return None
-        sess = plan_lifecycle_session(book="nse", evidence_dir=DEFAULT_NSE_EVIDENCE)
+        evidence = os.environ.get("RP608_NSE_REC001H_DIR", DEFAULT_NSE_EVIDENCE)
+        sess = plan_lifecycle_session(book="nse", evidence_dir=evidence)
         if sess is None:
             if plan_lifecycle_require_rust():
                 plan_lifecycle_log_require_rust(
@@ -3672,7 +4172,9 @@ class RP608NSEShadowDaemon:
                     "plan-lifecycle-loop tick failed",
                 )
             return None
-        merge_lifecycle_into_plan(trade, result, book="nse")
+        # merge returns a new dict — must write back onto the live trade.
+        merged = merge_lifecycle_into_plan(trade, result, book="nse")
+        trade.update(merged)
         return result
 
     def _manage_estimand_a_open_on_mark(
@@ -3683,9 +4185,11 @@ class RP608NSEShadowDaemon:
         mark_src: str,
         now_ms: int,
         bar_idx: int,
+        book: str = "primary",
     ) -> bool:
         """Tick-path SL/TP for one open. Caller holds `_estimand_a_lock`. True if closed."""
-        trade = self.active_trades.get(symbol)
+        active = self._estimand_active_trades(book)
+        trade = active.get(symbol)
         if not trade or mark is None or mark <= 0:
             return False
         entry_p = float(trade["entry_price"])
@@ -3697,84 +4201,39 @@ class RP608NSEShadowDaemon:
         trade["last_tick_mark_source"] = mark_src
         trade["last_tick_utc_ms"] = now_ms
 
+        # R3: floor-lock twin is Rust-owned (gate2x_floor_lock_immediate on trade).
         rust = self._try_rust_nse_plan_lifecycle(
             trade, mark=float(mark), path_high=mark, path_low=mark, now_ms=int(now_ms)
         )
-        if rust is not None:
-            if rust.get("closed"):
-                _term, exit_reason = map_lifecycle_close(rust, book="nse")
-                closed = self.active_trades.pop(symbol)
-                if rust.get("exit_reason_detail"):
-                    closed["exit_reason_detail"] = rust["exit_reason_detail"]
-                exit_px = float(
-                    rust["exit_price"]
-                    if rust.get("exit_price") is not None
-                    else mark
-                )
-                path = (
-                    "TICK_PATH_GATE2X"
-                    if exit_reason == "GATE2X_MFE_GIVEBACK_PROTECT"
-                    else "TICK_PATH"
-                )
-                self._close_trade(
-                    closed,
-                    exit_price=exit_px,
-                    exit_bar=bar_idx,
-                    exit_reason=exit_reason,
-                    exit_path=path,
-                    exit_mark_source=mark_src,
-                )
-                return True
-            # Rust hold — skip Python Adaptive/Gate2X/hard exits; pattern below.
-        elif not plan_lifecycle_require_rust():
-            # Gate 5 Adaptive TP: extend + lock SL before hard SL/TP / Gate 2X.
-            self._adaptive_tp_nse_try_extend(
-                trade, mark=float(mark), path_high=float(mark), now_ms=int(now_ms)
+        if rust is not None and rust.get("closed"):
+            _term, exit_reason = map_lifecycle_close(rust, book="nse")
+            closed = active.pop(symbol)
+            if rust.get("exit_reason_detail"):
+                closed["exit_reason_detail"] = rust["exit_reason_detail"]
+            exit_px = float(
+                rust["exit_price"]
+                if rust.get("exit_price") is not None
+                else mark
             )
-            sl_price = float(trade.get("stop_loss_price") or (entry_p * ARM_A_STOP_MULT))
-            tp_price = float(trade.get("target_price") or (entry_p * ARM_A_TARGET_MULT))
-            try:
-                tp_level = int(trade.get("tp_level") or 0)
-            except (TypeError, ValueError):
-                tp_level = 0
-            hit_sl = mark <= sl_price
-            hit_tp = mark >= tp_price
-            # Adaptive runner below max: TP touch already extended — do not hard-close.
-            if (
-                ADAPTIVE_TP_ENABLED
-                and hit_tp
-                and not hit_sl
-                and tp_level < ADAPTIVE_TP_MAX_EXTENSIONS
-            ):
-                hit_tp = False
-            if hit_sl and hit_tp and tp_level >= 1:
-                # Ambiguous after adaptive arm → prefer locked SL (crypto parity).
-                hit_tp = False
-                trade["ambiguous_resolved_as"] = "SL_ADAPTIVE_LOCK"
-            if hit_sl:
-                self._close_trade(
-                    self.active_trades.pop(symbol),
-                    exit_price=sl_price,
-                    exit_bar=bar_idx,
-                    exit_reason="STOP_LOSS",
-                    exit_path="TICK_PATH",
-                    exit_mark_source=mark_src,
-                )
-                return True
-            if hit_tp:
-                closed = self.active_trades.pop(symbol)
-                if ADAPTIVE_TP_ENABLED and tp_level >= ADAPTIVE_TP_MAX_EXTENSIONS:
-                    closed["exit_reason_detail"] = "ADAPTIVE_TP_MAX_EXTENSIONS"
-                self._close_trade(
-                    closed,
-                    exit_price=tp_price,
-                    exit_bar=bar_idx,
-                    exit_reason="TAKE_PROFIT",
-                    exit_path="TICK_PATH",
-                    exit_mark_source=mark_src,
-                )
-                return True
-            # Gate 2X: quality-path MFE give-back protect (after hard SL/TP).
+            path = (
+                "TICK_PATH_GATE2X"
+                if exit_reason == "GATE2X_MFE_GIVEBACK_PROTECT"
+                else "TICK_PATH"
+            )
+            self._close_trade(
+                closed,
+                exit_price=exit_px,
+                exit_bar=bar_idx,
+                exit_reason=exit_reason,
+                exit_path=path,
+                exit_mark_source=mark_src,
+                book=book,
+            )
+            return True
+        # Track A: PLAN_LIFECYCLE=1 → Rust owns Adaptive/Gate2X/SL-TP (Python
+        # bodies only when RP608_PLAN_LIFECYCLE=0 for tests).
+        if rust is None and not plan_lifecycle_enabled():
+            # Coralys/Gate2X first (Adaptive intelligence: doubt → Protect/Exit).
             try:
                 giveback = self._gate2x_nse_update_mfe_giveback(
                     trade, mark=float(mark), now_ms=int(now_ms)
@@ -3782,13 +4241,55 @@ class RP608NSEShadowDaemon:
             except Exception:
                 giveback = None
             if giveback:
+                closed = active.pop(symbol)
+                if ADAPTIVE_TP_ENABLED:
+                    closed["adaptive_tp_armed"] = True
+                    closed["exit_reason_detail"] = f"ADAPTIVE_CORALYS_{giveback}"
                 self._close_trade(
-                    self.active_trades.pop(symbol),
+                    closed,
                     exit_price=float(mark),
                     exit_bar=bar_idx,
                     exit_reason="GATE2X_MFE_GIVEBACK_PROTECT",
                     exit_path="TICK_PATH_GATE2X",
                     exit_mark_source=mark_src,
+                    book=book,
+                )
+                return True
+            # Adaptive Coralys floor trail (not blind ATR) after Hold.
+            self._adaptive_tp_nse_try_extend(
+                trade, mark=float(mark), path_high=float(mark), now_ms=int(now_ms)
+            )
+            sl_price = float(trade.get("stop_loss_price") or (entry_p * ARM_A_STOP_MULT))
+            tp_price = float(trade.get("target_price") or (entry_p * ARM_A_TARGET_MULT))
+            hit_sl = mark <= sl_price
+            hit_tp = mark >= tp_price
+            if ADAPTIVE_TP_ENABLED:
+                hit_tp = False
+            if hit_sl:
+                exit_reason = (
+                    "TRAILING_STOP"
+                    if trade.get("trailing_sl_armed") or trade.get("adaptive_tp_armed")
+                    else "STOP_LOSS"
+                )
+                self._close_trade(
+                    active.pop(symbol),
+                    exit_price=sl_price,
+                    exit_bar=bar_idx,
+                    exit_reason=exit_reason,
+                    exit_path="TICK_PATH",
+                    exit_mark_source=mark_src,
+                    book=book,
+                )
+                return True
+            if hit_tp:
+                self._close_trade(
+                    active.pop(symbol),
+                    exit_price=tp_price,
+                    exit_bar=bar_idx,
+                    exit_reason="TAKE_PROFIT",
+                    exit_path="TICK_PATH",
+                    exit_mark_source=mark_src,
+                    book=book,
                 )
                 return True
         # Observational exit-pattern stamp on tick manage; optional paper reverse exit.
@@ -3798,15 +4299,18 @@ class RP608NSEShadowDaemon:
                 trade=trade,
                 bar_idx=bar_idx,
             )
+            if self._estimand_entry_like_baseline(book):
+                exit_stamp = exit_stamp.get("baseline_parallel") or exit_stamp
             trade["trade_pattern_exit"] = exit_stamp
             if exit_stamp.get("apply_early_exit") and pattern_exit_gate_enabled():
                 self._close_trade(
-                    self.active_trades.pop(symbol),
+                    active.pop(symbol),
                     exit_price=float(mark),
                     exit_bar=bar_idx,
                     exit_reason="PATTERN_REVERSE",
                     exit_path="TICK_PATH_PATTERN",
                     exit_mark_source=mark_src,
+                    book=book,
                 )
                 return True
         except Exception:
@@ -3883,37 +4387,45 @@ class RP608NSEShadowDaemon:
                 try:
                     # Entry decision: volume/LT trade-like only (false-print filter).
                     allow_entry = (not TICK_TRADE_LIKE_ENTRY) or bool(trade_like)
-                    if allow_entry and symbol not in self.active_trades:
-                        opened = bool(
-                            self._try_estimand_a_tick_entry(
+                    for book in ESTIMAND_BOOK_KEYS:
+                        active = self._estimand_active_trades(book)
+                        if allow_entry and symbol not in active:
+                            did_open = bool(
+                                self._try_estimand_a_tick_entry(
+                                    symbol=symbol,
+                                    signal_bar_idx=signal_bar,
+                                    quote=quote,
+                                    mark=float(mark),
+                                    mark_src=mark_src,
+                                    now_ms=now_ms,
+                                    book=book,
+                                )
+                            )
+                            if did_open:
+                                opened = True
+                                tr = active.get(symbol)
+                                if tr is not None:
+                                    tr["entry_update_class"] = update_class
+                                    tr["entry_ltq"] = ltq
+                                    tr["entry_session_volume"] = volume
+                        # Manage opens on any fresh L1 mark (stop/target fidelity).
+                        if symbol in active:
+                            if self._manage_estimand_a_open_on_mark(
                                 symbol=symbol,
-                                signal_bar_idx=signal_bar,
-                                quote=quote,
                                 mark=float(mark),
                                 mark_src=mark_src,
                                 now_ms=now_ms,
-                            )
-                        )
-                        if opened:
-                            tr = self.active_trades.get(symbol)
-                            if tr is not None:
-                                tr["entry_update_class"] = update_class
-                                tr["entry_ltq"] = ltq
-                                tr["entry_session_volume"] = volume
-                    # Manage opens on any fresh L1 mark (stop/target fidelity).
-                    if symbol in self.active_trades:
-                        closed = self._manage_estimand_a_open_on_mark(
-                            symbol=symbol,
-                            mark=float(mark),
-                            mark_src=mark_src,
-                            now_ms=now_ms,
-                            bar_idx=signal_bar,
-                        )
+                                bar_idx=signal_bar,
+                                book=book,
+                            ):
+                                closed = True
                 except Exception as exc:
                     print(f"[estimand_a_tick] ws tick skipped ({symbol}): {exc}", flush=True)
                     return
                 if opened or closed:
-                    self.state.active_positions_count = len(self.active_trades)
+                    self.state.active_positions_count = (
+                        self._estimand_active_count()
+                    )
             if opened:
                 self._estimand_a_tick_opens_since_log += 1
                 if self._estimand_a_tick_opens_since_log >= 5:
@@ -3921,7 +4433,11 @@ class RP608NSEShadowDaemon:
                     self._estimand_a_tick_opens_since_log = 0
                     print(
                         f"[estimand_a_tick] ws_fills+={n} signal_bar={signal_bar} "
-                        f"active={len(self.active_trades)} trade_like_gate={int(TICK_TRADE_LIKE_ENTRY)}",
+                        f"active_p={len(self.active_trades)} "
+                        f"active_bl={len(self.active_trades_baseline)} "
+                        f"active_r50={len(self.active_trades_g2x_r50)} "
+                        f"active_fl={len(self.active_trades_g2x_floor_lock)} "
+                        f"trade_like_gate={int(TICK_TRADE_LIKE_ENTRY)}",
                         flush=True,
                     )
             if opened or closed:
@@ -4037,23 +4553,26 @@ class RP608NSEShadowDaemon:
 
         with self._estimand_a_lock:
             # Manage-only on REST midbar. Entries are WS-tick only (no candle-batch fills).
-            for sym in list(self.active_trades.keys()):
-                res = feed_results.get(sym, {}) if isinstance(feed_results, dict) else {}
-                mark, mark_src = self._estimand_a_mark_from_feed(res)
-                if mark is None or mark <= 0:
-                    continue
-                mutated = True
-                if self._manage_estimand_a_open_on_mark(
-                    symbol=sym,
-                    mark=float(mark),
-                    mark_src=str(mark_src),
-                    now_ms=now_ms,
-                    bar_idx=signal_bar,
-                ):
-                    closed += 1
+            for book in ESTIMAND_BOOK_KEYS:
+                active = self._estimand_active_trades(book)
+                for sym in list(active.keys()):
+                    res = feed_results.get(sym, {}) if isinstance(feed_results, dict) else {}
+                    mark, mark_src = self._estimand_a_mark_from_feed(res)
+                    if mark is None or mark <= 0:
+                        continue
+                    mutated = True
+                    if self._manage_estimand_a_open_on_mark(
+                        symbol=sym,
+                        mark=float(mark),
+                        mark_src=str(mark_src),
+                        now_ms=now_ms,
+                        bar_idx=signal_bar,
+                        book=book,
+                    ):
+                        closed += 1
 
             if mutated or closed:
-                self.state.active_positions_count = len(self.active_trades)
+                self.state.active_positions_count = self._estimand_active_count()
 
         if mutated or closed:
             try:
@@ -4126,8 +4645,17 @@ class RP608NSEShadowDaemon:
         *,
         exit_path: str = "BAR_CLOSE",
         exit_mark_source: str = "BAR_CLOSE",
+        book: str = "primary",
     ):
-        """Calculates exact statutory friction and closes trade for Estimand A."""
+        """Calculates exact statutory friction and closes trade for Estimand A twin books."""
+        book_key = self._estimand_normalize_book(book)
+        if book_key == "primary":
+            # Prefer durable stamp on the trade when caller passed a loose key.
+            book_key = self._estimand_normalize_book(str(trade.get("book") or book))
+        journaled = self._estimand_journaled_ids(book_key)
+        journal_path = self._estimand_journal_path(book_key)
+        book_id = self._estimand_book_id(book_key)
+
         entry_p = trade["entry_price"]
         qty = trade["quantity"]
         gross_pnl = (exit_price - entry_p) * qty
@@ -4148,12 +4676,13 @@ class RP608NSEShadowDaemon:
         edge_ratio = round(mfe_bps / mae_bps, 2) if mae_bps > 0 else None
 
         tid = str(trade.get("trade_id") or "")
-        if tid and tid in self._journaled_trade_ids:
+        if tid and tid in journaled:
             # Idempotent close: already journaled (midbar re-eval churn guard).
             return
 
         record = {
             **trade,
+            "book": book_id,
             "exit_bar_idx": exit_bar,
             "exit_timestamp_utc_ms": int(time.time() * 1000),
             "exit_price": exit_price,
@@ -4171,18 +4700,21 @@ class RP608NSEShadowDaemon:
             "edge_ratio": edge_ratio
         }
 
-        self.append_jsonl(self.trade_journal_path, record)
+        self.append_jsonl(journal_path, record)
         if tid:
-            self._journaled_trade_ids.add(tid)
-        try:
-            self._note_pattern_session_stop(trade=record, exit_reason=str(exit_reason or ""))
-        except Exception:
-            pass
+            journaled.add(tid)
+        # Pattern session stop families feed PRIMARY Gate2E only (not baseline control).
+        if not is_bl:
+            try:
+                self._note_pattern_session_stop(trade=record, exit_reason=str(exit_reason or ""))
+            except Exception:
+                pass
         self.state.completed_trades_count += 1
-        try:
-            prospective_v1_append_nse_trade_closed(trade=record)
-        except Exception as link_exc:
-            print(f"[prospective_v1] NSE trade_closed link skipped: {link_exc}")
+        if not is_bl:
+            try:
+                prospective_v1_append_nse_trade_closed(trade=record)
+            except Exception as link_exc:
+                print(f"[prospective_v1] NSE trade_closed link skipped: {link_exc}")
 
     def run_single_iteration(self) -> Dict[str, Any]:
         """
@@ -4284,6 +4816,9 @@ class RP608NSEShadowDaemon:
             self._estimand_a_prev_ws_tick.clear()
             self.price_history = {s: [] for s in self.symbols}
             self.active_trades.clear()
+            self.active_trades_baseline.clear()
+            self.active_trades_g2x_r50.clear()
+            self.active_trades_g2x_floor_lock.clear()
             self.pending_directional_evals.clear()
             self.last_evaluations.clear()
             self._symbol_last_bootstrap_bar.clear()
@@ -4537,7 +5072,7 @@ class RP608NSEShadowDaemon:
         if not provisional_eval:
             self.state.last_durable_bar_idx = eval_bar
             self.state.last_accounted_bar_idx = max(self.state.last_accounted_bar_idx, eval_bar)
-        self.state.active_positions_count = len(self.active_trades)
+        self.state.active_positions_count = self._estimand_active_count()
         self.state.consecutive_outages = 0
         self.state.last_heartbeat_utc_ms = now_ms
         self.state.last_heartbeat_iso = now_utc.isoformat()
@@ -4559,6 +5094,9 @@ class RP608NSEShadowDaemon:
             "evaluations_count": len(iteration_evals),
             "qualifying_recommendations": len(qualifying),
             "active_positions": len(self.active_trades),
+            "active_positions_baseline": len(self.active_trades_baseline),
+            "active_positions_g2x_r50": len(self.active_trades_g2x_r50),
+            "active_positions_g2x_floor_lock": len(self.active_trades_g2x_floor_lock),
             "nse_of_paper_n_open": of_paper_summary.get("n_open"),
             "nse_of_paper_n_trades": (of_paper_summary.get("of_outcomes_summary") or {}).get("n_trades"),
             "completed_trades": self.state.completed_trades_count,

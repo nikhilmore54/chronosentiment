@@ -396,4 +396,15 @@ def attach_regime_telemetry(
     out["regime_reason"] = regime.get("reason")
     out["plus_di"] = regime.get("plus_di")
     out["minus_di"] = regime.get("minus_di")
+    # Explicit DI trend (DIRECTIONAL); Gate2E regime-align may standaside adverse side.
+    out["regime_trend_dir"] = regime.get("trend_dir")
+    if out["regime_trend_dir"] is None and regime.get("plus_di") is not None and regime.get("minus_di") is not None:
+        try:
+            out["regime_trend_dir"] = (
+                "BULLISH"
+                if float(regime["plus_di"]) >= float(regime["minus_di"])
+                else "BEARISH"
+            )
+        except (TypeError, ValueError):
+            out["regime_trend_dir"] = None
     return out

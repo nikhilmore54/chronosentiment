@@ -1,6 +1,7 @@
-//! RP-608 crypto/NSE plan lifecycle manage — Rust cutover (Gate 5 Adaptive TP + Gate 2X).
+//! RP-608 crypto/NSE plan lifecycle manage — Rust cutover (Gate 5 Adaptive + Gate 2X).
 //!
-//! Owns: Adaptive TP extend/lock, hard SL/TP (max extensions), Gate 2X Protect/Exit apply.
+//! Owns: Adaptive **Coralys-intelligent** trail (Gate 2X Protect/Exit on reversal doubt;
+//! SL ratchets only to Coralys protect/ratchet floors — not a blind ATR chase), hard SL.
 //! Does **not** own: WS I/O, entry signals, OF ±0.30 paper (still shadow-side).
 //! Books never pooled. Aligned with `.cursor/rules/chronosentiment-core.mdc` §3c.
 
@@ -29,7 +30,14 @@ pub struct PlanLifecycleConfig {
     pub adaptive_tp_max_extensions: u32,
     /// Fallback % of entry when atr_14 missing (NSE Arm A).
     pub adaptive_tp_extend_pct: f64,
-    /// Favorable-only SL trail (never worse than original stop).
+    /// Legacy partial TP-frac latch — **off**. Adaptive is continuous tick-trail.
+    #[serde(default)]
+    pub adaptive_partial_latch_enabled: bool,
+    #[serde(default = "default_partial_latch_arm")]
+    pub adaptive_partial_latch_arm_tp_frac: f64,
+    #[serde(default = "default_partial_latch_lock")]
+    pub adaptive_partial_latch_lock_tp_frac: f64,
+    /// Standalone trail when Adaptive is off. When Adaptive is on it owns the trail.
     #[serde(default = "default_true")]
     pub trailing_sl_enabled: bool,
     /// Trail distance = atr_mult × ATR(14) behind favorable extreme.
@@ -55,6 +63,12 @@ fn default_trail_atr_mult() -> f64 {
 fn default_trail_arm_frac() -> f64 {
     0.30
 }
+fn default_partial_latch_arm() -> f64 {
+    0.70
+}
+fn default_partial_latch_lock() -> f64 {
+    0.50
+}
 
 impl Default for PlanLifecycleConfig {
     fn default() -> Self {
@@ -63,6 +77,9 @@ impl Default for PlanLifecycleConfig {
             adaptive_tp_extend_atr_mult: 0.5,
             adaptive_tp_max_extensions: 3,
             adaptive_tp_extend_pct: 0.005,
+            adaptive_partial_latch_enabled: false,
+            adaptive_partial_latch_arm_tp_frac: 0.70,
+            adaptive_partial_latch_lock_tp_frac: 0.50,
             trailing_sl_enabled: true,
             trailing_sl_atr_mult: 0.5,
             trailing_sl_arm_risk_frac: 0.30,
@@ -110,6 +127,9 @@ pub struct OpenPlanState {
     pub tp_level: u32,
     #[serde(default)]
     pub adaptive_tp_armed: bool,
+    /// True when SL was locked via partial peak_tp_frac latch (pre-full-TP).
+    #[serde(default)]
+    pub adaptive_partial_latch_armed: bool,
     #[serde(default)]
     pub trailing_sl_armed: bool,
     #[serde(default)]
@@ -132,6 +152,19 @@ pub struct OpenPlanState {
     pub exit_vol_surge: Option<String>,
     #[serde(default)]
     pub book: Option<String>, // crypto | nse
+    /// Named Gate2X preset id (R4): `baseline_r30` | `r50_booking` | `floor_lock_r50`.
+    /// When set, Rust owns ratchet / floor_lock / protocol; field overrides below are fallback.
+    #[serde(default)]
+    pub gate2x_preset: Option<String>,
+    /// Observational floor-lock twin (per plan). Default false → PRIMARY/BASELINE/r50.
+    #[serde(default)]
+    pub gate2x_floor_lock_immediate: bool,
+    /// Override Gate2X ratchet (e.g. 0.50 for floor-lock / r50 twins).
+    #[serde(default)]
+    pub gate2x_ratchet_peak_frac: Option<f64>,
+    /// Override Gate2X protocol stamp when set.
+    #[serde(default)]
+    pub gate2x_protocol: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -253,12 +286,13 @@ impl PlanLifecycleManager {
             plan.exit_vol_surge = Some(vs.to_ascii_uppercase());
         }
 
-        // Favorable-only trailing SL (never worse than original), then Adaptive TP.
-        self.apply_trailing_sl(&mut plan, &direction, exec);
-        self.apply_adaptive_tp(&mut plan, &direction, bid, ask, low, high, now_ms);
-
-        // Gate 2X
+        // Adaptive intelligence = Coralys via Gate 2X (doubt / reversal → Protect|Exit).
+        // Blind ATR tick-trail is NOT Adaptive — only used when Adaptive is off.
         let g2x = self.run_gate2x(&mut plan, exec, now_ms);
+        if self.cfg.adaptive_tp_enabled {
+            // Adaptive arms only with Gate2X quality path — never sticky-poison.
+            plan.adaptive_tp_armed = g2x.soft_breach.armed;
+        }
         if matches!(
             g2x.action,
             CoralysPositionAction::Protect | CoralysPositionAction::Exit
@@ -270,13 +304,24 @@ impl PlanLifecycleManager {
             } else {
                 (plan.entry_price - exec) * plan.simulated_quantity
             };
+            if self.cfg.adaptive_tp_enabled {
+                plan.adaptive_tp_armed = g2x.soft_breach.armed;
+            }
             self.gate2x.reset_position_latch();
+            // Floor-lock stamp must stay exact for research journals (no ADAPTIVE_ prefix).
+            let detail = if g2x.reason == "MFE_FLOOR_LOCK_AT_PROTECT" {
+                g2x.reason.clone()
+            } else if self.cfg.adaptive_tp_enabled {
+                format!("ADAPTIVE_CORALYS_{}", g2x.reason)
+            } else {
+                g2x.reason.clone()
+            };
             return LifecycleTickResult {
                 protocol: PLAN_LIFECYCLE_PROTOCOL.into(),
                 closed: true,
                 plan,
                 exit_reason: Some(LifecycleCloseReason::Gate2xMfeGivebackProtect),
-                exit_reason_detail: Some(g2x.reason.clone()),
+                exit_reason_detail: Some(detail),
                 exit_price: Some(round_tick(exec)),
                 net_pnl: Some(((gross - friction) * 100.0).round() / 100.0),
                 gate2x_action: Some(format!("{:?}", g2x.action)),
@@ -284,30 +329,48 @@ impl PlanLifecycleManager {
             };
         }
 
+        if self.cfg.adaptive_tp_enabled {
+            // Intelligent trail: ratchet SL only to Coralys protect/ratchet floors.
+            self.apply_adaptive_coralys_floor_trail(&mut plan, &direction, &g2x);
+        } else if self.cfg.trailing_sl_enabled {
+            self.apply_trailing_sl(&mut plan, &direction, exec);
+        }
+
         let tp = plan.profit_target_price;
         let sl = plan.stop_loss_price;
         let mfe = plan.mfe_exec_price.unwrap_or(exec);
         let mae = plan.mae_exec_price.unwrap_or(exec);
-        let mut hit_tp = false;
-        let mut hit_sl = false;
-        if direction == "LONG" {
-            hit_tp = bid >= tp || high >= tp || mfe >= tp;
-            hit_sl = bid <= sl || low <= sl || mae <= sl;
+        let orig_sl = plan
+            .original_stop_loss_price
+            .unwrap_or(sl);
+        // After a favorable SL ratchet (trail / Adaptive latch / extend-lock), do
+        // not let lifetime MAE retroactively trip the new lock — only the current
+        // observation (bid/ask/low/high) can fill a tightened stop.
+        let sl_still_original = if direction == "LONG" {
+            sl <= orig_sl + 1e-9
         } else {
-            hit_tp = ask <= tp || low <= tp || mfe <= tp;
-            hit_sl = ask >= sl || high >= sl || mae >= sl;
-        }
+            sl + 1e-9 >= orig_sl
+        };
+        let (mut hit_tp, mut hit_sl) = if direction == "LONG" {
+            (
+                bid >= tp || high >= tp || mfe >= tp,
+                bid <= sl || low <= sl || (sl_still_original && mae <= sl),
+            )
+        } else {
+            (
+                ask <= tp || low <= tp || mfe <= tp,
+                ask >= sl || high >= sl || (sl_still_original && mae >= sl),
+            )
+        };
 
-        let max_ext = self.cfg.adaptive_tp_max_extensions;
-        if self.cfg.adaptive_tp_enabled && hit_tp && !hit_sl && plan.tp_level < max_ext {
+        // Adaptive tick-trail: TP is runner-only — do not hard-close / latch on TP hit.
+        // Exit via trailed SL, Gate 2X, or horizon.
+        if self.cfg.adaptive_tp_enabled {
             hit_tp = false;
         }
         let mut ambiguous_as: Option<String> = None;
         if hit_tp && hit_sl {
-            if plan.tp_level >= 1 {
-                hit_tp = false;
-                ambiguous_as = Some("SL_ADAPTIVE_LOCK".into());
-            } else if self.cfg.ambiguous_tie_break_tp {
+            if self.cfg.ambiguous_tie_break_tp {
                 hit_sl = false;
                 ambiguous_as = Some("TP".into());
             } else {
@@ -391,18 +454,13 @@ impl PlanLifecycleManager {
             } else {
                 (plan.entry_price - exit_px) * plan.simulated_quantity
             };
-            let detail = if self.cfg.adaptive_tp_enabled && plan.tp_level >= max_ext {
-                Some("ADAPTIVE_TP_MAX_EXTENSIONS".into())
-            } else {
-                None
-            };
             self.gate2x.reset_position_latch();
             return LifecycleTickResult {
                 protocol: PLAN_LIFECYCLE_PROTOCOL.into(),
                 closed: true,
                 plan,
                 exit_reason: Some(LifecycleCloseReason::ProfitTargetHit),
-                exit_reason_detail: detail,
+                exit_reason_detail: None,
                 exit_price: Some(round_tick(exit_px)),
                 net_pnl: Some(((gross - friction) * 100.0).round() / 100.0),
                 gate2x_action: Some(format!("{:?}", g2x.action)),
@@ -512,73 +570,57 @@ impl PlanLifecycleManager {
         }
     }
 
-    fn apply_adaptive_tp(
+    /// Gate 5 Adaptive intelligent trail: ratchet SL to Coralys/Gate2X protect
+    /// floor (max(cost-clear, ratchet×peak_mfe) in PnL units → price). Never
+    /// loosens. Blind ATR chase is intentionally absent — Coralys Protect/Exit
+    /// owns “doubt trend continues / reversal” exits.
+    fn apply_adaptive_coralys_floor_trail(
         &self,
         plan: &mut OpenPlanState,
         direction: &str,
-        bid: f64,
-        ask: f64,
-        low: f64,
-        high: f64,
-        now_ms: i64,
+        g2x: &Gate2xDecision,
     ) {
-        if !self.cfg.adaptive_tp_enabled {
+        if !g2x.soft_breach.armed && !plan.gate2x_mfe_armed {
             return;
         }
-        let max_ext = self.cfg.adaptive_tp_max_extensions;
-        if plan.tp_level >= max_ext {
+        let floor_pnl = g2x
+            .soft_breach
+            .protect_floor
+            .or(g2x.soft_breach.ratchet_floor)
+            .unwrap_or(0.0);
+        if floor_pnl <= 0.0 {
             return;
         }
-        let step = if plan.atr_14 > 0.0 {
-            self.cfg.adaptive_tp_extend_atr_mult * plan.atr_14
+        let qty = plan.simulated_quantity.max(1e-12);
+        let entry = plan.entry_price;
+        let orig = plan
+            .original_stop_loss_price
+            .unwrap_or(plan.stop_loss_price);
+        plan.original_stop_loss_price = Some(orig);
+        let mfe_px = plan.mfe_exec_price.unwrap_or(entry);
+        let proposed = if direction == "LONG" {
+            round_tick(entry + floor_pnl / qty)
         } else {
-            self.cfg.adaptive_tp_extend_pct * plan.entry_price
+            round_tick(entry - floor_pnl / qty)
         };
-        if step <= 0.0 {
-            return;
-        }
-        let mfe = plan.mfe_exec_price.unwrap_or(if direction == "LONG" {
-            bid
-        } else {
-            ask
-        });
-        let mut tp = plan.profit_target_price;
         let mut sl = plan.stop_loss_price;
-        let mut level = plan.tp_level;
-        let mut extended = false;
-        while level < max_ext {
-            let still_hit = if direction == "LONG" {
-                bid >= tp || high >= tp || mfe >= tp
-            } else {
-                ask <= tp || low <= tp || mfe <= tp
-            };
-            if !still_hit {
-                break;
+        if direction == "LONG" {
+            let cand = proposed.max(orig);
+            if cand > sl && cand < mfe_px {
+                sl = cand;
             }
-            let prior_tp = tp;
-            if direction == "LONG" {
-                tp = round_tick(prior_tp + step);
-                let new_sl = round_tick(prior_tp);
-                if new_sl > sl {
-                    sl = new_sl;
-                }
-            } else {
-                tp = round_tick(prior_tp - step);
-                let new_sl = round_tick(prior_tp);
-                if new_sl < sl {
-                    sl = new_sl;
-                }
+        } else {
+            let cand = proposed.min(orig);
+            if cand < sl && cand > mfe_px {
+                sl = cand;
             }
-            level += 1;
-            extended = true;
         }
-        if extended {
-            plan.profit_target_price = tp;
+        if (sl - plan.stop_loss_price).abs() > 1e-9 {
             plan.stop_loss_price = sl;
-            plan.tp_level = level;
             plan.adaptive_tp_armed = true;
-            let _ = now_ms;
-            let _ = self.book; // book-specific protocol stamped by caller if needed
+            plan.trailing_sl_armed = true;
+            plan.adaptive_partial_latch_armed = false;
+            let _ = self.book;
         }
     }
 
@@ -644,11 +686,43 @@ impl PlanLifecycleManager {
             0.0
         };
 
-        let mut params = match self.book {
-            Gate2xBookKind::Crypto => Gate2xParams::crypto_defaults(),
-            Gate2xBookKind::Nse => Gate2xParams::nse_defaults(),
+        let book_s = match self.book {
+            Gate2xBookKind::Crypto => "crypto",
+            Gate2xBookKind::Nse => "nse",
+        };
+        let mut params = if let Some(ref raw) = plan.gate2x_preset {
+            if let Some(pid) = super::gate2x_features::Gate2xPresetId::parse(raw) {
+                Gate2xParams::from_preset(book_s, pid)
+            } else {
+                Gate2xParams::book_defaults(book_s)
+            }
+        } else {
+            Gate2xParams::book_defaults(book_s)
         };
         params.protect_floor = ProtectFloorMode::CostClear;
+        // Legacy per-field twin overrides (pre-R4). Prefer gate2x_preset when set.
+        if plan.gate2x_preset.is_none() {
+            if plan.gate2x_floor_lock_immediate {
+                params.floor_lock_immediate = true;
+                params.min_hold_s_before_exit = 0.0; // H11 — match floor_lock_twin_defaults
+                params.ratchet_peak_frac = plan
+                    .gate2x_ratchet_peak_frac
+                    .unwrap_or(0.50)
+                    .clamp(0.0, 1.0);
+                params.protocol = plan
+                    .gate2x_protocol
+                    .clone()
+                    .unwrap_or_else(|| "RP-608-GATE2X-FLOOR-LOCK-TWIN-001".into());
+            } else if let Some(r) = plan.gate2x_ratchet_peak_frac {
+                params.ratchet_peak_frac = r.clamp(0.0, 1.0);
+                if let Some(ref proto) = plan.gate2x_protocol {
+                    params.protocol = proto.clone();
+                }
+            }
+        } else if let Some(r) = plan.gate2x_ratchet_peak_frac {
+            // Optional env override of ratchet on top of named preset (research knobs).
+            params.ratchet_peak_frac = r.clamp(0.0, 1.0);
+        }
 
         let snap = Gate2xFeatureSnapshot {
             decision_id: plan.plan_id.clone(),
@@ -673,7 +747,9 @@ impl PlanLifecycleManager {
         };
 
         let d = self.gate2x.manage_tick(snap);
-        plan.gate2x_mfe_armed = d.soft_breach.armed || plan.gate2x_mfe_armed;
+        // Do not sticky-OR prior plan.armed — stale/poisoned flags must clear when
+        // this plan has not cleared quality arm (peak_tp_frac / peak_mfe).
+        plan.gate2x_mfe_armed = d.soft_breach.armed;
         plan.gate2x_soft_breach_since_ms = d.soft_breach.soft_breach_since_ms;
         d
     }
@@ -718,6 +794,7 @@ mod tests {
             original_stop_loss_price: Some(sl),
             tp_level: 0,
             adaptive_tp_armed: false,
+            adaptive_partial_latch_armed: false,
             trailing_sl_armed: false,
             mfe_exec_price: None,
             mae_exec_price: None,
@@ -729,7 +806,189 @@ mod tests {
             path_h_revisit_seen: false,
             exit_vol_surge: Some("UNK".into()),
             book: Some("crypto".into()),
+            gate2x_preset: None,
+            gate2x_floor_lock_immediate: false,
+            gate2x_ratchet_peak_frac: None,
+            gate2x_protocol: None,
         }
+    }
+
+    fn long_plan(entry: f64, atr: f64) -> OpenPlanState {
+        let tp = round_tick(entry + 1.5 * atr);
+        let sl = round_tick(entry - 1.0 * atr);
+        OpenPlanState {
+            plan_id: "PLAN-TEST-LONG".into(),
+            instrument: "BTCUSDT".into(),
+            direction: "LONG".into(),
+            entry_price: entry,
+            stop_loss_price: sl,
+            profit_target_price: tp,
+            atr_14: atr,
+            simulated_quantity: 1.0,
+            simulated_notional_usdt: entry,
+            entry_time_ms: 1_000_000,
+            expiry_time_ms: 1_000_000 + 7 * 24 * 3_600_000,
+            original_stop_loss_price: Some(sl),
+            tp_level: 0,
+            adaptive_tp_armed: false,
+            adaptive_partial_latch_armed: false,
+            trailing_sl_armed: false,
+            mfe_exec_price: None,
+            mae_exec_price: None,
+            gate2x_peak_mfe: None,
+            gate2x_peak_tp_frac: None,
+            gate2x_mfe_armed: false,
+            gate2x_soft_breach_since_ms: None,
+            path_h_adverse_seen: false,
+            path_h_revisit_seen: false,
+            exit_vol_surge: Some("UNK".into()),
+            book: Some("crypto".into()),
+            gate2x_preset: None,
+            gate2x_floor_lock_immediate: false,
+            gate2x_ratchet_peak_frac: None,
+            gate2x_protocol: None,
+        }
+    }
+
+    #[test]
+    fn floor_lock_twin_exits_at_protect_via_lifecycle() {
+        // R2: per-plan floor_lock_immediate → MFE_FLOOR_LOCK_AT_PROTECT (no HARD_FLOOR).
+        let dir = std::env::temp_dir().join("rp608_plan_lc_floor_lock");
+        let _ = std::fs::remove_dir_all(&dir);
+        std::fs::create_dir_all(&dir).unwrap();
+        write_store(&dir);
+        let mut cfg = PlanLifecycleConfig::default();
+        cfg.adaptive_tp_enabled = true;
+        cfg.early_sl_path_scratch_enabled = false;
+        let mut mgr =
+            PlanLifecycleManager::load(dir.to_str().unwrap(), Gate2xBookKind::Crypto, cfg)
+                .unwrap();
+        let entry = 100.0;
+        let atr = 2.0;
+        let mut plan = long_plan(entry, atr);
+        plan.gate2x_floor_lock_immediate = true;
+        plan.gate2x_ratchet_peak_frac = Some(0.50);
+        plan.gate2x_protocol = Some("RP-608-GATE2X-FLOOR-LOCK-TWIN-001".into());
+        plan.entry_time_ms = 1_000_000;
+        // Peak MFE already quality-armed via mfe_exec; drop mark through protect.
+        let peak_px = entry + 10.0; // peak_mfe = 10 * qty=1
+        plan.mfe_exec_price = Some(peak_px);
+        plan.mae_exec_price = Some(entry - 1.0);
+        plan.gate2x_peak_tp_frac = Some(0.80);
+        let q = PlanQuote {
+            best_bid_price: entry + 4.0, // cur_mfe=4; protect=max(cost,~5)=5 → Exit
+            best_ask_price: entry + 4.1,
+            low_price: Some(entry + 3.5),
+            high_price: Some(peak_px),
+            now_ms: Some(1_000_000 + 180_000),
+            vol_surge: Some("LOW".into()),
+        };
+        let r = mgr.manage_tick(plan, q);
+        assert!(r.closed, "expected floor-lock close");
+        assert_eq!(
+            r.exit_reason_detail.as_deref(),
+            Some("MFE_FLOOR_LOCK_AT_PROTECT")
+        );
+        assert!(matches!(
+            r.exit_reason,
+            Some(LifecycleCloseReason::Gate2xMfeGivebackProtect)
+        ));
+    }
+
+    #[test]
+    fn floor_lock_preset_id_exits_at_protect() {
+        // R4: gate2x_preset=floor_lock_r50 alone (no per-field flags).
+        let dir = std::env::temp_dir().join("rp608_plan_lc_floor_lock_preset");
+        let _ = std::fs::remove_dir_all(&dir);
+        std::fs::create_dir_all(&dir).unwrap();
+        write_store(&dir);
+        let mut cfg = PlanLifecycleConfig::default();
+        cfg.adaptive_tp_enabled = true;
+        cfg.early_sl_path_scratch_enabled = false;
+        let mut mgr =
+            PlanLifecycleManager::load(dir.to_str().unwrap(), Gate2xBookKind::Crypto, cfg)
+                .unwrap();
+        let entry = 100.0;
+        let atr = 2.0;
+        let mut plan = long_plan(entry, atr);
+        plan.gate2x_preset = Some("floor_lock_r50".into());
+        plan.entry_time_ms = 1_000_000;
+        let peak_px = entry + 10.0;
+        plan.mfe_exec_price = Some(peak_px);
+        plan.mae_exec_price = Some(entry - 1.0);
+        plan.gate2x_peak_tp_frac = Some(0.80);
+        let q = PlanQuote {
+            best_bid_price: entry + 4.0,
+            best_ask_price: entry + 4.1,
+            low_price: Some(entry + 3.5),
+            high_price: Some(peak_px),
+            now_ms: Some(1_000_000 + 180_000),
+            vol_surge: Some("LOW".into()),
+        };
+        let r = mgr.manage_tick(plan, q);
+        assert!(r.closed, "expected floor-lock close via preset");
+        assert_eq!(
+            r.exit_reason_detail.as_deref(),
+            Some("MFE_FLOOR_LOCK_AT_PROTECT")
+        );
+    }
+
+    #[test]
+    fn adaptive_coralys_floor_trails_not_blind_atr() {
+        // Quality path (high peak_tp_frac) + Hold above floor → SL ratchets to
+        // Coralys protect/ratchet floor, not MFE−0.5×ATR.
+        let dir = std::env::temp_dir().join("rp608_plan_lc_adaptive_coralys");
+        let _ = std::fs::remove_dir_all(&dir);
+        std::fs::create_dir_all(&dir).unwrap();
+        write_store(&dir);
+        let mut cfg = PlanLifecycleConfig::default();
+        cfg.adaptive_tp_enabled = true;
+        cfg.early_sl_path_scratch_enabled = false;
+        let mut mgr =
+            PlanLifecycleManager::load(dir.to_str().unwrap(), Gate2xBookKind::Crypto, cfg)
+                .unwrap();
+        let entry = 9760.5;
+        let atr = 57.27;
+        let mut plan = long_plan(entry, atr);
+        plan.simulated_quantity = 1.0;
+        plan.simulated_notional_usdt = entry;
+        let tp0 = plan.profit_target_price;
+        let span = tp0 - entry;
+        let mfe = round_tick(entry + 0.837 * span);
+        plan.mfe_exec_price = Some(mfe);
+        plan.mae_exec_price = Some(round_tick(entry - 10.0));
+        // Past min_hold so Gate2X can arm; stay above floor (current ≈ peak).
+        plan.entry_time_ms = 1_000_000;
+        let orig_sl = plan.stop_loss_price;
+        let q = PlanQuote {
+            best_bid_price: mfe - 2.0,
+            best_ask_price: mfe - 1.0,
+            low_price: Some(mfe - 5.0),
+            high_price: Some(mfe),
+            now_ms: Some(1_000_000 + 180_000),
+            vol_surge: Some("UNK".into()),
+        };
+        let r = mgr.manage_tick(plan, q);
+        assert!(
+            !r.closed,
+            "unexpected close: {:?} detail={:?}",
+            r.exit_reason,
+            r.exit_reason_detail
+        );
+        assert!(r.plan.gate2x_mfe_armed || r.plan.adaptive_tp_armed);
+        let blind_atr = round_tick(mfe - 0.5 * atr);
+        // Coralys floor trail must not equal blind ATR chase (may be lower floor).
+        if r.plan.trailing_sl_armed || r.plan.stop_loss_price > orig_sl + 1e-9 {
+            assert!(
+                (r.plan.stop_loss_price - blind_atr).abs() > 0.5
+                    || r.plan.stop_loss_price < blind_atr,
+                "Adaptive must not blindly trail at MFE-0.5ATR; sl={} blind={}",
+                r.plan.stop_loss_price,
+                blind_atr
+            );
+        }
+        assert_eq!(r.plan.tp_level, 0);
+        assert!(r.plan.profit_target_price <= tp0 + 1e-9);
     }
 
     #[test]
@@ -841,31 +1100,51 @@ mod tests {
     }
 
     #[test]
-    fn adaptive_tp_extends_short_on_first_touch() {
-        let dir = std::env::temp_dir().join("rp608_plan_lc_adapt");
+    fn adaptive_does_not_latch_sl_on_tp_touch() {
+        // TP touch must not lock SL to prior TP; Adaptive suppresses hard TP.
+        let dir = std::env::temp_dir().join("rp608_plan_lc_adapt_no_tp_latch");
         let _ = std::fs::remove_dir_all(&dir);
         std::fs::create_dir_all(&dir).unwrap();
         write_store(&dir);
-        let mut mgr = PlanLifecycleManager::load(
-            dir.to_str().unwrap(),
-            Gate2xBookKind::Crypto,
-            PlanLifecycleConfig::default(),
-        )
-        .unwrap();
-        let plan = short_plan(80170.0, 264.43);
+        let mut cfg = PlanLifecycleConfig::default();
+        cfg.adaptive_tp_enabled = true;
+        cfg.early_sl_path_scratch_enabled = false;
+        let mut mgr =
+            PlanLifecycleManager::load(dir.to_str().unwrap(), Gate2xBookKind::Crypto, cfg)
+                .unwrap();
+        let entry = 80170.0;
+        let atr = 264.43;
+        let plan = short_plan(entry, atr);
         let tp0 = plan.profit_target_price;
+        let orig_sl = plan.stop_loss_price;
         let q = PlanQuote {
             best_bid_price: tp0 - 1.0,
             best_ask_price: tp0 - 0.5,
-            low_price: None,
-            high_price: None,
+            low_price: Some(tp0 - 2.0),
+            high_price: Some(entry - 1.0),
             now_ms: Some(1_000_000 + 5_000),
             vol_surge: Some("UNK".into()),
         };
         let r = mgr.manage_tick(plan, q);
-        assert!(!r.closed);
-        assert_eq!(r.plan.tp_level, 1);
-        assert!(r.plan.adaptive_tp_armed);
-        assert!((r.plan.stop_loss_price - tp0).abs() < 0.02);
+        assert!(
+            !r.closed,
+            "Adaptive suppresses hard TP: {:?} {:?}",
+            r.exit_reason,
+            r.exit_reason_detail
+        );
+        assert_eq!(r.plan.tp_level, 0);
+        // No TP-latch: SL must not equal prior TP.
+        assert!((r.plan.stop_loss_price - tp0).abs() > 0.5);
+        // Blind ATR trail must not run under Adaptive (Coralys floor only).
+        let mfe = r.plan.mfe_exec_price.unwrap();
+        let blind = round_tick(mfe + 0.5 * atr);
+        assert!(
+            (r.plan.stop_loss_price - blind).abs() > 0.5
+                || (r.plan.stop_loss_price - orig_sl).abs() < 0.05,
+            "no blind ATR trail under Adaptive; sl={} orig={} blind={}",
+            r.plan.stop_loss_price,
+            orig_sl,
+            blind
+        );
     }
 }

@@ -436,6 +436,7 @@ impl EvaluationService {
         ))
     }
 
+    #[allow(dead_code)]
     pub fn load_all_real_scenarios(
         &self,
     ) -> Result<HashMap<String, Vec<chronosentiment_core::SimEvent>>, ApiError> {

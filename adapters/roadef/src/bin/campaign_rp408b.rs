@@ -1,3 +1,4 @@
+#![allow(dead_code, unused_variables, unused_imports, unused_mut, unused_assignments)]
 /// RP-408B Campaign Runner — Comparator A/B Benchmark
 ///
 /// Runs all 20 setA instances with a fixed seed under either the Scalar or

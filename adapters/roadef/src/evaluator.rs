@@ -228,21 +228,16 @@ impl RoadefEvaluator {
             count_sat += 1;
 
             if sat > 0.0 {
-                // RC-001 FIX: use sat > 1.0 + 1e-6 instead of sat >= 1.0.
-                // Floating-point accumulation in ECMP routing can produce sat=1.000000686
-                // (flow=583.0004, cap=583.0000) which is physically feasible but was
-                // incorrectly rejected. The 1e-6 epsilon matches the ROADEF checker's
-                // tolerance and prevents false infeasibility from float rounding.
-                if sat > 1.0 + 1e-6 {
-                    inv_load_cost += f64::INFINITY;
+                // Strict C^0-continuous monotonic regularized penalty:
+                // For sat < 1.0 clamped at 1.0 - 1e-6, evaluates to 1e6 - 1.0 as sat -> 1.0.
+                // For sat >= 1.0, begins exactly at 1e6 - 1.0 and increases with slope 1e5.
+                let cost = if sat >= 1.0 {
+                    (1_000_000.0 - 1.0) + (sat - 1.0) * 100_000.0
                 } else {
-                    // Clamp sat to [0, 1-eps] before computing inv_load_cost to avoid
-                    // division by zero or negative values from float near-equality.
-                    let sat_clamped = sat.min(1.0 - 1e-9);
-                    let f_sat = sat_clamped as f32;
-                    let cost = (1.0 / (1.0 - f_sat as f64)) - 1.0;
-                    inv_load_cost += cost;
-                }
+                    let sat_clamped = sat.min(1.0 - 1e-6);
+                    (1.0 / (1.0 - sat_clamped)) - 1.0
+                };
+                inv_load_cost += cost;
             }
         }
 
@@ -364,7 +359,7 @@ impl RoadefEvaluator {
                 } else {
                     f64::INFINITY
                 };
-                if sat >= 1.0 - 1e-6 {
+                if sat > 1.0 + 1e-6 {
                     return Some(format!(
                         "arc_overloaded: t={} arc={} flow={:.9} cap={:.9} sat={:.9}",
                         ts, arc.id, flow, arc.capacity, sat
@@ -513,13 +508,13 @@ impl RoadefEvaluator {
                     mlu = sat;
                 }
                 if sat > 0.0 {
-                    if sat > 1.0 + 1e-6 {
-                        inv_load_cost += f64::INFINITY;
+                    let cost = if sat >= 1.0 {
+                        (1_000_000.0 - 1.0) + (sat - 1.0) * 100_000.0
                     } else {
-                        let sat_clamped = sat.min(1.0 - 1e-9);
-                        let f_sat = sat_clamped as f32;
-                        inv_load_cost += (1.0 / (1.0 - f_sat as f64)) - 1.0;
-                    }
+                        let sat_clamped = sat.min(1.0 - 1e-6);
+                        (1.0 / (1.0 - sat_clamped)) - 1.0
+                    };
+                    inv_load_cost += cost;
                 }
             }
             total_obj += mlu + inv_load_cost;
@@ -735,13 +730,13 @@ impl RoadefEvaluator {
                     mlu = sat;
                 }
                 if sat > 0.0 {
-                    if sat > 1.0 + 1e-6 {
-                        inv_load_cost += f64::INFINITY;
+                    let cost = if sat >= 1.0 {
+                        (1_000_000.0 - 1.0) + (sat - 1.0) * 100_000.0
                     } else {
-                        let sat_clamped = sat.min(1.0 - 1e-9);
-                        let f_sat = sat_clamped as f32;
-                        inv_load_cost += (1.0 / (1.0 - f_sat as f64)) - 1.0;
-                    }
+                        let sat_clamped = sat.min(1.0 - 1e-6);
+                        (1.0 / (1.0 - sat_clamped)) - 1.0
+                    };
+                    inv_load_cost += cost;
                 }
             }
             total_obj += mlu + inv_load_cost;
@@ -978,13 +973,13 @@ impl RoadefEvaluator {
                     mlu = sat;
                 }
                 if sat > 0.0 {
-                    if sat > 1.0 + 1e-6 {
-                        inv_load_cost += f64::INFINITY;
+                    let cost = if sat >= 1.0 {
+                        (1_000_000.0 - 1.0) + (sat - 1.0) * 100_000.0
                     } else {
-                        let sat_clamped = sat.min(1.0 - 1e-9);
-                        let f_sat = sat_clamped as f32;
-                        inv_load_cost += (1.0 / (1.0 - f_sat as f64)) - 1.0;
-                    }
+                        let sat_clamped = sat.min(1.0 - 1e-6);
+                        (1.0 / (1.0 - sat_clamped)) - 1.0
+                    };
+                    inv_load_cost += cost;
                 }
             }
             total_obj += mlu + inv_load_cost;

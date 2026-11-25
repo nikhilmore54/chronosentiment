@@ -1,3 +1,4 @@
+#![allow(dead_code, unused_variables, unused_imports, unused_mut, unused_assignments)]
 use rand::seq::SliceRandom;
 use rand::thread_rng;
 use std::collections::HashMap;

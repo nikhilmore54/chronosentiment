@@ -212,9 +212,10 @@ No trading-rule or authority changes are implied by any stage.
 | Item | Mandate |
 | --- | --- |
 | P0–P3 | **Closed** — shared Rust push path established; Python behavioural reference retained |
-| Production writer cutover | **Not authorized** — requires separate governance review |
+| Production writer cutover (OF paper ledger) | **Not authorized** — separate Gate review |
+| Depth journal side-path soak | **Authorized 2026-11-25** — Rust → `depth_snapshots.rust.jsonl` only; Python remains authoritative (`RP608_NSE_DEPTH_WRITER=compare`). Flip to `rust` requires session parity + sign-off. Pack: `docs/research/rp608_nse_depth_journal_rust_cutover_readiness_2026_11_25.md` |
 | Live authority | **0%** |
-| Default next engineering milestone | **None** — do not infer P4 from P3 completion |
+| Default next engineering milestone | Track B depth side-path soak → single-writer flip; no P4 paper-ledger implication |
 
 ---
 

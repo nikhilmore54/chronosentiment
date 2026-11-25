@@ -1,3 +1,4 @@
+#![allow(dead_code, unused_variables, unused_imports, unused_mut, unused_assignments)]
 use cvrp::CvrpInstance;
 
 fn get_node_by_id(instance: &CvrpInstance, id: usize) -> &cvrp::Node {

@@ -26,7 +26,6 @@
 //!
 //! The ledger is the authoritative source.
 use std::sync::Arc;
-use axum::Router;
 use coralys_decision::DecisionLedger;
 use coralys_decision::recommendation::{EvidenceStore, Rec001hStore};
 use coralys_decision_server::{AppState, ProtectionShadowLedger, build_router};

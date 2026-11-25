@@ -1,3 +1,4 @@
+#![allow(dead_code, unused_variables, unused_imports, unused_mut, unused_assignments)]
 /// phase10b_repair_measure.rs — P10-B Repair-Scaling Characterization Sweep
 ///
 /// Governance protocol: OBSERVATIONAL — measurement-only binary.

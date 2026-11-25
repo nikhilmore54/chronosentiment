@@ -1,3 +1,4 @@
+#![allow(dead_code, unused_variables, unused_imports, unused_mut, unused_assignments)]
 /// RP-406C: Benchmark Characterisation
 ///
 /// Loads the RP-406B solution for every setA instance, computes the full

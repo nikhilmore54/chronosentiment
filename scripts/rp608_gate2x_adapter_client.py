@@ -133,6 +133,8 @@ def build_snapshot(
             "deep_giveback_frac": float(p.get("deep_giveback_frac", 0.50)),
             "deep_giveback_dwell_scale": float(p.get("deep_giveback_dwell_scale", 0.40)),
             "protocol": protocol,
+            # Floor-lock twin (default off). Rust gate2x_decide stamps MFE_FLOOR_LOCK_AT_PROTECT.
+            "floor_lock_immediate": bool(p.get("floor_lock_immediate", False)),
         },
     }
 

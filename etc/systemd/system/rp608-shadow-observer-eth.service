@@ -25,12 +25,26 @@ Environment=RP608_POSITION_DECIDE_BIN=/home/ultraspeed/ChronoSentiment_MEGA_FINA
 Environment=RP608_GATE2X_MANAGE_BIN=/home/ultraspeed/ChronoSentiment_MEGA_FINAL/artifacts/deploy/chronosentiment/rp608_position_decide.aarch64-linux
 Environment=RP608_PLAN_LIFECYCLE=1
 Environment=RP608_PLAN_LIFECYCLE_REQUIRE_RUST=1
+# Track C default-on (2026-11-25): rust tick Policy B/C; books never pooled with BTC
+Environment=RP608_CRYPTO_TICK_POLICY=rust
 Environment=RP608_CRYPTO_REC001H_DIR=/home/ultraspeed/ChronoSentiment_MEGA_FINAL/datasets/recommendation/historical_crypto
-# Explicit: do not inherit BTC allow_only Gate 2E onto ETH.
-Environment=RP608_CRYPTO_PATTERN_GATE=0
+# ETH Gate2E dual book (mirrors BTC shape; never pool with BTC; never reuse BTC cohorts):
+#   PRIMARY  CRYPTO_PLAN_ETHUSDT              → allow_only + ETH symbol library
+#   BASELINE CRYPTO_PLAN_BASELINE_PARALLEL_ETHUSDT → gate OFF (ungated control)
+# Mine PRIMARY library:
+#   python3 scripts/rp608_crypto_trade_pattern_library.py \
+#     --outcomes …/crypto_eth/trade_plan_overlay_v1/trade_plan_outcomes.jsonl \
+#     --output …/crypto_eth/rp608_crypto_plan_trade_pattern_library.json
+Environment=RP608_CRYPTO_PATTERN_GATE=allow_only
 Environment=RP608_CRYPTO_PATTERN_GATE_BASELINE=0
 Environment=RP608_CRYPTO_PATTERN_EXIT_GATE=0
 Environment=RP608_OF_PAPER_QUALITY_GATE=1
+# Gate 2E: suppress plan opens without L1 OF support (twin-safe; books never pooled).
+# NOT OF ±0.30 / Gate 5. Protocol RP-608-GATE2E-PLAN-REQUIRE-OF-001.
+Environment=RP608_CRYPTO_PLAN_REQUIRE_OF=1
+# Gate 2E: require ≥2 same-dir Policy B fires in 60s (anti one-shot flicker).
+Environment=RP608_CRYPTO_PLAN_B_PERSIST_MIN_FIRES=2
+Environment=RP608_CRYPTO_PLAN_B_PERSIST_WINDOW_S=60
 
 [Install]
 WantedBy=multi-user.target

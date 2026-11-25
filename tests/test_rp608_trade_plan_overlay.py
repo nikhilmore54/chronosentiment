@@ -41,7 +41,11 @@ class TestTradePlanOverlay(unittest.TestCase):
         # Unit tests exercise Python Adaptive/SL/TP fallback. Live Pi uses Rust
         # PlanLifecycleManager (RP608_PLAN_LIFECYCLE=1) — keep books/paths separate.
         self._prev_plan_lifecycle = os.environ.get("RP608_PLAN_LIFECYCLE")
+        self._prev_require_rust = os.environ.get("RP608_PLAN_LIFECYCLE_REQUIRE_RUST")
+        self._prev_plan_require_of = os.environ.get("RP608_CRYPTO_PLAN_REQUIRE_OF")
         os.environ["RP608_PLAN_LIFECYCLE"] = "0"
+        os.environ["RP608_PLAN_LIFECYCLE_REQUIRE_RUST"] = "0"
+        os.environ["RP608_CRYPTO_PLAN_REQUIRE_OF"] = "0"
         self.tmp_dir = tempfile.TemporaryDirectory()
         self.test_overlay_dir = Path(self.tmp_dir.name)
 
@@ -81,6 +85,14 @@ class TestTradePlanOverlay(unittest.TestCase):
             os.environ.pop("RP608_PLAN_LIFECYCLE", None)
         else:
             os.environ["RP608_PLAN_LIFECYCLE"] = self._prev_plan_lifecycle
+        if self._prev_require_rust is None:
+            os.environ.pop("RP608_PLAN_LIFECYCLE_REQUIRE_RUST", None)
+        else:
+            os.environ["RP608_PLAN_LIFECYCLE_REQUIRE_RUST"] = self._prev_require_rust
+        if self._prev_plan_require_of is None:
+            os.environ.pop("RP608_CRYPTO_PLAN_REQUIRE_OF", None)
+        else:
+            os.environ["RP608_CRYPTO_PLAN_REQUIRE_OF"] = self._prev_plan_require_of
 
     def test_01_short_trade_plan_levels(self):
         """Validates short entry at bid, SL at E + 1.0*ATR, TP at E - 1.5*ATR."""
@@ -135,6 +147,10 @@ class TestTradePlanOverlay(unittest.TestCase):
         self.assertGreater(resolved["net_pnl_usdt"], 0.0)
         self.assertIsNone(mgr.state["active_plan"])
 
+    @unittest.skip(
+        "Track A / Coralys Adaptive: Python TP-extension ladder retired; "
+        "Rust PlanLifecycleManager owns Adaptive trail (no TP latch)."
+    )
     def test_04b_adaptive_tp_extends_not_closes(self):
         """Gate 5 Adaptive TP: first TP touch extends + locks SL; plan stays OPEN."""
         mgr = TradePlanOverlayManager(base_dir=self.test_overlay_dir)
@@ -171,6 +187,10 @@ class TestTradePlanOverlay(unittest.TestCase):
         self.assertAlmostEqual(float(active["profit_target_price"]), expected_tp, places=2)
         self.assertAlmostEqual(float(active["stop_loss_price"]), tp0, places=2)
 
+    @unittest.skip(
+        "Track A / Coralys Adaptive: Python TP-extension ladder retired; "
+        "Rust PlanLifecycleManager owns Adaptive trail (no TP latch)."
+    )
     def test_04c_adaptive_tp_max_extensions_hard_close(self):
         """After max extensions, further TP touch closes PROFIT_TARGET_HIT."""
         mgr = TradePlanOverlayManager(base_dir=self.test_overlay_dir)
@@ -202,6 +222,10 @@ class TestTradePlanOverlay(unittest.TestCase):
         self.assertEqual(resolved.get("exit_reason_detail"), "ADAPTIVE_TP_MAX_EXTENSIONS")
         self.assertEqual(int(resolved["tp_level"]), 3)
 
+    @unittest.skip(
+        "Track A / Coralys Adaptive: ambiguous TP∧SL lock ladder retired with "
+        "Python Adaptive manage; Rust owns Adaptive under PLAN_LIFECYCLE=1."
+    )
     def test_04d_adaptive_ambiguous_prefers_locked_sl(self):
         """Once adaptive armed, ambiguous TP∧SL resolves to locked SL."""
         mgr = TradePlanOverlayManager(base_dir=self.test_overlay_dir)
@@ -447,11 +471,17 @@ class TestTradePlanOverlay(unittest.TestCase):
         }
         with mock.patch.dict(CONFIG, {"adaptive_tp_enabled": False}):
             with mock.patch(
-                "scripts.rp608_trade_plan_overlay.fetch_live_btcusdt_book",
+                "scripts.rp608_trade_plan_overlay.fetch_live_book_ticker",
                 return_value=live_past_tp,
             ):
+                # Fresh clock inside plan horizon so TIME_EXIT cannot win the race.
+                t0 = int(time.time() * 1000)
+                plan["entry_time_ms"] = t0
+                plan["expiry_time_ms"] = t0 + 3_600_000
+                mgr.state["active_plan"] = plan
+                mgr._save_state()
                 status = mgr.sync_lifecycle(
-                    current_quote=stale_card_quote, now_ms=int(time.time() * 1000)
+                    current_quote=stale_card_quote, now_ms=t0 + 5_000
                 )
 
         self.assertFalse(status["is_active"])
@@ -782,6 +812,135 @@ class TestTradePlanOverlay(unittest.TestCase):
                     os.environ[key] = prev
             # Restore suite default for other tests.
             os.environ["RP608_PLAN_LIFECYCLE"] = "0"
+
+    def test_reload_state_preserves_open_mark_progress(self):
+        """Disk reload must not wipe fresher in-memory OPEN marks (Track A)."""
+        mgr = TradePlanOverlayManager(base_dir=self.test_overlay_dir)
+        plan = {
+            "plan_id": "PLAN-TEST-OPEN-1",
+            "state": "OPEN",
+            "direction": "SHORT",
+            "entry_price": 100.0,
+            "last_mark_price": 99.0,
+            "last_mark_time_ms": 1_000,
+            "mfe_exec_price": 98.5,
+            "mae_exec_price": 100.5,
+        }
+        mgr.state["active_plan"] = plan
+        mgr._save_state()
+
+        # Simulate hold-tick progress in memory (not yet on a second writer).
+        mgr.state["active_plan"] = {
+            **plan,
+            "last_mark_price": 97.0,
+            "last_mark_time_ms": 2_000,
+            "mfe_exec_price": 97.0,
+            "mae_exec_price": 101.0,
+        }
+        # Stale disk still has the older marks.
+        mgr.reload_state_from_disk(preserve_open_progress=True)
+        kept = mgr.state["active_plan"]
+        self.assertEqual(kept["plan_id"], "PLAN-TEST-OPEN-1")
+        self.assertEqual(kept["last_mark_price"], 97.0)
+        self.assertEqual(kept["last_mark_time_ms"], 2_000)
+        self.assertEqual(kept["mfe_exec_price"], 97.0)
+
+        # Different plan_id on disk wins (external replace / new open).
+        disk = mgr._load_state()
+        disk["active_plan"] = {
+            **plan,
+            "plan_id": "PLAN-TEST-OPEN-2",
+            "last_mark_price": 95.0,
+        }
+        mgr.state_file.write_text(json.dumps(disk), encoding="utf-8")
+        mgr.state["active_plan"] = {
+            **plan,
+            "plan_id": "PLAN-TEST-OPEN-1",
+            "last_mark_price": 97.0,
+        }
+        mgr.reload_state_from_disk(preserve_open_progress=True)
+        self.assertEqual(mgr.state["active_plan"]["plan_id"], "PLAN-TEST-OPEN-2")
+        self.assertEqual(mgr.state["active_plan"]["last_mark_price"], 95.0)
+
+    def test_21_gate2e_of_require_suppresses_unsupported(self):
+        """RP608_CRYPTO_PLAN_REQUIRE_OF=1: OF_FALSE → SUPPRESSED_GATE2E_OF_REQUIRE."""
+        os.environ["RP608_CRYPTO_PLAN_REQUIRE_OF"] = "1"
+        mgr = TradePlanOverlayManager(
+            base_dir=self.test_overlay_dir,
+            book_id="CRYPTO_PLAN_BASELINE_PARALLEL",
+            of_paper_enabled=False,
+            volume_pattern_axes=False,
+            pattern_entry_gate_mode="0",
+        )
+        card = dict(self.sample_card_short)
+        card["order_flow_supported"] = False
+        card["order_flow_label"] = "NONE"
+        card["order_flow_imbalance"] = 0.0
+        quote = {
+            "best_bid_price": 80170.00,
+            "best_ask_price": 80170.01,
+            "best_bid_qty": 5.0,
+            "best_ask_qty": 5.0,
+            "high_price": 80180.00,
+            "low_price": 80100.00,
+            "exchange_event_time_ms": 1792975500000,
+        }
+        with mock.patch.object(
+            mgr,
+            "_maybe_log_gate2e_path_dual_stamp",
+            return_value={"forming_path_invalid": None},
+        ):
+            opened = mgr.process_decision_card(card, current_quote=quote)
+        self.assertIsNone(opened)
+        self.assertIsNone(mgr.state.get("active_plan"))
+        events = (self.test_overlay_dir / "trade_plan_events.jsonl").read_text()
+        self.assertIn("SUPPRESSED_GATE2E_OF_REQUIRE", events)
+        self.assertEqual(
+            int(mgr.state["outcomes_summary"].get("gate2e_of_require_suppressions") or 0),
+            1,
+        )
+
+    def test_22_floor_lock_preset_stamped_on_open(self):
+        """FL twin overrides persist on OPEN plan + overlay_config.json."""
+        mgr = TradePlanOverlayManager(
+            base_dir=self.test_overlay_dir,
+            book_id="CRYPTO_PLAN_GATE2X_FLOOR_LOCK_PARALLEL",
+            of_paper_enabled=False,
+            volume_pattern_axes=False,
+            pattern_entry_gate_mode="0",
+            config_overrides={
+                "gate2x_preset": "floor_lock_r50",
+                "gate2x_ratchet_peak_frac": 0.50,
+                "gate2x_floor_lock_immediate": True,
+                "gate2x_floor_lock_protocol": "RP-608-GATE2X-FLOOR-LOCK-TWIN-001",
+            },
+        )
+        cfg = json.loads((self.test_overlay_dir / "overlay_config.json").read_text())
+        self.assertTrue(cfg.get("gate2x_floor_lock_immediate"))
+        self.assertEqual(cfg.get("gate2x_preset"), "floor_lock_r50")
+        card = dict(self.sample_card_short)
+        card["order_flow_supported"] = True
+        card["order_flow_label"] = "ORDER_FLOW_SUPPORTED"
+        card["order_flow_imbalance"] = -0.5
+        quote = {
+            "best_bid_price": 80170.00,
+            "best_ask_price": 80170.01,
+            "best_bid_qty": 1.0,
+            "best_ask_qty": 10.0,
+            "high_price": 80180.00,
+            "low_price": 80100.00,
+            "exchange_event_time_ms": 1792975500000,
+        }
+        with mock.patch.object(
+            mgr,
+            "_maybe_log_gate2e_path_dual_stamp",
+            return_value={"forming_path_invalid": None},
+        ):
+            opened = mgr.process_decision_card(card, current_quote=quote)
+        self.assertIsNotNone(opened)
+        self.assertEqual(opened.get("gate2x_preset"), "floor_lock_r50")
+        self.assertTrue(opened.get("gate2x_floor_lock_immediate"))
+        self.assertEqual(opened.get("gate2x_ratchet_peak_frac"), 0.50)
 
 
 if __name__ == "__main__":

@@ -5,6 +5,8 @@
 | `rp608_position_decide.aarch64-linux` | Pi / Linux aarch64 | `RP608_POSITION_DECIDE_BIN` / `RP608_GATE2X_MANAGE_BIN` |
 | `rp608_position_decide.darwin-arm64` | macOS arm64 | Local smoke |
 
+**Last staged / Pi live:** 2026-11-25 — Track C compare soak (BTC/ETH) + Track B `--depth-snapshot-loop` / `RP608_NSE_DEPTH_WRITER=compare` side-path. Bin: floor-lock + tick-eval + depth-snapshot loops.
+
 ## Rebuild / stage (zigbuild)
 
 ```bash

@@ -1,3 +1,4 @@
+#![allow(dead_code, unused_variables, unused_imports, unused_mut, unused_assignments)]
 /// phase10c1d_constructor_isolation.rs — P10-C1 C1-D Constructor/Repair Isolation
 ///
 /// Governance protocol: OBSERVATIONAL — measurement-only binary.

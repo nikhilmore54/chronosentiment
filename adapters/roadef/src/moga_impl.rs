@@ -1529,7 +1529,7 @@ where
     let mut best_found_at_gen = 0usize;
     let mut stagnation = 0usize;
     let mut gen = 0usize;
-    let mut termination_reason = String::new(); // set before every break in the loop below
+    let termination_reason: String; // set before every break in the loop below
                                                 // RP-410C: monotonically increasing candidate counter for genealogy reconstruction.
     let mut candidate_counter: u64 = 0;
 
@@ -1579,7 +1579,7 @@ where
         let mut t_crossover_ms: f64 = 0.0;
         let mut t_mutation_ms: f64 = 0.0;
         let mut t_eval_ms: f64 = 0.0;
-        let mut t_telemetry_ms: f64 = 0.0;
+        let mut _t_telemetry_ms: f64 = 0.0;
 
         // RP-410: per-generation improvement histogram counters (reset each generation)
         let mut gen_moves_peak: u32 = 0;
@@ -2269,7 +2269,7 @@ where
                 p10c0_sum_max_sat_after: 0.0,
             };
             telemetry.emit_generation(&gen_rec);
-            t_telemetry_ms += t_tel_start.elapsed().as_secs_f64() * 1000.0;
+            _t_telemetry_ms += t_tel_start.elapsed().as_secs_f64() * 1000.0;
         }
 
         evals = new_evals;
@@ -2642,7 +2642,7 @@ pub fn run_roadef_evolution_v2<M>(
     initial_population: InitialPopulation<RoadefGenome>,
     instance_name: &str,
     log_sink: &mut dyn Write,
-    telemetry: &mut dyn TelemetrySink,
+    _telemetry: &mut dyn TelemetrySink,
 ) -> EvolutionRunResult
 where
     M: MutationOperator<RoadefGenome>,
@@ -2652,7 +2652,7 @@ where
         None => StdRng::from_entropy(),
     };
 
-    let run_uuid = {
+    let _run_uuid = {
         let b: [u8; 16] = rng.gen();
         format!(
             "{:08x}-{:04x}-4{:03x}-{:04x}-{:012x}",
@@ -2786,10 +2786,10 @@ where
 
         let needed = config.population_size.saturating_sub(next_generation.len());
         for _ in 0..needed {
-            let mut g = if rng.gen_bool(config.crossover_rate) && population.len() >= 2 {
+            if rng.gen_bool(config.crossover_rate) && population.len() >= 2 {
                 let p1 = &population[rng.gen_range(0..population.len())].genome;
                 let p2 = &population[rng.gen_range(0..population.len())].genome;
-                let (mut child1, _child2) = crossover.crossover(p1, p2, &mut rng);
+                let (child1, _child2) = crossover.crossover(p1, p2, &mut rng);
                 let mut ev = fitness_eval.evaluate(
                     &child1,
                     &coralys_moga::runtime::optimization::metric::MetricReport::default(),
@@ -2806,7 +2806,6 @@ where
                             &coralys_moga::runtime::optimization::metric::MetricReport::default(),
                         );
                         if rep_ev.is_valid() {
-                            best_g = repaired;
                             best_ev = rep_ev;
                             break;
                         }
@@ -2849,7 +2848,6 @@ where
                             &coralys_moga::runtime::optimization::metric::MetricReport::default(),
                         );
                         if rep_ev.is_valid() {
-                            best_g = repaired;
                             best_ev = rep_ev;
                             break;
                         }

@@ -66,6 +66,7 @@ DONE (CLEAN-003-D/E 2026-11-24)
 
 DEFER (needs Anuj call)
   Collapsing 47 Cargo [[bin]] into a manifest include / workspace subcrate
+  (README lane index added 2026-11-24 — counts only; no Cargo split yet)
 ```
 
 ---

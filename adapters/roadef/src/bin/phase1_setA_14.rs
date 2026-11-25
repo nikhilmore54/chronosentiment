@@ -1,3 +1,4 @@
+#![allow(dead_code, unused_variables, unused_imports, unused_mut, unused_assignments)]
 use roadef::evaluator::RoadefEvaluator;
 use roadef::moga_impl::{
     generate_gen0_population, ConstructionMode, EvolutionRunConfig, RoadefCrossover,

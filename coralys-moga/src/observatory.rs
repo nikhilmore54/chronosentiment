@@ -1,5 +1,5 @@
 use crate::traits::{
-    Evaluated, FitnessEvaluator, Genome, LocalSearchOperator, ObservedTransitionMetric,
+    Evaluated, FitnessEvaluator, Genome, ObservedTransitionMetric,
     RegionIdentifier,
 };
 

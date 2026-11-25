@@ -1,3 +1,4 @@
+#![allow(dead_code, unused_variables, unused_imports, unused_mut, unused_assignments)]
 use chrono::Utc;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;

@@ -1,3 +1,4 @@
+#![allow(dead_code, unused_variables, unused_imports, unused_mut, unused_assignments)]
 /// phase10c6alt_pressure.rs — P10-C6-alt Aggregate Future Pressure Budget
 ///
 /// Governance: FINAL AUTHORIZED INTERVENTION. Adapter-only.

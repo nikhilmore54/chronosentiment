@@ -1,5 +1,5 @@
-pub mod old;
-pub use old::*;
+pub mod types;
+pub use types::*;
 pub mod reporting;
 pub use reporting::*;
 pub mod aggregation;

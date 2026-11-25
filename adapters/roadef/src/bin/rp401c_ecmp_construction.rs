@@ -1,3 +1,4 @@
+#![allow(dead_code, unused_variables, unused_imports, unused_mut, unused_assignments)]
 use std::cmp::Reverse;
 /// rp401c_ecmp_construction — RP-401C: ECMP-aware load estimation during construction
 ///

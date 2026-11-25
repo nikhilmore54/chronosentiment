@@ -1,3 +1,4 @@
+#![allow(dead_code, unused_variables, unused_imports, unused_mut, unused_assignments)]
 use coralys_moga::traits::FitnessEvaluator;
 use coralys_moga::{EvolutionConfig, EvolutionEngineBuilder};
 use cvrp::moga_impl::{CvrpCrossover, CvrpEvaluator, CvrpLocalSearch, CvrpMutator};

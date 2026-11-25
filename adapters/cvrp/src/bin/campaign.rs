@@ -1,3 +1,4 @@
+#![allow(dead_code, unused_variables, unused_imports, unused_mut, unused_assignments)]
 /// Full CVRPLIB Product Baseline Campaign Runner
 /// Runs all downloaded CVRPLIB instances with the accepted baseline configuration.
 /// Produces JSON database + markdown report with automatic diagnostic findings.

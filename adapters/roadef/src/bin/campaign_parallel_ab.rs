@@ -1,3 +1,4 @@
+#![allow(dead_code, unused_variables, unused_imports, unused_mut, unused_assignments)]
 /// campaign_parallel_ab.rs — V2 Deterministic Parallel A/B Harness
 ///
 /// Research question: Does replacing the random constructor (CB-000) with the

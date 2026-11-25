@@ -1,3 +1,4 @@
+#![allow(dead_code, unused_variables, unused_imports, unused_mut, unused_assignments)]
 /// phase10c1_lineage.rs — P10-C1 C1-B Bottleneck Lineage Sweep
 ///
 /// Governance protocol: OBSERVATIONAL — measurement-only binary.

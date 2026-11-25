@@ -1,3 +1,4 @@
+#![allow(dead_code, unused_variables, unused_imports, unused_mut, unused_assignments)]
 use std::cmp::Reverse;
 /// rp402_budget_adapt — RP-402: Budget-Aware t=1 Adaptation
 ///

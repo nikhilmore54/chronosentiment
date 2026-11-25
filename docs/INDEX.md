@@ -92,6 +92,7 @@ Systematic diagnosis of where/why economic edge is lost. Priority: trading evide
 * **Standing rule:** W/L ratio is the primary session diagnostic per book (payoff / gross / friction / net / MFE support it; do not lead with friction) — `.cursor/rules/chronosentiment-core.mdc` §3b · `docs/research/rp608_econ_edge_session_postmortem_method.md`
 * **RP-608-WL-IMPROVE-001** (2026-11-06): trade selection / win probability — baseline frozen · `docs/research/rp608_wl_improvement_plan.md`
   * Gate 2E crypto pattern **allow_only** (2026-11-21): PRIMARY `PATTERN_GATE=allow_only` · BASELINE `0` · parent-cell BACKOFF · sealed `docs/research/rp608_gate2e_crypto_pattern_sealed_package_2026_11_21.md`
+  * Gate 2E NSE pattern **allow_only** + net_mean>0 ALLOW (2026-11-23): PRIMARY `RP608_NSE_PATTERN_GATE=allow_only` · BASELINE twin `RP608_NSE_PATTERN_GATE_BASELINE=0` under `estimand_a_baseline_parallel_v1/` · crypto trade+baseline parity · `docs/research/rp608_nse_a_trade_pattern_prediction_v1.md`
   * OF paper entry quality (2026-11-21): entry persist 30s + quality gate (not ±0.30) · sealed `docs/research/rp608_of_paper_entry_quality_2026_11_21.md` · observability `docs/research/rp608_of_paper_trade_observability.md`
   * Trailing SL favorable-only (2026-11-21): never worse than original stop · `docs/research/rp608_trailing_sl_2026_11_21.md` · Gate2X v1.5 hard floor in `rp608_gate2x_crypto_mfe_giveback_2026_11_21.md`
   * Gate 1 PASS: `docs/research/rp608_wl_improve_gate1_diagnostic_completeness.md`

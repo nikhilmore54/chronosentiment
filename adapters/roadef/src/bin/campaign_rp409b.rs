@@ -1,3 +1,4 @@
+#![allow(dead_code, unused_variables, unused_imports, unused_mut, unused_assignments)]
 /// RP-409B Campaign Runner — Mutation Strategy A/B Benchmark
 ///
 /// Runs all 20 setA instances with a fixed seed under either the Uniform or

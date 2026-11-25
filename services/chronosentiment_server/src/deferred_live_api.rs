@@ -145,6 +145,7 @@ impl DeferredLiveState {
     }
 }
 
+#[allow(dead_code)]
 fn env_truthy(key: &str) -> bool {
     std::env::var(key)
         .map(|v| v == "1" || v.eq_ignore_ascii_case("true") || v.eq_ignore_ascii_case("yes"))

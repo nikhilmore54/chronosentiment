@@ -1,6 +1,5 @@
 use serde::{Serialize, Deserialize};
 use crate::optimization::ScheduleEvaluation;
-use std::collections::HashSet;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct DecisionMetrics {

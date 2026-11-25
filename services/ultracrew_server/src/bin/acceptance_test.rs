@@ -1,3 +1,4 @@
+#![allow(dead_code, unused_variables, unused_imports, unused_mut, unused_assignments)]
 use serde::Serialize;
 use std::fs::File;
 use std::io::Write;

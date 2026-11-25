@@ -1,3 +1,4 @@
+#![allow(dead_code, unused_variables, unused_imports, unused_mut, unused_assignments)]
 /// phase6_l2_ab.rs — Phase 6 L2 Cross-Evaluation Dijkstra Cache A/B Harness
 ///
 /// Governance protocol:

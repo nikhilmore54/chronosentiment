@@ -1,3 +1,4 @@
+#![allow(dead_code, unused_variables, unused_imports, unused_mut, unused_assignments)]
 /// M20 Phase 1 — Evaluator Performance Model profiler
 ///
 /// Runs N evaluations on each specified instance using an empty solution

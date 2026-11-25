@@ -1,3 +1,4 @@
+#![allow(dead_code, unused_variables, unused_imports, unused_mut, unused_assignments)]
 // campaign_engine.rs – ROADEF 2026 Dataset A Submission Generator
 // Runs on all 20 setA instances and writes srpaths.json solution files.
 

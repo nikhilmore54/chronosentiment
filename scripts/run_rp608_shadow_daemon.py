@@ -59,20 +59,29 @@ def _websockets():
 
 from scripts.market_regime_classifier import classify_market_regime
 from scripts.rp608_arm_a_baseline import attach_regime_telemetry
+from scripts.rp608_gate2e_regime_align import (
+    evaluate_regime_align,
+    regime_dict_from_card,
+)
 from scripts.rp608_crypto_tick_policy import (
     DECISION_CLOCK as TICK_DECISION_CLOCK,
     MIN_HISTORY_WARMUP_SEC,
     PROTOCOL_ID as TICK_PROTOCOL_ID,
+    REC_HYGIENE_PROTOCOL_ID,
+    RecommendationStabilizer,
     TickEmissionGate,
     TickFeatureBuffer,
     TickQuote,
     build_tick_snapshot,
     evaluate_tick_policies,
+    evaluate_tick_policies_hygiened,
     snapshot_to_dict,
     validate_tick_quote,
 )
 from scripts.rp608_crypto_tick_policy_client import (
+    log_python_fallback_once,
     resolve_tick_eval_mode,
+    rust_eval_tick,
     tick_policy_backend,
 )
 from scripts.rp608_prospective_v1 import Market as ProspectiveMarket
@@ -710,18 +719,32 @@ class RP608ShadowDaemon:
         # Tick decision clock (RP-608-SHADOW-TICK-001)
         self.tick_feature_buffer = TickFeatureBuffer()
         self.tick_emission_gate = TickEmissionGate()
+        # Track C v2: Python-fallback stabilizer (Rust loop has its own persistent state).
+        self.tick_rec_stabilizer = RecommendationStabilizer()
+        self._last_rec_hygiene: Optional[Dict[str, Any]] = None
         self._last_tick_features: Optional[Dict[str, Any]] = None
         # Trade-plan overlay: open on tick Policy B; TP/SL via continuous L1 (0.0% authority).
         # ATR geometry still frozen from completed 15m buffer at plan open.
         # Primary = volume-pattern axes (v2). Parallel twin = pre-volume baseline book
         # (OF paper inert on twin; books never pooled).
-        # Gate 2E: BTC PRIMARY may use allow_only; non-BTC twins force gate=0 until
-        # a symbol-specific pattern library exists (never reuse BTC cohorts).
+        # Gate 2E: BTC PRIMARY may use allow_only. Non-BTC: same env gate only when a
+        # *symbol-local* library exists under output_dir — never reuse BTC cohorts.
         _primary_gate = os.environ.get("RP608_CRYPTO_PATTERN_GATE", "0")
         _baseline_gate = os.environ.get("RP608_CRYPTO_PATTERN_GATE_BASELINE", "0")
-        if self.symbol != DEFAULT_CRYPTO_SHADOW_SYMBOL:
+        _symbol_lib = self.output_dir / "rp608_crypto_plan_trade_pattern_library.json"
+        if self.symbol != DEFAULT_CRYPTO_SHADOW_SYMBOL and not _symbol_lib.exists():
             _primary_gate = "0"
             _baseline_gate = "0"
+            print(
+                f"[trade_plan_overlay] {self.symbol}: Gate2E forced off — "
+                f"no symbol library at {_symbol_lib} (books never pooled)"
+            )
+        elif self.symbol != DEFAULT_CRYPTO_SHADOW_SYMBOL:
+            print(
+                f"[trade_plan_overlay] {self.symbol}: Gate2E symbol library "
+                f"{_symbol_lib} gate_primary={_primary_gate!r} "
+                f"gate_baseline={_baseline_gate!r}"
+            )
         _book_suffix = "" if self.symbol == DEFAULT_CRYPTO_SHADOW_SYMBOL else f"_{self.symbol}"
         _primary_book = f"CRYPTO_PLAN{_book_suffix}"
         _baseline_book = f"CRYPTO_PLAN_BASELINE_PARALLEL{_book_suffix}"
@@ -734,6 +757,9 @@ class RP608ShadowDaemon:
             of_paper_enabled=True,
             volume_pattern_axes=True,
             pattern_entry_gate_mode=_primary_gate,
+            pattern_library_path=_symbol_lib
+            if self.symbol != DEFAULT_CRYPTO_SHADOW_SYMBOL and _symbol_lib.exists()
+            else None,
         )
         twin_dir = self.output_dir / "trade_plan_overlay_baseline_parallel_v1"
         self.trade_plan_overlay_baseline = TradePlanOverlayManager(
@@ -744,6 +770,26 @@ class RP608ShadowDaemon:
             volume_pattern_axes=False,
             pattern_entry_gate_mode=_baseline_gate,
         )
+        # Gate 2X r50 booking twin: same ungated entry as BASELINE, ratchet 0.50.
+        # PRIMARY/BASELINE stay r30 until Gate 5. Books never pooled.
+        _r50_book = f"CRYPTO_PLAN_GATE2X_R50_PARALLEL{_book_suffix}"
+        _r50_frac = float(
+            os.environ.get("RP608_CRYPTO_GATE2X_RATCHET_FRAC_R50", "0.50")
+        )
+        r50_dir = self.output_dir / "trade_plan_overlay_gate2x_r50_parallel_v1"
+        self.trade_plan_overlay_g2x_r50 = TradePlanOverlayManager(
+            base_dir=r50_dir,
+            book_id=_r50_book,
+            symbol=self.symbol,
+            of_paper_enabled=False,
+            volume_pattern_axes=False,
+            pattern_entry_gate_mode=_baseline_gate,
+            config_overrides={
+                "gate2x_preset": "r50_booking",
+                "gate2x_ratchet_peak_frac": _r50_frac,
+                "gate2x_mfe_giveback_protocol": "RP-608-GATE2X-R50-BOOKING-TWIN-001",
+            },
+        )
         self._last_overlay_reload_ms: int = 0
         self._overlay_reload_interval_ms: int = 5000
         print(
@@ -751,6 +797,50 @@ class RP608ShadowDaemon:
             f"{twin_dir} (book={_baseline_book}; OF inert; no volume axes; "
             f"gate2e primary={_primary_gate!r} baseline={_baseline_gate!r})"
         )
+        print(
+            f"[gate2x_r50_twin] symbol={self.symbol} booking twin armed → "
+            f"{r50_dir} (book={_r50_book}; ratchet={_r50_frac}; entry=baseline ungated; "
+            f"PRIMARY/BASELINE r30 unchanged)",
+            flush=True,
+        )
+        # Gate 2X floor-lock twin: same ungated entry; exit at protect floor
+        # immediately (no COST_CLEAR HARD_FLOOR bleed). Observational; authority 0%.
+        _fl_on = str(os.environ.get("RP608_CRYPTO_GATE2X_FLOOR_LOCK_TWIN", "1")).strip().lower() not in {
+            "0",
+            "false",
+            "no",
+            "off",
+        }
+        self.trade_plan_overlay_g2x_floorlock = None
+        if _fl_on:
+            _fl_book = f"CRYPTO_PLAN_GATE2X_FLOOR_LOCK_PARALLEL{_book_suffix}"
+            _fl_frac = float(
+                os.environ.get("RP608_CRYPTO_GATE2X_FLOOR_LOCK_RATCHET", "0.50")
+            )
+            fl_dir = self.output_dir / "trade_plan_overlay_gate2x_floorlock_parallel_v1"
+            self.trade_plan_overlay_g2x_floorlock = TradePlanOverlayManager(
+                base_dir=fl_dir,
+                book_id=_fl_book,
+                symbol=self.symbol,
+                of_paper_enabled=False,
+                volume_pattern_axes=False,
+                pattern_entry_gate_mode=_baseline_gate,
+                config_overrides={
+                    "gate2x_preset": "floor_lock_r50",
+                    "gate2x_ratchet_peak_frac": _fl_frac,
+                    "gate2x_floor_lock_immediate": True,
+                    # H11: disk+ops must match Rust floor_lock_twin_defaults (not PRIMARY 120s).
+                    "gate2x_min_hold_s_before_exit": 0.0,
+                    "gate2x_mfe_giveback_protocol": "RP-608-GATE2X-FLOOR-LOCK-TWIN-001",
+                    "gate2x_floor_lock_protocol": "RP-608-GATE2X-FLOOR-LOCK-TWIN-001",
+                },
+            )
+            print(
+                f"[gate2x_floorlock_twin] symbol={self.symbol} floor-lock twin armed → "
+                f"{fl_dir} (book={_fl_book}; ratchet={_fl_frac}; "
+                f"immediate protect floor; PRIMARY exits unchanged)",
+                flush=True,
+            )
 
         # OFX research-only: durable Binance aggTrade journal (separate WS; baseline OF inert)
         self.ofx_aggtrade_dir = self.output_dir / "ofx_aggtrade_capture_v1"
@@ -773,6 +863,85 @@ class RP608ShadowDaemon:
         self.running = False
         if self.shutdown_event is not None and not self.shutdown_event.is_set():
             self.shutdown_event.set()
+
+    def _crypto_recommendation_disposition(
+        self,
+        *,
+        action_b: str,
+        plan_result: Optional[Dict[str, Any]],
+        now_ms: int,
+    ) -> Dict[str, Any]:
+        """
+        Map raw Policy B to product recommendation disposition.
+
+        policy_b_action stays observational. Actionable=True only when PRIMARY
+        Gate2E actually opens (or would open) that side — not when pattern /
+        regime-align / path / cooldown standaside.
+        """
+        d = str(action_b or "").upper()
+        if d not in ("LONG", "SHORT"):
+            return {
+                "actionable": False,
+                "disposition": "NO_TRADE",
+                "reason": None,
+            }
+        # Fresh PRIMARY open for this side within a few seconds ⇒ actionable.
+        if (
+            isinstance(plan_result, dict)
+            and plan_result.get("state") == "OPEN"
+            and str(plan_result.get("direction") or "").upper() == d
+        ):
+            try:
+                entry_ms = int(plan_result.get("entry_time_ms") or 0)
+            except (TypeError, ValueError):
+                entry_ms = 0
+            if entry_ms <= 0 or abs(int(now_ms) - entry_ms) <= 8_000:
+                return {
+                    "actionable": True,
+                    "disposition": "ACTIONABLE",
+                    "reason": None,
+                }
+
+        st = (self.trade_plan_overlay.state or {}) if self.trade_plan_overlay else {}
+        # Prefer most recent suppress stamp matching this side.
+        ra = st.get("last_suppressed_regime_align")
+        if isinstance(ra, dict) and str(ra.get("direction") or "").upper() == d:
+            try:
+                sms = int(ra.get("suppressed_ms") or 0)
+            except (TypeError, ValueError):
+                sms = 0
+            if sms <= 0 or abs(int(now_ms) - sms) <= 15_000:
+                guard = str(ra.get("guard") or "")
+                if guard == "DI_SKEW" or "DI_SKEW" in str(ra.get("block_reason") or ""):
+                    return {
+                        "actionable": False,
+                        "disposition": "STANDASIDE_DI_SKEW",
+                        "reason": ra.get("block_reason") or "ADVERSE_DI_SKEW",
+                    }
+                return {
+                    "actionable": False,
+                    "disposition": "STANDASIDE_REGIME_ALIGN",
+                    "reason": ra.get("block_reason") or "ADVERSE_REGIME",
+                }
+        pat = st.get("last_suppressed_trade_pattern")
+        if isinstance(pat, dict) and str(pat.get("direction") or "").upper() == d:
+            try:
+                sms = int(pat.get("suppressed_ms") or 0)
+            except (TypeError, ValueError):
+                sms = 0
+            if sms <= 0 or abs(int(now_ms) - sms) <= 15_000:
+                pred = str(pat.get("prediction") or "STANDASIDE_TRADE_PATTERN")
+                return {
+                    "actionable": False,
+                    "disposition": "STANDASIDE_TRADE_PATTERN",
+                    "reason": pred,
+                }
+        # Path-invalid / cooldown / open-plan concurrency: still not actionable.
+        return {
+            "actionable": False,
+            "disposition": "STANDASIDE_GATE2E",
+            "reason": "PRIMARY_DID_NOT_OPEN",
+        }
 
     def preflight_integrity_check(self):
         """Verifies tick policy artifacts, protocols, and order authority before any socket connects."""
@@ -1145,17 +1314,39 @@ class RP608ShadowDaemon:
                         try:
                             if recv_wall_ms - self._last_overlay_reload_ms >= self._overlay_reload_interval_ms:
                                 self._last_overlay_reload_ms = recv_wall_ms
-                                self.trade_plan_overlay.state = self.trade_plan_overlay._load_state()
-                                self.trade_plan_overlay_baseline.state = (
-                                    self.trade_plan_overlay_baseline._load_state()
+                                # Preserve in-memory OPEN marks/MFE (disk may lag hold ticks).
+                                self.trade_plan_overlay.reload_state_from_disk(
+                                    preserve_open_progress=True
                                 )
-                            for overlay, tag in (
+                                self.trade_plan_overlay_baseline.reload_state_from_disk(
+                                    preserve_open_progress=True
+                                )
+                                self.trade_plan_overlay_g2x_r50.reload_state_from_disk(
+                                    preserve_open_progress=True
+                                )
+                                if self.trade_plan_overlay_g2x_floorlock is not None:
+                                    self.trade_plan_overlay_g2x_floorlock.reload_state_from_disk(
+                                        preserve_open_progress=True
+                                    )
+                            _tick_overlays = [
                                 (self.trade_plan_overlay, "trade_plan_overlay"),
                                 (
                                     self.trade_plan_overlay_baseline,
                                     "trade_plan_overlay_baseline",
                                 ),
-                            ):
+                                (
+                                    self.trade_plan_overlay_g2x_r50,
+                                    "trade_plan_overlay_g2x_r50",
+                                ),
+                            ]
+                            if self.trade_plan_overlay_g2x_floorlock is not None:
+                                _tick_overlays.append(
+                                    (
+                                        self.trade_plan_overlay_g2x_floorlock,
+                                        "trade_plan_overlay_g2x_floorlock",
+                                    )
+                                )
+                            for overlay, tag in _tick_overlays:
                                 active = (overlay.state or {}).get("active_plan")
                                 if active and active.get("state") == "OPEN":
                                     resolved = overlay.evaluate_market_tick(
@@ -1264,13 +1455,192 @@ class RP608ShadowDaemon:
         if self.tick_feature_buffer.history_sec() < MIN_HISTORY_WARMUP_SEC:
             return None
 
-        snap = build_tick_snapshot(quote, self.tick_feature_buffer, self._completed_closes())
-        self._last_tick_features = snapshot_to_dict(snap)
-        action_b, action_c, _fb, _fc = evaluate_tick_policies(
-            snap,
-            self.policy_b_art["champion_genome"],
-            self.policy_c_art["champion_genome"],
-        )
+        closes = self._completed_closes()
+        genome_b = self.policy_b_art["champion_genome"]
+        genome_c = self.policy_c_art["champion_genome"]
+        mode = resolve_tick_eval_mode()
+        action_b: str
+        action_c: str
+        tick_authority = "python_crypto_tick_policy"
+
+        self._last_rec_hygiene = None
+        if mode in {"rust", "compare_rust_primary"}:
+            rust_out = rust_eval_tick(
+                quote=quote,
+                buffer_quotes=self.tick_feature_buffer.quotes(),
+                closes=closes,
+                policy_b_genome=genome_b,
+                policy_c_genome=genome_c,
+            )
+            if rust_out is not None:
+                action_b, action_c, feats, hygiene = rust_out
+                self._last_tick_features = feats
+                hygiene = hygiene if isinstance(hygiene, dict) else {}
+                rust_hygiene_live = (
+                    str(hygiene.get("protocol_id") or "") == REC_HYGIENE_PROTOCOL_ID
+                )
+                # Stale Pi bins predate adapter hygiene — apply Python overhaul.
+                if not rust_hygiene_live:
+                    snap = build_tick_snapshot(quote, self.tick_feature_buffer, closes)
+                    self._last_tick_features = snapshot_to_dict(snap)
+                    action_b, action_c, _fb, _fc, hygiene = evaluate_tick_policies_hygiened(
+                        snap, genome_b, genome_c, self.tick_rec_stabilizer
+                    )
+                    tick_authority = "python_rec_hygiene_bridge"
+                    # #region agent log
+                    try:
+                        _rust_b = str(rust_out[0])
+                        _interesting = (
+                            _rust_b != action_b
+                            or bool(hygiene.get("microconfirm_gated"))
+                            or bool(hygiene.get("confirm_pending"))
+                            or bool(hygiene.get("sticky_held"))
+                            or bool(hygiene.get("rearm_blocked"))
+                            or bool(hygiene.get("gap_tolerated"))
+                            or action_b in ("LONG", "SHORT")
+                            or _rust_b in ("LONG", "SHORT")
+                        )
+                        if _interesting:
+                            import json as _json_dbg
+                            import time as _time_dbg
+                            _dbg_path = os.environ.get(
+                                "RP608_DEBUG_LOG",
+                                "/Users/nikhil/ChronoSentiment_MEGA_FINAL/.cursor/debug-17c9cb.log",
+                            )
+                            with open(_dbg_path, "a", encoding="utf-8") as _dbg_f:
+                                _dbg_f.write(
+                                    _json_dbg.dumps(
+                                        {
+                                            "sessionId": "17c9cb",
+                                            "runId": "hygiene_v3",
+                                            "hypothesisId": "H9",
+                                            "location": "run_rp608_shadow_daemon.py:tick_bridge",
+                                            "message": "python_hygiene_bridge_v3",
+                                            "data": {
+                                                "symbol": self.symbol,
+                                                "update_id": int(quote.update_id),
+                                                "rust_raw_b": _rust_b,
+                                                "rust_raw_c": str(rust_out[1]),
+                                                "out_b": action_b,
+                                                "out_c": action_c,
+                                                "hygiene_rev": hygiene.get(
+                                                    "hygiene_rev"
+                                                ),
+                                                "microconfirm_gated": bool(
+                                                    hygiene.get("microconfirm_gated")
+                                                ),
+                                                "confirm_pending": bool(
+                                                    hygiene.get("confirm_pending")
+                                                ),
+                                                "confirm_streak": int(
+                                                    hygiene.get("confirm_streak") or 0
+                                                ),
+                                                "confirm_span_ms": int(
+                                                    hygiene.get("confirm_span_ms") or 0
+                                                ),
+                                                "gap_tolerated": bool(
+                                                    hygiene.get("gap_tolerated")
+                                                ),
+                                                "rearm_blocked": bool(
+                                                    hygiene.get("rearm_blocked")
+                                                ),
+                                                "sticky_held": bool(
+                                                    hygiene.get("sticky_held")
+                                                ),
+                                                "protocol_id": hygiene.get(
+                                                    "protocol_id"
+                                                ),
+                                            },
+                                            "timestamp": int(_time_dbg.time() * 1000),
+                                        }
+                                    )
+                                    + "\n"
+                                )
+                    except Exception:
+                        pass
+                    # #endregion
+                else:
+                    self._last_rec_hygiene = hygiene
+                    tick_authority = "rust_crypto_tick_policy"
+                    # #region agent log
+                    try:
+                        import json as _json_dbg
+                        import time as _time_dbg
+                        _dbg_path = os.environ.get(
+                            "RP608_DEBUG_LOG",
+                            "/Users/nikhil/ChronoSentiment_MEGA_FINAL/.cursor/debug-17c9cb.log",
+                        )
+                        if action_b in ("LONG", "SHORT") or hygiene.get(
+                            "microconfirm_gated"
+                        ) or hygiene.get("confirm_pending") or hygiene.get("sticky_held"):
+                            with open(_dbg_path, "a", encoding="utf-8") as _dbg_f:
+                                _dbg_f.write(
+                                    _json_dbg.dumps(
+                                        {
+                                            "sessionId": "17c9cb",
+                                            "runId": "rust_hygiene",
+                                            "hypothesisId": "H2",
+                                            "location": "run_rp608_shadow_daemon.py:rust_hygiene",
+                                            "message": "rust_rec_hygiene_live",
+                                            "data": {
+                                                "symbol": self.symbol,
+                                                "update_id": int(quote.update_id),
+                                                "raw_b": hygiene.get("raw_b"),
+                                                "out_b": action_b,
+                                                "out_c": action_c,
+                                                "microconfirm_gated": bool(
+                                                    hygiene.get("microconfirm_gated")
+                                                ),
+                                                "confirm_pending": bool(
+                                                    hygiene.get("confirm_pending")
+                                                ),
+                                                "confirm_streak": int(
+                                                    hygiene.get("confirm_streak") or 0
+                                                ),
+                                                "sticky_held": bool(
+                                                    hygiene.get("sticky_held")
+                                                ),
+                                            },
+                                            "timestamp": int(_time_dbg.time() * 1000),
+                                        }
+                                    )
+                                    + "\n"
+                                )
+                    except Exception:
+                        pass
+                    # #endregion
+                self._last_rec_hygiene = hygiene
+                if mode == "compare_rust_primary":
+                    # Compare raw genome eval only (hygiene is stateful per process).
+                    snap_py = build_tick_snapshot(quote, self.tick_feature_buffer, closes)
+                    ab_py, ac_py, _, _ = evaluate_tick_policies(
+                        snap_py, genome_b, genome_c
+                    )
+                    raw_b = str((hygiene or {}).get("raw_b") or action_b)
+                    raw_c = str((hygiene or {}).get("raw_c") or action_c)
+                    if ab_py != raw_b or ac_py != raw_c:
+                        print(
+                            f"[crypto_tick_policy][compare] DIVERGE update_id={quote.update_id} "
+                            f"rust_raw=({raw_b},{raw_c}) python=({ab_py},{ac_py})",
+                            flush=True,
+                        )
+            else:
+                log_python_fallback_once("rust_eval_failed_or_bin_down")
+                snap = build_tick_snapshot(quote, self.tick_feature_buffer, closes)
+                self._last_tick_features = snapshot_to_dict(snap)
+                action_b, action_c, _fb, _fc, hygiene = evaluate_tick_policies_hygiened(
+                    snap, genome_b, genome_c, self.tick_rec_stabilizer
+                )
+                self._last_rec_hygiene = hygiene
+        else:
+            if mode.startswith("python_fallback"):
+                log_python_fallback_once(mode)
+            snap = build_tick_snapshot(quote, self.tick_feature_buffer, closes)
+            self._last_tick_features = snapshot_to_dict(snap)
+            action_b, action_c, _fb, _fc, hygiene = evaluate_tick_policies_hygiened(
+                snap, genome_b, genome_c, self.tick_rec_stabilizer
+            )
+            self._last_rec_hygiene = hygiene
 
         emit_ok, emit_reason = self.tick_emission_gate.should_emit(
             quote.receive_time_ms, action_b, action_c
@@ -1292,7 +1662,6 @@ class RP608ShadowDaemon:
 
         valid_execution_quote = True
         drop_reason = None
-        quote_age_ms = float(snap.quote_age_ms)
         candidate_quote = self.latest_book_ticker
         vol_burst_20 = self._vol_burst_20()
 
@@ -1318,6 +1687,11 @@ class RP608ShadowDaemon:
                     of_side, l1_from_tick_features(self._last_tick_features)
                 )
 
+        feats = self._last_tick_features or {}
+        mid_px = float(feats.get("mid_price") or quote.mid_price)
+        macro_16 = feats.get("macro_trend_16_bps")
+        quote_age_ms = float(feats.get("quote_age_ms") or (quote.receive_time_ms - quote.event_time_ms))
+
         decision_card: Dict[str, Any] = {
             "protocol_id": SHADOW_PROTOCOL_ID,
             "decision_clock": TICK_DECISION_CLOCK,
@@ -1330,13 +1704,14 @@ class RP608ShadowDaemon:
             "close_time_ms": quote.event_time_ms,
             "quote_event_id": quote.update_id,
             "quote_receipt_utc_ms": quote.receive_time_ms,
-            "reference_price": snap.mid_price,
-            "ret_15m_bps": snap.macro_trend_16_bps if snap.macro_trend_16_bps is not None else 0.0,
+            "reference_price": mid_px,
+            "ret_15m_bps": float(macro_16) if macro_16 is not None else 0.0,
             "atr_14": atr_14 if atr_14 is not None else 0.0,
             "vol_burst_20": vol_burst_20,
             "features_tick": self._last_tick_features,
             "policy_b_action": action_b,
             "policy_c_action": action_c,
+            "tick_policy_authority": tick_authority,
             "valid_execution_quote": valid_execution_quote,
             "drop_reason": drop_reason,
             "quote_age_ms": quote_age_ms,
@@ -1348,15 +1723,13 @@ class RP608ShadowDaemon:
             "order_flow_label": of_mark.get("order_flow_label"),
             "order_flow_imbalance": of_mark.get("order_flow_imbalance"),
             "order_flow_source": of_mark.get("order_flow_source"),
+            "rec_hygiene": self._last_rec_hygiene,
         }
         if REGIME_TELEMETRY_ENABLED and self.recent_candles:
             regime = classify_market_regime(self.recent_candles)
             decision_card = attach_regime_telemetry(decision_card, regime, enabled=True)
         else:
             decision_card = attach_regime_telemetry(decision_card, None, enabled=False)
-
-        with open(self.decision_cards_path, "a", encoding="utf-8") as f:
-            f.write(json.dumps(decision_card) + "\n")
 
         self.update_heartbeat()
 
@@ -1386,6 +1759,36 @@ class RP608ShadowDaemon:
             )
         except Exception as twin_exc:
             print(f"[trade_plan_overlay_baseline] process_decision_card skipped: {twin_exc}")
+        try:
+            self.trade_plan_overlay_g2x_r50.process_decision_card(
+                dict(decision_card),
+                current_quote=q,
+            )
+        except Exception as r50_exc:
+            print(f"[trade_plan_overlay_g2x_r50] process_decision_card skipped: {r50_exc}")
+        if self.trade_plan_overlay_g2x_floorlock is not None:
+            try:
+                self.trade_plan_overlay_g2x_floorlock.process_decision_card(
+                    dict(decision_card),
+                    current_quote=q,
+                )
+            except Exception as fl_exc:
+                print(
+                    f"[trade_plan_overlay_g2x_floorlock] process_decision_card skipped: {fl_exc}"
+                )
+
+        # Product surface: raw Policy B stays on card, but "actionable recommendation"
+        # must match PRIMARY Gate2E (pattern / regime-align / path / cooldown).
+        disp = self._crypto_recommendation_disposition(
+            action_b=str(action_b),
+            plan_result=plan_result if isinstance(plan_result, dict) else None,
+            now_ms=int(quote.receive_time_ms),
+        )
+        decision_card["recommendation_actionable"] = bool(disp.get("actionable"))
+        decision_card["recommendation_disposition"] = disp.get("disposition")
+        decision_card["gate2e_block_reason"] = disp.get("reason")
+        with open(self.decision_cards_path, "a", encoding="utf-8") as f:
+            f.write(json.dumps(decision_card) + "\n")
 
         # Parallel OFX volume PAPER book (research-only; baseline L1 OF paper untouched)
         if action_b in ("LONG", "SHORT"):
@@ -1405,16 +1808,33 @@ class RP608ShadowDaemon:
                     plan_id = (plan_result.get("plan") or {}).get("plan_id") or plan_result.get(
                         "plan_id"
                     )
-                self.ofx_volume_paper.try_open_from_decision(
-                    direction=action_b,
-                    volume_snapshot=vol_snap,
-                    quote=candidate_quote if valid_execution_quote else None,
-                    plan_id=plan_id,
-                    bar_idx=bar_idx,
-                    decision_event_idx=decision_event_idx,
-                    entry_price=float(snap.mid_price),
-                    now_ms=int(quote.receive_time_ms),
+                ofx_align = evaluate_regime_align(
+                    direction=str(action_b),
+                    regime=regime_dict_from_card(
+                        decision_card if isinstance(decision_card, dict) else None
+                    ),
+                    book_id=getattr(self.trade_plan_overlay, "book_id", None),
                 )
+                # OFX follows PRIMARY disposition: no paper open when Gate2E standaside.
+                if ofx_align.get("blocks_entry") or not disp.get("actionable"):
+                    print(
+                        f"[ofx_volume_paper] standaside "
+                        f"regime={ofx_align.get('block_reason')} "
+                        f"disp={disp.get('disposition')} "
+                        f"(OFX authority 0%; baseline OF inert)",
+                        flush=True,
+                    )
+                else:
+                    self.ofx_volume_paper.try_open_from_decision(
+                        direction=action_b,
+                        volume_snapshot=vol_snap,
+                        quote=candidate_quote if valid_execution_quote else None,
+                        plan_id=plan_id,
+                        bar_idx=bar_idx,
+                        decision_event_idx=decision_event_idx,
+                        entry_price=float(mid_px),
+                        now_ms=int(quote.receive_time_ms),
+                    )
             except Exception as ofx_paper_exc:
                 print(f"[ofx_volume_paper] try_open skipped: {ofx_paper_exc}")
 
@@ -1430,6 +1850,7 @@ class RP608ShadowDaemon:
             regime_label = (
                 decision_card.get("regime_state") if isinstance(decision_card, dict) else None
             )
+            rec_actionable = bool(disp.get("actionable"))
             prospective_v1_record_recommendation(
                 market=ProspectiveMarket.CRYPTO,
                 symbol=self.symbol,
@@ -1438,8 +1859,8 @@ class RP608ShadowDaemon:
                 session_date=session_date_utc,
                 bar_idx=decision_event_idx,
                 close_time_ms=int(quote.event_time_ms),
-                reference_price=float(snap.mid_price),
-                is_actionable=action_b in ("LONG", "SHORT"),
+                reference_price=float(mid_px),
+                is_actionable=rec_actionable,
                 regime=regime_label,
                 extra={
                     "policy_b_action": action_b,
@@ -1448,6 +1869,10 @@ class RP608ShadowDaemon:
                     "quote_event_id": quote.update_id,
                     "atr_14": atr_14,
                     "features_tick": self._last_tick_features,
+                    "tick_policy_authority": tick_authority,
+                    "recommendation_disposition": disp.get("disposition"),
+                    "gate2e_block_reason": disp.get("reason"),
+                    "recommendation_actionable": rec_actionable,
                 },
             )
             prospective_v1_append_rec_trade(
@@ -1458,8 +1883,8 @@ class RP608ShadowDaemon:
                 decision=str(action_b),
                 secondary_decision=str(action_c),
                 close_time_ms=int(quote.event_time_ms),
-                reference_price=float(snap.mid_price),
-                is_actionable=action_b in ("LONG", "SHORT"),
+                reference_price=float(mid_px),
+                is_actionable=rec_actionable,
                 regime=regime_label,
                 plan=plan_result if isinstance(plan_result, dict) else None,
                 extra={
@@ -1467,10 +1892,14 @@ class RP608ShadowDaemon:
                     "policy_c_action": action_c,
                     "decision_clock": TICK_DECISION_CLOCK,
                     "atr_14": atr_14,
+                    "tick_policy_authority": tick_authority,
+                    "recommendation_disposition": disp.get("disposition"),
+                    "gate2e_block_reason": disp.get("reason"),
                 },
             )
             if self.recent_candles:
-                arm_a = action_b in ("LONG", "SHORT")
+                # Arm A observe follows actionable disposition (not raw Policy B alone).
+                arm_a = bool(rec_actionable)
                 prospective_v1_observe_bar(
                     market=ProspectiveMarket.CRYPTO,
                     completed_bars_including_signal=self.recent_candles,
@@ -1483,20 +1912,24 @@ class RP608ShadowDaemon:
                     close_time_ms=int(quote.event_time_ms),
                     arm_a_signal=arm_a,
                     arm_a_side=action_b if arm_a else None,
-                    reference_price=float(snap.mid_price),
+                    reference_price=float(mid_px),
                     extra={
                         "policy_b_action": action_b,
                         "policy_c_action": action_c,
                         "decision_clock": TICK_DECISION_CLOCK,
+                        "tick_policy_authority": tick_authority,
+                        "recommendation_disposition": disp.get("disposition"),
                     },
                 )
         except Exception as obs_exc:
             print(f"[prospective_v1] CRYPTO observe skipped: {obs_exc}")
 
+        imb = feats.get("imbalance")
+        v5 = feats.get("velocity_5s_bps")
         print(
             f"[{datetime.now(timezone.utc).strftime('%H:%M:%S')}] Tick evt {decision_event_idx:06d}: "
-            f"mid={snap.mid_price:.2f} | B:{action_b} C:{action_c} | "
-            f"imb={snap.imbalance:.3f} v5={snap.velocity_5s_bps} atr14={atr_14}"
+            f"mid={mid_px:.2f} | B:{action_b} C:{action_c} | "
+            f"imb={imb} v5={v5} atr14={atr_14} auth={tick_authority}"
         )
         if self.single_candle_test and action_b in ("LONG", "SHORT"):
             self.request_shutdown()
@@ -1563,13 +1996,25 @@ class RP608ShadowDaemon:
                                         "kline_start_ms": k.get("t"),
                                     }
                                     now_ms = int(time.time() * 1000)
-                                    for overlay, tag in (
+                                    _kline_overlays = [
                                         (self.trade_plan_overlay, "trade_plan_overlay"),
                                         (
                                             self.trade_plan_overlay_baseline,
                                             "trade_plan_overlay_baseline",
                                         ),
-                                    ):
+                                        (
+                                            self.trade_plan_overlay_g2x_r50,
+                                            "trade_plan_overlay_g2x_r50",
+                                        ),
+                                    ]
+                                    if self.trade_plan_overlay_g2x_floorlock is not None:
+                                        _kline_overlays.append(
+                                            (
+                                                self.trade_plan_overlay_g2x_floorlock,
+                                                "trade_plan_overlay_g2x_floorlock",
+                                            )
+                                        )
+                                    for overlay, tag in _kline_overlays:
                                         active = (overlay.state or {}).get("active_plan")
                                         if not (active and active.get("state") == "OPEN"):
                                             continue
@@ -1640,7 +2085,7 @@ class RP608ShadowDaemon:
         print(
             f"[RP-608] tick_policy backend={tick_policy_backend()} "
             f"mode={resolve_tick_eval_mode()} "
-            f"(Track C: Rust module landed; live eval still Python until tick-loop soak)",
+            f"(Track C: RP608_CRYPTO_TICK_POLICY=python|rust|compare; default python)",
             flush=True,
         )
 

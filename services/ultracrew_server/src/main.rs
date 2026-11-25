@@ -3,11 +3,10 @@ use axum::{
     extract::{Path as AxPath, Path, State},
     http::{Method, StatusCode},
     response::{IntoResponse, Response},
-    routing::{delete, get, post, put},
+    routing::{get, post},
 };
 use serde::{Deserialize, Serialize};
 use serde_json::json;
-use ultracrew::config::FatigueConfig;
 use std::collections::HashMap;
 use std::path::{Path as StdPath, PathBuf};
 use std::sync::{Arc, Mutex};
@@ -15,7 +14,7 @@ use tower_governor::GovernorLayer;
 use tower_governor::governor::GovernorConfigBuilder;
 use tower_http::cors::{Any, CorsLayer};
 use ultracrew::constraint_engine::DomainConstraintEvaluator;
-use ultracrew::inrc::models::{InrcNurse, InrcScenario};
+use ultracrew::inrc::models::InrcScenario;
 use ultracrew::inrc::parser::{parse_scenario, parse_week_data};
 use ultracrew::inrc::validator::validate_schedule;
 use ultracrew_server::device_session::{
@@ -23,14 +22,13 @@ use ultracrew_server::device_session::{
 };
 use ultracrew_server::gerad_service::{
     get_benchmark_catalog, run_gerad_coralys_optimization, run_gerad_irops_recovery,
-    AirlineIropsRequest, AirlineIropsResponse, AirlineOptimizeRequest,
-    AirlineOptimizeResponse, BenchmarkInstanceMeta,
+    AirlineIropsRequest, AirlineOptimizeRequest,
 };
-use ultracrew_server::models::{DecisionCase, DecisionLog, ScheduleVersion};
-use ultracrew_server::persistence::{delete_item, load_collection, save_item};
+use ultracrew_server::models::{DecisionCase, ScheduleVersion};
+use ultracrew_server::persistence::{delete_item, save_item};
 use ultracrew_server::simulation::{
-    Alert, BalanceChange, BaselineStatus, BlockedRecovery, Bottleneck, CandidateType,
-    ConstraintAudit, Coverage, CoverageAudit, Dashboard, FeasibilityReport, NurseBalance,
+    Alert, BalanceChange, BaselineStatus, BlockedRecovery, CandidateType,
+    ConstraintAudit, Coverage, CoverageAudit, Dashboard, FeasibilityReport,
     ParetoFrontierSolution, RecoveryAudit, RecoveryPlan, RosterHealth, SimulationState,
     VerificationReports, WorkloadAudit, can_recover,
 };
@@ -361,7 +359,7 @@ fn make_dynamic_dashboard(
         }
     }
 
-    let mut constraint_report = ultracrew::constraint_engine::ConstraintReport {
+    let constraint_report = ultracrew::constraint_engine::ConstraintReport {
         fitness: 0.0,
         is_valid: validation_report.is_legal,
         hard_violations: validation_report.max_consecutive_work_violations
@@ -711,16 +709,15 @@ async fn simulate_sick_leave(
     let recovery_start = today_index + 7;
     let mut max_recovery_day = today_index;
     let mut recovered_shifts = 0;
-    let mut requested_shifts = 0;
+    let requested_shifts = missed_total;
     let mut feasible_shifts = 0;
 
-    let mut creditors_to_process = creditors.clone();
+    let creditors_to_process = creditors.clone();
 
     let mut blocked_recoveries = Vec::new();
 
     let mut audit_trail = Vec::new();
     let mut remaining_to_recover = missed_total;
-    requested_shifts = missed_total;
 
     let get_balance = |n_id: &String, sched: &HashMap<String, Vec<String>>| -> i32 {
         let base = current_state
@@ -1066,6 +1063,7 @@ struct LoadScenarioRequest {
     instance: Option<String>,
 }
 
+#[allow(dead_code)]
 #[derive(Serialize)]
 struct LoadScenarioResponse {
     loaded: bool,
@@ -1178,6 +1176,7 @@ async fn load_scenario_handler(
         .into_response()
 }
 
+#[allow(dead_code)]
 #[derive(Serialize)]
 struct ValidateResponse {
     is_valid: bool,
@@ -1451,12 +1450,15 @@ async fn baseline_audit_handler(
 const LAYOVER_REST_HOURS: f64 = 8.0;
 
 /// Home-base rest threshold: rest gap >= this value ends a pairing.
+#[allow(dead_code)]
 const HOME_BASE_REST_HOURS: f64 = 34.0;
 
 /// Maximum hours in any 7-day window (TC CAR 700 cumulative limit).
+#[allow(dead_code)]
 const MAX_WEEKLY_HOURS: f64 = 60.0;
 
 /// Maximum consecutive duty days (TC CAR 700).
+#[allow(dead_code)]
 const MAX_CONSECUTIVE_DAYS: u64 = 6;
 
 /// TC CAR 700.15 Table: maximum FDP hours by sector count and reporting time.
@@ -1484,6 +1486,7 @@ fn max_fdp_hours(sector_count: usize, report_hour: u64) -> f64 {
 
 /// TC CAR 700.17: minimum rest after an FDP.
 /// rest >= max(LAYOVER_REST_HOURS=8h, preceding FDP duration).
+#[allow(dead_code)]
 fn min_rest_after_fdp(fdp_hours: f64) -> f64 {
     f64::max(LAYOVER_REST_HOURS, fdp_hours)
 }
@@ -1499,6 +1502,7 @@ struct ScheduleAnalysisRequest {
     /// The same workers array sent to /api/schedule
     workers: Vec<WorkerInput>,
     /// The scenario metadata to identify the domain
+    #[allow(dead_code)]
     scenario: Option<ultracrew::public_contracts::InrcScenario>,
 }
 
@@ -1694,7 +1698,7 @@ async fn swap_exchanges_handler(
 ) -> Result<Json<SwapExchangesResponse>, (StatusCode, String)> {
     let shift_map: HashMap<u64, ShiftInput> =
         req.shifts.iter().map(|s| (s.id, s.clone())).collect();
-    let worker_map: HashMap<u64, WorkerInput> =
+    let _worker_map: HashMap<u64, WorkerInput> =
         req.workers.iter().map(|w| (w.id, w.clone())).collect();
 
     // Build per-worker shift lists

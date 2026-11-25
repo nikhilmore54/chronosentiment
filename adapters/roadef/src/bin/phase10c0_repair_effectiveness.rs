@@ -1,3 +1,4 @@
+#![allow(dead_code, unused_variables, unused_imports, unused_mut, unused_assignments)]
 /// phase10c0_repair_effectiveness.rs — P10-C0 Repair-Effectiveness Characterization Sweep
 ///
 /// Governance protocol: OBSERVATIONAL — measurement-only binary.

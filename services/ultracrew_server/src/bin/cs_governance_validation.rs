@@ -1,3 +1,4 @@
+#![allow(dead_code, unused_variables, unused_imports, unused_mut, unused_assignments)]
 /// ChronoSentiment Governance Validation – M6 Multi-Domain Test
 ///
 /// This binary runs the ChronoSentiment GA with telemetry capture and feeds

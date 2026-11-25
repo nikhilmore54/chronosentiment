@@ -1,3 +1,4 @@
+#![allow(dead_code, unused_variables, unused_imports, unused_mut, unused_assignments)]
 use std::cmp::Reverse;
 /// rp404d_ecmp_conflict — RP-404D: Problem-Specific Neighbourhood (ECMP-Conflict Destroy)
 ///
