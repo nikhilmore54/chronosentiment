@@ -76,13 +76,15 @@ Baseline OF stamps / ±0.30 paper = **L1 resting liquidity imbalance**, not volu
 | **Gate 2X-002** | **DONE** · NSE G_ohlc **DO_NOT_ADVANCE** · `rp608_gate2x_002_nse_a_ohlc_ambiguous_scoped.md` |
 | **Gate 2X-003** | **DONE** · CLOSE_GRID C/F_path **ADVANCE_CANDIDATE** (relative; fidelity caveat) · `rp608_gate2x_003_nse_a_close_grid_fpath_review.md` |
 | **Gate 3 offline proceed** | **DONE** · 3X G **PASS** · 3E BAR_ge_12 **CONFOUND_DOMINANT** · `rp608_gate3_offline_proceed_review.md` |
-| **Gate 5 Crypto G** | **DEPLOYED 2026-11-15** · Pi crypto shadow · `ambiguous_tie_break=TP` · authority 0% · `rp608_gate5_packet_crypto_g_draft.md` |
+| **Gate 5 Crypto G** | **SHADOW DEPLOYED 2026-11-15** · Pi crypto shadow · `ambiguous_tie_break=TP` · authority 0% · `rp608_gate5_packet_crypto_g_draft.md` |
 | **Gate 3X H* path-stress** | **PASS_BOTH 2026-11-16** · H60/H120_PATH holdout Δ+255/+381 · `rp608_gate3x_crypto_h_path_review.md` |
-| **Gate 5 Crypto H\*** | **DEPLOYED 2026-11-16** · H120_PATH live · `EARLY_SL_PATH_SCRATCH` · authority 0% · `rp608_gate5_packet_crypto_h_draft.md` |
-| **Gate 5 Crypto Adaptive TP** | **DEPLOY 2026-11-21** · post-1.5×ATR extend +0.5×ATR / SL lock · Gate 2X v1.4 continue-vs-exit · OF ±0.30 still frozen · `rp608_gate5_packet_crypto_adaptive_tp_draft.md` |
+| **Gate 5 Crypto H\*** | **SHADOW DEPLOYED 2026-11-16** · H120_PATH live · `EARLY_SL_PATH_SCRATCH` · authority 0% · `rp608_gate5_packet_crypto_h_draft.md` |
+| **Gate 5 Crypto Adaptive TP** | **SHADOW DEPLOY 2026-11-21** · post-1.5×ATR extend +0.5×ATR / SL lock · Gate 2X v1.4 continue-vs-exit · OF ±0.30 still frozen · `rp608_gate5_packet_crypto_adaptive_tp_draft.md` |
 | **Gate 2E shadow thin-WR** | **STAMP-ONLY 2026-11-22** · `SHADOW_ALLOW_IF_N10_WR_GT_035` · allow_only unchanged · `rp608_gate2e_shadow_thin_wr_allow_2026_11_22.md` |
-| **Gate 2X floor-lock twin** | **ACTIVE RESEARCH 2026-11-24** · crypto + **NSE** observational twins · ratchet 0.50 · stamp `MFE_FLOOR_LOCK_AT_PROTECT` · authority 0% · W1 crypto accrual · NSE wired 2026-11-24 · no Gate 5 · `rp608_gate2x_floor_lock_nse_twin_2026_11_24.md` · `artifacts/rp608_gate2x_floor_lock/` |
-| **Gate 5 NSE Adaptive TP** | **DEPLOY 2026-11-21** · Estimand A LONG parity · +0.5×ATR (or +0.5% entry) extend / SL lock · Gate 2X v1.4 · `RP-608-GATE5-NSE-ADAPTIVE-TP-001` |
+| **Gate 2X floor-lock twin** | **ACTIVE RESEARCH 2026-11-24…25** · crypto + **NSE** observational twins · ratchet 0.50 · stamp `MFE_FLOOR_LOCK_AT_PROTECT` · authority 0% · W1 crypto accrual · NSE wired 2026-11-24 · overnight / H11 min-hold / W1 interim memos · **no Gate 5** · `rp608_gate2x_floor_lock_nse_twin_2026_11_24.md` · `artifacts/rp608_gate2x_floor_lock/` |
+| **Gate 2E follow-ons (2026-11-24…25)** | Regime align · decision-engine tune · plan require-OF · B-persist · tick/rec hygiene — observational / authority 0% · see `rp608_gate2e_*_2026_11_2{4,5}.md` · `rp608_tick_rec_hygiene_2026_11_25.md` |
+| **Trade-like authenticity** | **LOCKED 2026-11-16** · TICK_PATH + OFX require trade-like ticks · `.cursor/rules/rp608-tick-volume-trade-filter.mdc` |
+| **Gate 5 NSE Adaptive TP** | **SHADOW DEPLOY 2026-11-21** · Estimand A LONG parity · +0.5×ATR (or +0.5% entry) extend / SL lock · Gate 2X v1.4 · `RP-608-GATE5-NSE-ADAPTIVE-TP-001` · authority 0% |
 | Discovery v2 (algorithm upgrade) | **DONE** · Rust `rp608_wl_crypto_plan_discovery_v2` · Gate 2 criteria unchanged · still closed |
 | NSE A Kite feature join (ext. holdout) | **DONE** · Pi · 1625 feature-ready rows |
 | NSE A Kite discovery v2 | **DONE** · WR REPLICATES on mom/location · payoff/net bar fail · Gate 2 **DO NOT ADVANCE** |
@@ -92,8 +94,8 @@ Baseline OF stamps / ±0.30 paper = **L1 resting liquidity imbalance**, not volu
 | WR ADAPTIVE-EXECUTION-VELOCITY-001 | NSE/crypto inventories **CLOSED** · H4 parked · NSE charter + crypto capture spec **REGISTERED** · Gate 2 **DO NOT ADVANCE** |
 | Hypothesis Validation Programme | H2 confirmation accumulation **continues** · holding **amended** 2026-11-15 to allow 2E prep + 2X offline · see `rp608_confirmation_only_holding_state.md` |
 | Phase 2 NSE OF / Crypto OF | **DEFERRED** (OF books); NSE A / crypto **plan** on 2E/2X track |
-| Gate 3E / 3X | Unauthorized until matching Gate 2 ADVANCE |
-| Gate 5 (production) | Unauthorized — live baseline frozen |
+| Gate 3E / 3X | Unauthorized until matching Gate 2 ADVANCE (except completed offline reviews already recorded above) |
+| Gate 5 (**production** cutover / authority raise) | **Unauthorized** — OF ±0.30 / Estimand A live baseline still frozen; listed Gate 5 rows above are **shadow / authority 0%** only |
 
 ## Artifacts
 

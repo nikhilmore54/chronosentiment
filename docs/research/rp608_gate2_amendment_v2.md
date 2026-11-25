@@ -87,10 +87,12 @@ Programme goal: durable positive expectancy per book.
 
 ## 6. Immediate next actions (authorized by this amendment)
 
+> **Historical note (2026-11-25):** Items 1–3 below were the *initial* authorized actions as of the 2026-11-15 effective date. They are largely **completed or superseded** by subsequent Gate 2E pattern packages, Gate 2X / Gate 3X offline reviews, Gate 5 **shadow** deploys (authority 0%), and Gate 2X floor-lock observational twins. **Advance criteria in §§2–5 remain binding.** Live OF ±0.30 / Estimand A baseline still require Gate 5 for production cutover; shadow ≠ authority raise.
+
 1. Draft Gate **2X** multi-session scope (crypto plan + NSE A separate) using frozen journals + exit-falsification engine.  
 2. Draft Gate **2E** availability / capture checklist for crypto continuous decision-time fields (H1 prep).  
 3. Update ledger + holding state to cite this amendment.  
-4. **Do not** edit daemon exit/entry code until a Gate 2E or 2X **ADVANCE** memo + Gate 5.
+4. **Do not** change frozen live baseline (OF ±0.30, Estimand A entry thresholds/stops/targets/holds) without Gate 5. Observational / shadow / authority-0% wiring after ADVANCE memos is tracked in `rp608_wl_improvement_plan.md` and `rp608_research_decision_ledger.md` — not a license to raise authority.
 
 ## 7. References
 

@@ -47,4 +47,6 @@ You are a senior systems engineer working on ChronoSentiment, a deterministic tr
 - **Validation**: All strategy parameters must be bounded and validated.
 
 ## 5. 📚 Documentation Reference
-- Every significant change should align with the specifications in `/docs` (e.g., `SDS_v2_0.md`, `PRD_v3_3.md`).
+- Every significant change should align with the specifications in `/docs`, especially the canonical index `docs/INDEX.md`.
+- Authoritative commercial PRD: `docs/CHRONOSENTIMENT_PRD_V1.md` (PRD-002). `docs/PRD_v3_3.md` is superseded historical only.
+- SDS historical archive: `docs/archive/SDS_v2_0.md` (not live SoT).

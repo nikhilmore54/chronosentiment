@@ -1,8 +1,9 @@
 # RP-608 — Research Decision Ledger
 
-**Date:** 2026-11-07 · **Amended:** 2026-11-15 (Gate 2 v2)  
+**Date:** 2026-11-07 · **Amended:** 2026-11-15 (Gate 2 v2) · **Synced:** 2026-11-25 (freshness)  
 **Purpose:** Prevent repeated reopening of consumed questions.  
 **Authority:** 0% · live baseline/OF frozen · Gate 2 **split 2E/2X** (`rp608_gate2_amendment_v2.md`)  
+**Note:** Gate 5 **shadow** deploys (authority 0%) ≠ production cutover / live-order authority raise.
 
 ## Master table
 
@@ -12,10 +13,13 @@
 | **H2** Session regime | `SUPPORTED_SESSION_REGIME_DOMINANT` (descriptive) | P4 disc+val high WR dispersion; poor val economics; Oct29 concentration | Discovery ≤10-31 (6 sess); validation 11-01…05 (5 sess) | Confirmation ≥11-06 only | Prospective confirmation + assessment | Reclassify history as confirmation; session thr scans as entry filters |
 | **H3** OF alignment | `UNOPENED` | Prior OF associations unstable; P4 secondary OF Missing on plan outcomes join | None as formal H3 test | Only if separately opened with decision-time OF integrity | Document evidence requirements; **no test** until open | Mixing post-entry OF with entry alignment; OF ±0.30 change |
 | **H4** Adaptive execution velocity | `UNTESTABLE_UNDER_CURRENT_ENGINE_DESIGN` | Inventories + P1: simulated/instant timing; no lifecycle | Crypto plan+OF journals for inventory; overlay code audit | Only after authorized engine redesign + capture | Boundary doc closed for current engines | Latency from `activated_ms`; stub logging as velocity |
-| **Gate 2X** Exit/cost geometry | `2X-001` + `2X-002` + **`2X-003 RUN`** | Crypto G/H* → Gate5; NSE F scratch **DO_NOT_ADVANCE**; G_ohlc **DO_NOT_ADVANCE**; CLOSE_GRID **C/F_path ADVANCE_CANDIDATE** (relative only; fidelity gap vs journal) | 3m Kite bar backfill + NSE journal | Gate 3X NSE CLOSE_GRID↔journal fidelity before any Gate 5 | `rp608_gate2x_003_nse_a_close_grid_fpath_review.md` | Live NSE exit edits; treating CLOSE_GRID absolute nets as live PnL |
-| **Gate 2 historical** | `RUN 2026-11-15` | Unified 2E+2X on journals: NSE `BAR_ge_12` 2E ADVANCE_CANDIDATE; crypto 2X ADVANCE; crypto 2E no advance | Chrono 60/40 split; consumed windows not remine-exempt | Gate 3X (G); Gate 3E confound audit BAR_ge_12 | `artifacts/rp608_gate2_historical/` · `rp608_gate2_historical_run_review.md` | Hour bans as sole rule; live edits |
-| **Gate 3X Crypto G** | `PASS` → **Gate 5 DEPLOYED** 2026-11-15 | Holdout Δnet +249.8 USDT; mid-haircut also +; sess share 1.0 | Ambiguous n=45 (holdout 37) | Monitor Pi outcomes for `ambiguous_resolved_as=TP` | `rp608_gate5_packet_crypto_g_draft.md` · overlay on Pi | H60/H120 without path stress; authority raise |
-| **Gate 3X Crypto H\*** | `PASS_BOTH` → **Gate 5 H DEPLOYED** 2026-11-16 | Holdout H60_PATH Δ+255.4 · H120_PATH Δ+381.2 · paired 9/9; PATH≪OPT | 1s Binance path + plan journal; early60=443 | Monitor `EARLY_SL_PATH_SCRATCH` on Pi | `rp608_gate3x_crypto_h_path_review.md` · `rp608_gate5_packet_crypto_h_draft.md` | OPT-only live scratch; OF/ATR change |
+| **Gate 2X** Exit/cost geometry | `2X-001/002/003 DONE` · **floor-lock ACTIVE RESEARCH** | Crypto G/H* → Gate5 shadow; NSE F scratch **DO_NOT_ADVANCE**; G_ohlc **DO_NOT_ADVANCE**; CLOSE_GRID **C/F_path ADVANCE_CANDIDATE** (relative; fidelity caveat); floor-lock twins crypto+NSE (ratchet 0.50; stamp `MFE_FLOOR_LOCK_AT_PROTECT`) | 3m Kite bar backfill + NSE journal; floor-lock twin artifacts | Floor-lock session accrual; Gate 3X NSE CLOSE_GRID↔journal fidelity before any NSE Gate 5 exit edit | `rp608_gate2x_floor_lock_nse_twin_2026_11_24.md` · prior `rp608_gate2x_003_nse_a_close_grid_fpath_review.md` | Live NSE exit edits; treating CLOSE_GRID absolute nets as live PnL; promoting floor-lock without Gate 5 |
+| **Gate 2E** Entry selection | **Pattern allow_only LIVE** (crypto+NSE; authority 0%) | Crypto pattern sealed 2026-11-21; NSE pattern 2026-11-23 + net_mean>0 ALLOW; thin-WR stamp-only 2026-11-22; regime/tune/require-OF/B-persist 2026-11-24…25 | Pattern packages + shadow twins | Continue observational twins; no thinning-as-success without predeclared floors | `rp608_gate2e_crypto_pattern_sealed_package_2026_11_21.md` · `rp608_nse_a_trade_pattern_prediction_v1.md` | WR-only success; OF ±0.30 change; pooling books |
+| **Gate 2 historical** | `RUN 2026-11-15` | Unified 2E+2X on journals: NSE `BAR_ge_12` 2E ADVANCE_CANDIDATE; crypto 2X ADVANCE; crypto 2E no advance | Chrono 60/40 split; consumed windows not remine-exempt | Historical record; do not remine | `artifacts/rp608_gate2_historical/` · `rp608_gate2_historical_run_review.md` | Hour bans as sole rule; live edits |
+| **Gate 3X Crypto G** | `PASS` → **Gate 5 SHADOW DEPLOYED** 2026-11-15 | Holdout Δnet +249.8 USDT; mid-haircut also +; sess share 1.0 | Ambiguous n=45 (holdout 37) | Monitor Pi outcomes for `ambiguous_resolved_as=TP` | `rp608_gate5_packet_crypto_g_draft.md` · overlay on Pi | H60/H120 without path stress; authority raise |
+| **Gate 3X Crypto H\*** | `PASS_BOTH` → **Gate 5 H SHADOW DEPLOYED** 2026-11-16 | Holdout H60_PATH Δ+255.4 · H120_PATH Δ+381.2 · paired 9/9; PATH≪OPT | 1s Binance path + plan journal; early60=443 | Monitor `EARLY_SL_PATH_SCRATCH` on Pi | `rp608_gate3x_crypto_h_path_review.md` · `rp608_gate5_packet_crypto_h_draft.md` | OPT-only live scratch; OF/ATR change |
+| **Gate 5 Adaptive TP** | **SHADOW DEPLOYED** crypto+NSE 2026-11-21 | Post-1.5×ATR extend +0.5×ATR / SL lock · Gate 2X v1.4 · NSE Estimand A LONG parity | Adaptive TP packets | Monitor shadow books only | `rp608_gate5_packet_crypto_adaptive_tp_draft.md` | Treating shadow as production cutover; OF ±0.30 change |
+| **Trade-like authenticity** | **LOCKED 2026-11-16** | Volume/LT `classify_trade_like` gates TICK_PATH + OFX entry; quote-repeat rejected | NSE WS tick path | Hygiene / fidelity only | `.cursor/rules/rp608-tick-volume-trade-filter.mdc` · `rp608_tick_rec_hygiene_2026_11_25.md` | Using quote-only packets as trade prints; conflating with OFX surge threshold |
 | **Gate 3E NSE BAR_ge_12** | `CONFOUND_DOMINANT` | Δsquare_off share +0.44; within-day pairs 79/219 | Gate 2E candidate closed | Do not promote; NSE 2X path-continue after bars | `rp608_gate3_offline_proceed_review.md` | Late-bar entry cutoff in daemon |
 
 ---
@@ -84,6 +88,10 @@ Required before any H1 run: decision-time continuous (or approved proxies), vali
 | Crypto plan ≥2026-11-06 | H2 confirmation only (accumulating) |
 
 ## Programme state
+
+### 2026-11-25 — Freshness sync (Anuj)
+
+Master table brought forward through Gate 2E pattern gates, Gate 2X floor-lock twins, Gate 5 Adaptive TP shadow, and trade-like authenticity lock. Construct / H2 floors / OF ±0.30 / authority **unchanged**. Shadow Gate 5 ≠ production cutover.
 
 ### 2026-11-15 — Gate 2 amendment v2 (Anuj)
 

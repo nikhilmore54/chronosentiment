@@ -1,7 +1,7 @@
 # Canonical Repository Index
 
 **Document ID:** GOV-IDX-001
-**Version:** 2.19
+**Version:** 2.20
 **Status:** Active
 **Created:** 2026-08-01
 
@@ -61,17 +61,20 @@ contract-level mathematical deficiency is demonstrated.
 
 ### RP-608 NSE — Push Event Engine + Rust Migration
 
-**Status: FORMAL REQUIREMENT LOCKED 2026-11-02**
+**Status: FORMAL REQUIREMENT LOCKED 2026-11-02 · HOLD BOUNDARY UPDATED 2026-11-25**
 
 Push-driven market-event architecture (no polling) for watchlist and recommended-trade intelligence; Python behavioural reference; Rust production target. Authority 0%. OF ±0.30 / reverse-OF unchanged.
 
 * Spec: `docs/architecture/RP608_NSE_PUSH_EVENT_RUST_ENGINE_v1.md` (ARCH-007)
 * Inventory: `docs/architecture/RP608_NSE_PYTHON_PRODUCTION_INVENTORY_v1.md` (ARCH-008)
+* Migration tracks: `docs/research/rp608_rust_migration_abc_plan_2026_11_22.md` · plan-lifecycle cutover `docs/research/rp608_rust_plan_lifecycle_cutover.md`
 * P0 library+diff gate: PASS — **no production cutover**
 * P1 OF±0.30 + depth linkage gate: PASS — **no production cutover**; threshold frozen
 * P0–P3 push-driven NSE path: **FORMALLY CLOSED** (hold boundary)
 * P3 paper-lifecycle observations: PASS — Python sole ledger writer; no dual-write; authority 0%
-* Production cutover: **not authorized** — separate cutover-readiness governance review only (not an automatic next milestone)
+* Depth journal side-path soak: **Authorized 2026-11-25** — Rust → `depth_snapshots.rust.jsonl` only; Python remains authoritative (`RP608_NSE_DEPTH_WRITER=compare`); flip to `rust` needs session parity + sign-off · `docs/research/rp608_nse_depth_journal_rust_cutover_readiness_2026_11_25.md`
+* OF paper ledger production cutover: **not authorized** — separate Gate review (not automatic P4)
+* Live authority: **0%** · default next: Track B depth soak → single-writer flip
 
 ### RP-608-ECON-EDGE-DIAG-001 — Economic Edge Diagnosis
 
@@ -91,8 +94,13 @@ Systematic diagnosis of where/why economic edge is lost. Priority: trading evide
 * Session export 2026-11-04 (intraday): `artifacts/rp608_econ_edge_diag/session_export_2026-11-04.md` — refresh after close; open MTM ≠ realized
 * **Standing rule:** W/L ratio is the primary session diagnostic per book (payoff / gross / friction / net / MFE support it; do not lead with friction) — `.cursor/rules/chronosentiment-core.mdc` §3b · `docs/research/rp608_econ_edge_session_postmortem_method.md`
 * **RP-608-WL-IMPROVE-001** (2026-11-06): trade selection / win probability — baseline frozen · `docs/research/rp608_wl_improvement_plan.md`
+  * Gate 2 **v2** (2026-11-15): split **2E** / **2X** · `docs/research/rp608_gate2_amendment_v2.md` · decision ledger `docs/research/rp608_research_decision_ledger.md`
+  * **Trade-like tick authenticity** (locked 2026-11-16): Estimand A `TICK_PATH` + OFX entry decisions require volume/LT trade-like ticks — `.cursor/rules/rp608-tick-volume-trade-filter.mdc` · `classify_trade_like` · hygiene `docs/research/rp608_tick_rec_hygiene_2026_11_25.md`
   * Gate 2E crypto pattern **allow_only** (2026-11-21): PRIMARY `PATTERN_GATE=allow_only` · BASELINE `0` · parent-cell BACKOFF · sealed `docs/research/rp608_gate2e_crypto_pattern_sealed_package_2026_11_21.md`
   * Gate 2E NSE pattern **allow_only** + net_mean>0 ALLOW (2026-11-23): PRIMARY `RP608_NSE_PATTERN_GATE=allow_only` · BASELINE twin `RP608_NSE_PATTERN_GATE_BASELINE=0` under `estimand_a_baseline_parallel_v1/` · crypto trade+baseline parity · `docs/research/rp608_nse_a_trade_pattern_prediction_v1.md`
+  * Gate 2E follow-ons (2026-11-24…25): regime align · decision-engine tune · plan require-OF · B-persist · `docs/research/rp608_gate2e_regime_align_2026_11_24.md` · `docs/research/rp608_gate2e_decision_engine_tune_2026_11_24.md` · `docs/research/rp608_gate2e_plan_require_of_2026_11_25.md` · `docs/research/rp608_gate2e_b_persist_2026_11_25.md`
+  * Gate 2X floor-lock twins (2026-11-24…25): crypto + NSE observational · ratchet 0.50 · stamp `MFE_FLOOR_LOCK_AT_PROTECT` · authority 0% · **no Gate 5** · `docs/research/rp608_gate2x_floor_lock_nse_twin_2026_11_24.md` · overnight / H11 min-hold / W1 interim under `docs/research/rp608_gate2x_floor_lock_*_2026_11_2{4,5}.md`
+  * Gate 5 shadow deploys (authority 0%): Crypto G (2026-11-15) · Crypto H* (2026-11-16) · Crypto Adaptive TP (2026-11-21) · NSE Adaptive TP (2026-11-21) — **≠ production cutover**; OF ±0.30 still frozen without separate Gate 5 production authorization
   * OF paper entry quality (2026-11-21): entry persist 30s + quality gate (not ±0.30) · sealed `docs/research/rp608_of_paper_entry_quality_2026_11_21.md` · observability `docs/research/rp608_of_paper_trade_observability.md`
   * Trailing SL favorable-only (2026-11-21): never worse than original stop · `docs/research/rp608_trailing_sl_2026_11_21.md` · Gate2X v1.5 hard floor in `rp608_gate2x_crypto_mfe_giveback_2026_11_21.md`
   * Gate 1 PASS: `docs/research/rp608_wl_improve_gate1_diagnostic_completeness.md`
@@ -121,6 +129,8 @@ Independent research candidate for aggression + liquidity response + price confi
 * Scope: `docs/research/rp608_ofx_order_flow_response_scoped.md`
 * Performance tracking boundary: `docs/research/rp608_ofx_performance_tracking_boundary.md`
 * **OF side/quantity semantics audit (2026-11-07, read-only):** `docs/research/rp608_orderflow_side_quantity_semantics_audit.md` — `NO_MISMATCH_FOUND_IN_AUDITED_PATH` · governance lock `ACCEPT_CONSTRUCT_DISTINCTION`: baseline OF = **resting L1 liquidity imbalance** (not executed aggression); aggression+response = **OFX only**; no ±0.30 / Gate 2 / authority / historical relabel change
+* **Volume-paper path (observational):** crypto `docs/research/rp608_ofx_volume_paper_trades.md` · NSE twin `docs/research/rp608_ofx_nse_volume_paper_trades.md` — surge 3×/20 · never pooled into baseline books · path gates 2026-11-15
+* **Trade-like authenticity (decision logic, not OFX-only):** `.cursor/rules/rp608-tick-volume-trade-filter.mdc` — OFX manage/try_open on trade-like ticks; baseline OF remains every valid L1 packet
 * **Stage 0 / 0A–0D:** data feasibility → inferred-aggressor capture live (`ofx_tick_capture_v1/`)
 * **Stage 1:** `docs/research/rp608_ofx_stage1_aggression_response_observer.md` · `artifacts/rp608_ofx/stage1_aggression_response_summary.json` — aggression→mid response; **DOMINANTLY_FLAT_SHORT_HORIZON**; **no** Stage-2 labels
 * **Stage 1 quality audit:** `docs/research/rp608_ofx_stage1_result_quality_audit.md` · `artifacts/rp608_ofx/stage1_result_quality_audit.json` — flat conclusion preserved; Stage 2 labeling not justified
@@ -297,6 +307,14 @@ Documents in this section must not be modified except for typographical correcti
 | RP-002-OPS | `docs/research/rp002/07_research_hypotheses_and_experiments/OPERATOR_SURFACE_MAP.md` | RP-002 operator surface map — EvolutionEngine vs ROADEF 5-arm / UltraCrew; E0 attachment | DRAFT 2026-11-16 |
 | RP-002-E0 | `docs/research/rp002/07_research_hypotheses_and_experiments/RP002_E0_FRRMAB_PROTOCOL.md` | RP-002-E0 FRRMAB vs fixed/RP-405 on ROADEF — **design only · not authorised to run** | DESIGN 2026-11-16 |
 | RP-002-PS | `docs/research/rp002/07_research_hypotheses_and_experiments/primary_source/` | Primary-source analyses PS-01 Li / PS-02 Roijers / PS-03 Tornede + comparative synthesis; architecture unfrozen | ACTIVE 2026-11-16 |
+| RP608-WL-001 | `docs/research/rp608_wl_improvement_plan.md` | RP-608-WL-IMPROVE-001 — Gate 2E/2X expectancy research; live baseline frozen until Gate 5; authority 0% | APPROVED 2026-11-06 · amended 2026-11-15 |
+| RP608-GATE2-V2 | `docs/research/rp608_gate2_amendment_v2.md` | Gate 2 amendment v2 — split 2E (entry) / 2X (exit); supersedes monolithic v1 advance criteria | EFFECTIVE 2026-11-15 |
+| RP608-LEDGER-001 | `docs/research/rp608_research_decision_ledger.md` | Research decision ledger — prevent reopening consumed questions; H1–H4 + Gate 2E/2X/3/5 dispositions | ACTIVE 2026-11-25 |
+| RP608-TICK-AUTH-001 | `.cursor/rules/rp608-tick-volume-trade-filter.mdc` | Trade-like tick authenticity lock — volume/LT gate for TICK_PATH + OFX decisions; not optional OFX side journal | LOCKED 2026-11-16 |
+| RP608-TICK-HYG-001 | `docs/research/rp608_tick_rec_hygiene_2026_11_25.md` | Tick/rec hygiene companion to trade-like authenticity | 2026-11-25 |
+| RP608-FLOOR-LOCK | `docs/research/rp608_gate2x_floor_lock_nse_twin_2026_11_24.md` | Gate 2X floor-lock observational twins (crypto + NSE); authority 0%; no Gate 5 | ACTIVE RESEARCH 2026-11-24 |
+| RP608-RUST-ABC | `docs/research/rp608_rust_migration_abc_plan_2026_11_22.md` | NSE Python→Rust migration ABC tracks (post P0–P3 hold) | 2026-11-22 |
+| RP608-DEPTH-SOAK | `docs/research/rp608_nse_depth_journal_rust_cutover_readiness_2026_11_25.md` | Depth journal Rust side-path soak readiness; Python authoritative until flip | AUTHORIZED SOAK 2026-11-25 |
 | UC-R-001 | `docs/research/UltraCrew_Pairing_Topology_Mutation_Evaluation.md` | Pairing Topology Mutation Evaluation | Section 2 FROZEN; Section 3 active |
 | UC-R-002 | `docs/research/UltraCrew_Coralys_Native_Scheduler_Section3.md` | Coralys Native Scheduler — Section 3 | Active — Experiment 0 spec complete |
 | UC-R-003 | `docs/research/UltraCrew_GENCOL_Pipeline_Divergence_Analysis.md` | GENCOL Pipeline Divergence Analysis | Active |
@@ -361,8 +379,12 @@ Documents in this section must not be modified except for typographical correcti
 | ARCH-007 | `docs/architecture/RP608_NSE_PUSH_EVENT_RUST_ENGINE_v1.md` | RP-608 NSE push-driven event architecture + staged Python→Rust production migration (formal requirement; 0% authority) |
 | ARCH-008 | `docs/architecture/RP608_NSE_PYTHON_PRODUCTION_INVENTORY_v1.md` | Live NSE Python production inventory and migration readiness (Stage 1–3) |
 | RP608-EXIT-FALS-001 | `docs/research/rp608_exit_falsification_001_scoped.md` | RP-608-EXIT-FALSIFICATION-001 — Estimand A exit-policy falsification; Phase 1+2 PATH_ONLY complete; Gate R not reached; journal read-only; authority 0% |
-| RP608-OFX-001 | `docs/research/rp608_ofx_order_flow_response_scoped.md` | RP-608-OFX — Order Flow Response Research; parallel observational line; Stage 0 data feasibility; baseline OF/execution frozen; authority 0% |
+| RP608-OFX-001 | `docs/research/rp608_ofx_order_flow_response_scoped.md` | RP-608-OFX — Order Flow Response Research; parallel observational line; Stage 0–1 complete; Stage 2 design/readiness only; classifier not authorized; authority 0% |
 | RP608-OFX-TRACK-001 | `docs/research/rp608_ofx_performance_tracking_boundary.md` | Baseline four-book vs OFX reporting boundary; never pool; open MTM ≠ realized |
+| RP608-OFX-VOL-001 | `docs/research/rp608_ofx_volume_paper_trades.md` | Crypto OFX volume-paper path (surge 3×/20); observational; never pooled into baseline |
+| RP608-OFX-VOL-NSE | `docs/research/rp608_ofx_nse_volume_paper_trades.md` | NSE OFX volume-paper twin; observational; authority 0% |
+| RP608-OF-SEM-001 | `docs/research/rp608_orderflow_side_quantity_semantics_audit.md` | OF side/qty semantics audit — `ACCEPT_CONSTRUCT_DISTINCTION` (L1 resting ≠ aggressor) |
+| SDS-ARCH | `docs/archive/SDS_v2_0.md` | Strategy Definition Specification (archived historical; filename v2_0 / body v1.0) — not live SoT |
 
 ### 8. Evidence Governance
 
@@ -404,6 +426,7 @@ Documents in this section must not be modified except for typographical correcti
 | CS-P-AUDIT-001 | `docs/CS-P-AUDIT-001_ADAPTER_DISCIPLINE.md` | Read-only ChronoSentiment adapter discipline inventory (no cleanup) |
 | CS-P-CLEAN-001 | `docs/CS-P-CLEAN-001_ADAPTER_QUARANTINE.md` | PR-1: research/legacy quarantine; B3/B4 generators preserved; no policy change |
 | CS-P-CLEAN-002 | `docs/CS-P-CLEAN-002_EXPLICIT_POLICY_CONTRACT.md` | PR-2: explicit DecisionPolicy required; baseline fixture is not the ChronoSentiment strategy |
+| CS-P-CLEAN-003 | `docs/CS-P-CLEAN-003_CHRONOSENTIMENT_ADAPTER_HYGIENE.md` | Adapter hygiene Phase A–E EXECUTED 2026-11-24; navigation/cache/archive only; no Gate 5 / OF ±0.30 change |
 | CS-P-006 | `docs/CS-P-006_CORALYS_POLICY_DISCOVERY.md` | Research frozen at C.3-F; P.3–P.6 observatory slice; no Search #3 |
 | CS-P-006-A | `docs/CS-P-006-A_POLICY_DISCOVERY_CONTRACT.md` | PolicyArtifact consumption contract (`csp006a.policy_artifact.1`); no search |
 | CS-P-006-B | `docs/CS-P-006-B_RESEARCH_PROTOCOL.md` | Discovery protocol; S1 certified; B.1 partition frozen |
@@ -509,6 +532,7 @@ The following documents exist in the repository but have not been confirmed as c
 
 | Version | Date | Change |
 |---------|------|--------|
+| 2.20 | 2026-11-25 | Docs freshness sync — catalog Gate 2 v2 / WL plan / decision ledger / trade-like authenticity / OFX volume-paper / floor-lock / rust ABC / depth soak / CLEAN-003 / archived SDS; refresh ARCH-007 Current Work (depth side-path soak Authorized); authority 0%; no OF±0.30 change |
 | 2.19 | 2026-11-16 | RP-002-PS primary-source milestone — FRRMAB/Roijers/Tornede analyses + comparative synthesis; Tornede OA verified; architecture unfrozen; authority 0% |
 | 2.18 | 2026-11-16 | RP-002-OPS + RP-002-E0 — operator surface map; FRRMAB E0 protocol design only (ROADEF vs RP-405); not authorised to run; authority 0% |
 | 2.17 | 2026-11-16 | RP-002-B1 Batch 1 notes — Li/DaCosta/Roijers full text studied; Lin/Jiao blocked; E0 design only; architecture unfrozen; authority 0% |

@@ -3,7 +3,7 @@
 **Protocol:** `RP-608-OF-SIDE-QTY-SEMANTICS-AUDIT-001`  
 **Mode:** READ-ONLY INVESTIGATION  
 **Date:** 2026-11-07  
-**Authority:** 0.0% · Gate 2 **CLOSED** · baseline / OF ±0.30 **FROZEN**  
+**Authority:** 0.0% · Gate 2 v1 **CLOSED** (v2 split 2E/2X active 2026-11-15; this audit still forbids ±0.30 change) · baseline / OF ±0.30 **FROZEN**  
 **Governance:** `.cursor/rules/chronosentiment-core.mdc` §3b/§3c · `.cursor/rules/rp608-ofx.mdc`  
 **Authorization:** Explicit one-off semantic audit (not a discovery workstream; no formula/threshold change).
 
@@ -86,7 +86,7 @@ We initially framed risk as a possible **side/quantity pairing** defect. The aud
 **Quantity semantics:** displayed TOB size at best bid/ask.  
 **Executed trade tape / `aggTrade.isBuyerMaker`:** not on the OF mark path (OFX Stage 0: crypto aggressor **NOT FEASIBLE TODAY** from durable journals).
 
-Evidence: `scripts/run_rp608_shadow_daemon.py` L925–951; `scripts/rp608_trade_plan_overlay.py` `fetch_live_btcusdt_book` L435–459.
+Evidence: `scripts/run_rp608_shadow_daemon.py` bookTicker qty map ~L1291–1305 (`B`→`best_bid_qty`/`bid_qty`, `A`→`best_ask_qty`/`ask_qty`); `scripts/rp608_trade_plan_overlay.py` REST book ~L645–649 + `fetch_live_btcusdt_book` ~L659 (alias). Line numbers refreshed 2026-11-25; semantics unchanged.
 
 ### 2.2 NSE (Kite depth packet)
 
@@ -295,8 +295,8 @@ Reconstruction: where `execution_quote` / depth journals retain bid/ask qty at d
 | Support / sign rules | `classify_order_flow_support` L160–180 |
 | Exit = opposite support | `is_order_flow_exit_signal` L27–58 |
 | bookTicker normalize | `l1_from_book_ticker` L183–193 |
-| Daemon B→bid qty, A→ask qty | `scripts/run_rp608_shadow_daemon.py` L937–951, OF stamp L1075–1119 |
-| REST bidQty/askQty | `scripts/rp608_trade_plan_overlay.py` L451–455 |
+| Daemon B→bid qty, A→ask qty | `scripts/run_rp608_shadow_daemon.py` ~L1291–1305 (bookTicker); OF path uses same L1 qtys via `l1_from_book_ticker` |
+| REST bidQty/askQty | `scripts/rp608_trade_plan_overlay.py` ~L645–649 · alias `fetch_live_btcusdt_book` ~L659 |
 | Tick imbalance same formula | `scripts/rp608_crypto_tick_policy.py` L57–61 |
 | NSE buy→bid, sell→ask | `scripts/run_rp608_nse_live_probe.py` L90–93; `decode.rs` L64–67 |
 | Rust parity | `adapters/chronosentiment/src/nse_market_events/of_mark.rs` L83–161 |
