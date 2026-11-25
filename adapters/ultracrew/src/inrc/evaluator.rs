@@ -153,6 +153,46 @@ impl InrcOptimizer {
                 for s in 0..num_shifts {
                     let shift_name = &self.context.shift_types[s];
 
+                    let mut min_demands = Vec::new();
+                    for req in &self.context.week_data.requirements {
+                        if req.shift_type == *shift_name {
+                            let req_level = match day_name {
+                                "Monday" => &req.monday,
+                                "Tuesday" => &req.tuesday,
+                                "Wednesday" => &req.wednesday,
+                                "Thursday" => &req.thursday,
+                                "Friday" => &req.friday,
+                                "Saturday" => &req.saturday,
+                                "Sunday" => &req.sunday,
+                                _ => unreachable!(),
+                            };
+                            if req_level.minimum > 0 {
+                                min_demands.push((req.skill.clone(), req_level.minimum));
+                            }
+                        }
+                    }
+
+                    if min_demands.is_empty() {
+                        continue;
+                    }
+
+                    let mut available_nurses = Vec::new();
+                    for n in 0..num_nurses {
+                        if self.get_assigned_shift(genome, n, d) == Some(s) {
+                            available_nurses.push(n);
+                        }
+                    }
+                    let workers: Vec<(usize, Vec<String>)> = available_nurses
+                        .iter()
+                        .map(|&n| (n, self.context.scenario.nurses[n].skills.clone()))
+                        .collect();
+
+                    let matching = BipartiteMatchingSolver.assign(&workers, &min_demands);
+                    let mut fulfilled_map = HashMap::new();
+                    for (_, skill) in &matching.assignments {
+                        *fulfilled_map.entry(skill.clone()).or_insert(0) += 1;
+                    }
+
                     for req in &self.context.week_data.requirements {
                         if req.shift_type != *shift_name {
                             continue;
@@ -172,18 +212,11 @@ impl InrcOptimizer {
                             continue;
                         }
 
-                        let mut count_qualified = 0;
-                        for n in 0..num_nurses {
-                            if self.get_assigned_shift(genome, n, d) == Some(s) {
-                                if self.context.scenario.nurses[n].skills.contains(&req.skill) {
-                                    count_qualified += 1;
-                                }
-                            }
-                        }
+                        let fulfilled = *fulfilled_map.get(&req.skill).unwrap_or(&0);
 
-                        if count_qualified < req_level.minimum {
+                        if fulfilled < req_level.minimum {
                             any_deficit = true;
-                            let needed = req_level.minimum - count_qualified;
+                            let needed = req_level.minimum - fulfilled;
                             let mut assigned_count = 0;
 
                             // Step 1: Assign off-duty qualified nurses with NO succession conflict
