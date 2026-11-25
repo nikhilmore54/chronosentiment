@@ -1,0 +1,21 @@
+\begin{table*}[t]
+\centering
+\small
+\caption{Canonical INRC-II Nurse Rostering Benchmark Telemetry across 7 Fleet Sizes. Reference baseline: Ceschia et al. (2019 / Annals of OR) and ScheduleNurse-III (SN-III). All runs executed under strict statutory feasibility ($HC = 0$) with Simulated Annealing memetic polish, Sunday border lookahead, 3-day contiguous streak consolidation, and multi-day Kempe workload transfer.}
+\label{tab:inrc_benchmark_telemetry}
+\begin{tabular}{lccccrrccr}
+\toprule
+\textbf{Instance Code} & \textbf{Nurses ($N$)} & \textbf{Weeks ($W$)} & \textbf{BKS$_{\text{LB}}$} & \textbf{BKS$_{\text{UB}}$ / SN-III} & \textbf{Coralys} & \textbf{Gap to BKS} & \textbf{Feasibility} & \textbf{HC} & \textbf{Time (s)} \\
+\midrule
+\texttt{n030w4\_1\_6-2-9-1} &  30 & 4 & 1,670 & 1,670 & 2,275 & +36.23\% & \textsc{Feasible} & 0 &  36.30 \\
+\texttt{n040w4\_0\_2-0-6-1} &  40 & 4 & 1,565 & 1,565 & 1,940 & +23.96\% & \textsc{Feasible} & 0 &  45.54 \\
+\texttt{n050w4\_0\_0-4-8-7} &  50 & 4 & 1,315 & 1,315 & 2,085 & +58.56\% & \textsc{Feasible} & 0 &  54.15 \\
+\texttt{n060w4\_1\_6-1-1-5} &  60 & 4 & 2,450 & 2,450 & 5,005 & +104.29\% & \textsc{Feasible} & 0 &  64.94 \\
+\texttt{n080w4\_2\_4-3-3-3} &  80 & 4 & 3,300 & 3,300 & 6,245 & +89.24\% & \textsc{Feasible} & 0 &  85.55 \\
+\texttt{n100w4\_0\_1-1-0-8} & 100 & 4 & 1,170 & 1,170 & 2,530 & +116.24\% & \textsc{Feasible} & 0 & 106.66 \\
+\texttt{n120w4\_1\_4-6-2-6} & 120 & 4 & 2,020 & 2,020 & 7,330 & +262.87\% & \textsc{Feasible} & 0 & 142.15 \\
+\midrule
+\textbf{Summary / Mean}     & --- & --- & ---   & ---   & \textbf{3,916} & \textbf{+98.77\%} & \textbf{100\% (7/7)} & \textbf{0} & \textbf{76.48} \\
+\bottomrule
+\end{tabular}
+\end{table*}
