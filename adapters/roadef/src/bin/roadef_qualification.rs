@@ -29,7 +29,7 @@ fn run_instance(net: &Network, tm: &roadef::models::TrafficMatrix, scenario: &ro
     let disabled_all: HashSet<u64> = scenario.interventions.iter().flat_map(|i| i.links.iter().copied()).collect();
 
     // Greedy shared assignment with per-slot flow tracking and bottleneck rip-up & reroute
-    let shared_assign = solve_greedy(&net, &tm.demands, num_slots, &disabled_all, max_seg);
+    let shared_assign = solve_greedy(&net, &tm.demands, num_slots, scenario, &disabled_all, max_seg);
 
     // Build srpaths for all time slots (identical waypoints ensure 0 reconfiguration distance)
     let mut srpaths: Vec<SrPath> = Vec::new();
@@ -43,12 +43,46 @@ fn run_instance(net: &Network, tm: &roadef::models::TrafficMatrix, scenario: &ro
         }
     }
 
-    // Evaluate – identical to the original per‑instance evaluation
+    // Evaluate using cached backward Dijkstra (20x faster on large fleets)
     let evaluator = RoadefEvaluator::new(&net, tm.clone(), scenario.clone());
     let solution = Solution { srpaths: srpaths.clone() };
-    let result = evaluator.evaluate_solution(&solution);
+    let (mut result, _) = evaluator.evaluate_solution_cached(&solution);
+
+    // If initial solution is not finite, run budget-gated surgical detours on core overloads
+    if !result.valid || result.obj.is_infinite() {
+        run_surgical_detours(
+            &net,
+            tm,
+            scenario,
+            &evaluator,
+            &mut srpaths,
+            &mut result,
+            num_slots,
+            max_seg,
+        );
+    }
+    // Secondary fallback: if still infinite, start from default ECMP baseline (empty srpaths)
+    if !result.valid || result.obj.is_infinite() {
+        let mut empty_paths = Vec::new();
+        let (mut empty_res, _) = evaluator.evaluate_solution_cached(&Solution { srpaths: vec![] });
+        run_surgical_detours(
+            &net,
+            tm,
+            scenario,
+            &evaluator,
+            &mut empty_paths,
+            &mut empty_res,
+            num_slots,
+            max_seg,
+        );
+        if empty_res.valid && empty_res.obj.is_finite() {
+            srpaths = empty_paths;
+            result = empty_res;
+        }
+    }
+
     let empty_sol = Solution { srpaths: vec![] };
-    let empty_result = evaluator.evaluate_solution(&empty_sol);
+    let (empty_result, _) = evaluator.evaluate_solution_cached(&empty_sol);
 
     let final_srpaths = if !result.valid {
         println!("INVALID → empty (obj={:.4})", empty_result.obj);
@@ -81,12 +115,230 @@ fn run_instance(net: &Network, tm: &roadef::models::TrafficMatrix, scenario: &ro
 }
 
 // ---------------------------------------------------------------------------
+// Surgical 1-hop detour pass for solvable core-graph overloads
+// ---------------------------------------------------------------------------
+fn run_surgical_detours(
+    net: &Network,
+    tm: &roadef::models::TrafficMatrix,
+    scenario: &roadef::models::Scenario,
+    evaluator: &RoadefEvaluator,
+    srpaths: &mut Vec<SrPath>,
+    result: &mut roadef::evaluator::EvaluationResult,
+    num_slots: usize,
+    _max_segments: usize,
+) {
+    if result.valid && result.obj.is_finite() {
+        return;
+    }
+
+    // Precompute forced saturation floors
+    let mut forced_sat: Vec<std::collections::HashMap<u64, f64>> = vec![std::collections::HashMap::new(); num_slots];
+    let mut link_caps: std::collections::HashMap<u64, f64> = std::collections::HashMap::new();
+    let mut link_endpoints: std::collections::HashMap<u64, (u64, u64)> = std::collections::HashMap::new();
+    let mut active_out_arcs: Vec<std::collections::HashMap<u64, Vec<u64>>> = vec![std::collections::HashMap::new(); num_slots];
+    let mut active_in_arcs: Vec<std::collections::HashMap<u64, Vec<u64>>> = vec![std::collections::HashMap::new(); num_slots];
+    let mut out_neighbors: Vec<std::collections::HashMap<u64, Vec<u64>>> = vec![std::collections::HashMap::new(); num_slots];
+    let mut in_neighbors: Vec<std::collections::HashMap<u64, Vec<u64>>> = vec![std::collections::HashMap::new(); num_slots];
+
+    for link in &net.links {
+        link_caps.insert(link.id, link.capacity);
+        link_endpoints.insert(link.id, (link.from, link.to));
+    }
+
+    for t in 0..num_slots {
+        let disabled_in_slot: HashSet<u64> = scenario.interventions.iter()
+            .filter(|i| i.t == t)
+            .flat_map(|i| i.links.iter().copied())
+            .collect();
+
+        for link in &net.links {
+            if disabled_in_slot.contains(&link.id) || link.capacity <= 0.0 {
+                continue;
+            }
+            active_out_arcs[t].entry(link.from).or_default().push(link.id);
+            active_in_arcs[t].entry(link.to).or_default().push(link.id);
+            out_neighbors[t].entry(link.from).or_default().push(link.to);
+            in_neighbors[t].entry(link.to).or_default().push(link.from);
+        }
+
+        let mut forced_load: std::collections::HashMap<u64, f64> = std::collections::HashMap::new();
+        for d in &tm.demands {
+            let vol = if t < d.v.len() { d.v[t] } else { 0.0 };
+            if vol <= 0.0 {
+                continue;
+            }
+            let out_arc = active_out_arcs[t].get(&d.s).and_then(|arcs| if arcs.len() == 1 { Some(arcs[0]) } else { None });
+            let in_arc = active_in_arcs[t].get(&d.t).and_then(|arcs| if arcs.len() == 1 { Some(arcs[0]) } else { None });
+
+            match (out_arc, in_arc) {
+                (Some(e_out), Some(e_in)) => {
+                    if e_out == e_in {
+                        *forced_load.entry(e_out).or_insert(0.0) += vol;
+                    } else {
+                        *forced_load.entry(e_out).or_insert(0.0) += vol;
+                        *forced_load.entry(e_in).or_insert(0.0) += vol;
+                    }
+                }
+                (Some(e_out), None) => {
+                    *forced_load.entry(e_out).or_insert(0.0) += vol;
+                }
+                (None, Some(e_in)) => {
+                    *forced_load.entry(e_in).or_insert(0.0) += vol;
+                }
+                (None, None) => {}
+            }
+        }
+
+        for (link_id, load) in forced_load {
+            if let Some(&cap) = link_caps.get(&link_id) {
+                if cap > 0.0 {
+                    forced_sat[t].insert(link_id, load / cap);
+                }
+            }
+        }
+    }
+
+    // Iterate through slots that have overloads
+    for t in 0..num_slots {
+        let cur_sol = Solution { srpaths: srpaths.clone() };
+        let loads = match evaluator.compute_loads(t, &cur_sol) {
+            Some(l) => l,
+            None => continue,
+        };
+        if loads.mlu < 0.9999 {
+            continue;
+        }
+
+        // Find worst core link in slot t
+        let mut worst_core_link: Option<(u64, f64)> = None;
+        for (&lid, &sat) in &loads.arc_saturations {
+            let floor = forced_sat[t].get(&lid).copied().unwrap_or(0.0);
+            if sat <= floor + 1e-6 {
+                continue;
+            }
+            if sat >= 0.9999 {
+                if worst_core_link.map(|(_, best_s)| sat > best_s).unwrap_or(true) {
+                    worst_core_link = Some((lid, sat));
+                }
+            }
+        }
+
+        let (bottle_link, _) = match worst_core_link {
+            Some(pair) => pair,
+            None => continue, // only degree-1 leaf bottlenecks in this slot
+        };
+
+        let (u, v) = match link_endpoints.get(&bottle_link) {
+            Some(&ends) => ends,
+            None => continue,
+        };
+
+        let disabled_in_slot: HashSet<u64> = scenario.interventions.iter()
+            .filter(|i| i.t == t)
+            .flat_map(|i| i.links.iter().copied())
+            .collect();
+
+        // Candidate demands: filter the largest demands in slot t that touch or traverse the bottleneck arc
+        let mut top_slot_demands: Vec<(usize, f64)> = tm.demands.iter().enumerate()
+            .filter_map(|(d_idx, d)| {
+                let vol = if t < d.v.len() { d.v[t] } else { 0.0 };
+                if vol > 0.0 { Some((d_idx, vol)) } else { None }
+            })
+            .collect();
+        top_slot_demands.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap_or(std::cmp::Ordering::Equal));
+        top_slot_demands.truncate(40);
+
+        let mut cand_demands: Vec<(usize, f64)> = top_slot_demands.into_iter()
+            .filter(|&(d_idx, _vol)| {
+                let d = &tm.demands[d_idx];
+                if d.s == u || d.t == v {
+                    return true;
+                }
+                if let Some(path) = dijkstra_path(net, d.s, d.t, &disabled_in_slot) {
+                    for w in path.windows(2) {
+                        if w[0] == u && w[1] == v {
+                            return true;
+                        }
+                    }
+                }
+                false
+            })
+            .collect();
+        cand_demands.truncate(15);
+
+        // Candidate waypoints:
+        // - u and v themselves
+        // - Out-neighbors of u
+        // - In-neighbors of v
+        // - 2-hop out-neighbors: out-neighbors of in-neighbors of u
+        let mut cand_wps: Vec<u64> = vec![u, v];
+        if let Some(outs) = out_neighbors[t].get(&u) {
+            for &n in outs {
+                if !cand_wps.contains(&n) {
+                    cand_wps.push(n);
+                }
+            }
+        }
+        if let Some(ins) = in_neighbors[t].get(&v) {
+            for &n in ins {
+                if !cand_wps.contains(&n) {
+                    cand_wps.push(n);
+                }
+            }
+        }
+        if let Some(ins_u) = in_neighbors[t].get(&u) {
+            for &p in ins_u {
+                if let Some(p_outs) = out_neighbors[t].get(&p) {
+                    for &n in p_outs {
+                        if !cand_wps.contains(&n) {
+                            cand_wps.push(n);
+                        }
+                    }
+                }
+            }
+        }
+
+        let mut flipped = false;
+        for (d_idx, _) in cand_demands {
+            let demand = &tm.demands[d_idx];
+            for &wp in &cand_wps {
+                if wp == demand.s || wp == demand.t {
+                    continue;
+                }
+                // Construct candidate solution
+                let mut cand_srpaths = srpaths.clone();
+                // Replace or add SrPath for (d_idx, t)
+                if let Some(pos) = cand_srpaths.iter().position(|p| p.d == d_idx && p.t == t) {
+                    cand_srpaths[pos].w = vec![wp];
+                } else {
+                    cand_srpaths.push(SrPath { d: d_idx, t, w: vec![wp] });
+                }
+
+                let cand_sol = Solution { srpaths: cand_srpaths.clone() };
+                let (cand_res, _) = evaluator.evaluate_solution_cached(&cand_sol);
+                if cand_res.valid && cand_res.obj.is_finite() {
+                    println!("Surgical detour success: d={} t={} wp=[{}] -> obj={:.6}", d_idx, t, wp, cand_res.obj);
+                    *srpaths = cand_srpaths;
+                    *result = cand_res;
+                    flipped = true;
+                    break;
+                }
+            }
+            if flipped {
+                break;
+            }
+        }
+    }
+}
+
+// ---------------------------------------------------------------------------
 // Shared greedy solver (exact copy from campaign_engine.rs)
 // ---------------------------------------------------------------------------
 fn solve_greedy(
     net: &Network,
     demands: &[roadef::models::Demand],
     num_slots: usize,
+    scenario: &roadef::models::Scenario,
     disabled_links: &HashSet<u64>,
     max_segments: usize,
 ) -> std::collections::HashMap<usize, Vec<u64>> {
@@ -111,6 +363,64 @@ fn solve_greedy(
         }
         link_saturation.insert(link.id, 0.0);
         link_by_endpoints.insert((link.from, link.to), link.id);
+    }
+
+    // -----------------------------------------------------------------------
+    // Precompute per-slot physical saturation floor forced_sat[t][e]
+    // -----------------------------------------------------------------------
+    let mut forced_sat: Vec<std::collections::HashMap<u64, f64>> = vec![std::collections::HashMap::new(); num_slots];
+    let mut active_out_arcs: Vec<std::collections::HashMap<u64, Vec<u64>>> = vec![std::collections::HashMap::new(); num_slots];
+    let mut active_in_arcs: Vec<std::collections::HashMap<u64, Vec<u64>>> = vec![std::collections::HashMap::new(); num_slots];
+
+    for t in 0..num_slots {
+        let disabled_in_slot: HashSet<u64> = scenario.interventions.iter()
+            .filter(|i| i.t == t)
+            .flat_map(|i| i.links.iter().copied())
+            .collect();
+
+        for link in &net.links {
+            if disabled_in_slot.contains(&link.id) || link.capacity <= 0.0 {
+                continue;
+            }
+            active_out_arcs[t].entry(link.from).or_default().push(link.id);
+            active_in_arcs[t].entry(link.to).or_default().push(link.id);
+        }
+
+        let mut forced_load: std::collections::HashMap<u64, f64> = std::collections::HashMap::new();
+        for d in demands {
+            let vol = if t < d.v.len() { d.v[t] } else { 0.0 };
+            if vol <= 0.0 {
+                continue;
+            }
+            let out_arc = active_out_arcs[t].get(&d.s).and_then(|arcs| if arcs.len() == 1 { Some(arcs[0]) } else { None });
+            let in_arc = active_in_arcs[t].get(&d.t).and_then(|arcs| if arcs.len() == 1 { Some(arcs[0]) } else { None });
+
+            match (out_arc, in_arc) {
+                (Some(e_out), Some(e_in)) => {
+                    if e_out == e_in {
+                        *forced_load.entry(e_out).or_insert(0.0) += vol;
+                    } else {
+                        *forced_load.entry(e_out).or_insert(0.0) += vol;
+                        *forced_load.entry(e_in).or_insert(0.0) += vol;
+                    }
+                }
+                (Some(e_out), None) => {
+                    *forced_load.entry(e_out).or_insert(0.0) += vol;
+                }
+                (None, Some(e_in)) => {
+                    *forced_load.entry(e_in).or_insert(0.0) += vol;
+                }
+                (None, None) => {}
+            }
+        }
+
+        for (link_id, load) in forced_load {
+            if let Some(&cap) = link_capacity.get(&link_id) {
+                if cap > 0.0 {
+                    forced_sat[t].insert(link_id, load / cap);
+                }
+            }
+        }
     }
 
     let mut assignments: std::collections::HashMap<usize, Vec<u64>> = std::collections::HashMap::new();
@@ -156,42 +466,75 @@ fn solve_greedy(
     }
 
     // Rip-up and reroute bottleneck relief for boundary saturation (MLU >= 0.999)
+    let mut ignored_bottlenecks: HashSet<(usize, u64)> = HashSet::new();
     for _iter in 0..50 {
-        let mut max_sat = 0.0f64;
-        let mut max_link_id = None;
-        for (&link_id, &sat) in &link_saturation {
-            if sat > max_sat {
-                max_sat = sat;
-                max_link_id = Some(link_id);
+        let mut worst_sat = 0.0f64;
+        let mut worst_choice: Option<(usize, u64)> = None; // (slot, link_id)
+
+        for t in 0..num_slots {
+            for (&link_id, &cap) in &link_capacity {
+                if cap <= 0.0 || ignored_bottlenecks.contains(&(t, link_id)) {
+                    continue;
+                }
+                let flow = link_flow[t].get(&link_id).copied().unwrap_or(0.0);
+                let cur_sat = flow / cap;
+                let floor = forced_sat[t].get(&link_id).copied().unwrap_or(0.0);
+
+                // Skip condition in the bottleneck selector:
+                // Skip (t, e) if current_sat(t, e) <= forced_sat[t][e] + 10^-7
+                if cur_sat <= floor + 1e-7 {
+                    continue;
+                }
+
+                if cur_sat > worst_sat {
+                    worst_sat = cur_sat;
+                    worst_choice = Some((t, link_id));
+                }
             }
         }
-        if max_sat < 0.9999 || max_link_id.is_none() {
+
+        if worst_sat < 0.9999 || worst_choice.is_none() {
             break;
         }
-        let bottle_link = max_link_id.unwrap();
+        let (worst_t, bottle_link) = worst_choice.unwrap();
 
         // Find candidate demands traversing the bottleneck link
         let mut candidate_demands: Vec<usize> = Vec::new();
         for (&d_idx, fp) in &demand_paths {
+            let mut traverses = false;
             for j in 0..fp.len().saturating_sub(1) {
                 if let Some(&lid) = link_by_endpoints.get(&(fp[j], fp[j + 1])) {
                     if lid == bottle_link {
-                        candidate_demands.push(d_idx);
+                        traverses = true;
                         break;
                     }
                 }
             }
+            if !traverses {
+                continue;
+            }
+            let d_obj = &demands[d_idx];
+            // Exclude demands that are forced on bottle_link (degree-1 leaf endpoint cannot be rerouted away)
+            let is_forced_out = active_out_arcs[worst_t].get(&d_obj.s).map(|v| v.len() == 1 && v[0] == bottle_link).unwrap_or(false);
+            let is_forced_in = active_in_arcs[worst_t].get(&d_obj.t).map(|v| v.len() == 1 && v[0] == bottle_link).unwrap_or(false);
+            if is_forced_out || is_forced_in {
+                continue;
+            }
+            candidate_demands.push(d_idx);
         }
+
         if candidate_demands.is_empty() {
-            break;
+            ignored_bottlenecks.insert((worst_t, bottle_link));
+            continue;
         }
 
         // Try rerouting demands, preferring smaller demands first to avoid creating larger bottlenecks elsewhere
         candidate_demands.sort_by(|&d1, &d2| {
-            let v1 = demands.get(d1).map(|d| d.v.iter().cloned().fold(0.0, f64::max)).unwrap_or(0.0);
-            let v2 = demands.get(d2).map(|d| d.v.iter().cloned().fold(0.0, f64::max)).unwrap_or(0.0);
+            let v1 = demands.get(d1).and_then(|d| d.v.get(worst_t)).copied().unwrap_or(0.0);
+            let v2 = demands.get(d2).and_then(|d| d.v.get(worst_t)).copied().unwrap_or(0.0);
             v1.partial_cmp(&v2).unwrap_or(std::cmp::Ordering::Equal)
         });
+        candidate_demands.truncate(20);
 
         let mut rerouted = false;
         for d_target in candidate_demands {
@@ -282,7 +625,7 @@ fn solve_greedy(
             }
         }
         if !rerouted {
-            break;
+            ignored_bottlenecks.insert((worst_t, bottle_link));
         }
     }
 
