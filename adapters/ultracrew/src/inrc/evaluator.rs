@@ -649,6 +649,31 @@ impl InrcOptimizer {
         }
 
         // End of week boundary handling
+        let num_weeks = self.context.scenario.number_of_weeks;
+        let week_k = (self.context.history.week + 1).min(num_weeks);
+
+        if week_k < num_weeks {
+            // Sunday Border Lookahead (w < W - 1): penalize active work/shift stubs ending on Sunday
+            if current_streak > 0 && current_streak < contract.min_consecutive_working_days {
+                penalty += (contract.min_consecutive_working_days - current_streak) as i32
+                    * weights.consecutive_working_days;
+            }
+            if let Some(ref last) = current_last_shift {
+                if let Some(s_type) = self
+                    .context
+                    .scenario
+                    .shift_types
+                    .iter()
+                    .find(|st| &st.id == last)
+                {
+                    if current_shift_streak > 0 && current_shift_streak < s_type.min_consecutive {
+                        penalty += (s_type.min_consecutive - current_shift_streak) as i32
+                            * weights.consecutive_shift_days;
+                    }
+                }
+            }
+        }
+
         if current_streak > contract.max_consecutive_working_days {
             let current_excess = current_streak - contract.max_consecutive_working_days;
             let initial_excess = if initial_streak > contract.max_consecutive_working_days {
@@ -997,6 +1022,36 @@ impl InrcOptimizer {
             .collect();
         let mut current_total_soft: i32 = nurse_penalties.iter().sum();
 
+        // Track weekly assignments and contract bands per nurse for targeted Kempe transfers
+        let mut nurse_assignments: Vec<usize> = (0..num_nurses)
+            .map(|n| {
+                let mut count = 0;
+                for d in 0..num_days {
+                    if self.get_assigned_shift(genome, n, d).is_some() {
+                        count += 1;
+                    }
+                }
+                count
+            })
+            .collect();
+
+        let nurse_target_bands: Vec<(usize, usize)> = (0..num_nurses)
+            .map(|n| {
+                let contract = self
+                    .context
+                    .scenario
+                    .contracts
+                    .iter()
+                    .find(|c| c.id == self.context.scenario.nurses[n].contract)
+                    .unwrap();
+                let min_a = contract.min_assignments / self.context.scenario.number_of_weeks;
+                let max_a = (contract.max_assignments as f64
+                    / self.context.scenario.number_of_weeks as f64)
+                    .ceil() as usize;
+                (min_a, max_a)
+            })
+            .collect();
+
         let mut best_genome = genome.clone();
         let mut best_total_soft = current_total_soft;
 
@@ -1004,7 +1059,196 @@ impl InrcOptimizer {
         let cool_rate = 0.99998f64;
 
         while start.elapsed().as_millis() < time_budget_ms as u128 {
-            if rng.gen_bool(0.20) {
+            let op_choice = rng.gen_range(0..100);
+
+            if op_choice < 25 {
+                // Operator 1: 3-Day Contiguous Streak-Repair / Stub Ejection & Consolidation (S2/S4)
+                let n = rng.gen_range(0..num_nurses);
+                let mut stub_d = None;
+                for d in 0..num_days {
+                    if self.get_assigned_shift(genome, n, d).is_some() {
+                        let prev = d > 0 && self.get_assigned_shift(genome, n, d - 1).is_some();
+                        let next = d + 1 < num_days && self.get_assigned_shift(genome, n, d + 1).is_some();
+                        if !prev && !next {
+                            stub_d = Some(d);
+                            break;
+                        }
+                    }
+                }
+
+                if let Some(d) = stub_d {
+                    let s_n = self.get_assigned_shift(genome, n, d);
+                    let mut donor = None;
+                    for _ in 0..15 {
+                        let u = rng.gen_range(0..num_nurses);
+                        if u != n && self.get_assigned_shift(genome, u, d).is_none() {
+                            let u_adj_works = (d > 0 && self.get_assigned_shift(genome, u, d - 1).is_some())
+                                || (d + 1 < num_days && self.get_assigned_shift(genome, u, d + 1).is_some());
+                            if u_adj_works {
+                                if let Some(s) = s_n {
+                                    if nurse_can_work[u][d][s] {
+                                        donor = Some(u);
+                                        break;
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    if let Some(u) = donor {
+                        let (_, old_s8) = self.eval_day_coverage(genome, d);
+                        self.set_assigned_shift(genome, n, d, None);
+                        self.set_assigned_shift(genome, u, d, s_n);
+
+                        let valid = !self.nurse_has_forbidden_succession(genome, n)
+                            && !self.nurse_has_forbidden_succession(genome, u);
+                        let (new_feas, new_s8) = if valid {
+                            self.eval_day_coverage(genome, d)
+                        } else {
+                            (false, 0)
+                        };
+
+                        if new_feas {
+                            let new_p_n = self.eval_nurse_soft_penalty(genome, n);
+                            let new_p_u = self.eval_nurse_soft_penalty(genome, u);
+                            let delta = (new_p_n + new_p_u) - (nurse_penalties[n] + nurse_penalties[u]) + (new_s8 - old_s8);
+                            let accept = if delta <= 0 {
+                                true
+                            } else {
+                                rng.gen_bool((-delta as f64 / temp.max(1.0)).exp().min(1.0))
+                            };
+
+                            if accept {
+                                nurse_penalties[n] = new_p_n;
+                                nurse_penalties[u] = new_p_u;
+                                nurse_assignments[n] = nurse_assignments[n].saturating_sub(1);
+                                nurse_assignments[u] += 1;
+                                current_total_soft += delta;
+                                if current_total_soft < best_total_soft {
+                                    best_total_soft = current_total_soft;
+                                    best_genome = genome.clone();
+                                }
+                            } else {
+                                self.set_assigned_shift(genome, n, d, s_n);
+                                self.set_assigned_shift(genome, u, d, None);
+                            }
+                        } else {
+                            self.set_assigned_shift(genome, n, d, s_n);
+                            self.set_assigned_shift(genome, u, d, None);
+                        }
+                    }
+                }
+
+                temp *= cool_rate;
+                if temp < 0.1 { temp = 50.0; }
+                continue;
+            }
+
+            if op_choice < 45 {
+                // Operator 2: Multi-Day Kempe-Chain Workload Transfer (S1)
+                let mut over_nurses: Vec<usize> = Vec::new();
+                let mut under_nurses: Vec<usize> = Vec::new();
+                for n in 0..num_nurses {
+                    if nurse_assignments[n] > nurse_target_bands[n].1 {
+                        over_nurses.push(n);
+                    } else if nurse_assignments[n] < nurse_target_bands[n].0 {
+                        under_nurses.push(n);
+                    }
+                }
+
+                let (u, v) = if !over_nurses.is_empty() && !under_nurses.is_empty() {
+                    let u_idx = rng.gen_range(0..over_nurses.len());
+                    let v_idx = rng.gen_range(0..under_nurses.len());
+                    (over_nurses[u_idx], under_nurses[v_idx])
+                } else {
+                    let i1 = rng.gen_range(0..num_nurses);
+                    let mut i2 = rng.gen_range(0..num_nurses);
+                    if i1 == i2 { i2 = (i1 + 1) % num_nurses; }
+                    (i1, i2)
+                };
+
+                if u != v {
+                    let block_len = if rng.gen_bool(0.65) { 2 } else { 3 };
+                    let max_start = if num_days >= block_len { num_days - block_len } else { 0 };
+                    let start_d = if max_start > 0 { rng.gen_range(0..=max_start) } else { 0 };
+                    let days: Vec<usize> = (start_d..start_d + block_len).collect();
+
+                    let mut u_works_all = true;
+                    let mut v_off_all = true;
+                    let mut v_can_work_all = true;
+
+                    for &d in &days {
+                        let s_u = self.get_assigned_shift(genome, u, d);
+                        let s_v = self.get_assigned_shift(genome, v, d);
+                        if s_u.is_none() { u_works_all = false; break; }
+                        if s_v.is_some() { v_off_all = false; break; }
+                        if let Some(s) = s_u {
+                            if !nurse_can_work[v][d][s] {
+                                v_can_work_all = false;
+                                break;
+                            }
+                        }
+                    }
+
+                    if u_works_all && v_off_all && v_can_work_all {
+                        let (_, old_s8) = self.eval_days_coverage(genome, &days);
+                        let mut u_shifts = Vec::with_capacity(days.len());
+                        for &d in &days {
+                            let s = self.get_assigned_shift(genome, u, d);
+                            u_shifts.push(s);
+                            self.set_assigned_shift(genome, u, d, None);
+                            self.set_assigned_shift(genome, v, d, s);
+                        }
+
+                        let valid = !self.nurse_has_forbidden_succession(genome, u)
+                            && !self.nurse_has_forbidden_succession(genome, v);
+                        let (new_feas, new_s8) = if valid {
+                            self.eval_days_coverage(genome, &days)
+                        } else {
+                            (false, 0)
+                        };
+
+                        if new_feas {
+                            let new_p_u = self.eval_nurse_soft_penalty(genome, u);
+                            let new_p_v = self.eval_nurse_soft_penalty(genome, v);
+                            let delta = (new_p_u + new_p_v) - (nurse_penalties[u] + nurse_penalties[v]) + (new_s8 - old_s8);
+                            let accept = if delta <= 0 {
+                                true
+                            } else {
+                                rng.gen_bool((-delta as f64 / temp.max(1.0)).exp().min(1.0))
+                            };
+
+                            if accept {
+                                nurse_penalties[u] = new_p_u;
+                                nurse_penalties[v] = new_p_v;
+                                nurse_assignments[u] = nurse_assignments[u].saturating_sub(block_len);
+                                nurse_assignments[v] += block_len;
+                                current_total_soft += delta;
+                                if current_total_soft < best_total_soft {
+                                    best_total_soft = current_total_soft;
+                                    best_genome = genome.clone();
+                                }
+                            } else {
+                                for (i, &d) in days.iter().enumerate() {
+                                    self.set_assigned_shift(genome, u, d, u_shifts[i]);
+                                    self.set_assigned_shift(genome, v, d, None);
+                                }
+                            }
+                        } else {
+                            for (i, &d) in days.iter().enumerate() {
+                                self.set_assigned_shift(genome, u, d, u_shifts[i]);
+                                self.set_assigned_shift(genome, v, d, None);
+                            }
+                        }
+                    }
+                }
+
+                temp *= cool_rate;
+                if temp < 0.1 { temp = 50.0; }
+                continue;
+            }
+
+            if rng.gen_bool(0.25) {
                 // Move type: Single-nurse shift block reassignment (rebalance S8 optimal coverage & S1 assignment quotas)
                 let n = rng.gen_range(0..num_nurses);
                 let block_len = if rng.gen_bool(0.60) { 2 } else { 1 };
