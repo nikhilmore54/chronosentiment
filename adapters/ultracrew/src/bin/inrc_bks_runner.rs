@@ -185,6 +185,16 @@ fn run_single_instance(
                 total_hard_violations += hard_viols;
             }
             total_penalty += soft_pen;
+            println!(
+                "    [METRICS] week {}: assign={:.0} streak={:.0} day_off={:.0} wend={:.0} pref={:.0} opt_cov={:.0}",
+                week_num,
+                eval.metrics.get("assignment_penalty").unwrap_or(&0.0),
+                eval.metrics.get("work_streak_penalty").unwrap_or(&0.0),
+                eval.metrics.get("day_off_penalty").unwrap_or(&0.0),
+                eval.metrics.get("weekend_penalty").unwrap_or(&0.0),
+                eval.metrics.get("preferences_penalty").unwrap_or(&0.0),
+                eval.metrics.get("optimal_coverage_penalty").unwrap_or(&0.0),
+            );
 
             // Extract next history for rolling horizon
             let genome = InrcGenome {

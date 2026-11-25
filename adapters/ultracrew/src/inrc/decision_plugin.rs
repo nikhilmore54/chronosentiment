@@ -723,7 +723,8 @@ impl ReasoningEngine for CoralysInrcEngine {
             Some(s) => rand::rngs::StdRng::seed_from_u64(s),
             None => rand::rngs::StdRng::from_entropy(),
         };
-        let _ = optimizer.simulated_annealing(&mut best_genome, 2000, &mut rng);
+        let sa_budget = (plugin.context.num_nurses as u64 * 40).max(2500);
+        let _ = optimizer.simulated_annealing(&mut best_genome, sa_budget, &mut rng);
 
         // 3. Final Hard Constraint Safety Check (guarantee 0 HC)
         let metric_report = coralys_moga::runtime::optimization::metric::MetricReport::default();
