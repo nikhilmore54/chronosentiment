@@ -199,7 +199,7 @@ fn main() {
 
     let report = PerformanceReport {
         meta: ReportMeta {
-            title: "P2 Airline Performance Baseline".to_string(),
+            title: "P2 Workforce Performance Baseline".to_string(),
             description: "No performance acceptance threshold is established by this characterization run.".to_string(),
             optimizer_executed: true,
             thresholds_enforced: false,
@@ -208,8 +208,8 @@ fn main() {
     };
 
     let json_str = serde_json::to_string_pretty(&report).unwrap();
-    let mut file = File::create("airline_performance_report.json").unwrap();
+    let mut file = File::create("ultracrew_performance_report.json").unwrap();
     file.write_all(json_str.as_bytes()).unwrap();
 
-    println!("\nReport generated: airline_performance_report.json");
+    println!("\nReport generated: ultracrew_performance_report.json");
 }

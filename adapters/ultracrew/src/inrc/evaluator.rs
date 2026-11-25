@@ -674,6 +674,15 @@ impl InrcOptimizer {
         if cum_weekends > contract.max_working_weekends {
             penalty += (cum_weekends - contract.max_working_weekends) as i32
                 * weights.max_working_weekends;
+        } else {
+            let num_weeks = self.context.scenario.number_of_weeks;
+            let week_k = (self.context.history.week + 1).min(num_weeks);
+            if week_k < num_weeks {
+                let pace_weekends = ((week_k * contract.max_working_weekends) as f64 / num_weeks as f64).ceil() as usize;
+                if cum_weekends > pace_weekends {
+                    penalty += (cum_weekends - pace_weekends) as i32 * weights.max_working_weekends;
+                }
+            }
         }
 
         // Total assignments with pro-rated cumulative horizon pacing
@@ -824,7 +833,7 @@ impl InrcOptimizer {
             .filter(|g| g.len() >= 2)
             .collect();
 
-        if eligible_groups.is_empty() {
+        if eligible_groups.is_empty() && num_nurses < 2 {
             return self.evaluate(genome, &Default::default());
         }
 
@@ -905,8 +914,8 @@ impl InrcOptimizer {
         let cool_rate = 0.99998f64;
 
         while start.elapsed().as_millis() < time_budget_ms as u128 {
-            let is_cross_skill = rng.gen_bool(0.15) && eligible_groups.len() >= 2;
-            let (n1, n2) = if !is_cross_skill {
+            let is_cross_skill = rng.gen_bool(0.25) || eligible_groups.is_empty();
+            let (n1, n2) = if !is_cross_skill && !eligible_groups.is_empty() {
                 let group_idx = rng.gen_range(0..eligible_groups.len());
                 let group = &eligible_groups[group_idx];
                 let i1 = rng.gen_range(0..group.len());
@@ -916,14 +925,12 @@ impl InrcOptimizer {
                 }
                 (group[i1], group[i2])
             } else {
-                let g1 = rng.gen_range(0..eligible_groups.len());
-                let mut g2 = rng.gen_range(0..eligible_groups.len());
-                if g1 == g2 {
-                    g2 = (g1 + 1) % eligible_groups.len();
+                let i1 = rng.gen_range(0..num_nurses);
+                let mut i2 = rng.gen_range(0..num_nurses);
+                if i1 == i2 {
+                    i2 = (i1 + 1) % num_nurses;
                 }
-                let i1 = rng.gen_range(0..eligible_groups[g1].len());
-                let i2 = rng.gen_range(0..eligible_groups[g2].len());
-                (eligible_groups[g1][i1], eligible_groups[g2][i2])
+                (i1, i2)
             };
 
             let move_type = rng.gen_range(0..4);
