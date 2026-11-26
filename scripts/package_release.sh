@@ -64,7 +64,11 @@ TARGET_ARGS=()
 if [ -n "${TARGET_ARCH}" ]; then
     TARGET_ARGS=("--target" "${TARGET_ARCH}")
 fi
-"${CARGO_CMD}" build --release --quiet "${TARGET_ARGS[@]}"
+# Release bundle only needs core replay binaries + cs-ingest; avoid dragging
+# the full workspace (and unrelated native deps) into cross builds.
+"${CARGO_CMD}" build --release --quiet "${TARGET_ARGS[@]}" \
+    -p chronosentiment_core \
+    -p cs-ingest
 
 # Copy binaries
 if [ -n "${TARGET_ARCH}" ]; then
@@ -73,14 +77,13 @@ else
     RELEASE_OUT_DIR="${REPO_ROOT}/target/release"
 fi
 
+mkdir -p "${RELEASE_DIR}/bin"
 if [ -f "${RELEASE_OUT_DIR}/chronosentiment" ]; then
     cp "${RELEASE_OUT_DIR}/chronosentiment" "${RELEASE_DIR}/bin/"
 fi
 if [ -f "${RELEASE_OUT_DIR}/trace_replay" ]; then
     cp "${RELEASE_OUT_DIR}/trace_replay" "${RELEASE_DIR}/bin/"
 fi
-# Wait, let's copy whatever is in target/release without the *.d and deps
-# Actually, specific binaries are safer for deterministic builds.
 
 # 3. Copy scripts
 echo "Copying scripts and tooling..."
@@ -89,10 +92,9 @@ cp "${SCRIPT_DIR}/operator_bootstrap.sh" "${RELEASE_DIR}/scripts/" 2>/dev/null |
 cp "${SCRIPT_DIR}/verify_release_consistency.sh" "${RELEASE_DIR}/scripts/" 2>/dev/null || true
 cp "${SCRIPT_DIR}/verify_chronology_byte_fixtures.py" "${RELEASE_DIR}/scripts/" 2>/dev/null || true
 cp "${SCRIPT_DIR}/verify_strategy_identity_fixtures.py" "${RELEASE_DIR}/scripts/" 2>/dev/null || true
-# Prefer Rust verifier when packaging from a built tree
-if [ -x "${REPO_ROOT}/target/release/cs-ingest" ]; then
-    mkdir -p "${RELEASE_DIR}/bin"
-    cp "${REPO_ROOT}/target/release/cs-ingest" "${RELEASE_DIR}/bin/"
+# Prefer Rust verifier when packaging from a built tree (host or cross out dir)
+if [ -x "${RELEASE_OUT_DIR}/cs-ingest" ]; then
+    cp "${RELEASE_OUT_DIR}/cs-ingest" "${RELEASE_DIR}/bin/"
 fi
 
 # 4. Copy manifests & minimal docs

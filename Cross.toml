@@ -1,0 +1,9 @@
+# Cross-compilation config for release packaging (aarch64).
+# reqwest → native-tls → openssl-sys needs target OpenSSL headers/libs in the
+# cross Docker image; without this, build-release-arm64 fails pkg-config lookup.
+
+[target.aarch64-unknown-linux-gnu]
+pre-build = [
+    "dpkg --add-architecture $CROSS_DEB_ARCH",
+    "apt-get update && apt-get install --assume-yes libssl-dev:$CROSS_DEB_ARCH",
+]

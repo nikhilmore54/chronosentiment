@@ -114,8 +114,10 @@ else
     COGNITION="event_reset"
     ARTIFACT_META="artifacts/${SUBSTRATE}/${TOPOLOGY}/${COGNITION}/metadata.json"
 
+    # Align with generate_release_manifest.sh: pruned corpus → SKIP, not FAIL.
     if [ ! -f "${SUBSTRATE_FILE}" ]; then
-        log_fail "double-build determinism" "substrate file not found: ${SUBSTRATE_FILE}"
+        SUMMARY_LINES+=("  SKIP  | double-build determinism | substrate not in tree (pruned corpus)")
+        echo "[SKIP] double-build determinism: substrate not found: ${SUBSTRATE_FILE}"
     else
         echo "  Build pass 1..."
         cargo run --quiet --bin trace_replay -- \
