@@ -27,7 +27,6 @@ MS_THRESHOLD = 1_000_000_000_000
 
 # Bounded consumer/producer surfaces — chronology manifest bounds only
 PROBE_SURFACES: tuple[str, ...] = (
-    "scripts/rebuild_catalog.py",
     "scripts/run_tier1_observability_demo.py",
     "scripts/verify_chronology_producer_ratification.py",
     "scripts/verify_chronology_byte_fixtures.py",

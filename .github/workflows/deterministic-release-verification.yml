@@ -37,17 +37,19 @@ jobs:
 
     - name: Artifact Isolation Environment Setup
       run: |
-        mkdir -p test_release
-        cd test_release
-        # Extract the dynamically named tarball
-        tar -xzf ../chronosentiment_*.tar.gz
+        # Use a fresh extract dir — committed test_release/chronosentiment_* would
+        # make `cd chronosentiment_*` expand to multiple paths.
+        rm -rf release_extract
+        mkdir -p release_extract
+        TARBALL="$(ls -1 chronosentiment_*.tar.gz | head -1)"
+        tar -xzf "${TARBALL}" -C release_extract
+        ls -d release_extract/chronosentiment_* | head -1 > release_extract/RELEASE_DIR.txt
+        echo "Extracted: $(cat release_extract/RELEASE_DIR.txt)"
 
     - name: Release Mode Invariant Assertion
-      working-directory: test_release
       run: |
-        # Change into the extracted directory
-        cd chronosentiment_*
-        
+        RELEASE_DIR="$(cat release_extract/RELEASE_DIR.txt)"
+        cd "${RELEASE_DIR}"
         echo "Validating Release Mode markers..."
         if [ ! -f "RELEASE_INFO.json" ]; then
             echo "::error::RELEASE_INFO.json missing! Release Mode invariant violated."
@@ -60,21 +62,21 @@ jobs:
         echo "Release mode markers present."
 
     - name: Artifact Hash Certification
-      working-directory: test_release
       run: |
-        cd chronosentiment_*
+        RELEASE_DIR="$(cat release_extract/RELEASE_DIR.txt)"
+        cd "${RELEASE_DIR}"
         shasum -a 256 -c SHA256SUMS
 
     - name: Operational Environment Bootstrap
-      working-directory: test_release
       run: |
-        cd chronosentiment_*
+        RELEASE_DIR="$(cat release_extract/RELEASE_DIR.txt)"
+        cd "${RELEASE_DIR}"
         bash scripts/operator_bootstrap.sh
 
     - name: Replay Smoke Verification
-      working-directory: test_release
       run: |
-        cd chronosentiment_*
+        RELEASE_DIR="$(cat release_extract/RELEASE_DIR.txt)"
+        cd "${RELEASE_DIR}"
         bash scripts/replay_smoke_suite.sh
 
     - name: Upload Release Artifacts
@@ -120,6 +122,7 @@ jobs:
         toolchain: stable
         override: true
         profile: minimal
+        target: aarch64-unknown-linux-musl
 
     - name: Install Cross
       run: cargo install cross --git https://github.com/cross-rs/cross
@@ -127,10 +130,12 @@ jobs:
     - name: Release Manifest Generation
       run: bash scripts/generate_release_manifest.sh --notes "CI Deterministic Build ARM64"
 
+    # musl static binaries run on bookworm/ubuntu22 without GLIBC_2.39 mismatch
+    # (gnu cross image linked newer glibc than arm64v8/debian:bookworm-slim).
     - name: Release Artifact Packaging (ARM64)
       env:
         CARGO_CMD: cross
-        TARGET_ARCH: aarch64-unknown-linux-gnu
+        TARGET_ARCH: aarch64-unknown-linux-musl
       run: bash scripts/package_release.sh --force
 
     - name: Upload Release Artifacts (ARM64)

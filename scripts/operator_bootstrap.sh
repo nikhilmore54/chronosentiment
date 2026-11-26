@@ -118,6 +118,7 @@ else
         "scripts/certify_replay_chain.py"
         "scripts/compare_replay_equivalence.py"
         "scripts/capture_live_chronology.py"
+        "scripts/cs_bridge.py"
     )
     FIXTURE_DIRS=(
         "fixtures"
@@ -132,6 +133,13 @@ for f in "${FIXTURE_SCRIPTS[@]}"; do
         fail "${f}: missing"
     fi
 done
+
+# Rust live-path binary (cohort / governor / verify)
+if [ -x "${REPO_ROOT}/target/release/cs-ingest" ] || [ -x "${REPO_ROOT}/bin/cs-ingest" ]; then
+    ok "cs-ingest binary present"
+else
+    warn "cs-ingest binary not built yet — run: cargo build -p cs-ingest --release"
+fi
 
 # Check fixture data directories
 for d in "${FIXTURE_DIRS[@]}"; do

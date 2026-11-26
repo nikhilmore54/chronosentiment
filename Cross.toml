@@ -1,0 +1,14 @@
+# Cross-compilation for release packaging (aarch64).
+#
+# Prefer musl for arm64 release artifacts so binaries run on older distros
+# (e.g. debian bookworm) used by external-operational-validation-arm64.
+# gnu cross images often link a newer glibc than bookworm provides.
+
+[target.aarch64-unknown-linux-musl]
+# rustls-tls on reqwest — no openssl sysroot required.
+
+[target.aarch64-unknown-linux-gnu]
+pre-build = [
+    "dpkg --add-architecture $CROSS_DEB_ARCH",
+    "apt-get update && apt-get install --assume-yes libssl-dev:$CROSS_DEB_ARCH",
+]

@@ -17,7 +17,7 @@ from pathlib import Path
 
 # Use the canonical frozen helpers
 from candle_substrate import incremental_update_cohort
-from run_nse_cohort import run_frozen_via_cs_ingest, resolve_archive_dir
+from cs_bridge import run_frozen_via_cs_ingest, resolve_archive_dir
 
 # ─── Global Constants ───
 FORCE_SKIP_SYMBOLS = frozenset({"NEAGI.NS"})

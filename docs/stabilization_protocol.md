@@ -24,7 +24,7 @@ Requirements (all must be demonstrated, not assumed):
 | Chronology enforcement proven | Timestamp violations rejected by repair state machine |
 | Governor transitions proven | NOMINAL → THROTTLE → HALT → NOMINAL under controlled telemetry |
 | Recovery lineage proven | Gap detection → repair → re-certification succeeds |
-| Archive integrity proven | `verify_cohort_baseline.py` passes after multi-session ingest |
+| Archive integrity proven | `cs-ingest verify` passes after multi-session ingest |
 | Restart equivalence proven | Resume from checkpoint produces identical archive to fresh run |
 | Cold-start behavior proven | Governor starts at NOMINAL with no archive, transitions correctly |
 | Execution path frozen | No new scripts enter `scripts/` without a defined live-path consumer |
@@ -62,12 +62,12 @@ If the answer is vague, it belongs in `scripts/research/` or nowhere.
 Run repeatedly during this phase:
 
 ```
-1. live ingest (run_nse_cohort.py)
+1. live ingest (cs-ingest cohort)
 2. replay certification (certify_replay_chain.py)
 3. deterministic equivalence (compare_replay_equivalence.py)
-4. governor state transitions (governor_refresher.py --once)
+4. governor state transitions (cs-ingest governor --once)
 5. recovery scenario (cs-ingest repair detect + process)
-6. archive integrity (verify_cohort_baseline.py)
+6. archive integrity (cs-ingest verify)
 7. cold-start recovery (delete governor_state.json, restart governor)
 8. multi-session continuity (resume=True run after fresh run)
 9. timeline fingerprint verification (cs-ingest timeline)

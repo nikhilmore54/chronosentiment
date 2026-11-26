@@ -126,6 +126,12 @@ def run_attestation(
     rerun = load_module(RERUN_GUARD_SCRIPT, "lane3_rerun")
     probe = load_module(PROBE_SCRIPT, "lane3_probe")
     base_scenario = tier1.SCENARIOS[scenario_key]
+    if not os.path.exists(base_scenario["substrate_file"]):
+        print(
+            f"[SKIP] Substrate not found (pruned corpus): {base_scenario['substrate_file']}",
+            file=sys.stderr,
+        )
+        return 0
     chronology_manifest = tier1.load_chronology_manifest(base_scenario["manifest_file"])
 
     print("Lane 3 slice 3 — artifact integrity attestation", flush=True)

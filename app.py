@@ -3667,7 +3667,7 @@ def render_live_pipeline_observability(
             lines.append("No symbol lanes matched the current <code>live_*</code> glob.")
     d_esc = html.escape(str(diag_dir), quote=True)
     p_esc = html.escape(str(diag_pattern), quote=True)
-    lines.append("<br><strong>Start:</strong> <code>scripts/run_multi_engine.py</code>")
+    lines.append("<br><strong>Start:</strong> <code>./target/release/cs-ingest cohort</code> / <code>scripts/run_live_session.py</code>")
     lines.append(f"<strong>Check:</strong> log directory <code>{d_esc}</code> · glob <code>{p_esc}</code>")
 
     body = "<br>".join(lines)

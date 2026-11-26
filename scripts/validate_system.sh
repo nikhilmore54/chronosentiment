@@ -55,7 +55,7 @@ run_check() {
 
 # ── Check 1: Rust build (release) ────────────────────────────────────────────
 run_check "Rust release build" \
-  bash -c "cargo build --release --manifest-path cs-ingest/Cargo.toml --quiet && cargo build --release --example live_observatory --manifest-path infrastructure/core/Cargo.toml --quiet"
+  bash -c "cargo build -p cs-ingest --release --quiet && cargo build --release --example live_observatory -p chronosentiment_core --quiet"
 
 # ── Check 2: Timeline fingerprint (frozen substrate loads + aligns) ───────────
 run_check "Timeline fingerprint (batch $BATCH_ID)" \
@@ -65,8 +65,7 @@ run_check "Timeline fingerprint (batch $BATCH_ID)" \
 
 # ── Check 3: Replay chain certification (Generates Archive) ────────────────────
 run_check "Replay chain certification" \
-  python3 scripts/certify_replay_chain.py \
-    full-replay \
+  ./target/release/cs-ingest cohort \
     --batch-id "$BATCH_ID" \
     --run-label "$RUN_LABEL" \
     --max-intervals 50 \
@@ -74,13 +73,13 @@ run_check "Replay chain certification" \
 
 # ── Check 4: Archive integrity + replay consistency ───────────────────────────
 run_check "Archive integrity + replay consistency" \
-  python3 scripts/verify_cohort_baseline.py \
+  ./target/release/cs-ingest verify \
     --batch-id "$BATCH_ID" \
     --run-label "$RUN_LABEL"
 
 # ── Check 5: Governor smoke test (no archive = NO_DATA/NOMINAL) ───────────────
 run_check "Governor smoke test" \
-  python3 scripts/governor_refresher.py \
+  ./target/release/cs-ingest governor \
     --archive-dir "$ARCHIVE_DIR" \
     --once
 
