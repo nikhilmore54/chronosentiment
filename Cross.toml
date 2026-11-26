@@ -1,6 +1,11 @@
-# Cross-compilation config for release packaging (aarch64).
-# reqwest → native-tls → openssl-sys needs target OpenSSL headers/libs in the
-# cross Docker image; without this, build-release-arm64 fails pkg-config lookup.
+# Cross-compilation for release packaging (aarch64).
+#
+# Prefer musl for arm64 release artifacts so binaries run on older distros
+# (e.g. debian bookworm) used by external-operational-validation-arm64.
+# gnu cross images often link a newer glibc than bookworm provides.
+
+[target.aarch64-unknown-linux-musl]
+# rustls-tls on reqwest — no openssl sysroot required.
 
 [target.aarch64-unknown-linux-gnu]
 pre-build = [

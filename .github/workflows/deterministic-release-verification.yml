@@ -122,6 +122,7 @@ jobs:
         toolchain: stable
         override: true
         profile: minimal
+        target: aarch64-unknown-linux-musl
 
     - name: Install Cross
       run: cargo install cross --git https://github.com/cross-rs/cross
@@ -129,10 +130,12 @@ jobs:
     - name: Release Manifest Generation
       run: bash scripts/generate_release_manifest.sh --notes "CI Deterministic Build ARM64"
 
+    # musl static binaries run on bookworm/ubuntu22 without GLIBC_2.39 mismatch
+    # (gnu cross image linked newer glibc than arm64v8/debian:bookworm-slim).
     - name: Release Artifact Packaging (ARM64)
       env:
         CARGO_CMD: cross
-        TARGET_ARCH: aarch64-unknown-linux-gnu
+        TARGET_ARCH: aarch64-unknown-linux-musl
       run: bash scripts/package_release.sh --force
 
     - name: Upload Release Artifacts (ARM64)
