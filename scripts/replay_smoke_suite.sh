@@ -97,11 +97,15 @@ else
 fi
 
 # 2b: Strategy identity fixtures
+# Align with verify_release_consistency.sh: absent/incomplete corpus → WARN/SKIP,
+# not FAIL (fixtures/strategy_identity may ship meta-only after corpus pruning).
 if [ -f "${SCRIPT_DIR}/verify_strategy_identity_fixtures.py" ]; then
     STRAT_OUT="$(python3 "${SCRIPT_DIR}/verify_strategy_identity_fixtures.py" 2>&1)" || true
     if echo "${STRAT_OUT}" | grep -q "verified"; then
         COUNT="$(echo "${STRAT_OUT}" | grep -oE '[0-9]+' | head -1)"
         pass "verify_strategy_identity_fixtures.py: ${COUNT} record(s) verified"
+    elif echo "${STRAT_OUT}" | grep -Eq "WARN|no strategy identity fixtures"; then
+        warn "verify_strategy_identity_fixtures.py: fixtures not present — skipping"
     else
         fail "verify_strategy_identity_fixtures.py: verification failed"
         echo "${STRAT_OUT}" | tail -5 >&2
