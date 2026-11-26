@@ -2582,6 +2582,7 @@ mod server_endpoints_tests {
     use axum::body::Body;
     use axum::http::{Request, StatusCode};
     use tower::ServiceExt; // for oneshot
+    use ultracrew::config::FatigueConfig;
 
     fn setup_test_app_with_state() -> (Router, Arc<Mutex<AppState>>) {
         let cors = CorsLayer::new()

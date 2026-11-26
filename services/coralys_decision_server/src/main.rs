@@ -99,6 +99,7 @@ async fn main() {
 #[cfg(test)]
 pub mod test_helpers {
     use super::*;
+    use axum::Router;
     use chrono::{TimeZone, Utc};
     use coralys_decision::{
         C3_002_POLICY_ARTIFACT_HASH, CORALYS_EXEC_ARTIFACT_HASH, DecisionRecordBuilder,

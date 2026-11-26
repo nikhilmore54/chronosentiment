@@ -2,7 +2,6 @@
   "attestations": [
     "BOUNDED_SURFACE_SCAN_COMPLETE",
     "IMPLICIT_MS_ASSUMPTIONS_DETECTED",
-    "EXPLICIT_MS_LAW_CHECKS_PRESENT",
     "INVENTORY_CROSS_REFERENCE_LOADED"
   ],
   "authority_refs": [
@@ -79,83 +78,29 @@
       "surface": "scripts/run_tier1_observability_demo.py"
     },
     {
-      "classification": "HEURISTIC_UNIT_AWARE",
-      "description": "Threshold heuristic distinguishes seconds vs milliseconds.",
-      "dialect_b_risk": "low",
-      "excerpt": "if start < 1_000_000_000_000 or end < 1_000_000_000_000:",
-      "line": 108,
-      "pattern_id": "THRESHOLD_UNIT_HEURISTIC",
+      "classification": "PROBE_GAP",
+      "description": "Expected probe surface file not found.",
+      "dialect_b_risk": "unknown",
+      "excerpt": "",
+      "line": 0,
+      "pattern_id": "MISSING_SURFACE",
       "surface": "scripts/verify_chronology_producer_ratification.py"
     },
     {
-      "classification": "EXPLICIT_MS_LAW_CHECK",
-      "description": "Explicit ms-law or dialect classification check present.",
-      "dialect_b_risk": "none",
-      "excerpt": "if start < 1_000_000_000_000 or end < 1_000_000_000_000:",
-      "line": 108,
-      "pattern_id": "EXPLICIT_MS_LAW_CHECK",
-      "surface": "scripts/verify_chronology_producer_ratification.py"
-    },
-    {
-      "classification": "EXPLICIT_MS_LAW_CHECK",
-      "description": "Explicit ms-law or dialect classification check present.",
-      "dialect_b_risk": "none",
-      "excerpt": "notes.append(\"Dialect A fixture manifest bounds appear non-millisecond\")",
-      "line": 109,
-      "pattern_id": "EXPLICIT_MS_LAW_CHECK",
-      "surface": "scripts/verify_chronology_producer_ratification.py"
-    },
-    {
-      "classification": "BOUNDS_REFERENCE",
-      "description": "References manifest capture bounds.",
-      "dialect_b_risk": "context",
-      "excerpt": "\"capture_start\",",
-      "line": 97,
-      "pattern_id": "CAPTURE_BOUNDS_REFERENCE",
-      "surface": "scripts/verify_chronology_producer_ratification.py"
-    },
-    {
-      "classification": "BOUNDS_REFERENCE",
-      "description": "References manifest capture bounds.",
-      "dialect_b_risk": "context",
-      "excerpt": "\"capture_end\",",
-      "line": 98,
-      "pattern_id": "CAPTURE_BOUNDS_REFERENCE",
-      "surface": "scripts/verify_chronology_producer_ratification.py"
-    },
-    {
-      "classification": "BOUNDS_REFERENCE",
-      "description": "References manifest capture bounds.",
-      "dialect_b_risk": "context",
-      "excerpt": "start, end = manifest[\"capture_start\"], manifest[\"capture_end\"]",
-      "line": 107,
-      "pattern_id": "CAPTURE_BOUNDS_REFERENCE",
-      "surface": "scripts/verify_chronology_producer_ratification.py"
-    },
-    {
-      "classification": "BOUNDS_REFERENCE",
-      "description": "References manifest capture bounds.",
-      "dialect_b_risk": "context",
-      "excerpt": "\"capture_start\",",
-      "line": 116,
-      "pattern_id": "CAPTURE_BOUNDS_REFERENCE",
-      "surface": "scripts/verify_chronology_producer_ratification.py"
-    },
-    {
-      "classification": "BOUNDS_REFERENCE",
-      "description": "References manifest capture bounds.",
-      "dialect_b_risk": "context",
-      "excerpt": "\"capture_end\",",
-      "line": 117,
-      "pattern_id": "CAPTURE_BOUNDS_REFERENCE",
-      "surface": "scripts/verify_chronology_producer_ratification.py"
+      "classification": "PROBE_GAP",
+      "description": "Expected probe surface file not found.",
+      "dialect_b_risk": "unknown",
+      "excerpt": "",
+      "line": 0,
+      "pattern_id": "MISSING_SURFACE",
+      "surface": "scripts/emit_manifest_v1.py"
     },
     {
       "classification": "PRODUCER_SECONDS_EMISSION",
       "description": "Producer emits manifest bounds from SystemTime seconds.",
       "dialect_b_risk": "n/a",
-      "excerpt": "let mut current_rotation_start = SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs();",
-      "line": 68,
+      "excerpt": ".as_secs();",
+      "line": 75,
       "pattern_id": "PRODUCER_AS_SECS",
       "surface": "infrastructure/core/src/bin/capture_daemon.rs"
     },
@@ -163,8 +108,8 @@
       "classification": "PRODUCER_SECONDS_EMISSION",
       "description": "Producer emits manifest bounds from SystemTime seconds.",
       "dialect_b_risk": "n/a",
-      "excerpt": "last_tick_time = SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs();",
-      "line": 106,
+      "excerpt": ".as_secs();",
+      "line": 120,
       "pattern_id": "PRODUCER_AS_SECS",
       "surface": "infrastructure/core/src/bin/capture_daemon.rs"
     },
@@ -172,8 +117,8 @@
       "classification": "PRODUCER_SECONDS_EMISSION",
       "description": "Producer emits manifest bounds from SystemTime seconds.",
       "dialect_b_risk": "n/a",
-      "excerpt": "let import_timestamp = SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs();",
-      "line": 113,
+      "excerpt": ".as_secs();",
+      "line": 134,
       "pattern_id": "PRODUCER_AS_SECS",
       "surface": "infrastructure/core/src/bin/capture_daemon.rs"
     },
@@ -181,8 +126,8 @@
       "classification": "PRODUCER_SECONDS_EMISSION",
       "description": "Producer emits manifest bounds from SystemTime seconds.",
       "dialect_b_risk": "n/a",
-      "excerpt": "let now = SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs();",
-      "line": 143,
+      "excerpt": ".as_secs();",
+      "line": 184,
       "pattern_id": "PRODUCER_AS_SECS",
       "surface": "infrastructure/core/src/bin/capture_daemon.rs"
     },
@@ -191,15 +136,6 @@
       "description": "References manifest capture bounds.",
       "dialect_b_risk": "context",
       "excerpt": "capture_start: u64,",
-      "line": 49,
-      "pattern_id": "CAPTURE_BOUNDS_REFERENCE",
-      "surface": "infrastructure/core/src/bin/capture_daemon.rs"
-    },
-    {
-      "classification": "BOUNDS_REFERENCE",
-      "description": "References manifest capture bounds.",
-      "dialect_b_risk": "context",
-      "excerpt": "capture_end: u64,",
       "line": 50,
       "pattern_id": "CAPTURE_BOUNDS_REFERENCE",
       "surface": "infrastructure/core/src/bin/capture_daemon.rs"
@@ -208,8 +144,17 @@
       "classification": "BOUNDS_REFERENCE",
       "description": "References manifest capture bounds.",
       "dialect_b_risk": "context",
+      "excerpt": "capture_end: u64,",
+      "line": 51,
+      "pattern_id": "CAPTURE_BOUNDS_REFERENCE",
+      "surface": "infrastructure/core/src/bin/capture_daemon.rs"
+    },
+    {
+      "classification": "BOUNDS_REFERENCE",
+      "description": "References manifest capture bounds.",
+      "dialect_b_risk": "context",
       "excerpt": "capture_start: current_rotation_start,",
-      "line": 120,
+      "line": 141,
       "pattern_id": "CAPTURE_BOUNDS_REFERENCE",
       "surface": "infrastructure/core/src/bin/capture_daemon.rs"
     },
@@ -218,7 +163,7 @@
       "description": "References manifest capture bounds.",
       "dialect_b_risk": "context",
       "excerpt": "capture_end: now,",
-      "line": 121,
+      "line": 142,
       "pattern_id": "CAPTURE_BOUNDS_REFERENCE",
       "surface": "infrastructure/core/src/bin/capture_daemon.rs"
     },
@@ -226,8 +171,8 @@
       "classification": "PRODUCER_SECONDS_EMISSION",
       "description": "Producer emits manifest bounds from SystemTime seconds.",
       "dialect_b_risk": "n/a",
-      "excerpt": "let import_timestamp = SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs();",
-      "line": 166,
+      "excerpt": ".as_secs();",
+      "line": 190,
       "pattern_id": "PRODUCER_AS_SECS",
       "surface": "infrastructure/core/src/bin/historical_importer.rs"
     },
@@ -236,15 +181,6 @@
       "description": "References manifest capture bounds.",
       "dialect_b_risk": "context",
       "excerpt": "capture_start: u64,",
-      "line": 53,
-      "pattern_id": "CAPTURE_BOUNDS_REFERENCE",
-      "surface": "infrastructure/core/src/bin/historical_importer.rs"
-    },
-    {
-      "classification": "BOUNDS_REFERENCE",
-      "description": "References manifest capture bounds.",
-      "dialect_b_risk": "context",
-      "excerpt": "capture_end: u64,",
       "line": 54,
       "pattern_id": "CAPTURE_BOUNDS_REFERENCE",
       "surface": "infrastructure/core/src/bin/historical_importer.rs"
@@ -253,8 +189,17 @@
       "classification": "BOUNDS_REFERENCE",
       "description": "References manifest capture bounds.",
       "dialect_b_risk": "context",
+      "excerpt": "capture_end: u64,",
+      "line": 55,
+      "pattern_id": "CAPTURE_BOUNDS_REFERENCE",
+      "surface": "infrastructure/core/src/bin/historical_importer.rs"
+    },
+    {
+      "classification": "BOUNDS_REFERENCE",
+      "description": "References manifest capture bounds.",
+      "dialect_b_risk": "context",
       "excerpt": "capture_start: args.start_time,",
-      "line": 174,
+      "line": 198,
       "pattern_id": "CAPTURE_BOUNDS_REFERENCE",
       "surface": "infrastructure/core/src/bin/historical_importer.rs"
     },
@@ -263,7 +208,7 @@
       "description": "References manifest capture bounds.",
       "dialect_b_risk": "context",
       "excerpt": "capture_end: args.end_time,",
-      "line": 175,
+      "line": 199,
       "pattern_id": "CAPTURE_BOUNDS_REFERENCE",
       "surface": "infrastructure/core/src/bin/historical_importer.rs"
     },
@@ -272,15 +217,6 @@
       "description": "References manifest capture bounds.",
       "dialect_b_risk": "context",
       "excerpt": "capture_start: u64,",
-      "line": 42,
-      "pattern_id": "CAPTURE_BOUNDS_REFERENCE",
-      "surface": "infrastructure/core/src/bin/yahoo_importer.rs"
-    },
-    {
-      "classification": "BOUNDS_REFERENCE",
-      "description": "References manifest capture bounds.",
-      "dialect_b_risk": "context",
-      "excerpt": "capture_end: u64,",
       "line": 43,
       "pattern_id": "CAPTURE_BOUNDS_REFERENCE",
       "surface": "infrastructure/core/src/bin/yahoo_importer.rs"
@@ -289,8 +225,17 @@
       "classification": "BOUNDS_REFERENCE",
       "description": "References manifest capture bounds.",
       "dialect_b_risk": "context",
+      "excerpt": "capture_end: u64,",
+      "line": 44,
+      "pattern_id": "CAPTURE_BOUNDS_REFERENCE",
+      "surface": "infrastructure/core/src/bin/yahoo_importer.rs"
+    },
+    {
+      "classification": "BOUNDS_REFERENCE",
+      "description": "References manifest capture bounds.",
+      "dialect_b_risk": "context",
       "excerpt": "capture_start: start_time,",
-      "line": 113,
+      "line": 134,
       "pattern_id": "CAPTURE_BOUNDS_REFERENCE",
       "surface": "infrastructure/core/src/bin/yahoo_importer.rs"
     },
@@ -299,18 +244,18 @@
       "description": "References manifest capture bounds.",
       "dialect_b_risk": "context",
       "excerpt": "capture_end: end_time,",
-      "line": 114,
+      "line": 135,
       "pattern_id": "CAPTURE_BOUNDS_REFERENCE",
       "surface": "infrastructure/core/src/bin/yahoo_importer.rs"
     }
   ],
-  "git_commit": "bd7a3e894dbbeae12d62a4a60588eb3abcf1373f",
+  "git_commit": "901c9452ebeaccd1de2b4addfa189818d25a358c",
   "inventory_cross_reference": {
     "available": true,
     "live_capture_seconds_bounds": 12,
-    "manifests_scanned": 61,
+    "manifests_scanned": 19,
     "seconds_bounds": 13,
-    "seconds_ms_ambiguity_count": 0
+    "seconds_ms_ambiguity_count": 12
   },
   "lane": "Lane 2 prerequisite \u2014 manifest ms assumption probe",
   "layer": "observational",
@@ -321,24 +266,21 @@
   "status": "PROBE_COMPLETE",
   "summary": {
     "by_classification": {
-      "BOUNDS_REFERENCE": 21,
-      "EXPLICIT_MS_LAW_CHECK": 2,
-      "HEURISTIC_UNIT_AWARE": 1,
+      "BOUNDS_REFERENCE": 16,
       "IMPLICIT_MS_SEMANTICS": 2,
+      "PROBE_GAP": 2,
       "PRODUCER_SECONDS_EMISSION": 5
     },
     "dialect_b_sensitive_surfaces": [
       "scripts/run_tier1_observability_demo.py"
     ],
-    "findings_total": 31,
+    "findings_total": 25,
     "implicit_ms_assumption_surfaces": [
       "scripts/run_tier1_observability_demo.py"
     ],
     "surfaces_heuristic_aware": [],
     "surfaces_scanned": 7,
-    "surfaces_with_explicit_gate": [
-      "scripts/verify_chronology_producer_ratification.py"
-    ]
+    "surfaces_with_explicit_gate": []
   },
   "surface_postures": {
     "infrastructure/core/src/bin/capture_daemon.rs": {
@@ -361,7 +303,7 @@
     },
     "scripts/emit_manifest_v1.py": {
       "dialect_b_sensitive": false,
-      "finding_count": 0,
+      "finding_count": 1,
       "implicit_ms_assumption": false,
       "posture": "NO_BOUNDS_CONSUMPTION"
     },
@@ -379,9 +321,9 @@
     },
     "scripts/verify_chronology_producer_ratification.py": {
       "dialect_b_sensitive": false,
-      "finding_count": 8,
+      "finding_count": 1,
       "implicit_ms_assumption": false,
-      "posture": "EXPLICIT_GATE"
+      "posture": "NO_BOUNDS_CONSUMPTION"
     }
   },
   "tranche_authorized": false

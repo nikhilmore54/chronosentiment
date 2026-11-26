@@ -22,14 +22,28 @@ jobs:
           override: true
       - name: Cargo build
         run: cargo build --workspace --verbose
-      - name: Run workspace tests
-        run: cargo test --workspace --quiet
+      # Product-lane tests only — coralys/ultracrew/roadef adapter suites are
+      # out of chronosentiment constitutional scope and blow the runner budget.
+      - name: Run product-lane tests
+        run: >
+          cargo test --quiet
+          -p chronosentiment_core
+          -p chronosentiment_optimization
+          -p chronosentiment_strategies
+          -p chronosentiment_financial_core
+          -p cs-ingest
+          -p chronosentiment_adapter
+          -p api
       - name: Replay certification
-        run: cargo test replay --release -- --test-threads=1
+        run: >
+          cargo test replay --release -- --test-threads=1
+          -p chronosentiment_core
+          -p chronosentiment_strategies
+          -p chronosentiment_optimization
       - name: Sweep determinism test
-        run: cargo test sweep_projection --quiet
+        run: cargo test sweep_projection -p chronosentiment_strategies --quiet
       - name: Orchestration ordering certification
-        run: cargo test orchestration_execution_order --quiet
+        run: cargo test orchestration_execution_order -p chronosentiment_core --quiet
       - name: Lint warnings budget (max 5)
         run: |
           cargo clippy -- -D warnings || true

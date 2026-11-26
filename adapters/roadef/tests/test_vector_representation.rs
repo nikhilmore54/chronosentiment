@@ -3,7 +3,7 @@ use std::fs::File;
 use std::io::{BufRead, BufReader};
 use std::path::PathBuf;
 
-use roadef::moga_impl::{EvalComparator, LexicographicComparator, RoadefEvaluation, RoadefGenome, RoadefObjective};
+use roadef::moga_impl::{EvalComparator, LexicographicComparator, RoadefEvaluation, RoadefGenome};
 
 /// Helper to parse a specific instance's golden vector from the official sprint CSV.
 fn parse_golden_vector(instance_name: &str) -> Vec<f64> {
@@ -41,9 +41,10 @@ fn make_eval(load_vector: Vec<f64>) -> RoadefEvaluation {
             waypoints: vec![],
             num_time_slots: 0,
         },
-        objective: RoadefObjective { loads_desc: load_vector },
-        feasible: true, // We test pure representation, so feasible doesn't matter for LexicographicComparator
+        obj: 0.0,
+        valid: true, // We test pure representation, so validity doesn't matter for LexicographicComparator
         mlu: 0.0,
+        load_vector,
         operator: "test",
         max_sat: 0.0,
     }

@@ -34,7 +34,7 @@
 //!
 //! ```rust
 //! use chrono::Utc;
-//! use chronosentiment::time_machine::clock::{HistoricalClock, ClockMode};
+//! use chronosentiment_adapter::time_machine::clock::{HistoricalClock, ClockMode};
 //!
 //! // Live mode — returns Utc::now()
 //! let live_clock = HistoricalClock::live();
