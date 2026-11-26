@@ -37,6 +37,8 @@ use coralys_moga::engine::EvolutionEngine;
 use coralys_moga::FitnessEvaluator;
 
 use crate::ecology::WorkforceEcology;
+use crate::inrc::annealing::{AnnealingConfig, SimulatedAnnealingEngine};
+use crate::inrc::evaluator::InrcAnnealingDomain;
 use crate::inrc::optimization::{InrcContext, InrcGenome, InrcOptimizer};
 use crate::inrc::parser::{parse_history, parse_scenario, parse_week_data};
 
@@ -718,13 +720,23 @@ impl ReasoningEngine for CoralysInrcEngine {
         // 1. Deterministic Hard Constraint Repair Pass (ejection chains)
         optimizer.repair_hard_constraints(&mut best_genome);
 
-        // 2. Post-GA Memetic Polish via Simulated Annealing
+        // 2. Post-GA Memetic Polish via Coralys Simulated Annealing Decision Engine
         let mut rng = match config.seed {
             Some(s) => rand::rngs::StdRng::seed_from_u64(s),
             None => rand::rngs::StdRng::from_entropy(),
         };
         let sa_budget = (plugin.context.num_nurses as u64 * 40).max(2500);
-        let _ = optimizer.simulated_annealing(&mut best_genome, sa_budget, &mut rng);
+        let domain = InrcAnnealingDomain::new(&optimizer);
+        let sa_config = AnnealingConfig {
+            initial_temperature: 50.0,
+            cooling_rate: 0.99998,
+            min_temperature: 0.1,
+            restart_temperature: 50.0,
+            time_budget_ms: sa_budget,
+        };
+        let sa_engine = SimulatedAnnealingEngine::new(sa_config);
+        let (polished_genome, _, _) = sa_engine.optimize(&domain, &best_genome, &mut rng);
+        best_genome = polished_genome;
 
         // 3. Final Hard Constraint Safety Check (guarantee 0 HC)
         let metric_report = coralys_moga::runtime::optimization::metric::MetricReport::default();

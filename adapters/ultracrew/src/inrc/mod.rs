@@ -1,3 +1,4 @@
+pub mod annealing;
 pub mod audit;
 pub mod baseline;
 pub mod decision_plugin;
