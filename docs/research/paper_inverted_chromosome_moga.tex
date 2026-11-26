@@ -1,6 +1,6 @@
 \documentclass[10pt,journal,compsoc]{IEEEtran}
 
-\usepackage{amsmath,amssymb,amsfonts,amsthm}
+\usepackage{amsmath,amssymb,amsfonts}
 \usepackage{algorithmic}
 \usepackage{algorithm}
 \usepackage{array}
@@ -17,6 +17,7 @@
 \newtheorem{lemma}{Lemma}
 \newtheorem{proposition}{Proposition}
 \newtheorem{definition}{Definition}
+\newenvironment{proof}{\begin{IEEEproof}}{\end{IEEEproof}}
 
 \begin{document}
 
@@ -200,7 +201,7 @@ Thus, setting $y_{n,d,s,k} = 1$ for $n = \mathbf{\Phi}((d,s,k,m))$ satisfies Eq.
 \begin{minipage}{0.96\linewidth}
 \centering
 \vspace{1mm}
-\includegraphics[width=0.92\linewidth]{scratch/fig1_v6-1.png}
+\includegraphics[width=0.92\linewidth]{figures/fig_inverted_system_arch.png}
 \vspace{1mm}
 \end{minipage}
 }
@@ -358,7 +359,7 @@ Fig.~\ref{fig:convergence_curve} plots the convergence trajectory of best popula
 \begin{minipage}{0.96\linewidth}
 \centering
 \vspace{1mm}
-\includegraphics[width=0.92\linewidth]{scratch/fig2_v4-1.png}
+\includegraphics[width=0.92\linewidth]{figures/fig_convergence_comparison.png}
 \vspace{1mm}
 \end{minipage}
 }
