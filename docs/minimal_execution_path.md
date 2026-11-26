@@ -2,128 +2,86 @@
 
 **What runs in a live session. Nothing else.**
 
+Aligned with `.cursor/rules/chronosentiment-core.mdc`: deterministic event-driven
+ingest, price-time priority via frozen substrate replay, no randomness in the
+live path.
+
 ---
 
-## The 26 Operational Scripts
+## Rust authority (`cs-ingest`)
 
-After cleanup, `scripts/` contains the following operational scripts. Everything else is in `scripts/research/`.
+Causal ingest, repair, governor, and stage-1 verification live in
+`financial/ese` (`cs-ingest`):
 
-### Core Pipeline
-
-| Script | Role |
+| Command | Role |
 |---|---|
-| [`run_nse_cohort.py`](../scripts/run_nse_cohort.py) | NSEIngestionEngine — cohort orchestration, frozen-substrate replay |
-| [`run_live_session.py`](../scripts/run_live_session.py) | Live synchronized observatory session (warm + incremental) |
-| [`candle_substrate.py`](../scripts/candle_substrate.py) | Frozen cohort candle loading |
-| [`archive_dedupe.py`](../scripts/archive_dedupe.py) | Deduplication index + gzip writer pool |
-| [`freeze_cohort_candles.py`](../scripts/freeze_cohort_candles.py) | Create frozen substrate from downloaded data |
-| [`observatory_daemon.py`](../scripts/observatory_daemon.py) | Observatory subprocess management |
-| [`repair_chronology_gaps.py`](../scripts/repair_chronology_gaps.py) | Timestamp-locked gap recovery |
-| [`governor_refresher.py`](../scripts/governor_refresher.py) | Minimal production governor (telemetry → multiplier) |
+| `cs-ingest cohort` | Frozen-substrate replay (replaces `run_nse_cohort.py`) |
+| `cs-ingest replay-step` | Low-level barrier → observatory → archive |
+| `cs-ingest timeline` | Timeline fingerprint / frozen load check |
+| `cs-ingest repair …` | Timestamp-locked gap recovery |
+| `cs-ingest governor` | Telemetry → `governor_state.json` |
+| `cs-ingest verify` | Archive integrity + baseline checks |
+| `cs-ingest verify-chronology-fixtures` | V-006 chronology byte fixtures |
 
-### Verification
+```bash
+cargo build -p cs-ingest --release
 
-| Script | Role |
-|---|---|
-| [`verify_cohort_baseline.py`](../scripts/verify_cohort_baseline.py) | Archive integrity + replay consistency |
-| [`certify_replay_chain.py`](../scripts/certify_replay_chain.py) | Replay chain certification |
-| [`compare_replay_equivalence.py`](../scripts/compare_replay_equivalence.py) | Cross-run replay parity |
-| [`compare_ingest_parity.py`](../scripts/compare_ingest_parity.py) | Ingest parity between runs |
-| [`validate_system.sh`](../scripts/validate_system.sh) | Canonical system health entry point |
+./target/release/cs-ingest timeline --batch-id 3 --cohort cohorts/batch_003.txt
 
-### Data Acquisition
+./target/release/cs-ingest cohort \
+  --batch-id 3 --run-label replay_equiv --max-intervals 50 --fresh
 
-| Script | Role |
-|---|---|
-| [`download_nse_data.py`](../scripts/download_nse_data.py) | Download NSE 5m bars |
-| [`download_30d_history.py`](../scripts/download_30d_history.py) | 30-day history download |
-| [`download_oos_data.py`](../scripts/download_oos_data.py) | Out-of-sample data download |
-| [`download_cross_asset.py`](../scripts/download_cross_asset.py) | Cross-asset data download |
-| [`build_nse_universe.py`](../scripts/build_nse_universe.py) | NSE universe construction |
-| [`fetch_candles.py`](../scripts/fetch_candles.py) | Candle fetch utility |
-| [`real_data_streamer.py`](../scripts/real_data_streamer.py) | Live data streaming |
-| [`probe_provider_propagation.py`](../scripts/probe_provider_propagation.py) | Provider timing study (chronology) |
+./target/release/cs-ingest repair --archive-root state_archive --batch-id 3 detect
 
-### Operational Support
+./target/release/cs-ingest governor --archive-dir state_archive/batches/batch_003/runs/replay_equiv --once
 
-| Script | Role |
-|---|---|
-| [`symbol_health.py`](../scripts/symbol_health.py) | Symbol health registry |
-| [`storage_governor.py`](../scripts/storage_governor.py) | Archive storage tiering |
-| [`cleanup_state_archive.py`](../scripts/cleanup_state_archive.py) | Archive cleanup |
-| [`schedule_live_run.py`](../scripts/schedule_live_run.py) | Live run scheduling |
-| [`run_incremental_cohort.py`](../scripts/run_incremental_cohort.py) | Incremental cohort ingestion |
+./target/release/cs-ingest verify --batch-id 3 --run-label replay_equiv
+```
+
+---
+
+## Remaining Python (provider / orchestration only)
+
+| Script | Role | Why still Python |
+|---|---|---|
+| [`freeze_cohort_candles.py`](../scripts/freeze_cohort_candles.py) | Create frozen substrate | yfinance / pandas freeze |
+| [`candle_substrate.py`](../scripts/candle_substrate.py) | Freeze + incremental download helpers | yfinance / Binance / NSE |
+| [`run_live_session.py`](../scripts/run_live_session.py) | Provider visibility wait + incremental merge + Rust resume | provider probes |
+| [`certify_replay_chain.py`](../scripts/certify_replay_chain.py) | Multi-step cert orchestration | post-soak needs freeze helpers |
+| [`compare_replay_equivalence.py`](../scripts/compare_replay_equivalence.py) | Live vs replay parity | archive analysis over live window |
+| [`cs_bridge.py`](../scripts/cs_bridge.py) | Thin shell to `cs-ingest` | Python callers only |
+| [`download_*.py`](../scripts/), [`fetch_candles.py`](../scripts/fetch_candles.py), [`yahoo_fetcher.py`](../scripts/yahoo_fetcher.py), [`build_nse_universe.py`](../scripts/build_nse_universe.py) | Data acquisition | market-data providers |
+| [`real_data_streamer.py`](../scripts/real_data_streamer.py) | Pipe bars into `live_engine` | stdout bridge for shell harnesses |
+| [`semantic_lint.py`](../scripts/semantic_lint.py) + lane2/3/4 scripts | CI policy tooling | GitHub Actions Python jobs |
+| [`verify_strategy_identity_fixtures.py`](../scripts/verify_strategy_identity_fixtures.py) | V-001 strategy identity | differential multi-parser report |
+| [`app.py`](../app.py) | Streamlit ops dashboard | UI |
+
+Operational support still in Python (not on the hot path): `symbol_health.py`,
+`storage_governor.py`, `cleanup_state_archive.py`, `schedule_live_run.py`,
+`probe_provider_propagation.py`.
 
 ---
 
 ## The Live Session Sequence
 
-A complete live session runs in this order:
-
 ```
-1. freeze_cohort_candles.py     — create frozen substrate (once per cohort)
-2. run_nse_cohort.py            — replay frozen substrate through observatory
-3. governor_refresher.py        — start governor (reads archive, writes multiplier)
-4. run_live_session.py          — warm buffers + incremental live barriers
-5. verify_cohort_baseline.py    — confirm archive integrity after session
+1. freeze_cohort_candles.py          — create frozen substrate (once per cohort)
+2. cs-ingest cohort                  — replay frozen substrate through observatory
+3. cs-ingest governor                — start governor (reads archive, writes multiplier)
+4. run_live_session.py               — warm buffers + incremental live barriers
+5. cs-ingest verify                  — confirm archive integrity after session
 ```
 
-The Rust binary (`cs-ingest`) runs inside steps 2 and 4 via subprocess.
-
----
-
-## The Rust Binary Commands
-
-```bash
-# Timeline fingerprint (verify frozen substrate loads)
-./target/release/cs-ingest timeline --batch-id 3 --cohort cohorts/batch_003.txt
-
-# End-to-end replay step
-./target/release/cs-ingest replay-step \
-  --batch-id 3 \
-  --cohort cohorts/batch_003.txt \
-  --archive state_archive/batches/batch_003/runs/replay_equiv \
-  --pca-weights observatory/provider_clustering_pca_weights.json \
-  --observatory ./target/release/examples/live_observatory
-
-# Chronology gap repair
-./target/release/cs-ingest repair \
-  --archive-root state_archive \
-  --batch-id 3 \
-  detect
-```
+Canonical health entry: [`validate_system.sh`](../scripts/validate_system.sh)
+(shell + Rust only for core checks).
 
 ---
 
 ## What Is NOT in the Live Path
 
-The following are in `scripts/research/` and do not run during a live session:
-
-- All mock-streamer / TRAP_POLICY scripts (old live_engine path)
-- All `physics_divergence.csv` readers (old schema)
-- All hardcoded log-file readers (`replay_1m_gen11.log`, `replay_5m_oos1.log`)
-- Ecology pipeline (`ecology_signature_atlas.py`, `ecology_transition_atlas.py`) — post-hoc analysis only
-- Policy competition engine, collapse forecaster, topology transition model
-
----
-
-## Governor State
-
-The governor writes to `analysis/real_live/governor_state.json`:
-
-```json
-{
-  "multiplier": 1.0,
-  "gate_open": true,
-  "reason": "NOMINAL (instability=0.02, corridor=0.08)",
-  "instability_rate": 0.02,
-  "corridor_rate": 0.08,
-  "window_size": 50,
-  "ts": 1779379319
-}
-```
-
-The live session reads this file. The governor runs as a separate process alongside the live session.
+- `scripts/research/` — no execution authority
+- Ecology atlases, policy competition, mock-streamer paths
+- Historical one-off refactor scripts at repo root
 
 ---
 

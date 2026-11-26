@@ -89,6 +89,11 @@ cp "${SCRIPT_DIR}/operator_bootstrap.sh" "${RELEASE_DIR}/scripts/" 2>/dev/null |
 cp "${SCRIPT_DIR}/verify_release_consistency.sh" "${RELEASE_DIR}/scripts/" 2>/dev/null || true
 cp "${SCRIPT_DIR}/verify_chronology_byte_fixtures.py" "${RELEASE_DIR}/scripts/" 2>/dev/null || true
 cp "${SCRIPT_DIR}/verify_strategy_identity_fixtures.py" "${RELEASE_DIR}/scripts/" 2>/dev/null || true
+# Prefer Rust verifier when packaging from a built tree
+if [ -x "${REPO_ROOT}/target/release/cs-ingest" ]; then
+    mkdir -p "${RELEASE_DIR}/bin"
+    cp "${REPO_ROOT}/target/release/cs-ingest" "${RELEASE_DIR}/bin/"
+fi
 
 # 4. Copy manifests & minimal docs
 echo "Copying documentation and manifests..."

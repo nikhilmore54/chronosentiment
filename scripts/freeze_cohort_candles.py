@@ -4,7 +4,7 @@ Freeze yfinance OHLC for a cohort batch into an immutable local substrate.
 
 Usage:
   python3 scripts/freeze_cohort_candles.py --batch-id 3
-  python3 scripts/run_nse_cohort.py --batch-id 3 --from-frozen
+  ./target/release/cs-ingest cohort --batch-id 3
 """
 
 from __future__ import annotations
