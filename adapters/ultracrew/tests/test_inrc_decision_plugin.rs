@@ -1,5 +1,8 @@
-use std::path::PathBuf;
 use coralys_core::{DecisionPlugin, DecisionProposal, ReasoningEngine};
+use coralys_moga::FitnessEvaluator;
+use rand::SeedableRng;
+use std::path::PathBuf;
+use ultracrew::inrc::optimization::InrcOptimizer;
 use ultracrew::inrc::{
     get_inrc_bks_entry, CoralysInrcEngine, InrcAction, InrcDecisionPlugin, InrcOptimizationConfig,
 };
@@ -118,4 +121,53 @@ fn test_inrc_decision_plugin_lifecycle() {
 
     let gap = next_state.optimality_gap(bks_entry.best_known_ub);
     println!("Optimality gap against BKS: {:.2}%", gap);
+}
+
+#[test]
+fn test_inverted_chromosome_properties() {
+    let base_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        .join("tests")
+        .join("data")
+        .join("n030w4");
+
+    let scenario_path = base_dir.join("Sc-n030w4.json");
+    let week_data_path = base_dir.join("WD-n030w4-0.json");
+    let history_path = base_dir.join("H0-n030w4-0.json");
+
+    let plugin = InrcDecisionPlugin::from_files(
+        &scenario_path,
+        &week_data_path,
+        &history_path,
+        0,
+    )
+    .expect("Plugin initialization failed");
+
+    let mut rng = rand::rngs::StdRng::seed_from_u64(12345);
+
+    // 1. Test Inverted Construction Feasibility
+    let optimizer = InrcOptimizer { context: plugin.context.clone() };
+    for _iter in 0..10 {
+        let mut genome = plugin.context.inverted.construct_feasible_genome(&mut rng);
+        optimizer.repair_hard_constraints(&mut genome);
+        let eval = optimizer.evaluate(&genome, &Default::default());
+        assert_eq!(eval.hc_coverage, 0, "Inverted constructor must have 0 coverage violations");
+        assert_eq!(eval.hc_skills, 0, "Inverted constructor must have 0 skill violations");
+        assert_eq!(eval.hc_one_shift_per_day, 0, "Inverted constructor must have 0 one-shift violations");
+    }
+
+    // 2. Test Day-Preserving Crossover Invariance
+    let mut p1 = plugin.context.inverted.construct_feasible_genome(&mut rng);
+    let mut p2 = plugin.context.inverted.construct_feasible_genome(&mut rng);
+    optimizer.repair_hard_constraints(&mut p1);
+    optimizer.repair_hard_constraints(&mut p2);
+    let (mut c1, mut c2) = plugin.context.inverted.day_preserving_crossover(&p1, &p2, &mut rng);
+    optimizer.repair_hard_constraints(&mut c1);
+    optimizer.repair_hard_constraints(&mut c2);
+
+    let eval_c1 = optimizer.evaluate(&c1, &Default::default());
+    let eval_c2 = optimizer.evaluate(&c2, &Default::default());
+    assert_eq!(eval_c1.hc_coverage, 0, "Crossover child 1 must maintain 0 coverage violations");
+    assert_eq!(eval_c1.hc_skills, 0, "Crossover child 1 must maintain 0 skill violations");
+    assert_eq!(eval_c2.hc_coverage, 0, "Crossover child 2 must maintain 0 coverage violations");
+    assert_eq!(eval_c2.hc_skills, 0, "Crossover child 2 must maintain 0 skill violations");
 }

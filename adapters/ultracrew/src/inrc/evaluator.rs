@@ -121,6 +121,9 @@ impl InrcOptimizer {
         }
 
         // 2. Clean forbidden shift type successions (HC4)
+        let days_map = [
+            "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday",
+        ];
         for n in 0..num_nurses {
             for d in 0..num_days {
                 if let Some(s) = self.get_assigned_shift(genome, n, d) {
@@ -128,9 +131,31 @@ impl InrcOptimizer {
                         let mut fixed = false;
                         for alt_s in 0..num_shifts {
                             if alt_s != s && !self.is_forbidden_succession(n, d, alt_s, genome) {
-                                self.set_assigned_shift(genome, n, d, Some(alt_s));
-                                fixed = true;
-                                break;
+                                let alt_shift_name = &self.context.shift_types[alt_s];
+                                let alt_day_name = days_map[d];
+                                let nurse_skills = &self.context.scenario.nurses[n].skills;
+                                let has_demanded_skill = self.context.week_data.requirements.iter().any(|req| {
+                                    if req.shift_type == *alt_shift_name {
+                                        let req_level = match alt_day_name {
+                                            "Monday" => &req.monday,
+                                            "Tuesday" => &req.tuesday,
+                                            "Wednesday" => &req.wednesday,
+                                            "Thursday" => &req.thursday,
+                                            "Friday" => &req.friday,
+                                            "Saturday" => &req.saturday,
+                                            "Sunday" => &req.sunday,
+                                            _ => unreachable!(),
+                                        };
+                                        (req_level.minimum > 0 || req_level.optimal > 0) && nurse_skills.contains(&req.skill)
+                                    } else {
+                                        false
+                                    }
+                                });
+                                if has_demanded_skill {
+                                    self.set_assigned_shift(genome, n, d, Some(alt_s));
+                                    fixed = true;
+                                    break;
+                                }
                             }
                         }
                         if !fixed {
@@ -142,9 +167,6 @@ impl InrcOptimizer {
         }
 
         // 3. Ejection chain repair for minimum coverage & skills (HC1 & HC2)
-        let days_map = [
-            "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday",
-        ];
 
         for _pass in 0..20 {
             let mut any_deficit = false;
@@ -787,7 +809,9 @@ impl InrcOptimizer {
 
         for s in 0..num_shifts {
             let shift_name = &self.context.shift_types[s];
-            let mut demands = Vec::new();
+            let mut min_demands = Vec::new();
+            let mut opt_demands = Vec::new();
+            let mut total_min = 0;
             for req in &self.context.week_data.requirements {
                 if req.shift_type == *shift_name {
                     let req_level = match day_name {
@@ -800,9 +824,12 @@ impl InrcOptimizer {
                         "Sunday" => &req.sunday,
                         _ => unreachable!(),
                     };
-                    let target = std::cmp::max(req_level.minimum, req_level.optimal);
-                    if target > 0 {
-                        demands.push((req.skill.clone(), target));
+                    if req_level.minimum > 0 {
+                        min_demands.push((req.skill.clone(), req_level.minimum));
+                        total_min += req_level.minimum;
+                    }
+                    if req_level.optimal > req_level.minimum {
+                        opt_demands.push((req.skill.clone(), req_level.optimal - req_level.minimum));
                     }
                 }
             }
@@ -817,21 +844,43 @@ impl InrcOptimizer {
             // Check HC2: Skills
             for &n in &available_nurses {
                 let nurse = &self.context.scenario.nurses[n];
-                let has_valid_skill = demands.iter().any(|(skill, _)| nurse.skills.contains(skill));
-                if !has_valid_skill && !demands.is_empty() {
+                let has_valid_skill = min_demands.iter().any(|(skill, _)| nurse.skills.contains(skill))
+                    || opt_demands.iter().any(|(skill, _)| nurse.skills.contains(skill));
+                if !has_valid_skill && (!min_demands.is_empty() || !opt_demands.is_empty()) {
                     return (false, 0);
                 }
             }
 
-            // Check HC1: Minimum Coverage & S8: Optimal Coverage
+            // Check HC1: Minimum Coverage & S8: Optimal Coverage via Two-Stage Matching
             let workers: Vec<(usize, Vec<String>)> = available_nurses
                 .iter()
                 .map(|&n| (n, self.context.scenario.nurses[n].skills.clone()))
                 .collect();
-            let matching = BipartiteMatchingSolver.assign(&workers, &demands);
-            let mut fulfilled_map = HashMap::new();
-            for (_, skill) in &matching.assignments {
-                *fulfilled_map.entry(skill.clone()).or_insert(0) += 1;
+
+            let min_matching = BipartiteMatchingSolver.assign(&workers, &min_demands);
+            if min_matching.cardinality < total_min {
+                return (false, 0);
+            }
+
+            let mut min_fulfilled_map = HashMap::new();
+            let mut matched_nurse_indices = std::collections::HashSet::new();
+            for (nurse_id, skill) in &min_matching.assignments {
+                *min_fulfilled_map.entry(skill.clone()).or_insert(0) += 1;
+                matched_nurse_indices.insert(*nurse_id);
+            }
+
+            let unassigned_workers: Vec<(usize, Vec<String>)> = workers
+                .iter()
+                .filter(|(n, _)| !matched_nurse_indices.contains(n))
+                .cloned()
+                .collect();
+
+            let mut opt_fulfilled_map = HashMap::new();
+            if !unassigned_workers.is_empty() && !opt_demands.is_empty() {
+                let opt_matching = BipartiteMatchingSolver.assign(&unassigned_workers, &opt_demands);
+                for (_, skill) in &opt_matching.assignments {
+                    *opt_fulfilled_map.entry(skill.clone()).or_insert(0) += 1;
+                }
             }
 
             for req in &self.context.week_data.requirements {
@@ -846,11 +895,11 @@ impl InrcOptimizer {
                         "Sunday" => &req.sunday,
                         _ => unreachable!(),
                     };
-                    let fulfilled = *fulfilled_map.get(&req.skill).unwrap_or(&0);
-                    if fulfilled < req_level.minimum {
-                        return (false, 0);
-                    } else if fulfilled < req_level.optimal {
-                        total_s8 += (req_level.optimal - fulfilled) as i32 * self.context.weights.optimal_coverage;
+                    let min_f = *min_fulfilled_map.get(&req.skill).unwrap_or(&0);
+                    let opt_f = *opt_fulfilled_map.get(&req.skill).unwrap_or(&0);
+                    let total_f = min_f + opt_f;
+                    if total_f < req_level.optimal {
+                        total_s8 += (req_level.optimal - total_f) as i32 * self.context.weights.optimal_coverage;
                     }
                 }
             }
@@ -1490,7 +1539,8 @@ impl FitnessEvaluator<InrcGenome> for InrcOptimizer {
             for s in 0..num_shifts {
                 let shift_name = &self.context.shift_types[s];
 
-                let mut demands = Vec::new();
+                let mut min_demands = Vec::new();
+                let mut opt_demands = Vec::new();
                 for req in &self.context.week_data.requirements {
                     if req.shift_type == *shift_name {
                         let req_level = match day_name {
@@ -1503,9 +1553,11 @@ impl FitnessEvaluator<InrcGenome> for InrcOptimizer {
                             "Sunday" => &req.sunday,
                             _ => unreachable!(),
                         };
-                        let target = std::cmp::max(req_level.minimum, req_level.optimal);
-                        if target > 0 {
-                            demands.push((req.skill.clone(), target));
+                        if req_level.minimum > 0 {
+                            min_demands.push((req.skill.clone(), req_level.minimum));
+                        }
+                        if req_level.optimal > req_level.minimum {
+                            opt_demands.push((req.skill.clone(), req_level.optimal - req_level.minimum));
                         }
                     }
                 }
@@ -1520,10 +1572,13 @@ impl FitnessEvaluator<InrcGenome> for InrcOptimizer {
                 // Check HC2: Skills
                 for &n in &available_nurses {
                     let nurse = &self.context.scenario.nurses[n];
-                    let has_valid_skill = demands
+                    let has_valid_skill = min_demands
                         .iter()
-                        .any(|(skill, _)| nurse.skills.contains(skill));
-                    if !has_valid_skill && !demands.is_empty() {
+                        .any(|(skill, _)| nurse.skills.contains(skill))
+                        || opt_demands
+                            .iter()
+                            .any(|(skill, _)| nurse.skills.contains(skill));
+                    if !has_valid_skill && (!min_demands.is_empty() || !opt_demands.is_empty()) {
                         hc_skills += weights.hard_constraint_violation as usize;
                         hard_violations.push(Violation {
                             constraint_id: "HC2_SkillRequirements".to_string(),
@@ -1540,18 +1595,32 @@ impl FitnessEvaluator<InrcGenome> for InrcOptimizer {
                     }
                 }
 
-                // Run AssignmentSolver for Optimal Matching
+                // Run AssignmentSolver via Two-Stage Matching (Stage 1: Minimum, Stage 2: Optimal)
                 let workers: Vec<(usize, Vec<String>)> = available_nurses
                     .iter()
                     .map(|&n| (n, self.context.scenario.nurses[n].skills.clone()))
                     .collect();
 
-                let matching = BipartiteMatchingSolver.assign(&workers, &demands);
+                let min_matching = BipartiteMatchingSolver.assign(&workers, &min_demands);
+                let mut min_fulfilled_map = HashMap::new();
+                let mut matched_nurse_indices = std::collections::HashSet::new();
+                for (nurse_id, skill) in &min_matching.assignments {
+                    *min_fulfilled_map.entry(skill.clone()).or_insert(0) += 1;
+                    matched_nurse_indices.insert(*nurse_id);
+                }
 
-                // Count fulfilled requirements by skill
-                let mut fulfilled_map = HashMap::new();
-                for (_, skill) in &matching.assignments {
-                    *fulfilled_map.entry(skill.clone()).or_insert(0) += 1;
+                let unassigned_workers: Vec<(usize, Vec<String>)> = workers
+                    .iter()
+                    .filter(|(n, _)| !matched_nurse_indices.contains(n))
+                    .cloned()
+                    .collect();
+
+                let mut opt_fulfilled_map = HashMap::new();
+                if !unassigned_workers.is_empty() && !opt_demands.is_empty() {
+                    let opt_matching = BipartiteMatchingSolver.assign(&unassigned_workers, &opt_demands);
+                    for (_, skill) in &opt_matching.assignments {
+                        *opt_fulfilled_map.entry(skill.clone()).or_insert(0) += 1;
+                    }
                 }
 
                 // Score coverage penalties
@@ -1568,9 +1637,9 @@ impl FitnessEvaluator<InrcGenome> for InrcOptimizer {
                             _ => unreachable!(),
                         };
 
-                        let fulfilled = *fulfilled_map.get(&req.skill).unwrap_or(&0);
-                        if fulfilled < req_level.minimum {
-                            let missing = req_level.minimum - fulfilled;
+                        let min_fulfilled = *min_fulfilled_map.get(&req.skill).unwrap_or(&0);
+                        if min_fulfilled < req_level.minimum {
+                            let missing = req_level.minimum - min_fulfilled;
                             let cost = missing * weights.hard_constraint_violation as usize;
                             hc_coverage += cost;
                             hard_violations.push(Violation {
@@ -1578,15 +1647,19 @@ impl FitnessEvaluator<InrcGenome> for InrcOptimizer {
                                 severity: "Hard".to_string(),
                                 value: Some(missing as f64),
                                 expected: req_level.minimum.to_string(),
-                                actual: fulfilled.to_string(),
+                                actual: min_fulfilled.to_string(),
                                 description: format!(
                                     "Shift {} skill {} on {} lacks {} nurses (minimum)",
                                     shift_name, req.skill, day_name, missing
                                 ),
                                 penalty: cost as i32,
                             });
-                        } else if fulfilled < req_level.optimal {
-                            let missing = req_level.optimal - fulfilled;
+                        }
+
+                        let opt_fulfilled = *opt_fulfilled_map.get(&req.skill).unwrap_or(&0);
+                        let total_fulfilled = min_fulfilled + opt_fulfilled;
+                        if total_fulfilled < req_level.optimal {
+                            let missing = req_level.optimal - total_fulfilled;
                             let cost = missing as i32 * weights.optimal_coverage;
                             optimal_coverage_penalty += cost;
                             soft_violations.push(Violation {
@@ -1594,7 +1667,7 @@ impl FitnessEvaluator<InrcGenome> for InrcOptimizer {
                                 severity: "Soft".to_string(),
                                 value: Some(missing as f64),
                                 expected: req_level.optimal.to_string(),
-                                actual: fulfilled.to_string(),
+                                actual: total_fulfilled.to_string(),
                                 description: format!(
                                     "Shift {} skill {} on {} lacks {} nurses (optimal)",
                                     shift_name, req.skill, day_name, missing

@@ -33,8 +33,9 @@ pub fn export_inrc_solution(
             let shift_name = &context.shift_types[s];
             let day_name = days_map[d];
 
-            // Get all demands for this shift (only minimum for hard constraints)
-            let mut demands = Vec::new();
+            // Get all demands for this shift (minimum first, then optimal increment)
+            let mut min_demands = Vec::new();
+            let mut opt_demands = Vec::new();
             for req in &context.week_data.requirements {
                 if req.shift_type == *shift_name {
                     let req_level = match day_name {
@@ -47,9 +48,11 @@ pub fn export_inrc_solution(
                         "Sun" => &req.sunday,
                         _ => unreachable!(),
                     };
-                    let target = std::cmp::max(req_level.minimum, req_level.optimal);
-                    if target > 0 {
-                        demands.push((&req.skill, target));
+                    if req_level.minimum > 0 {
+                        min_demands.push((req.skill.clone(), req_level.minimum));
+                    }
+                    if req_level.optimal > req_level.minimum {
+                        opt_demands.push((req.skill.clone(), req_level.optimal - req_level.minimum));
                     }
                 }
             }
@@ -67,15 +70,28 @@ pub fn export_inrc_solution(
                 .map(|&n| (n, context.scenario.nurses[n].skills.clone()))
                 .collect();
 
-            let solver_demands: Vec<(String, usize)> =
-                demands.iter().map(|(s, c)| ((*s).clone(), *c)).collect();
-
-            let matching =
-                coralys_matching::BipartiteMatchingSolver.assign(&workers, &solver_demands);
+            let min_matching =
+                coralys_matching::BipartiteMatchingSolver.assign(&workers, &min_demands);
 
             let mut nurse_to_skill = std::collections::HashMap::new();
-            for (n, skill) in &matching.assignments {
+            let mut matched_nurse_indices = std::collections::HashSet::new();
+            for (n, skill) in &min_matching.assignments {
                 nurse_to_skill.insert(*n, skill.clone());
+                matched_nurse_indices.insert(*n);
+            }
+
+            let unassigned_workers: Vec<(usize, Vec<String>)> = workers
+                .iter()
+                .filter(|(n, _)| !matched_nurse_indices.contains(n))
+                .cloned()
+                .collect();
+
+            if !unassigned_workers.is_empty() && !opt_demands.is_empty() {
+                let opt_matching =
+                    coralys_matching::BipartiteMatchingSolver.assign(&unassigned_workers, &opt_demands);
+                for (n, skill) in &opt_matching.assignments {
+                    nurse_to_skill.insert(*n, skill.clone());
+                }
             }
 
             // For leftovers (unmatched nurses), assign them to their first skill

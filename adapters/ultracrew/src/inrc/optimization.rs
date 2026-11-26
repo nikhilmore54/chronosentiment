@@ -1,7 +1,7 @@
 use coralys_moga::traits::{CrossoverOperator, Evaluated, Genome, GenomeFactory, MutationOperator};
-use rand::Rng;
 use std::sync::Arc;
 
+use super::inverted::InvertedContext;
 use super::models::{InrcHistory, InrcScenario, InrcWeekData};
 use crate::ecology::WorkforceEcology;
 
@@ -10,6 +10,7 @@ pub struct InrcContext {
     pub week_data: Arc<InrcWeekData>,
     pub history: Arc<InrcHistory>,
     pub ecology: WorkforceEcology,
+    pub inverted: Arc<InvertedContext>,
     pub num_nurses: usize,
     pub num_days: usize,          // usually 7 for a week
     pub shift_types: Vec<String>, // ordered list of shift types
@@ -27,12 +28,14 @@ impl InrcContext {
         let num_days = 7;
         let shift_types: Vec<String> = scenario.shift_types.iter().map(|s| s.id.clone()).collect();
         let weights = super::models::ObjectiveWeights::default();
+        let inverted = Arc::new(InvertedContext::new(&scenario, &week_data, &history));
 
         Self {
             scenario: Arc::new(scenario),
             week_data: Arc::new(week_data),
             history: Arc::new(history),
             ecology,
+            inverted,
             num_nurses,
             num_days,
             shift_types,
@@ -111,58 +114,16 @@ use rand::rngs::StdRng;
 
 impl GenomeFactory<InrcGenome> for InrcOptimizer {
     fn create(&self, rng: &mut StdRng) -> InrcGenome {
-        let num_nurses = self.context.num_nurses;
-        let num_days = self.context.num_days;
-        let num_shifts = self.context.shift_types.len();
-        let size = num_nurses * num_days * num_shifts;
-        let mut bits = vec![false; size];
-
-        // Initialize with at most one shift per nurse per day (~70% work density)
-        for n in 0..num_nurses {
-            for d in 0..num_days {
-                if rng.gen_bool(0.70) {
-                    let s = rng.gen_range(0..num_shifts);
-                    let idx = n * (num_days * num_shifts) + d * num_shifts + s;
-                    bits[idx] = true;
-                }
-            }
-        }
-
-        InrcGenome { bits }
+        let mut genome = self.context.inverted.construct_feasible_genome(rng);
+        self.repair_hard_constraints(&mut genome);
+        genome
     }
 }
 
 impl MutationOperator<InrcGenome> for InrcOptimizer {
     fn mutate(&self, genome: &mut InrcGenome, rng: &mut StdRng) {
-        let num_nurses = self.context.num_nurses;
-        let num_days = self.context.num_days;
-        let num_shifts = self.context.shift_types.len();
-
-        // 1. Domain-aware shift reassignment: pick a nurse and day, reassign to another shift or off
-        let moves = rng.gen_range(2..=5);
-        for _ in 0..moves {
-            let n = rng.gen_range(0..num_nurses);
-            let d = rng.gen_range(0..num_days);
-
-            for s in 0..num_shifts {
-                let idx = n * (num_days * num_shifts) + d * num_shifts + s;
-                genome.bits[idx] = false;
-            }
-
-            if rng.gen_bool(0.70) {
-                let s = rng.gen_range(0..num_shifts);
-                let idx = n * (num_days * num_shifts) + d * num_shifts + s;
-                genome.bits[idx] = true;
-            }
-        }
-
-        // 2. Low-rate point bit-flips for exploration
-        let rate = 1.0 / (genome.bits.len() as f64).max(1.0);
-        for i in 0..genome.bits.len() {
-            if rng.gen_bool(rate) {
-                genome.bits[i] = !genome.bits[i];
-            }
-        }
+        self.context.inverted.inverted_mutate(genome, rng);
+        self.repair_hard_constraints(genome);
     }
 }
 
@@ -173,21 +134,10 @@ impl CrossoverOperator<InrcGenome> for InrcOptimizer {
         parent_b: &InrcGenome,
         rng: &mut StdRng,
     ) -> (InrcGenome, InrcGenome) {
-        let mut child_a_bits = Vec::with_capacity(parent_a.bits.len());
-        let mut child_b_bits = Vec::with_capacity(parent_a.bits.len());
-
-        for i in 0..parent_a.bits.len() {
-            if rng.gen_bool(0.5) {
-                child_a_bits.push(parent_a.bits[i]);
-                child_b_bits.push(parent_b.bits[i]);
-            } else {
-                child_a_bits.push(parent_b.bits[i]);
-                child_b_bits.push(parent_a.bits[i]);
-            }
-        }
-        (
-            InrcGenome { bits: child_a_bits },
-            InrcGenome { bits: child_b_bits },
-        )
+        let (mut child_a, mut child_b) =
+            self.context.inverted.day_preserving_crossover(parent_a, parent_b, rng);
+        self.repair_hard_constraints(&mut child_a);
+        self.repair_hard_constraints(&mut child_b);
+        (child_a, child_b)
     }
 }

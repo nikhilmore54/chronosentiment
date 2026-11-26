@@ -5,6 +5,7 @@ pub mod decision_plugin;
 pub mod evaluator;
 pub mod exporter;
 pub mod history;
+pub mod inverted;
 pub mod models;
 pub mod observer;
 pub mod optimization;
