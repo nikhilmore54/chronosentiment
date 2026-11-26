@@ -5,6 +5,14 @@ use super::inverted::InvertedContext;
 use super::models::{InrcHistory, InrcScenario, InrcWeekData};
 use crate::ecology::WorkforceEcology;
 
+#[derive(Clone, Debug, Default)]
+pub struct FastShiftDemand {
+    pub total_min: usize,
+    pub min_slots: Vec<u8>,
+    pub opt_slots: Vec<u8>,
+    pub opt_demands_by_skill: Vec<usize>,
+}
+
 pub struct InrcContext {
     pub scenario: Arc<InrcScenario>,
     pub week_data: Arc<InrcWeekData>,
@@ -14,6 +22,9 @@ pub struct InrcContext {
     pub num_nurses: usize,
     pub num_days: usize,          // usually 7 for a week
     pub shift_types: Vec<String>, // ordered list of shift types
+    pub skill_names: Vec<String>, // ordered list of skill names
+    pub nurse_skill_masks: Vec<u8>, // skill bitmask per nurse
+    pub fast_shift_demands: Vec<Vec<FastShiftDemand>>, // [d][s]
     pub weights: super::models::ObjectiveWeights,
 }
 
@@ -30,6 +41,67 @@ impl InrcContext {
         let weights = super::models::ObjectiveWeights::default();
         let inverted = Arc::new(InvertedContext::new(&scenario, &week_data, &history));
 
+        let skill_names: Vec<String> = scenario.skills.clone();
+        let nurse_skill_masks: Vec<u8> = scenario
+            .nurses
+            .iter()
+            .map(|n| {
+                let mut mask = 0u8;
+                for sk in &n.skills {
+                    if let Some(pos) = skill_names.iter().position(|s| s == sk) {
+                        mask |= 1 << pos;
+                    }
+                }
+                mask
+            })
+            .collect();
+
+        let num_shifts = shift_types.len();
+        let mut fast_shift_demands: Vec<Vec<FastShiftDemand>> =
+            vec![vec![FastShiftDemand::default(); num_shifts]; num_days];
+
+        for d in 0..num_days {
+            for s in 0..num_shifts {
+                let s_name = &shift_types[s];
+                let mut min_slots = Vec::new();
+                let mut opt_slots = Vec::new();
+                let mut opt_demands_by_skill = vec![0usize; skill_names.len()];
+
+                for req in &week_data.requirements {
+                    if req.shift_type == *s_name {
+                        if let Some(skill_idx) = skill_names.iter().position(|sk| sk == &req.skill) {
+                            let req_level = match d {
+                                0 => &req.monday,
+                                1 => &req.tuesday,
+                                2 => &req.wednesday,
+                                3 => &req.thursday,
+                                4 => &req.friday,
+                                5 => &req.saturday,
+                                6 => &req.sunday,
+                                _ => unreachable!(),
+                            };
+
+                            for _ in 0..req_level.minimum {
+                                min_slots.push(skill_idx as u8);
+                            }
+                            let opt_extra = req_level.optimal.saturating_sub(req_level.minimum);
+                            for _ in 0..opt_extra {
+                                opt_slots.push(skill_idx as u8);
+                            }
+                            opt_demands_by_skill[skill_idx] = req_level.optimal;
+                        }
+                    }
+                }
+
+                fast_shift_demands[d][s] = FastShiftDemand {
+                    total_min: min_slots.len(),
+                    min_slots,
+                    opt_slots,
+                    opt_demands_by_skill,
+                };
+            }
+        }
+
         Self {
             scenario: Arc::new(scenario),
             week_data: Arc::new(week_data),
@@ -39,6 +111,9 @@ impl InrcContext {
             num_nurses,
             num_days,
             shift_types,
+            skill_names,
+            nurse_skill_masks,
+            fast_shift_demands,
             weights,
         }
     }

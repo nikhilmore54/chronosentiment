@@ -6,6 +6,137 @@ use coralys_moga::traits::FitnessEvaluator;
 use rand::rngs::StdRng;
 use std::collections::HashMap;
 
+#[inline(always)]
+fn dfs_kuhn(
+    w: usize,
+    demand_slots: &[u8],
+    worker_mask: u8,
+    match_slot: &mut [i8],
+    match_worker: &mut [i8],
+    visited: &mut [bool],
+    worker_masks: &[u8],
+) -> bool {
+    for (slot_idx, &req_skill) in demand_slots.iter().enumerate() {
+        if (worker_mask & (1 << req_skill)) != 0 && !visited[slot_idx] {
+            visited[slot_idx] = true;
+            let current_matched_w = match_slot[slot_idx];
+            if current_matched_w < 0
+                || dfs_kuhn(
+                    current_matched_w as usize,
+                    demand_slots,
+                    worker_masks[current_matched_w as usize],
+                    match_slot,
+                    match_worker,
+                    visited,
+                    worker_masks,
+                )
+            {
+                match_slot[slot_idx] = w as i8;
+                match_worker[w] = slot_idx as i8;
+                return true;
+            }
+        }
+    }
+    false
+}
+
+#[inline(always)]
+pub fn fast_eval_shift_coverage(
+    demand: &super::optimization::FastShiftDemand,
+    worker_skill_masks: &[u8],
+    optimal_coverage_weight: i32,
+) -> (bool, i32) {
+    let num_workers = worker_skill_masks.len();
+    if num_workers < demand.total_min {
+        return (false, 0);
+    }
+    if demand.total_min == 0 && demand.opt_slots.is_empty() {
+        return (true, 0);
+    }
+
+    const MAX_SLOTS: usize = 64;
+    const MAX_WORKERS: usize = 64;
+
+    let num_min = demand.min_slots.len();
+    let num_opt = demand.opt_slots.len();
+
+    if num_min > MAX_SLOTS || num_opt > MAX_SLOTS || num_workers > MAX_WORKERS {
+        return (false, 0);
+    }
+
+    // Stage 1: Match Mandatory Minimums
+    let mut match_slot = [-1i8; MAX_SLOTS];
+    let mut match_worker = [-1i8; MAX_WORKERS];
+    let mut cardinality_min = 0;
+
+    for w in 0..num_workers {
+        let mut visited = [false; MAX_SLOTS];
+        if dfs_kuhn(
+            w,
+            &demand.min_slots,
+            worker_skill_masks[w],
+            &mut match_slot[0..num_min],
+            &mut match_worker,
+            &mut visited[0..num_min],
+            worker_skill_masks,
+        ) {
+            cardinality_min += 1;
+        }
+    }
+
+    if cardinality_min < demand.total_min {
+        return (false, 0);
+    }
+
+    // Stage 2: Match Optimal Increments using only workers not assigned in Stage 1
+    let mut opt_match_slot = [-1i8; MAX_SLOTS];
+    let mut opt_match_worker = [-1i8; MAX_WORKERS];
+    if num_opt > 0 {
+        for w in 0..num_workers {
+            if match_worker[w] >= 0 {
+                continue;
+            }
+            let mut visited = [false; MAX_SLOTS];
+            dfs_kuhn(
+                w,
+                &demand.opt_slots,
+                worker_skill_masks[w],
+                &mut opt_match_slot[0..num_opt],
+                &mut opt_match_worker,
+                &mut visited[0..num_opt],
+                worker_skill_masks,
+            );
+        }
+    }
+
+    let mut fulfilled = [0usize; 8];
+    for s in 0..num_min {
+        if match_slot[s] >= 0 {
+            let skill_idx = demand.min_slots[s] as usize;
+            if skill_idx < 8 {
+                fulfilled[skill_idx] += 1;
+            }
+        }
+    }
+    for s in 0..num_opt {
+        if opt_match_slot[s] >= 0 {
+            let skill_idx = demand.opt_slots[s] as usize;
+            if skill_idx < 8 {
+                fulfilled[skill_idx] += 1;
+            }
+        }
+    }
+
+    let mut total_s8 = 0i32;
+    for (k, &opt_needed) in demand.opt_demands_by_skill.iter().enumerate() {
+        if k < 8 && fulfilled[k] < opt_needed {
+            total_s8 += (opt_needed - fulfilled[k]) as i32 * optimal_coverage_weight;
+        }
+    }
+
+    (true, total_s8)
+}
+
 impl InrcOptimizer {
     pub fn get_bit(&self, genome: &InrcGenome, nurse: usize, day: usize, shift: usize) -> bool {
         let index = nurse * (self.context.num_days * self.context.shift_types.len())
@@ -680,6 +811,10 @@ impl InrcOptimizer {
                 penalty += (contract.min_consecutive_working_days - current_streak) as i32
                     * weights.consecutive_working_days;
             }
+            // Sunday Streak Saturation Lookahead: penalize nurses at max consecutive days on Sunday to prevent Monday lockouts
+            if current_streak >= contract.max_consecutive_working_days {
+                penalty += weights.consecutive_working_days;
+            }
             if let Some(ref last) = current_last_shift {
                 if let Some(s_type) = self
                     .context
@@ -803,106 +938,30 @@ impl InrcOptimizer {
     pub fn eval_day_coverage(&self, genome: &InrcGenome, d: usize) -> (bool, i32) {
         let num_nurses = self.context.num_nurses;
         let num_shifts = self.context.shift_types.len();
-        let days_map = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
-        let day_name = days_map[d];
         let mut total_s8 = 0i32;
 
         for s in 0..num_shifts {
-            let shift_name = &self.context.shift_types[s];
-            let mut min_demands = Vec::new();
-            let mut opt_demands = Vec::new();
-            let mut total_min = 0;
-            for req in &self.context.week_data.requirements {
-                if req.shift_type == *shift_name {
-                    let req_level = match day_name {
-                        "Monday" => &req.monday,
-                        "Tuesday" => &req.tuesday,
-                        "Wednesday" => &req.wednesday,
-                        "Thursday" => &req.thursday,
-                        "Friday" => &req.friday,
-                        "Saturday" => &req.saturday,
-                        "Sunday" => &req.sunday,
-                        _ => unreachable!(),
-                    };
-                    if req_level.minimum > 0 {
-                        min_demands.push((req.skill.clone(), req_level.minimum));
-                        total_min += req_level.minimum;
-                    }
-                    if req_level.optimal > req_level.minimum {
-                        opt_demands.push((req.skill.clone(), req_level.optimal - req_level.minimum));
-                    }
-                }
-            }
-
-            let mut available_nurses = Vec::new();
+            let demand = &self.context.fast_shift_demands[d][s];
+            let mut worker_masks = [0u8; 64];
+            let mut worker_count = 0;
             for n in 0..num_nurses {
                 if self.get_bit(genome, n, d, s) {
-                    available_nurses.push(n);
-                }
-            }
-
-            // Check HC2: Skills
-            for &n in &available_nurses {
-                let nurse = &self.context.scenario.nurses[n];
-                let has_valid_skill = min_demands.iter().any(|(skill, _)| nurse.skills.contains(skill))
-                    || opt_demands.iter().any(|(skill, _)| nurse.skills.contains(skill));
-                if !has_valid_skill && (!min_demands.is_empty() || !opt_demands.is_empty()) {
-                    return (false, 0);
-                }
-            }
-
-            // Check HC1: Minimum Coverage & S8: Optimal Coverage via Two-Stage Matching
-            let workers: Vec<(usize, Vec<String>)> = available_nurses
-                .iter()
-                .map(|&n| (n, self.context.scenario.nurses[n].skills.clone()))
-                .collect();
-
-            let min_matching = BipartiteMatchingSolver.assign(&workers, &min_demands);
-            if min_matching.cardinality < total_min {
-                return (false, 0);
-            }
-
-            let mut min_fulfilled_map = HashMap::new();
-            let mut matched_nurse_indices = std::collections::HashSet::new();
-            for (nurse_id, skill) in &min_matching.assignments {
-                *min_fulfilled_map.entry(skill.clone()).or_insert(0) += 1;
-                matched_nurse_indices.insert(*nurse_id);
-            }
-
-            let unassigned_workers: Vec<(usize, Vec<String>)> = workers
-                .iter()
-                .filter(|(n, _)| !matched_nurse_indices.contains(n))
-                .cloned()
-                .collect();
-
-            let mut opt_fulfilled_map = HashMap::new();
-            if !unassigned_workers.is_empty() && !opt_demands.is_empty() {
-                let opt_matching = BipartiteMatchingSolver.assign(&unassigned_workers, &opt_demands);
-                for (_, skill) in &opt_matching.assignments {
-                    *opt_fulfilled_map.entry(skill.clone()).or_insert(0) += 1;
-                }
-            }
-
-            for req in &self.context.week_data.requirements {
-                if req.shift_type == *shift_name {
-                    let req_level = match day_name {
-                        "Monday" => &req.monday,
-                        "Tuesday" => &req.tuesday,
-                        "Wednesday" => &req.wednesday,
-                        "Thursday" => &req.thursday,
-                        "Friday" => &req.friday,
-                        "Saturday" => &req.saturday,
-                        "Sunday" => &req.sunday,
-                        _ => unreachable!(),
-                    };
-                    let min_f = *min_fulfilled_map.get(&req.skill).unwrap_or(&0);
-                    let opt_f = *opt_fulfilled_map.get(&req.skill).unwrap_or(&0);
-                    let total_f = min_f + opt_f;
-                    if total_f < req_level.optimal {
-                        total_s8 += (req_level.optimal - total_f) as i32 * self.context.weights.optimal_coverage;
+                    if worker_count < 64 {
+                        worker_masks[worker_count] = self.context.nurse_skill_masks[n];
+                        worker_count += 1;
                     }
                 }
             }
+
+            let (feas, s8) = fast_eval_shift_coverage(
+                demand,
+                &worker_masks[0..worker_count],
+                self.context.weights.optimal_coverage,
+            );
+            if !feas {
+                return (false, 0);
+            }
+            total_s8 += s8;
         }
         (true, total_s8)
     }
@@ -1085,6 +1144,54 @@ impl<'a> AnnealingDomain<InrcGenome> for InrcAnnealingDomain<'a> {
         let op_choice = rng_core.gen_range(0..100);
 
         if op_choice < 25 {
+            // Operator 5: Targeted Weekend Kempe Harmonizer (Directly eliminates S6 incomplete weekends)
+            let mut sat_only = Vec::new();
+            let mut sun_only = Vec::new();
+
+            for n in 0..num_nurses {
+                let sat = self.optimizer.get_assigned_shift(current, n, 5);
+                let sun = self.optimizer.get_assigned_shift(current, n, 6);
+                if sat.is_some() && sun.is_none() {
+                    sat_only.push((n, sat.unwrap()));
+                } else if sat.is_none() && sun.is_some() {
+                    sun_only.push((n, sun.unwrap()));
+                }
+            }
+
+            if !sat_only.is_empty() && !sun_only.is_empty() {
+                let u_idx = rng_core.gen_range(0..sat_only.len());
+                let v_idx = rng_core.gen_range(0..sun_only.len());
+                let (u, s_sat) = sat_only[u_idx];
+                let (v, s_sun) = sun_only[v_idx];
+
+                let u_can_work_sun = self.nurse_can_work[u][6][s_sun];
+                let u_succ_ok = !self.optimizer.context.inverted.forbidden_matrix[s_sat][s_sun];
+
+                if u_can_work_sun && u_succ_ok {
+                    let mut cand = current.clone();
+                    let old_p_u = self.optimizer.eval_nurse_soft_penalty(current, u);
+                    let old_p_v = self.optimizer.eval_nurse_soft_penalty(current, v);
+
+                    self.optimizer.set_assigned_shift(&mut cand, v, 6, None);
+                    self.optimizer.set_assigned_shift(&mut cand, u, 6, Some(s_sun));
+
+                    if !self.optimizer.nurse_has_forbidden_succession(&cand, u)
+                        && !self.optimizer.nurse_has_forbidden_succession(&cand, v)
+                    {
+                        let (new_feas, new_s8) = self.optimizer.eval_days_coverage(&cand, &[6]);
+                        if new_feas {
+                            let (_, old_s8) = self.optimizer.eval_days_coverage(current, &[6]);
+                            let new_p_u = self.optimizer.eval_nurse_soft_penalty(&cand, u);
+                            let new_p_v = self.optimizer.eval_nurse_soft_penalty(&cand, v);
+                            let delta = (new_p_u + new_p_v) - (old_p_u + old_p_v) + (new_s8 - old_s8);
+                            return Some((cand, delta as f64));
+                        }
+                    }
+                }
+            }
+        }
+
+        if op_choice < 50 {
             // Operator 1: 3-Day Contiguous Streak-Repair / Stub Ejection & Consolidation (S2/S4)
             let n = rng_core.gen_range(0..num_nurses);
             let mut stub_d = None;
@@ -1146,7 +1253,7 @@ impl<'a> AnnealingDomain<InrcGenome> for InrcAnnealingDomain<'a> {
             return None;
         }
 
-        if op_choice < 65 {
+        if op_choice < 75 {
             // Operator 2: Multi-Day Kempe-Chain Workload Transfer (S1)
             let mut over_nurses = Vec::new();
             let mut under_nurses = Vec::new();

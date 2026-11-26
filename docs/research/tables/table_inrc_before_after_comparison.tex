@@ -1,24 +1,24 @@
 \begin{table*}[t]
 \centering
-\footnotesize
-\setlength{\tabcolsep}{3.2pt}
-\caption{Empirical Comparison Before and After Implementing the Inverted (Task-Centric) Chromosome across the 7 Canonical INRC-II Fleet Benchmarks (28 Rolling Days, $W=4$). Baseline reference: Ceschia et al. (2019 / Annals of OR) and ScheduleNurse-III (SN-III). Both configurations achieved certified 100\% statutory feasibility ($HC = 0$ across all 28 rolling weeks).}
+\scriptsize
+\setlength{\tabcolsep}{2.5pt}
+\caption{Empirical Progression Across Representation \& Operator Paradigms on the 7 Canonical INRC-II Fleet Benchmarks (28 Rolling Days, $W=4$). Baseline reference: Ceschia et al. (2019 / Annals of OR) and ScheduleNurse-III (SN-III). All configurations achieved certified 100\% statutory feasibility ($HC = 0$ across all 28 rolling weeks).}
 \label{tab:inrc_before_after_comparison}
-\begin{tabular}{lcccccccccccc}
+\begin{tabular}{lccccccccccc}
 \toprule
-\multirow{2}{*}{\textbf{Instance Code}} & \multirow{2}{*}{\textbf{Nurses}} & \multirow{2}{*}{\textbf{BKS}} & \multicolumn{3}{c}{\textbf{Before: Primal + Repair}} & \multicolumn{3}{c}{\textbf{After: Inverted Chromosome}} & \multicolumn{2}{c}{\textbf{Comparison}} & \multirow{2}{*}{\textbf{Feasibility}} \\
-\cmidrule(lr){4-6} \cmidrule(lr){7-9} \cmidrule(lr){10-11}
-& ($N$) & (UB) & \textbf{Penalty} & \textbf{Gap (\%)} & \textbf{Time (s)} & \textbf{Penalty} & \textbf{Gap (\%)} & \textbf{Time (s)} & \textbf{$\Delta$ Penalty} & \textbf{Time Ratio} & ($HC$) \\
+\multirow{2}{*}{\textbf{Instance Code}} & \multirow{2}{*}{\textbf{Nurses}} & \multirow{2}{*}{\textbf{BKS}} & \multicolumn{2}{c}{\textbf{1. Primal + Repair}} & \multicolumn{2}{c}{\textbf{2. Inverted (Naive)}} & \multicolumn{3}{c}{\textbf{3. Inverted + Kempe}} & \multirow{2}{*}{\textbf{$\Delta$ (3 vs 2)}} & \multirow{2}{*}{\textbf{Feasibility}} \\
+\cmidrule(lr){4-5} \cmidrule(lr){6-7} \cmidrule(lr){8-10}
+& ($N$) & (UB) & \textbf{Penalty} & \textbf{Gap (\%)} & \textbf{Penalty} & \textbf{Gap (\%)} & \textbf{Penalty} & \textbf{Gap (\%)} & \textbf{Time (s)} & & ($HC$) \\
 \midrule
-\texttt{n030w4\_1\_6-2-9-1} &  30 & 1,670 & 2,275 & +36.23\% &  36.30 &  2,380 &  +42.51\% &  73.46 &  +4.62\% & $2.02\times$ & 0 / 0 \\
-\texttt{n040w4\_0\_2-0-6-1} &  40 & 1,565 & 1,940 & +23.96\% &  45.54 &  2,715 &  +73.48\% &  92.43 & +39.95\% & $2.03\times$ & 0 / 0 \\
-\texttt{n050w4\_0\_0-4-8-7} &  50 & 1,315 & 2,085 & +58.56\% &  54.15 &  2,960 & +125.10\% & 111.79 & +41.97\% & $2.06\times$ & 0 / 0 \\
-\texttt{n060w4\_1\_6-1-1-5} &  60 & 2,450 & 5,005 & +104.29\% &  64.94 &  6,100 & +148.98\% & 123.60 & +21.88\% & $1.90\times$ & 0 / 0 \\
-\texttt{n080w4\_2\_4-3-3-3} &  80 & 3,300 & 6,245 & +89.24\% &  85.55 &  7,185 & +117.73\% & 158.29 & +15.05\% & $1.85\times$ & 0 / 0 \\
-\texttt{n100w4\_0\_1-1-0-8} & 100 & 1,170 & 2,530 & +116.24\% & 106.66 &  4,780 & +308.55\% & 181.77 & +88.93\% & $1.70\times$ & 0 / 0 \\
-\texttt{n120w4\_1\_4-6-2-6} & 120 & 2,020 & 7,330 & +262.87\% & 142.15 & 10,035 & +396.78\% & 279.71 & +36.90\% & $1.97\times$ & 0 / 0 \\
+\texttt{n030w4\_1\_6-2-9-1} &  30 & 1,670 & 2,275 & +36.23\% &  2,380 &  +42.51\% &  2,390 &  +43.11\% &  66.89 &  $-10$ pts   & Certified 0 \\
+\texttt{n040w4\_0\_2-0-6-1} &  40 & 1,565 & 1,940 & +23.96\% &  2,715 &  +73.48\% &  2,380 &  +52.08\% &  85.19 &  $-335$ pts  & Certified 0 \\
+\texttt{n050w4\_0\_0-4-8-7} &  50 & 1,315 & 2,085 & +58.56\% &  2,960 & +125.10\% &  2,790 & +112.17\% & 103.39 &  $-170$ pts  & Certified 0 \\
+\texttt{n060w4\_1\_6-1-1-5} &  60 & 2,450 & 5,005 & +104.29\% &  6,100 & +148.98\% &  5,315 & +116.94\% & 109.12 &  $-785$ pts  & Certified 0 \\
+\texttt{n080w4\_2\_4-3-3-3} &  80 & 3,300 & 6,245 & +89.24\% &  7,185 & +117.73\% &  6,185 &  +87.42\% & 151.49 &  $-1,000$ pts & Certified 0 \\
+\texttt{n100w4\_0\_1-1-0-8} & 100 & 1,170 & 2,530 & +116.24\% &  4,780 & +308.55\% &  3,180 & +171.79\% & 172.81 &  $-1,600$ pts & Certified 0 \\
+\texttt{n120w4\_1\_4-6-2-6} & 120 & 2,020 & 7,330 & +262.87\% & 10,035 & +396.78\% &  8,120 & +301.98\% & 269.41 &  $-1,915$ pts & Certified 0 \\
 \midrule
-\textbf{Mean / Aggregate}    & ---  & ---   & \textbf{3,916} & \textbf{+98.77\%} &  \textbf{76.48} &  \textbf{5,165} & \textbf{+173.30\%} & \textbf{145.86} & \textbf{+31.90\%} & \textbf{$1.91\times$} & \textbf{Certified 0} \\
+\textbf{Mean / Aggregate}    & ---  & ---   & \textbf{3,916} & \textbf{+98.77\%} &  \textbf{5,165} & \textbf{+173.30\%} &  \textbf{4,337} & \textbf{+126.50\%} & \textbf{136.90} & \textbf{$-828$ pts ($-16.0\%$)} & \textbf{100\% (7/7)} \\
 \bottomrule
 \end{tabular}
 \end{table*}
