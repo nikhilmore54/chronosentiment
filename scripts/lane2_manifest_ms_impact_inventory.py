@@ -24,7 +24,7 @@ INVENTORY_VERSION = "1.0.0"
 MS_THRESHOLD = 1_000_000_000_000
 
 SCAN_ROOTS = (
-    REPO_ROOT / "core" / "chronology",
+    REPO_ROOT / "infrastructure" / "core" / "chronology",
     REPO_ROOT / "fixtures" / "chronology_serialization",
 )
 
@@ -35,12 +35,6 @@ MIGRATION_FIXTURES = (
 )
 
 CONSUMER_SURFACES: list[dict[str, str]] = [
-    {
-        "surface": "scripts/rebuild_catalog.py",
-        "observation": "Uses start_ts > 1e11 heuristic to choose ms vs seconds for catalog dates.",
-        "bounds_sensitive": "yes",
-        "replay_coupling": "catalog interpretation only; not replay hash",
-    },
     {
         "surface": "scripts/run_tier1_observability_demo.py",
         "observation": "Records capture_start/end in provenance as capture_start_ms without dialect gate.",

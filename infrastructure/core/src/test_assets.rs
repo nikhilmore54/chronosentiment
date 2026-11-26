@@ -24,7 +24,8 @@ fn invalid_path(message: impl Into<String>) -> TestAssetsPathError {
 ///
 /// Precedence:
 /// 1. `TEST_ASSETS_PATH` when set and non-empty
-/// 2. `{CARGO_MANIFEST_DIR}/../test_assets` from the `chronosentiment_core` crate
+/// 2. `{CARGO_MANIFEST_DIR}/../../test_assets` from `infrastructure/core`
+///    (repo-root `test_assets/` after the core → infrastructure/core layout move)
 pub fn resolve_test_assets_dir() -> Result<PathBuf, TestAssetsPathError> {
     if let Ok(raw) = env::var("TEST_ASSETS_PATH") {
         let trimmed = raw.trim();
@@ -33,7 +34,7 @@ pub fn resolve_test_assets_dir() -> Result<PathBuf, TestAssetsPathError> {
         }
     }
 
-    let default = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../test_assets");
+    let default = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../test_assets");
     validate_directory(&default, "default manifest-relative test_assets")
 }
 

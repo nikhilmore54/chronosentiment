@@ -15,16 +15,35 @@ ROOT = Path(__file__).resolve().parents[1]
 
 
 def main() -> int:
-    candidates = [
-        ROOT / "target" / "release" / "cs-ingest",
-        ROOT / "bin" / "cs-ingest",
-    ]
-    cmd_bin = str(next((p for p in candidates if p.exists()), Path("cs-ingest")))
-    cmd = [cmd_bin, "verify-chronology-fixtures", "--repo-root", str(ROOT)]
+    release_bin = ROOT / "target" / "release" / "cs-ingest"
+    packaged_bin = ROOT / "bin" / "cs-ingest"
+
+    if release_bin.exists():
+        cmd = [str(release_bin), "verify-chronology-fixtures", "--repo-root", str(ROOT)]
+    elif packaged_bin.exists():
+        cmd = [str(packaged_bin), "verify-chronology-fixtures", "--repo-root", str(ROOT)]
+    else:
+        # CI often invokes this before an explicit release build of cs-ingest.
+        cmd = [
+            "cargo",
+            "run",
+            "--quiet",
+            "--release",
+            "-p",
+            "cs-ingest",
+            "--",
+            "verify-chronology-fixtures",
+            "--repo-root",
+            str(ROOT),
+        ]
+
     try:
         return subprocess.call(cmd, cwd=ROOT)
     except FileNotFoundError:
-        print("[FAIL] cs-ingest binary not found — build with: cargo build -p cs-ingest --release")
+        print(
+            "[FAIL] cs-ingest binary not found — build with: "
+            "cargo build -p cs-ingest --release"
+        )
         return 1
 
 

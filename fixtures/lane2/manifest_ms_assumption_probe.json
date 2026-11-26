@@ -2,7 +2,6 @@
   "attestations": [
     "BOUNDED_SURFACE_SCAN_COMPLETE",
     "IMPLICIT_MS_ASSUMPTIONS_DETECTED",
-    "HEURISTIC_UNIT_GATES_PRESENT",
     "EXPLICIT_MS_LAW_CHECKS_PRESENT",
     "INVENTORY_CROSS_REFERENCE_LOADED"
   ],
@@ -26,56 +25,11 @@
   ],
   "findings": [
     {
-      "classification": "IMPLICIT_MS_ARITHMETIC",
-      "description": "Unconditional divide-by-1000 on manifest-bound timestamps.",
-      "dialect_b_risk": "high",
-      "excerpt": "start_date = datetime.fromtimestamp(start_ts / 1000).strftime('%Y-%m-%d %H:%M:%S UTC') if start_ts > 1e11 else datetime.fromtimestamp(start_ts).strftime('%Y-%m-",
-      "line": 39,
-      "pattern_id": "UNCONDITIONAL_MS_DIVIDE",
-      "surface": "scripts/rebuild_catalog.py"
-    },
-    {
-      "classification": "HEURISTIC_UNIT_AWARE",
-      "description": "Threshold heuristic distinguishes seconds vs milliseconds.",
-      "dialect_b_risk": "low",
-      "excerpt": "start_date = datetime.fromtimestamp(start_ts / 1000).strftime('%Y-%m-%d %H:%M:%S UTC') if start_ts > 1e11 else datetime.fromtimestamp(start_ts).strftime('%Y-%m-",
-      "line": 39,
-      "pattern_id": "THRESHOLD_UNIT_HEURISTIC",
-      "surface": "scripts/rebuild_catalog.py"
-    },
-    {
-      "classification": "BOUNDS_REFERENCE",
-      "description": "References manifest capture bounds.",
-      "dialect_b_risk": "context",
-      "excerpt": "name = \"live_rotation_\" + str(data.get(\"capture_start\", \"unknown\"))",
-      "line": 27,
-      "pattern_id": "CAPTURE_BOUNDS_REFERENCE",
-      "surface": "scripts/rebuild_catalog.py"
-    },
-    {
-      "classification": "BOUNDS_REFERENCE",
-      "description": "References manifest capture bounds.",
-      "dialect_b_risk": "context",
-      "excerpt": "start_ts = data.get(\"capture_start\") or data.get(\"start_timestamp\")",
-      "line": 35,
-      "pattern_id": "CAPTURE_BOUNDS_REFERENCE",
-      "surface": "scripts/rebuild_catalog.py"
-    },
-    {
-      "classification": "BOUNDS_REFERENCE",
-      "description": "References manifest capture bounds.",
-      "dialect_b_risk": "context",
-      "excerpt": "end_ts = data.get(\"capture_end\") or data.get(\"end_timestamp\")",
-      "line": 36,
-      "pattern_id": "CAPTURE_BOUNDS_REFERENCE",
-      "surface": "scripts/rebuild_catalog.py"
-    },
-    {
       "classification": "IMPLICIT_MS_SEMANTICS",
       "description": "Field name asserts millisecond semantics without dialect classification gate.",
       "dialect_b_risk": "medium",
       "excerpt": "\"capture_start_ms\": chronology_manifest.get(\"capture_start\"),",
-      "line": 154,
+      "line": 157,
       "pattern_id": "MS_FIELD_SUFFIX",
       "surface": "scripts/run_tier1_observability_demo.py"
     },
@@ -84,7 +38,7 @@
       "description": "Field name asserts millisecond semantics without dialect classification gate.",
       "dialect_b_risk": "medium",
       "excerpt": "\"capture_end_ms\": chronology_manifest.get(\"capture_end\"),",
-      "line": 155,
+      "line": 158,
       "pattern_id": "MS_FIELD_SUFFIX",
       "surface": "scripts/run_tier1_observability_demo.py"
     },
@@ -93,7 +47,7 @@
       "description": "References manifest capture bounds.",
       "dialect_b_risk": "context",
       "excerpt": "\"capture_start_ms\": chronology_manifest.get(\"capture_start\"),",
-      "line": 154,
+      "line": 157,
       "pattern_id": "CAPTURE_BOUNDS_REFERENCE",
       "surface": "scripts/run_tier1_observability_demo.py"
     },
@@ -102,7 +56,7 @@
       "description": "References manifest capture bounds.",
       "dialect_b_risk": "context",
       "excerpt": "\"capture_end_ms\": chronology_manifest.get(\"capture_end\"),",
-      "line": 155,
+      "line": 158,
       "pattern_id": "CAPTURE_BOUNDS_REFERENCE",
       "surface": "scripts/run_tier1_observability_demo.py"
     },
@@ -111,7 +65,7 @@
       "description": "References manifest capture bounds.",
       "dialect_b_risk": "context",
       "excerpt": "\"start_ts\": chronology_manifest.get(\"capture_start\"),",
-      "line": 209,
+      "line": 212,
       "pattern_id": "CAPTURE_BOUNDS_REFERENCE",
       "surface": "scripts/run_tier1_observability_demo.py"
     },
@@ -120,7 +74,7 @@
       "description": "References manifest capture bounds.",
       "dialect_b_risk": "context",
       "excerpt": "\"end_ts\": chronology_manifest.get(\"capture_end\"),",
-      "line": 210,
+      "line": 213,
       "pattern_id": "CAPTURE_BOUNDS_REFERENCE",
       "surface": "scripts/run_tier1_observability_demo.py"
     },
@@ -197,31 +151,13 @@
       "surface": "scripts/verify_chronology_producer_ratification.py"
     },
     {
-      "classification": "BOUNDS_REFERENCE",
-      "description": "References manifest capture bounds.",
-      "dialect_b_risk": "context",
-      "excerpt": "\"capture_start\",",
-      "line": 82,
-      "pattern_id": "CAPTURE_BOUNDS_REFERENCE",
-      "surface": "scripts/verify_chronology_byte_fixtures.py"
-    },
-    {
-      "classification": "BOUNDS_REFERENCE",
-      "description": "References manifest capture bounds.",
-      "dialect_b_risk": "context",
-      "excerpt": "\"capture_end\",",
-      "line": 83,
-      "pattern_id": "CAPTURE_BOUNDS_REFERENCE",
-      "surface": "scripts/verify_chronology_byte_fixtures.py"
-    },
-    {
       "classification": "PRODUCER_SECONDS_EMISSION",
       "description": "Producer emits manifest bounds from SystemTime seconds.",
       "dialect_b_risk": "n/a",
       "excerpt": "let mut current_rotation_start = SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs();",
       "line": 68,
       "pattern_id": "PRODUCER_AS_SECS",
-      "surface": "core/src/bin/capture_daemon.rs"
+      "surface": "infrastructure/core/src/bin/capture_daemon.rs"
     },
     {
       "classification": "PRODUCER_SECONDS_EMISSION",
@@ -230,7 +166,7 @@
       "excerpt": "last_tick_time = SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs();",
       "line": 106,
       "pattern_id": "PRODUCER_AS_SECS",
-      "surface": "core/src/bin/capture_daemon.rs"
+      "surface": "infrastructure/core/src/bin/capture_daemon.rs"
     },
     {
       "classification": "PRODUCER_SECONDS_EMISSION",
@@ -239,7 +175,7 @@
       "excerpt": "let import_timestamp = SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs();",
       "line": 113,
       "pattern_id": "PRODUCER_AS_SECS",
-      "surface": "core/src/bin/capture_daemon.rs"
+      "surface": "infrastructure/core/src/bin/capture_daemon.rs"
     },
     {
       "classification": "PRODUCER_SECONDS_EMISSION",
@@ -248,7 +184,7 @@
       "excerpt": "let now = SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs();",
       "line": 143,
       "pattern_id": "PRODUCER_AS_SECS",
-      "surface": "core/src/bin/capture_daemon.rs"
+      "surface": "infrastructure/core/src/bin/capture_daemon.rs"
     },
     {
       "classification": "BOUNDS_REFERENCE",
@@ -257,7 +193,7 @@
       "excerpt": "capture_start: u64,",
       "line": 49,
       "pattern_id": "CAPTURE_BOUNDS_REFERENCE",
-      "surface": "core/src/bin/capture_daemon.rs"
+      "surface": "infrastructure/core/src/bin/capture_daemon.rs"
     },
     {
       "classification": "BOUNDS_REFERENCE",
@@ -266,7 +202,7 @@
       "excerpt": "capture_end: u64,",
       "line": 50,
       "pattern_id": "CAPTURE_BOUNDS_REFERENCE",
-      "surface": "core/src/bin/capture_daemon.rs"
+      "surface": "infrastructure/core/src/bin/capture_daemon.rs"
     },
     {
       "classification": "BOUNDS_REFERENCE",
@@ -275,7 +211,7 @@
       "excerpt": "capture_start: current_rotation_start,",
       "line": 120,
       "pattern_id": "CAPTURE_BOUNDS_REFERENCE",
-      "surface": "core/src/bin/capture_daemon.rs"
+      "surface": "infrastructure/core/src/bin/capture_daemon.rs"
     },
     {
       "classification": "BOUNDS_REFERENCE",
@@ -284,7 +220,7 @@
       "excerpt": "capture_end: now,",
       "line": 121,
       "pattern_id": "CAPTURE_BOUNDS_REFERENCE",
-      "surface": "core/src/bin/capture_daemon.rs"
+      "surface": "infrastructure/core/src/bin/capture_daemon.rs"
     },
     {
       "classification": "PRODUCER_SECONDS_EMISSION",
@@ -293,7 +229,7 @@
       "excerpt": "let import_timestamp = SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs();",
       "line": 166,
       "pattern_id": "PRODUCER_AS_SECS",
-      "surface": "core/src/bin/historical_importer.rs"
+      "surface": "infrastructure/core/src/bin/historical_importer.rs"
     },
     {
       "classification": "BOUNDS_REFERENCE",
@@ -302,7 +238,7 @@
       "excerpt": "capture_start: u64,",
       "line": 53,
       "pattern_id": "CAPTURE_BOUNDS_REFERENCE",
-      "surface": "core/src/bin/historical_importer.rs"
+      "surface": "infrastructure/core/src/bin/historical_importer.rs"
     },
     {
       "classification": "BOUNDS_REFERENCE",
@@ -311,7 +247,7 @@
       "excerpt": "capture_end: u64,",
       "line": 54,
       "pattern_id": "CAPTURE_BOUNDS_REFERENCE",
-      "surface": "core/src/bin/historical_importer.rs"
+      "surface": "infrastructure/core/src/bin/historical_importer.rs"
     },
     {
       "classification": "BOUNDS_REFERENCE",
@@ -320,7 +256,7 @@
       "excerpt": "capture_start: args.start_time,",
       "line": 174,
       "pattern_id": "CAPTURE_BOUNDS_REFERENCE",
-      "surface": "core/src/bin/historical_importer.rs"
+      "surface": "infrastructure/core/src/bin/historical_importer.rs"
     },
     {
       "classification": "BOUNDS_REFERENCE",
@@ -329,7 +265,7 @@
       "excerpt": "capture_end: args.end_time,",
       "line": 175,
       "pattern_id": "CAPTURE_BOUNDS_REFERENCE",
-      "surface": "core/src/bin/historical_importer.rs"
+      "surface": "infrastructure/core/src/bin/historical_importer.rs"
     },
     {
       "classification": "BOUNDS_REFERENCE",
@@ -338,7 +274,7 @@
       "excerpt": "capture_start: u64,",
       "line": 42,
       "pattern_id": "CAPTURE_BOUNDS_REFERENCE",
-      "surface": "core/src/bin/yahoo_importer.rs"
+      "surface": "infrastructure/core/src/bin/yahoo_importer.rs"
     },
     {
       "classification": "BOUNDS_REFERENCE",
@@ -347,7 +283,7 @@
       "excerpt": "capture_end: u64,",
       "line": 43,
       "pattern_id": "CAPTURE_BOUNDS_REFERENCE",
-      "surface": "core/src/bin/yahoo_importer.rs"
+      "surface": "infrastructure/core/src/bin/yahoo_importer.rs"
     },
     {
       "classification": "BOUNDS_REFERENCE",
@@ -356,7 +292,7 @@
       "excerpt": "capture_start: start_time,",
       "line": 113,
       "pattern_id": "CAPTURE_BOUNDS_REFERENCE",
-      "surface": "core/src/bin/yahoo_importer.rs"
+      "surface": "infrastructure/core/src/bin/yahoo_importer.rs"
     },
     {
       "classification": "BOUNDS_REFERENCE",
@@ -365,16 +301,16 @@
       "excerpt": "capture_end: end_time,",
       "line": 114,
       "pattern_id": "CAPTURE_BOUNDS_REFERENCE",
-      "surface": "core/src/bin/yahoo_importer.rs"
+      "surface": "infrastructure/core/src/bin/yahoo_importer.rs"
     }
   ],
-  "git_commit": "9d2c493caf539b1d045612f94fae4bd6d707303b",
+  "git_commit": "bd7a3e894dbbeae12d62a4a60588eb3abcf1373f",
   "inventory_cross_reference": {
     "available": true,
     "live_capture_seconds_bounds": 12,
-    "manifests_scanned": 60,
+    "manifests_scanned": 61,
     "seconds_bounds": 13,
-    "seconds_ms_ambiguity_count": 13
+    "seconds_ms_ambiguity_count": 0
   },
   "lane": "Lane 2 prerequisite \u2014 manifest ms assumption probe",
   "layer": "observational",
@@ -385,43 +321,39 @@
   "status": "PROBE_COMPLETE",
   "summary": {
     "by_classification": {
-      "BOUNDS_REFERENCE": 26,
+      "BOUNDS_REFERENCE": 21,
       "EXPLICIT_MS_LAW_CHECK": 2,
-      "HEURISTIC_UNIT_AWARE": 2,
-      "IMPLICIT_MS_ARITHMETIC": 1,
+      "HEURISTIC_UNIT_AWARE": 1,
       "IMPLICIT_MS_SEMANTICS": 2,
       "PRODUCER_SECONDS_EMISSION": 5
     },
     "dialect_b_sensitive_surfaces": [
-      "scripts/rebuild_catalog.py",
       "scripts/run_tier1_observability_demo.py"
     ],
-    "findings_total": 38,
+    "findings_total": 31,
     "implicit_ms_assumption_surfaces": [
       "scripts/run_tier1_observability_demo.py"
     ],
-    "surfaces_heuristic_aware": [
-      "scripts/rebuild_catalog.py"
-    ],
-    "surfaces_scanned": 8,
+    "surfaces_heuristic_aware": [],
+    "surfaces_scanned": 7,
     "surfaces_with_explicit_gate": [
       "scripts/verify_chronology_producer_ratification.py"
     ]
   },
   "surface_postures": {
-    "core/src/bin/capture_daemon.rs": {
+    "infrastructure/core/src/bin/capture_daemon.rs": {
       "dialect_b_sensitive": false,
       "finding_count": 8,
       "implicit_ms_assumption": false,
       "posture": "PRODUCER_SECONDS_EMISSION"
     },
-    "core/src/bin/historical_importer.rs": {
+    "infrastructure/core/src/bin/historical_importer.rs": {
       "dialect_b_sensitive": false,
       "finding_count": 5,
       "implicit_ms_assumption": false,
       "posture": "PRODUCER_SECONDS_EMISSION"
     },
-    "core/src/bin/yahoo_importer.rs": {
+    "infrastructure/core/src/bin/yahoo_importer.rs": {
       "dialect_b_sensitive": false,
       "finding_count": 4,
       "implicit_ms_assumption": false,
@@ -433,12 +365,6 @@
       "implicit_ms_assumption": false,
       "posture": "NO_BOUNDS_CONSUMPTION"
     },
-    "scripts/rebuild_catalog.py": {
-      "dialect_b_sensitive": true,
-      "finding_count": 5,
-      "implicit_ms_assumption": false,
-      "posture": "HEURISTIC_UNIT_AWARE"
-    },
     "scripts/run_tier1_observability_demo.py": {
       "dialect_b_sensitive": true,
       "finding_count": 6,
@@ -447,9 +373,9 @@
     },
     "scripts/verify_chronology_byte_fixtures.py": {
       "dialect_b_sensitive": false,
-      "finding_count": 2,
+      "finding_count": 0,
       "implicit_ms_assumption": false,
-      "posture": "BOUNDS_REFERENCE_ONLY"
+      "posture": "NO_BOUNDS_CONSUMPTION"
     },
     "scripts/verify_chronology_producer_ratification.py": {
       "dialect_b_sensitive": false,
