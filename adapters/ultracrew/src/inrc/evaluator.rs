@@ -882,52 +882,24 @@ impl InrcOptimizer {
             penalty += contract.complete_weekends as i32 * weights.complete_weekends;
         }
 
-        // S7: Max working weekends with pro-rated horizon pacing
+        // S7: Max working weekends
         let works_weekend = works_saturday || works_sunday;
-        let hist_weekends = hist.map(|h| h.number_of_working_weekends).unwrap_or(0);
-        let cum_weekends = hist_weekends + if works_weekend { 1 } else { 0 };
-        let num_weeks = self.context.scenario.number_of_weeks;
-        let week_k = (self.context.history.week + 1).min(num_weeks);
-
-        if week_k == num_weeks {
-            // Final week: official competition evaluation
-            if cum_weekends > contract.max_working_weekends {
-                penalty += (cum_weekends - contract.max_working_weekends) as i32
-                    * weights.max_working_weekends;
-            }
-        } else {
-            // Intermediate weeks (w in 0..W-1): pro-rated horizon pacing band (w+1)/W * max
-            let pace_weekends = (week_k as f64 * contract.max_working_weekends as f64) / num_weeks as f64;
-            if (cum_weekends as f64) > pace_weekends {
-                let excess = (cum_weekends as f64) - pace_weekends;
-                penalty += (excess * weights.max_working_weekends as f64).round() as i32;
-            }
+        let total_working_weekends = if works_weekend { 1 } else { 0 };
+        if total_working_weekends > contract.max_working_weekends {
+            penalty += (total_working_weekends - contract.max_working_weekends) as i32
+                * weights.max_working_weekends;
         }
 
-        // S6: Total assignments with pro-rated cumulative horizon pacing band [(w+1)/W * min, (w+1)/W * max]
-        let hist_assignments = hist.map(|h| h.number_of_assignments).unwrap_or(0);
-        let cum_assignments = hist_assignments + week_assignments;
-
-        if week_k == num_weeks {
-            // Final week: official competition evaluation
-            if cum_assignments < contract.min_assignments {
-                penalty += (contract.min_assignments - cum_assignments) as i32 * weights.assignments;
-            }
-            if cum_assignments > contract.max_assignments {
-                penalty += (cum_assignments - contract.max_assignments) as i32 * weights.assignments;
-            }
-        } else {
-            // Intermediate weeks (w in 0..W-1): pro-rated cumulative horizon band
-            let pace_min = (week_k as f64 * contract.min_assignments as f64) / num_weeks as f64;
-            let pace_max = (week_k as f64 * contract.max_assignments as f64) / num_weeks as f64;
-            if (cum_assignments as f64) < pace_min {
-                let deficit = pace_min - (cum_assignments as f64);
-                penalty += (deficit * weights.assignments as f64).round() as i32;
-            }
-            if (cum_assignments as f64) > pace_max {
-                let excess = (cum_assignments as f64) - pace_max;
-                penalty += (excess * weights.assignments as f64).round() as i32;
-            }
+        // S1: Assignments
+        let weekly_min = contract.min_assignments / self.context.scenario.number_of_weeks;
+        let weekly_max = (contract.max_assignments as f64
+            / self.context.scenario.number_of_weeks as f64)
+            .ceil() as usize;
+        if week_assignments < weekly_min {
+            penalty += (weekly_min - week_assignments) as i32 * weights.assignments;
+        }
+        if week_assignments > weekly_max {
+            penalty += (week_assignments - weekly_max) as i32 * weights.assignments;
         }
 
         penalty
@@ -1143,7 +1115,7 @@ impl<'a> AnnealingDomain<InrcGenome> for InrcAnnealingDomain<'a> {
 
         let op_choice = rng_core.gen_range(0..100);
 
-        if op_choice < 25 {
+        if op_choice < 20 {
             // Operator 5: Targeted Weekend Kempe Harmonizer (Directly eliminates S6 incomplete weekends)
             let mut sat_only = Vec::new();
             let mut sun_only = Vec::new();
@@ -1189,9 +1161,55 @@ impl<'a> AnnealingDomain<InrcGenome> for InrcAnnealingDomain<'a> {
                     }
                 }
             }
+        } else if op_choice < 40 {
+            // Operator 6: Targeted Optimal Demand Staffing (Directly reduces S8 optimal coverage deficit)
+            let d = rng_core.gen_range(0..num_days);
+            let opt_slots = &self.optimizer.context.inverted.opt_slots_by_day[d];
+            if !opt_slots.is_empty() {
+                let sid = opt_slots[rng_core.gen_range(0..opt_slots.len())];
+                let slot = &self.optimizer.context.inverted.slots[sid];
+                let s_idx = slot.shift_idx;
+
+                let candidates: Vec<usize> = slot
+                    .eligible_nurses
+                    .iter()
+                    .copied()
+                    .filter(|&n| {
+                        if self.optimizer.get_assigned_shift(current, n, d).is_some() {
+                            return false;
+                        }
+                        if d == 0 {
+                            !self.optimizer.context.inverted.history_forbidden[n][s_idx]
+                        } else {
+                            match self.optimizer.get_assigned_shift(current, n, d - 1) {
+                                Some(prev_s) => !self.optimizer.context.inverted.forbidden_matrix[prev_s][s_idx],
+                                None => true,
+                            }
+                        }
+                    })
+                    .collect();
+
+                if !candidates.is_empty() {
+                    let u = candidates[rng_core.gen_range(0..candidates.len())];
+                    let mut cand = current.clone();
+                    let (_, old_s8) = self.optimizer.eval_days_coverage(current, &[d]);
+                    let old_p_u = self.optimizer.eval_nurse_soft_penalty(current, u);
+
+                    self.optimizer.set_assigned_shift(&mut cand, u, d, Some(s_idx));
+
+                    if !self.optimizer.nurse_has_forbidden_succession(&cand, u) {
+                        let (new_feas, new_s8) = self.optimizer.eval_days_coverage(&cand, &[d]);
+                        if new_feas {
+                            let new_p_u = self.optimizer.eval_nurse_soft_penalty(&cand, u);
+                            let delta = (new_p_u - old_p_u) + (new_s8 - old_s8);
+                            return Some((cand, delta as f64));
+                        }
+                    }
+                }
+            }
         }
 
-        if op_choice < 50 {
+        if op_choice < 60 {
             // Operator 1: 3-Day Contiguous Streak-Repair / Stub Ejection & Consolidation (S2/S4)
             let n = rng_core.gen_range(0..num_nurses);
             let mut stub_d = None;

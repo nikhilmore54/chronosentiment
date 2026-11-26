@@ -296,7 +296,7 @@ impl InvertedContext {
                 }
             }
 
-            // Fill optimal demand slots if nurses have remaining capacity
+            // Fill optimal demand slots if nurses have remaining capacity (up to max_a)
             for &sid in &self.opt_slots_by_day[d] {
                 let slot = &self.slots[sid];
                 let candidates: Vec<usize> = slot
@@ -304,13 +304,22 @@ impl InvertedContext {
                     .iter()
                     .copied()
                     .filter(|&n| {
-                        assigned_shift[n][d].is_none()
-                            && shift_counts[n] < self.nurse_target_bands[n].0
+                        if assigned_shift[n][d].is_some() || shift_counts[n] >= self.nurse_target_bands[n].1 {
+                            return false;
+                        }
+                        if d == 0 {
+                            !self.history_forbidden[n][slot.shift_idx]
+                        } else {
+                            match assigned_shift[n][d - 1] {
+                                Some(prev_s) => !self.forbidden_matrix[prev_s][slot.shift_idx],
+                                None => true,
+                            }
+                        }
                     })
                     .collect();
 
                 if let Some(&chosen) = candidates.choose(rng) {
-                    if rng.gen_bool(0.50) {
+                    if rng.gen_bool(0.75) {
                         assigned_shift[chosen][d] = Some(slot.shift_idx);
                         shift_counts[chosen] += 1;
                     }
