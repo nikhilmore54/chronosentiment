@@ -842,6 +842,33 @@ class RP608ShadowDaemon:
                 flush=True,
             )
 
+        # Gate 2E B: 15m OHLCV L3/L8/L20 trend-agreement twin (PRIMARY unchanged).
+        _ta_on = str(
+            os.environ.get("RP608_GATE2E_TREND_AGREE_TWIN", "1")
+        ).strip().lower() not in {"0", "false", "no", "off"}
+        self.trade_plan_overlay_trend_agree = None
+        if _ta_on:
+            _ta_book = f"CRYPTO_PLAN_TREND_AGREE_PARALLEL{_book_suffix}"
+            ta_dir = self.output_dir / "trade_plan_overlay_trend_agree_parallel_v1"
+            self.trade_plan_overlay_trend_agree = TradePlanOverlayManager(
+                base_dir=ta_dir,
+                book_id=_ta_book,
+                symbol=self.symbol,
+                of_paper_enabled=False,
+                volume_pattern_axes=False,
+                pattern_entry_gate_mode="0",
+                config_overrides={
+                    "require_trend_agree": True,
+                    "plan_require_of": False,
+                    "b_persist_min_fires": 0,
+                },
+            )
+            print(
+                f"[gate2e_trend_agree_twin] symbol={self.symbol} B twin armed → "
+                f"{ta_dir} (book={_ta_book}; L3/L8/L20 agree; PRIMARY Gate2E stack unchanged)",
+                flush=True,
+            )
+
         # OFX research-only: durable Binance aggTrade journal (separate WS; baseline OF inert)
         self.ofx_aggtrade_dir = self.output_dir / "ofx_aggtrade_capture_v1"
         self.ofx_aggtrade_journal = OfxCryptoAggTradeJournal(
@@ -1328,6 +1355,10 @@ class RP608ShadowDaemon:
                                     self.trade_plan_overlay_g2x_floorlock.reload_state_from_disk(
                                         preserve_open_progress=True
                                     )
+                                if self.trade_plan_overlay_trend_agree is not None:
+                                    self.trade_plan_overlay_trend_agree.reload_state_from_disk(
+                                        preserve_open_progress=True
+                                    )
                             _tick_overlays = [
                                 (self.trade_plan_overlay, "trade_plan_overlay"),
                                 (
@@ -1344,6 +1375,13 @@ class RP608ShadowDaemon:
                                     (
                                         self.trade_plan_overlay_g2x_floorlock,
                                         "trade_plan_overlay_g2x_floorlock",
+                                    )
+                                )
+                            if self.trade_plan_overlay_trend_agree is not None:
+                                _tick_overlays.append(
+                                    (
+                                        self.trade_plan_overlay_trend_agree,
+                                        "trade_plan_overlay_trend_agree",
                                     )
                                 )
                             for overlay, tag in _tick_overlays:
@@ -1731,6 +1769,9 @@ class RP608ShadowDaemon:
         else:
             decision_card = attach_regime_telemetry(decision_card, None, enabled=False)
 
+        # Completed 15m closes only (no forming bar) for Gate 2E B trend-agree twin.
+        decision_card["ohlcv_closes_15m"] = list(self._completed_closes())
+
         self.update_heartbeat()
 
         plan_result = None
@@ -1775,6 +1816,16 @@ class RP608ShadowDaemon:
             except Exception as fl_exc:
                 print(
                     f"[trade_plan_overlay_g2x_floorlock] process_decision_card skipped: {fl_exc}"
+                )
+        if self.trade_plan_overlay_trend_agree is not None:
+            try:
+                self.trade_plan_overlay_trend_agree.process_decision_card(
+                    dict(decision_card),
+                    current_quote=q,
+                )
+            except Exception as ta_exc:
+                print(
+                    f"[trade_plan_overlay_trend_agree] process_decision_card skipped: {ta_exc}"
                 )
 
         # Product surface: raw Policy B stays on card, but "actionable recommendation"
@@ -2012,6 +2063,13 @@ class RP608ShadowDaemon:
                                             (
                                                 self.trade_plan_overlay_g2x_floorlock,
                                                 "trade_plan_overlay_g2x_floorlock",
+                                            )
+                                        )
+                                    if self.trade_plan_overlay_trend_agree is not None:
+                                        _kline_overlays.append(
+                                            (
+                                                self.trade_plan_overlay_trend_agree,
+                                                "trade_plan_overlay_trend_agree",
                                             )
                                         )
                                     for overlay, tag in _kline_overlays:

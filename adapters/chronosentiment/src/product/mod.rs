@@ -54,6 +54,7 @@ pub mod gate2x_causal_map;
 pub mod gate2x_decide;
 pub mod gate2x_features;
 pub mod gate2x_position_manage;
+pub mod ohlcv_trend_agreement;
 pub mod rp608_plan_lifecycle;
 pub mod deferred_live;
 pub mod deferred_live_asof_ic;
@@ -85,6 +86,10 @@ pub use gate2x_features::{
     VolSurgeBucket,
 };
 pub use gate2x_position_manage::{Gate2xBookKind, Gate2xPositionManager};
+pub use ohlcv_trend_agreement::{
+    agreement as ohlcv_trend_agreement, label_lookbacks as ohlcv_label_lookbacks,
+    TrendAgreementStamp, PROTOCOL_ID as OHLCV_TREND_AGREE_PROTOCOL_ID,
+};
 pub use rp608_plan_lifecycle::{
     OpenPlanState, PlanLifecycleConfig, PlanLifecycleManager, PlanQuote, PLAN_LIFECYCLE_PROTOCOL,
 };
