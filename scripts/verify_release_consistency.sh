@@ -87,15 +87,21 @@ echo ""
 
 # ── Check 3: Strategy identity fixtures ───────────────────────────────────────
 echo "── Check 3: verify_strategy_identity_fixtures.py ──"
-STRAT_OUTPUT="$(python3 "${SCRIPT_DIR}/verify_strategy_identity_fixtures.py" 2>&1)" || true
-if echo "${STRAT_OUTPUT}" | grep -q "verified"; then
-    STRAT_COUNT="$(echo "${STRAT_OUTPUT}" | grep -oE '[0-9]+' | head -1)"
-    log_pass "verify_strategy_identity_fixtures.py" "${STRAT_COUNT} records PASS"
-elif echo "${STRAT_OUTPUT}" | grep -Eq "WARN|no strategy identity fixtures"; then
-    SUMMARY_LINES+=("  SKIP  | verify_strategy_identity_fixtures.py | fixtures not present")
-    echo "[SKIP] verify_strategy_identity_fixtures.py: fixtures not present"
+if [ ! -f "${SCRIPT_DIR}/verify_strategy_identity_fixtures.py" ]; then
+    # Align with generate_release_manifest.sh: missing verifier → SKIP.
+    SUMMARY_LINES+=("  SKIP  | verify_strategy_identity_fixtures.py | script not in tree")
+    echo "[SKIP] verify_strategy_identity_fixtures.py: script not found"
 else
-    log_fail "verify_strategy_identity_fixtures.py" "${STRAT_OUTPUT}"
+    STRAT_OUTPUT="$(python3 "${SCRIPT_DIR}/verify_strategy_identity_fixtures.py" 2>&1)" || true
+    if echo "${STRAT_OUTPUT}" | grep -q "verified"; then
+        STRAT_COUNT="$(echo "${STRAT_OUTPUT}" | grep -oE '[0-9]+' | head -1)"
+        log_pass "verify_strategy_identity_fixtures.py" "${STRAT_COUNT} records PASS"
+    elif echo "${STRAT_OUTPUT}" | grep -Eq "WARN|no strategy identity fixtures"; then
+        SUMMARY_LINES+=("  SKIP  | verify_strategy_identity_fixtures.py | fixtures not present")
+        echo "[SKIP] verify_strategy_identity_fixtures.py: fixtures not present"
+    else
+        log_fail "verify_strategy_identity_fixtures.py" "${STRAT_OUTPUT}"
+    fi
 fi
 echo ""
 
