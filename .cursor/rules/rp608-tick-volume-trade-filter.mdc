@@ -1,0 +1,35 @@
+---
+description: Volume-in-ticks filters false prints; required in tick decision logic
+alwaysApply: true
+---
+
+# RP-608 — Tick Volume Trade Authenticity Filter
+
+## Locked requirement (Anuj · 2026-11-16)
+
+**False / non-trade quote updates must be filtered using volume (and LT fields) on ticks.** That authenticity check is part of **decision logic**, not an optional OFX-only side journal.
+
+## What this means
+
+1. **Trade-like gate (NSE Kite full-mode):** use volume + LT change classification (`classify_trade_like` in `scripts/rp608_ofx_nse_tick_journal.py`):
+   - Accept: volume↑ and/or last-trade fields changed vs prior packet (`TRADE_LIKE_*`)
+   - Reject for **entry decisions**: `QUOTE_REPEAT_SAME_LT_AND_VOLUME` (quote-only refresh — not a trade print)
+2. **Estimand A `TICK_PATH` fills** must only arm/fill on **trade-like** ticks after signal_bar is armed. Do not treat every WS L1 packet as a trade.
+3. **OF and OFX take action per tick** (not only 15s midbar / bar-close hooks):
+   - **Baseline OF paper:** manage + try_open on **every valid L1 WS packet** (resting imbalance construct).
+   - **OFX volume paper:** manage + try_open on **trade-like** ticks (surge + tempo); baseline OF inert.
+   - Books **never pooled**; OF ±0.30 unchanged (`.cursor/rules/rp608-ofx.mdc`).
+4. **OFX entry surge** (tick volume ≥ **3×** mean of prior **20** completed trade sizes) remains the OFX volume-paper selection rule (`evaluate_ofx_entry_volume_surge`). It is **not** a substitute for (1).
+5. Candle OHLCV volume is **not** a tick trade filter.
+
+## Governance
+
+- Construct distinction unchanged: baseline OF = L1 resting imbalance; aggression/volume surge → OFX research line.
+- Changing Estimand A **traj15 / stops / targets / OF ±0.30** still requires **Gate 5**.
+- Trade-like authenticity on tick fills is **execution fidelity** for TICK_PATH (reject false prints), not a new momentum threshold.
+
+## Code anchors
+
+- `classify_trade_like` — `scripts/rp608_ofx_nse_tick_journal.py`
+- OFX surge — `research/rp608_ofx/executed_flow/volume_mark.py` · `docs/research/rp608_ofx_volume_paper_trades.md`
+- WS hub — `scripts/run_rp608_nse_shadow_daemon.py` (`_on_estimand_a_ws_tick`, `_of_ofx_action_on_ws_tick`)

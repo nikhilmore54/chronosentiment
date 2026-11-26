@@ -1,0 +1,9 @@
+crew_id,name,role,qualifications,base
+C0001,Alice Brennan,captain,B738,ORD
+C0002,Robert Okafor,first_officer,B738,ORD
+C0003,Priya Nair,captain,A320,ORD
+C0004,James Whitfield,first_officer,A320,ORD
+C0005,Maria Santos,cabin_crew_senior,B738,ORD
+C0006,David Kim,cabin_crew,B738,ORD
+C0007,Fatima Al-Hassan,cabin_crew,A320,ORD
+C0008,Thomas Eriksson,captain,"B738,A320",ORD

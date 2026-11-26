@@ -1,0 +1,455 @@
+warning: unused import: `LocalSearchOperator`
+ --> coralys-moga/src/observatory.rs:2:42
+  |
+2 |     Evaluated, FitnessEvaluator, Genome, LocalSearchOperator, ObservedTransitionMetric,
+  |                                          ^^^^^^^^^^^^^^^^^^^
+  |
+  = note: `#[warn(unused_imports)]` (part of `#[warn(unused)]`) on by default
+
+warning: variable `elite_preserved` is assigned to, but never used
+   --> coralys-moga/src/engine.rs:312:17
+    |
+312 |         let mut elite_preserved: usize;
+    |                 ^^^^^^^^^^^^^^^
+    |
+    = note: consider using `_elite_preserved` instead
+    = note: `#[warn(unused_variables)]` (part of `#[warn(unused)]`) on by default
+
+warning: variable `crossover_ops` is assigned to, but never used
+   --> coralys-moga/src/engine.rs:313:17
+    |
+313 |         let mut crossover_ops: usize;
+    |                 ^^^^^^^^^^^^^
+    |
+    = note: consider using `_crossover_ops` instead
+
+warning: variable `mutation_ops` is assigned to, but never used
+   --> coralys-moga/src/engine.rs:314:17
+    |
+314 |         let mut mutation_ops: usize;
+    |                 ^^^^^^^^^^^^
+    |
+    = note: consider using `_mutation_ops` instead
+
+warning: value assigned to `elite_preserved` is never read
+   --> coralys-moga/src/engine.rs:488:13
+    |
+488 |             elite_preserved = config.elite_count;
+    |             ^^^^^^^^^^^^^^^
+    |
+    = help: maybe it is overwritten before being read?
+    = note: `#[warn(unused_assignments)]` (part of `#[warn(unused)]`) on by default
+
+warning: `coralys-moga` (lib) generated 5 warnings (run `cargo fix --lib -p coralys-moga` to apply 1 suggestion)
+warning: unused import: `expand_sr_path`
+ --> adapters/roadef/src/constraints.rs:1:19
+  |
+1 | use crate::ecmp::{expand_sr_path, expand_sr_path_cached};
+  |                   ^^^^^^^^^^^^^^
+  |
+  = note: `#[warn(unused_imports)]` (part of `#[warn(unused)]`) on by default
+
+warning: value assigned to `termination_reason` is never read
+    --> adapters/roadef/src/moga_impl.rs:1532:13
+     |
+1532 |     let mut termination_reason = String::new(); // set before every break in the loop below
+     |             ^^^^^^^^^^^^^^^^^^
+     |
+     = help: maybe it is overwritten before being read?
+     = note: `#[warn(unused_assignments)]` (part of `#[warn(unused)]`) on by default
+
+warning: variable `t_telemetry_ms` is assigned to, but never used
+    --> adapters/roadef/src/moga_impl.rs:1582:17
+     |
+1582 |         let mut t_telemetry_ms: f64 = 0.0;
+     |                 ^^^^^^^^^^^^^^
+     |
+     = note: consider using `_t_telemetry_ms` instead
+     = note: `#[warn(unused_variables)]` (part of `#[warn(unused)]`) on by default
+
+warning: value assigned to `t_telemetry_ms` is never read
+    --> adapters/roadef/src/moga_impl.rs:2272:13
+     |
+2272 |             t_telemetry_ms += t_tel_start.elapsed().as_secs_f64() * 1000.0;
+     |             ^^^^^^^^^^^^^^
+     |
+     = help: maybe it is overwritten before being read?
+
+warning: unused variable: `run_uuid`
+    --> adapters/roadef/src/moga_impl.rs:2655:9
+     |
+2655 |     let run_uuid = {
+     |         ^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_run_uuid`
+
+warning: unused variable: `g`
+    --> adapters/roadef/src/moga_impl.rs:2789:21
+     |
+2789 |             let mut g = if rng.gen_bool(config.crossover_rate) && population.len() >= 2 {
+     |                     ^
+     |
+help: if this is intentional, prefix it with an underscore
+     |
+2789 |             let mut _g = if rng.gen_bool(config.crossover_rate) && population.len() >= 2 {
+     |                     +
+help: you might have meant to pattern match on the similarly named constant `_`
+     |
+2789 -             let mut g = if rng.gen_bool(config.crossover_rate) && population.len() >= 2 {
+2789 +             let mut telemetry::_ = if rng.gen_bool(config.crossover_rate) && population.len() >= 2 {
+     |
+
+warning: value assigned to `best_g` is never read
+    --> adapters/roadef/src/moga_impl.rs:2809:29
+     |
+2809 | ...                   best_g = repaired;
+     |                       ^^^^^^
+     |
+     = help: maybe it is overwritten before being read?
+
+warning: value assigned to `best_g` is never read
+    --> adapters/roadef/src/moga_impl.rs:2852:29
+     |
+2852 | ...                   best_g = repaired;
+     |                       ^^^^^^
+     |
+     = help: maybe it is overwritten before being read?
+
+warning: unused variable: `telemetry`
+    --> adapters/roadef/src/moga_impl.rs:2645:5
+     |
+2645 |     telemetry: &mut dyn TelemetrySink,
+     |     ^^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_telemetry`
+
+warning: variable does not need to be mutable
+    --> adapters/roadef/src/moga_impl.rs:2789:17
+     |
+2789 |             let mut g = if rng.gen_bool(config.crossover_rate) && population.len() >= 2 {
+     |                 ----^
+     |                 |
+     |                 help: remove this `mut`
+     |
+     = note: `#[warn(unused_mut)]` (part of `#[warn(unused)]`) on by default
+
+warning: variable does not need to be mutable
+    --> adapters/roadef/src/moga_impl.rs:2792:22
+     |
+2792 |                 let (mut child1, _child2) = crossover.crossover(p1, p2, &mut rng);
+     |                      ----^^^^^^
+     |                      |
+     |                      help: remove this `mut`
+
+warning: unused variable: `evaluation_cache`
+  --> adapters/roadef/src/pipeline_impl.rs:63:13
+   |
+63 |     let mut evaluation_cache: std::collections::HashMap<RoadefGenome, RoadefEvaluation> =
+   |             ^^^^^^^^^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_evaluation_cache`
+
+warning: value assigned to `termination_reason` is never read
+   --> adapters/roadef/src/pipeline_impl.rs:295:13
+    |
+295 |     let mut termination_reason = String::new(); // set before every break in the loop below
+    |             ^^^^^^^^^^^^^^^^^^
+    |
+    = help: maybe it is overwritten before being read?
+
+warning: unused variable: `trajectory`
+   --> adapters/roadef/src/pipeline_impl.rs:322:13
+    |
+322 |     let mut trajectory: Vec<crate::moga_impl::GenerationSummary> = Vec::new();
+    |             ^^^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_trajectory`
+
+warning: unused variable: `gen_start`
+   --> adapters/roadef/src/pipeline_impl.rs:324:13
+    |
+324 |         let gen_start = std::time::Instant::now();
+    |             ^^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_gen_start`
+
+warning: unused variable: `t_eval_ms`
+   --> adapters/roadef/src/pipeline_impl.rs:352:17
+    |
+352 |         let mut t_eval_ms: f64 = 0.0;
+    |                 ^^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_t_eval_ms`
+
+warning: variable `t_telemetry_ms` is assigned to, but never used
+   --> adapters/roadef/src/pipeline_impl.rs:353:17
+    |
+353 |         let mut t_telemetry_ms: f64 = 0.0;
+    |                 ^^^^^^^^^^^^^^
+    |
+    = note: consider using `_t_telemetry_ms` instead
+
+warning: value assigned to `ca_tag` is never read
+   --> adapters/roadef/src/pipeline_impl.rs:680:25
+    |
+680 |                 let mut ca_tag: &'static str = "crossover";
+    |                         ^^^^^^
+    |
+    = help: maybe it is overwritten before being read?
+
+warning: value assigned to `cb_tag` is never read
+   --> adapters/roadef/src/pipeline_impl.rs:681:25
+    |
+681 |                 let mut cb_tag: &'static str = "crossover";
+    |                         ^^^^^^
+    |
+    = help: maybe it is overwritten before being read?
+
+warning: value assigned to `ca_tag` is never read
+   --> adapters/roadef/src/pipeline_impl.rs:686:21
+    |
+686 |                     ca_tag = "crossover+mutation";
+    |                     ^^^^^^
+    |
+    = help: maybe it is overwritten before being read?
+
+warning: value assigned to `cb_tag` is never read
+   --> adapters/roadef/src/pipeline_impl.rs:690:21
+    |
+690 |                     cb_tag = "crossover+mutation";
+    |                     ^^^^^^
+    |
+    = help: maybe it is overwritten before being read?
+
+warning: value assigned to `child_tag` is never read
+   --> adapters/roadef/src/pipeline_impl.rs:965:25
+    |
+965 |                 let mut child_tag = "mutation";
+    |                         ^^^^^^^^^
+    |
+    = help: maybe it is overwritten before being read?
+
+warning: unused variable: `t_eval_start`
+    --> adapters/roadef/src/pipeline_impl.rs:1084:13
+     |
+1084 |         let t_eval_start = Instant::now();
+     |             ^^^^^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_t_eval_start`
+
+warning: unused variable: `t_eval_start`
+    --> adapters/roadef/src/pipeline_impl.rs:1100:13
+     |
+1100 |         let t_eval_start = std::time::Instant::now();
+     |             ^^^^^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_t_eval_start`
+
+warning: value assigned to `t_telemetry_ms` is never read
+    --> adapters/roadef/src/pipeline_impl.rs:1353:13
+     |
+1353 |             t_telemetry_ms += t_tel_start.elapsed().as_secs_f64() * 1000.0;
+     |             ^^^^^^^^^^^^^^
+     |
+     = help: maybe it is overwritten before being read?
+
+warning: variable does not need to be mutable
+  --> adapters/roadef/src/pipeline_impl.rs:63:9
+   |
+63 |     let mut evaluation_cache: std::collections::HashMap<RoadefGenome, RoadefEvaluation> =
+   |         ----^^^^^^^^^^^^^^^^
+   |         |
+   |         help: remove this `mut`
+
+warning: variable does not need to be mutable
+   --> adapters/roadef/src/pipeline_impl.rs:322:9
+    |
+322 |     let mut trajectory: Vec<crate::moga_impl::GenerationSummary> = Vec::new();
+    |         ----^^^^^^^^^^
+    |         |
+    |         help: remove this `mut`
+
+warning: variable does not need to be mutable
+   --> adapters/roadef/src/pipeline_impl.rs:352:13
+    |
+352 |         let mut t_eval_ms: f64 = 0.0;
+    |             ----^^^^^^^^^
+    |             |
+    |             help: remove this `mut`
+
+warning: unused variable: `run_uuid`
+    --> adapters/roadef/src/pipeline_impl.rs:1683:9
+     |
+1683 |     let run_uuid = {
+     |         ^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_run_uuid`
+
+warning: unused variable: `t_health`
+    --> adapters/roadef/src/pipeline_impl.rs:1787:13
+     |
+1787 |     let mut t_health = Instant::now();
+     |             ^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_t_health`
+
+warning: value assigned to `tag` is never read
+    --> adapters/roadef/src/pipeline_impl.rs:1909:25
+     |
+1909 |                 let mut tag = "crossover_mutation";
+     |                         ^^^
+     |
+     = help: maybe it is overwritten before being read?
+
+warning: value assigned to `tag` is never read
+    --> adapters/roadef/src/pipeline_impl.rs:1968:25
+     |
+1968 |                 let mut tag = "mutation";
+     |                         ^^^
+     |
+     = help: maybe it is overwritten before being read?
+
+warning: unused variable: `telemetry`
+    --> adapters/roadef/src/pipeline_impl.rs:1670:5
+     |
+1670 |     telemetry: &mut dyn TelemetrySink,
+     |     ^^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_telemetry`
+
+warning: variable does not need to be mutable
+    --> adapters/roadef/src/pipeline_impl.rs:1787:9
+     |
+1787 |     let mut t_health = Instant::now();
+     |         ----^^^^^^^^
+     |         |
+     |         help: remove this `mut`
+
+warning: variable does not need to be mutable
+    --> adapters/roadef/src/pipeline_impl.rs:1811:13
+     |
+1811 |         let mut t_feasibility_ms: f64 = 0.0;
+     |             ----^^^^^^^^^^^^^^^^
+     |             |
+     |             help: remove this `mut`
+
+warning: variable does not need to be mutable
+    --> adapters/roadef/src/pipeline_impl.rs:1837:13
+     |
+1837 |         let mut n_cross_repair = 0;
+     |             ----^^^^^^^^^^^^^^
+     |             |
+     |             help: remove this `mut`
+
+warning: variable does not need to be mutable
+    --> adapters/roadef/src/pipeline_impl.rs:1838:13
+     |
+1838 |         let mut n_mut_repair = 0;
+     |             ----^^^^^^^^^^^^
+     |             |
+     |             help: remove this `mut`
+
+warning: variable does not need to be mutable
+    --> adapters/roadef/src/pipeline_impl.rs:1839:13
+     |
+1839 |         let mut n_cross_maj = 0;
+     |             ----^^^^^^^^^^^
+     |             |
+     |             help: remove this `mut`
+
+warning: variable does not need to be mutable
+    --> adapters/roadef/src/pipeline_impl.rs:1840:13
+     |
+1840 |         let mut n_mut_maj = 0;
+     |             ----^^^^^^^^^
+     |             |
+     |             help: remove this `mut`
+
+warning: `roadef` (lib) generated 39 warnings (run `cargo fix --lib -p roadef` to apply 13 suggestions)
+warning: unused variable: `wps`
+   --> adapters/roadef/src/bin/phase10c3_capacity_prefilter.rs:286:21
+    |
+286 |                 let wps = path_to_waypoints_rc001(fp, greedy_data.max_segments);
+    |                     ^^^ help: if this is intentional, prefix it with an underscore: `_wps`
+    |
+    = note: `#[warn(unused_variables)]` (part of `#[warn(unused)]`) on by default
+
+warning: useless assignment of variable of type `Option<Vec<u64>>` to itself
+   --> adapters/roadef/src/bin/phase10c3_capacity_prefilter.rs:348:29
+    |
+348 | ...                   full_path = full_path;
+    |                       ^^^^^^^^^^^^^^^^^^^^^
+    |
+    = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
+
+warning: `roadef` (bin "phase10c3_capacity_prefilter") generated 2 warnings
+    Finished `release` profile [optimized] target(s) in 0.30s
+     Running `target/release/phase10c3_capacity_prefilter --filter capacity --seed 42 --genomes 50`
+=== P10-C3 Capacity-Aware Pre-Filter ===
+Governance: EXPERIMENTAL — adapter-only, Coralys core FROZEN
+Authorization: 2026-08-28
+Instance  : setA-13
+Seed      : 42
+Genomes   : 50
+Filter    : capacity
+Target arc: 658
+Max retries: 3
+Saturation coefficient: 100.0 (UNCHANGED)
+
+Network: 200 nodes, 1000 links
+Demands: 2000, Time slots: 2
+Arc 658 capacity: 1000.000000
+Arc 658 from=77 to=94
+
+  genome=0 arc658_sel=40 arc658_rej=0 total_rej=0 arc658_sat=1.0000 max_sat=1.0000 valid=true ctor=4558ms
+  genome=1 arc658_sel=39 arc658_rej=0 total_rej=0 arc658_sat=1.0128 max_sat=1.0128 valid=false ctor=3236ms
+  genome=2 arc658_sel=34 arc658_rej=0 total_rej=0 arc658_sat=1.0000 max_sat=1.0000 valid=true ctor=3331ms
+  genome=3 arc658_sel=38 arc658_rej=0 total_rej=0 arc658_sat=1.0000 max_sat=1.0000 valid=true ctor=5963ms
+  genome=4 arc658_sel=40 arc658_rej=0 total_rej=0 arc658_sat=1.0000 max_sat=1.0000 valid=true ctor=4176ms
+  genome=5 arc658_sel=44 arc658_rej=0 total_rej=0 arc658_sat=1.0000 max_sat=1.0000 valid=true ctor=6224ms
+  genome=6 arc658_sel=38 arc658_rej=0 total_rej=0 arc658_sat=0.9744 max_sat=0.9744 valid=true ctor=5087ms
+  genome=7 arc658_sel=36 arc658_rej=0 total_rej=0 arc658_sat=1.0000 max_sat=1.0000 valid=true ctor=3770ms
+  genome=8 arc658_sel=42 arc658_rej=0 total_rej=0 arc658_sat=0.9658 max_sat=0.9658 valid=true ctor=6045ms
+  genome=9 arc658_sel=44 arc658_rej=0 total_rej=0 arc658_sat=1.0000 max_sat=1.0000 valid=true ctor=4230ms
+  genome=10 arc658_sel=44 arc658_rej=0 total_rej=0 arc658_sat=1.0000 max_sat=1.0000 valid=true ctor=4641ms
+  genome=11 arc658_sel=42 arc658_rej=0 total_rej=0 arc658_sat=0.9658 max_sat=0.9658 valid=true ctor=3902ms
+  genome=12 arc658_sel=47 arc658_rej=0 total_rej=0 arc658_sat=1.0000 max_sat=1.0000 valid=true ctor=5938ms
+  genome=13 arc658_sel=37 arc658_rej=0 total_rej=0 arc658_sat=1.0000 max_sat=1.0000 valid=true ctor=3071ms
+  genome=14 arc658_sel=40 arc658_rej=0 total_rej=0 arc658_sat=1.0000 max_sat=1.0000 valid=true ctor=4104ms
+  genome=15 arc658_sel=38 arc658_rej=0 total_rej=0 arc658_sat=0.9744 max_sat=0.9744 valid=true ctor=4304ms
+  genome=16 arc658_sel=42 arc658_rej=0 total_rej=0 arc658_sat=1.0043 max_sat=1.0043 valid=false ctor=3357ms
+  genome=17 arc658_sel=39 arc658_rej=0 total_rej=0 arc658_sat=1.0128 max_sat=1.0128 valid=false ctor=3285ms
+  genome=18 arc658_sel=43 arc658_rej=0 total_rej=0 arc658_sat=1.0128 max_sat=1.0128 valid=false ctor=3069ms
+  genome=19 arc658_sel=41 arc658_rej=0 total_rej=0 arc658_sat=1.0128 max_sat=1.0128 valid=false ctor=3030ms
+  genome=20 arc658_sel=37 arc658_rej=0 total_rej=0 arc658_sat=0.9915 max_sat=0.9915 valid=true ctor=3494ms
+  genome=21 arc658_sel=42 arc658_rej=0 total_rej=0 arc658_sat=1.0000 max_sat=1.0000 valid=true ctor=3367ms
+  genome=22 arc658_sel=35 arc658_rej=0 total_rej=0 arc658_sat=0.9915 max_sat=0.9915 valid=true ctor=3212ms
+  genome=23 arc658_sel=39 arc658_rej=0 total_rej=0 arc658_sat=1.0000 max_sat=1.0000 valid=true ctor=3299ms
+  genome=24 arc658_sel=42 arc658_rej=0 total_rej=0 arc658_sat=1.0043 max_sat=1.0043 valid=false ctor=3049ms
+  genome=25 arc658_sel=40 arc658_rej=0 total_rej=0 arc658_sat=1.0128 max_sat=1.0128 valid=false ctor=3439ms
+  genome=26 arc658_sel=41 arc658_rej=0 total_rej=0 arc658_sat=0.9658 max_sat=0.9658 valid=true ctor=3949ms
+  genome=27 arc658_sel=39 arc658_rej=0 total_rej=0 arc658_sat=1.0128 max_sat=1.0128 valid=false ctor=3131ms
+  genome=28 arc658_sel=44 arc658_rej=0 total_rej=0 arc658_sat=1.0000 max_sat=1.0000 valid=true ctor=3181ms
+  genome=29 arc658_sel=32 arc658_rej=0 total_rej=0 arc658_sat=0.9658 max_sat=0.9658 valid=true ctor=3546ms
+  genome=30 arc658_sel=43 arc658_rej=0 total_rej=0 arc658_sat=1.0000 max_sat=1.0000 valid=true ctor=3359ms
+  genome=31 arc658_sel=38 arc658_rej=0 total_rej=0 arc658_sat=0.9744 max_sat=0.9744 valid=true ctor=3040ms
+  genome=32 arc658_sel=40 arc658_rej=0 total_rej=0 arc658_sat=1.0000 max_sat=1.0000 valid=true ctor=3104ms
+  genome=33 arc658_sel=39 arc658_rej=0 total_rej=0 arc658_sat=0.9915 max_sat=0.9915 valid=true ctor=3132ms
+  genome=34 arc658_sel=41 arc658_rej=0 total_rej=0 arc658_sat=1.0128 max_sat=1.0128 valid=false ctor=3075ms
+  genome=35 arc658_sel=40 arc658_rej=0 total_rej=0 arc658_sat=1.0000 max_sat=1.0000 valid=true ctor=3065ms
+  genome=36 arc658_sel=36 arc658_rej=0 total_rej=0 arc658_sat=1.0000 max_sat=1.0000 valid=true ctor=3045ms
+  genome=37 arc658_sel=43 arc658_rej=0 total_rej=0 arc658_sat=1.0128 max_sat=1.0128 valid=false ctor=3061ms
+  genome=38 arc658_sel=39 arc658_rej=0 total_rej=0 arc658_sat=0.9915 max_sat=0.9915 valid=true ctor=3032ms
+  genome=39 arc658_sel=40 arc658_rej=0 total_rej=0 arc658_sat=1.0000 max_sat=1.0000 valid=true ctor=3060ms
+  genome=40 arc658_sel=39 arc658_rej=0 total_rej=0 arc658_sat=1.0128 max_sat=1.0128 valid=false ctor=3050ms
+  genome=41 arc658_sel=42 arc658_rej=0 total_rej=0 arc658_sat=1.0000 max_sat=1.0000 valid=true ctor=3138ms
+  genome=42 arc658_sel=43 arc658_rej=0 total_rej=0 arc658_sat=1.0000 max_sat=1.0000 valid=true ctor=3057ms
+  genome=43 arc658_sel=41 arc658_rej=0 total_rej=0 arc658_sat=1.0128 max_sat=1.0128 valid=false ctor=3070ms
+  genome=44 arc658_sel=44 arc658_rej=0 total_rej=0 arc658_sat=1.0000 max_sat=1.0000 valid=true ctor=3121ms
+  genome=45 arc658_sel=38 arc658_rej=0 total_rej=0 arc658_sat=0.9744 max_sat=0.9744 valid=true ctor=3057ms
+  genome=46 arc658_sel=41 arc658_rej=0 total_rej=0 arc658_sat=1.0000 max_sat=1.0000 valid=true ctor=3085ms
+  genome=47 arc658_sel=36 arc658_rej=0 total_rej=0 arc658_sat=1.0128 max_sat=1.0128 valid=false ctor=3058ms
+  genome=48 arc658_sel=42 arc658_rej=0 total_rej=0 arc658_sat=1.0000 max_sat=1.0000 valid=true ctor=3058ms
+  genome=49 arc658_sel=45 arc658_rej=0 total_rej=0 arc658_sat=0.9872 max_sat=0.9872 valid=true ctor=3057ms
+
+=== P10-C3 Summary (filter=capacity) ===
+Genomes constructed       : 50
+Overloaded genomes        : 13 / 50 (26.0%)
+Feasible genomes          : 37 / 50 (74.0%)
+Arc 658 total selections   : 2009 (40.18/genome)
+Arc 658 total rejections   : 0 (0.00/genome)
+Total capacity rejections : 0 (0.00/genome)
+Arc 658 mean final sat     : 0.997264
+Arc 658 max final sat      : 1.012820
+Genome mean max_sat       : 0.997264
+Genome max max_sat        : 1.012820
+Total wall time           : 414406ms (414.4s)
+Mean ctor+eval/genome     : 8288.1ms
+
+Mechanism interpretation:
+  arc658_rejections > 0 → filter is actively blocking Arc 658
+  arc658_selections ↓ vs control → filter changes routing decision
+  overloaded ↓ vs control → filter improves initial feasibility
+  arc658_rejections ≈ 0 → Arc 658 not triggering capacity threshold
+
+Gates before any production change:
+  [GATE] 5/5 trajectory invariants bit-exact vs Phase 9 (1919018aa)
+  [GATE] T_net > 0 on setA-14 (medium) AND setA-16/setA-19 (large)

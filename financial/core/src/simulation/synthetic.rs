@@ -19,7 +19,11 @@ fn make_events(base_price: u64, scenario_idx: usize, seed: u64, regime: &str) ->
             // "volatile"
             _ => {
                 let wave = (step as i64 % 11) - 5;
-                if step % 2 == 0 { wave.abs() + 2 } else { -(wave.abs() + 2) }
+                if step % 2 == 0 {
+                    wave.abs() + 2
+                } else {
+                    -(wave.abs() + 2)
+                }
             }
         };
         price = (price + drift).max(1);
@@ -31,7 +35,11 @@ fn make_events(base_price: u64, scenario_idx: usize, seed: u64, regime: &str) ->
         } else {
             MarketEventType::Trade
         };
-        let side = if step % 2 == 0 { Some(Side::Buy) } else { Some(Side::Sell) };
+        let side = if step % 2 == 0 {
+            Some(Side::Buy)
+        } else {
+            Some(Side::Sell)
+        };
         events.push(MarketEvent {
             subtype,
             price: price as u64,

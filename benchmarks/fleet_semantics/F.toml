@@ -1,0 +1,44 @@
+# Fleet Semantics Registry — Fisher F-family
+# M18.2 — Fleet Semantics Registry v1.0
+# Generated: 2026-07-09
+
+[family]
+id          = "F"
+full_name   = "Fisher F-family"
+
+[constraint]
+type        = "ATMOST"
+description = "At most K vehicles may be used. The optimizer may use fewer vehicles if capacity permits."
+formal      = "routes_used ≤ K"
+
+[source]
+primary     = "CVRPLIB catalog (galgos.inf.puc-rio.br)"
+url         = "https://galgos.inf.puc-rio.br/cvrplib/index.php/en/instances/1"
+
+[publication]
+authors     = "Fisher, M.L."
+title       = "Optimal Solution of Vehicle Routing Problems Using Minimum K-Trees"
+year        = 1994
+journal     = "Operations Research"
+volume      = "42"
+number      = "4"
+pages       = "626–642"
+doi         = "10.1287/opre.42.4.626"
+
+[notes]
+derivation  = """
+Fisher (1994) formulates the CVRP as minimizing total distance subject to a fleet
+of at most K vehicles. The vehicle count K is an upper bound — using fewer vehicles
+is permitted if all customers can be served within capacity constraints.
+
+Three instances: F-n45-k4, F-n72-k4, F-n135-k7. Vehicle count encoded in instance name.
+"""
+campaign_observation = "Campaign v1.5: F-family instances show no systematic negative gaps. Consistent with ATMOST semantics."
+
+[verification]
+status      = "Hypothesis"
+confidence  = "High"
+method      = "Literature consensus; Fisher 1994 formulation; CVRPLIB catalog interpretation"
+date        = "2026-07"
+open_items  = ["P5 — confirm ATMOST interpretation from Fisher 1994 original paper"]
+notes       = "ATMOST is the standard CVRP interpretation. Fisher 1994 uses standard CVRP formulation. Hypothesis confidence is high."

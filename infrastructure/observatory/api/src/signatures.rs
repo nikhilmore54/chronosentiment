@@ -217,8 +217,20 @@ mod tests {
     #[test]
     fn test_event_signature_is_deterministic() {
         let payload = serde_json::json!({ "order_id": "O1", "quantity": 100 });
-        let sig1 = compute_event_signature(1, 1000000, "ORDER_QUEUED", &SourceLayer::Sequencer, &payload);
-        let sig2 = compute_event_signature(1, 1000000, "ORDER_QUEUED", &SourceLayer::Sequencer, &payload);
+        let sig1 = compute_event_signature(
+            1,
+            1000000,
+            "ORDER_QUEUED",
+            &SourceLayer::Sequencer,
+            &payload,
+        );
+        let sig2 = compute_event_signature(
+            1,
+            1000000,
+            "ORDER_QUEUED",
+            &SourceLayer::Sequencer,
+            &payload,
+        );
         assert_eq!(sig1, sig2);
         assert_eq!(sig1.len(), 64); // BLAKE3 hex = 32 bytes = 64 hex chars
     }
@@ -226,8 +238,20 @@ mod tests {
     #[test]
     fn test_event_signature_changes_with_input() {
         let payload = serde_json::json!({});
-        let sig1 = compute_event_signature(1, 1000000, "ORDER_QUEUED", &SourceLayer::Sequencer, &payload);
-        let sig2 = compute_event_signature(2, 1000000, "ORDER_QUEUED", &SourceLayer::Sequencer, &payload);
+        let sig1 = compute_event_signature(
+            1,
+            1000000,
+            "ORDER_QUEUED",
+            &SourceLayer::Sequencer,
+            &payload,
+        );
+        let sig2 = compute_event_signature(
+            2,
+            1000000,
+            "ORDER_QUEUED",
+            &SourceLayer::Sequencer,
+            &payload,
+        );
         assert_ne!(sig1, sig2);
     }
 

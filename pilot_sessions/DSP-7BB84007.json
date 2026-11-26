@@ -1,0 +1,35 @@
+{
+  "id": "DSP-7BB84007",
+  "timestamp": "2026-07-28T13:38:50Z",
+  "dispatcher_id": "D-01",
+  "dispatcher_role": "Dispatcher (2–5 years)",
+  "scenario_id": "gerad-benchmark",
+  "adapter_version": "0.1.0",
+  "coverage_pct": 100.0,
+  "hard_violations": 27,
+  "rest_violations": 0,
+  "fitness": -9152.34159779614,
+  "runtime_secs": 0.192,
+  "disruption_recovery_secs": 600.0,
+  "manual_edits": 1,
+  "recommendations_presented": 2,
+  "recommendations_accepted": 0,
+  "recommendations_rejected": 0,
+  "recommendation_decisions": [
+    {
+      "recommendation_text": "{\"constraint_id\":\"HC3\",\"severity\":\"Hard\",\"explanation\":\"There are 27 instances where a worker exceeds the maximum weekly hours limit (40 hours).\",\"recommended_action\":\"Reassign one or more shifts from the overloaded worker to under-utilized workers.\"}",
+      "action": "skipped",
+      "rejection_reason": null
+    },
+    {
+      "recommendation_text": "{\"constraint_id\":\"SC1\",\"severity\":\"Soft\",\"explanation\":\"High workload imbalance detected (Fairness penalty: 5652.34).\",\"recommended_action\":\"Redistribute shifts to balance working hours more equitably across the workforce.\"}",
+      "action": "skipped",
+      "rejection_reason": null
+    }
+  ],
+  "explanation_usefulness": 0,
+  "dispatcher_comments": "",
+  "session_complete": true,
+  "next_steps": "Schedule a follow-up call",
+  "willing_to_pilot": "maybe"
+}

@@ -1,0 +1,138 @@
+use chrono::Utc;
+use chronosentiment_adapter::instrument::Instrument;
+use chronosentiment_adapter::ingestion::provider::TimeRange;
+use chronosentiment_adapter::ingestion::yahoo::{YahooProvider, YahooTranslator};
+use chronosentiment_adapter::ingestion::validator::ValidationEngine;
+use chronosentiment_adapter::ingestion::pipeline::{IngestionPipeline, DefaultIngestionPipeline, IngestionRequest};
+use chronosentiment_adapter::repository::ValidatedObservationRepository;
+use chronosentiment_adapter::observation::ValidatedObservation;
+use chronosentiment_adapter::metrics::ChronoMetricEngine;
+use chronosentiment_adapter::validation::context::EvaluationContext;
+use chronosentiment_adapter::reasoning::evidence_engine::ChronoEvidenceEngine;
+use chronosentiment_adapter::reasoning::hypothesis_engine::ChronoHypothesisEngine;
+use chronosentiment_adapter::reasoning::scenario_engine::ChronoScenarioEngine;
+use chronosentiment_adapter::reasoning::policy_engine::ChronoPolicyEngine;
+use chronosentiment_adapter::reasoning::decision_engine::ChronoDecisionEngine;
+use chronosentiment_adapter::reasoning::journal::DecisionJournal;
+use coralys_moga::runtime::optimization::metric::MetricEngine;
+use std::sync::Arc;
+use tokio::sync::Mutex;
+use std::error::Error;
+use uuid::Uuid;
+
+pub struct MockRepository {
+    observations: Arc<Mutex<Vec<ValidatedObservation>>>,
+}
+
+#[async_trait::async_trait]
+impl ValidatedObservationRepository for MockRepository {
+    async fn store_observation(&self, observation: &ValidatedObservation) -> Result<(), Box<dyn Error>> {
+        let mut obs = self.observations.lock().await;
+        obs.push(observation.clone());
+        Ok(())
+    }
+
+    async fn get_observations_as_of(
+        &self,
+        _instrument_id: Uuid,
+        _evaluation_timestamp: chrono::DateTime<Utc>,
+    ) -> Result<Vec<ValidatedObservation>, Box<dyn Error>> {
+        let obs = self.observations.lock().await;
+        Ok(obs.clone())
+    }
+
+    async fn get_complete_history(&self, _instrument_id: Uuid) -> Result<Vec<ValidatedObservation>, Box<dyn Error>> {
+        let obs = self.observations.lock().await;
+        Ok(obs.clone())
+    }
+}
+
+#[tokio::main]
+async fn main() {
+    println!("==================================================");
+    println!(" Milestone 1C: Complete Reasoning Pipeline ");
+    println!("==================================================");
+    
+    // ---------------------------------------------------------
+    // Phase 1A: Ingestion & Knowledge Lake 
+    // ---------------------------------------------------------
+    println!("[*] Fetching one month of Reliance candles from Yahoo Finance...");
+    let mut instrument = Instrument::new("NSE".to_string(), "RELIANCE".to_string());
+    instrument.add_provider_id("yahoo", "RELIANCE.NS");
+        
+    let provider = YahooProvider::new();
+    let translator = YahooTranslator;
+    let validator = ValidationEngine;
+    
+    let observations = Arc::new(Mutex::new(Vec::new()));
+    let repository = MockRepository { observations: observations.clone() };
+    
+    let pipeline = DefaultIngestionPipeline {
+        provider,
+        translator,
+        validator,
+        repository,
+    };
+    
+    let report = pipeline.ingest(&instrument, IngestionRequest { range: TimeRange::OneMonth }).await.unwrap();
+    println!("Ingestion Report: Fetched: {}, Validated: {}, Persisted: {}, Time: {}ms", 
+        report.observations_fetched, 
+        report.observations_accepted, 
+        report.persistence_count,
+        report.elapsed_time_ms
+    );
+    
+    let persisted_observations = observations.lock().await.clone();
+    
+    // ---------------------------------------------------------
+    // Phase 1B: Validation Platform (Replay Engine -> Context)
+    // ---------------------------------------------------------
+    let evaluation_timestamp = Utc::now();
+    let context = EvaluationContext {
+        evaluation_timestamp,
+        research_session_id: "rs-001".to_string(),
+        observations: persisted_observations,
+        portfolio: None, 
+        policy: None,
+    };
+    
+    // ---------------------------------------------------------
+    // Phase 1C: Reasoning Pipeline
+    // ---------------------------------------------------------
+    
+    // 1. Metric Engine
+    println!("[*] Metric Engine computing facts...");
+    let metric_engine = ChronoMetricEngine;
+    let metric_report = metric_engine.evaluate(&context);
+    
+    // 2. Evidence Engine
+    println!("[*] Evidence Engine structuring facts...");
+    let evidence_engine = ChronoEvidenceEngine;
+    let evidence = evidence_engine.generate_evidence(&context, &metric_report);
+    
+    // 3. Hypothesis Engine
+    println!("[*] Hypothesis Engine framing beliefs...");
+    let hypothesis_engine = ChronoHypothesisEngine;
+    let hypotheses = hypothesis_engine.generate_hypotheses(&context, &evidence);
+    
+    // 4. Scenario Engine
+    println!("[*] Scenario Engine constructing competing futures...");
+    let scenario_engine = ChronoScenarioEngine;
+    let scenarios = scenario_engine.generate_scenarios(&context, &hypotheses);
+    
+    // 5. Policy Engine
+    println!("[*] Policy Engine enforcing constraints...");
+    let policy_engine = ChronoPolicyEngine;
+    let valid_scenarios = policy_engine.evaluate_scenarios(scenarios.clone(), &context.policy);
+    
+    // 6. Decision Engine
+    println!("[*] Decision Engine selecting best scenario...");
+    let decision_engine = ChronoDecisionEngine;
+    let decision = decision_engine.make_decision(&context.research_session_id, valid_scenarios, &context.portfolio);
+    
+    // 7. Decision Journal
+    let journal = DecisionJournal;
+    journal.record(&context, &metric_report, &evidence, &hypotheses, &scenarios, &decision);
+    
+    println!("Milestone 1C Completed Successfully!");
+}

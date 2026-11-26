@@ -1,0 +1,829 @@
+{
+  "question": "Q3 \u2014 Action vs underlying decision",
+  "action_counts": {
+    "NoTrade": 267,
+    "Watch": 254,
+    "Sell": 17,
+    "Buy": 74
+  },
+  "pooled_by_class_then_action": {
+    "Favourable": {
+      "Sell": {
+        "n_total": 17,
+        "n_eligible": 17,
+        "primary": {
+          "target_reached_rate": 0.11764705882352941,
+          "risk_reached_rate": 0.29411764705882354,
+          "realized_return_mean": -0.0046168823529411755
+        },
+        "secondary": {
+          "actual_mfe_mean": 0.016543882352941176,
+          "actual_mae_mean": -0.02591829411764706,
+          "exit_reason_counts": {
+            "HORIZON": 10,
+            "TARGET_GAP_THROUGH": 1,
+            "TARGET": 1,
+            "RISK": 5
+          }
+        }
+      },
+      "Buy": {
+        "n_total": 67,
+        "n_eligible": 67,
+        "primary": {
+          "target_reached_rate": 0.4626865671641791,
+          "risk_reached_rate": 0.13432835820895522,
+          "realized_return_mean": 0.011080626865671642
+        },
+        "secondary": {
+          "actual_mfe_mean": 0.034037537313432835,
+          "actual_mae_mean": -0.012652074626865671,
+          "exit_reason_counts": {
+            "HORIZON": 27,
+            "TARGET": 28,
+            "TARGET_GAP_THROUGH": 3,
+            "RISK": 9
+          }
+        }
+      }
+    },
+    "Mixed": {
+      "Watch": {
+        "n_total": 254,
+        "n_eligible": 254,
+        "primary": {
+          "target_reached_rate": 0.28346456692913385,
+          "risk_reached_rate": 0.11811023622047244,
+          "realized_return_mean": 0.006167173228346457
+        },
+        "secondary": {
+          "actual_mfe_mean": 0.023799035433070867,
+          "actual_mae_mean": -0.015764145669291338,
+          "exit_reason_counts": {
+            "HORIZON": 152,
+            "TARGET": 68,
+            "RISK": 29,
+            "TARGET_GAP_THROUGH": 4,
+            "RISK_GAP_THROUGH": 1
+          }
+        }
+      },
+      "Buy": {
+        "n_total": 7,
+        "n_eligible": 7,
+        "primary": {
+          "target_reached_rate": 0.2857142857142857,
+          "risk_reached_rate": 0.2857142857142857,
+          "realized_return_mean": 0.016561857142857146
+        },
+        "secondary": {
+          "actual_mfe_mean": 0.043255714285714286,
+          "actual_mae_mean": -0.019080285714285716,
+          "exit_reason_counts": {
+            "HORIZON": 3,
+            "TARGET": 2,
+            "RISK": 2
+          }
+        }
+      }
+    },
+    "Unfavourable": {
+      "NoTrade": {
+        "n_total": 261,
+        "n_eligible": 0,
+        "primary": {
+          "target_reached_rate": null,
+          "risk_reached_rate": null,
+          "realized_return_mean": null
+        },
+        "secondary": {
+          "actual_mfe_mean": 0.020391961685823752,
+          "actual_mae_mean": -0.022071877394636015,
+          "exit_reason_counts": {
+            "NO_TRADE": 261
+          }
+        }
+      }
+    },
+    "Insufficient": {
+      "NoTrade": {
+        "n_total": 6,
+        "n_eligible": 0,
+        "primary": {
+          "target_reached_rate": null,
+          "risk_reached_rate": null,
+          "realized_return_mean": null
+        },
+        "secondary": {
+          "actual_mfe_mean": 0.024635166666666666,
+          "actual_mae_mean": -0.015705166666666666,
+          "exit_reason_counts": {
+            "NO_TRADE": 6
+          }
+        }
+      }
+    }
+  },
+  "per_cohort": {
+    "T1": {
+      "Favourable": {
+        "Sell": {
+          "n_total": 4,
+          "n_eligible": 4,
+          "primary": {
+            "target_reached_rate": 0.25,
+            "risk_reached_rate": 0.0,
+            "realized_return_mean": 0.018281000000000002
+          },
+          "secondary": {
+            "actual_mfe_mean": 0.02487025,
+            "actual_mae_mean": -0.010595,
+            "exit_reason_counts": {
+              "HORIZON": 3,
+              "TARGET_GAP_THROUGH": 1
+            }
+          }
+        },
+        "Buy": {
+          "n_total": 6,
+          "n_eligible": 6,
+          "primary": {
+            "target_reached_rate": 0.0,
+            "risk_reached_rate": 0.0,
+            "realized_return_mean": -0.005923500000000001
+          },
+          "secondary": {
+            "actual_mfe_mean": 0.014013833333333335,
+            "actual_mae_mean": -0.012899833333333333,
+            "exit_reason_counts": {
+              "HORIZON": 6
+            }
+          }
+        }
+      },
+      "Mixed": {
+        "Watch": {
+          "n_total": 44,
+          "n_eligible": 44,
+          "primary": {
+            "target_reached_rate": 0.1590909090909091,
+            "risk_reached_rate": 0.022727272727272728,
+            "realized_return_mean": 0.005276181818181818
+          },
+          "secondary": {
+            "actual_mfe_mean": 0.01612809090909091,
+            "actual_mae_mean": -0.012044954545454544,
+            "exit_reason_counts": {
+              "HORIZON": 36,
+              "TARGET": 7,
+              "RISK": 1
+            }
+          }
+        },
+        "Buy": {
+          "n_total": 1,
+          "n_eligible": 1,
+          "primary": {
+            "target_reached_rate": 0.0,
+            "risk_reached_rate": 0.0,
+            "realized_return_mean": -0.019626
+          },
+          "secondary": {
+            "actual_mfe_mean": 0.011776,
+            "actual_mae_mean": -0.02243,
+            "exit_reason_counts": {
+              "HORIZON": 1
+            }
+          }
+        }
+      },
+      "Unfavourable": {
+        "NoTrade": {
+          "n_total": 46,
+          "n_eligible": 0,
+          "primary": {
+            "target_reached_rate": null,
+            "risk_reached_rate": null,
+            "realized_return_mean": null
+          },
+          "secondary": {
+            "actual_mfe_mean": 0.014182608695652174,
+            "actual_mae_mean": -0.01217254347826087,
+            "exit_reason_counts": {
+              "NO_TRADE": 46
+            }
+          }
+        }
+      },
+      "Insufficient": {
+        "NoTrade": {
+          "n_total": 1,
+          "n_eligible": 0,
+          "primary": {
+            "target_reached_rate": null,
+            "risk_reached_rate": null,
+            "realized_return_mean": null
+          },
+          "secondary": {
+            "actual_mfe_mean": 0.008138,
+            "actual_mae_mean": -0.006706,
+            "exit_reason_counts": {
+              "NO_TRADE": 1
+            }
+          }
+        }
+      }
+    },
+    "T2": {
+      "Favourable": {
+        "Buy": {
+          "n_total": 8,
+          "n_eligible": 8,
+          "primary": {
+            "target_reached_rate": 0.375,
+            "risk_reached_rate": 0.0,
+            "realized_return_mean": 0.01024425
+          },
+          "secondary": {
+            "actual_mfe_mean": 0.03511925,
+            "actual_mae_mean": -0.010615375,
+            "exit_reason_counts": {
+              "TARGET": 2,
+              "HORIZON": 5,
+              "TARGET_GAP_THROUGH": 1
+            }
+          }
+        },
+        "Sell": {
+          "n_total": 4,
+          "n_eligible": 4,
+          "primary": {
+            "target_reached_rate": 0.25,
+            "risk_reached_rate": 0.0,
+            "realized_return_mean": 0.02516875
+          },
+          "secondary": {
+            "actual_mfe_mean": 0.03127,
+            "actual_mae_mean": -0.01444725,
+            "exit_reason_counts": {
+              "HORIZON": 3,
+              "TARGET": 1
+            }
+          }
+        }
+      },
+      "Mixed": {
+        "Watch": {
+          "n_total": 43,
+          "n_eligible": 43,
+          "primary": {
+            "target_reached_rate": 0.11627906976744186,
+            "risk_reached_rate": 0.11627906976744186,
+            "realized_return_mean": 0.0009576976744186046
+          },
+          "secondary": {
+            "actual_mfe_mean": 0.018771209302325582,
+            "actual_mae_mean": -0.0184436511627907,
+            "exit_reason_counts": {
+              "HORIZON": 33,
+              "TARGET": 4,
+              "TARGET_GAP_THROUGH": 1,
+              "RISK": 5
+            }
+          }
+        }
+      },
+      "Unfavourable": {
+        "NoTrade": {
+          "n_total": 46,
+          "n_eligible": 0,
+          "primary": {
+            "target_reached_rate": null,
+            "risk_reached_rate": null,
+            "realized_return_mean": null
+          },
+          "secondary": {
+            "actual_mfe_mean": 0.024282847826086956,
+            "actual_mae_mean": -0.023785978260869565,
+            "exit_reason_counts": {
+              "NO_TRADE": 46
+            }
+          }
+        }
+      },
+      "Insufficient": {
+        "NoTrade": {
+          "n_total": 1,
+          "n_eligible": 0,
+          "primary": {
+            "target_reached_rate": null,
+            "risk_reached_rate": null,
+            "realized_return_mean": null
+          },
+          "secondary": {
+            "actual_mfe_mean": 0.00894,
+            "actual_mae_mean": -0.016863,
+            "exit_reason_counts": {
+              "NO_TRADE": 1
+            }
+          }
+        }
+      }
+    },
+    "T3": {
+      "Favourable": {
+        "Buy": {
+          "n_total": 11,
+          "n_eligible": 11,
+          "primary": {
+            "target_reached_rate": 0.45454545454545453,
+            "risk_reached_rate": 0.2727272727272727,
+            "realized_return_mean": 0.00433509090909091
+          },
+          "secondary": {
+            "actual_mfe_mean": 0.027293818181818183,
+            "actual_mae_mean": -0.019137727272727275,
+            "exit_reason_counts": {
+              "TARGET": 4,
+              "TARGET_GAP_THROUGH": 1,
+              "RISK": 3,
+              "HORIZON": 3
+            }
+          }
+        },
+        "Sell": {
+          "n_total": 2,
+          "n_eligible": 2,
+          "primary": {
+            "target_reached_rate": 0.0,
+            "risk_reached_rate": 0.5,
+            "realized_return_mean": -0.015522999999999999
+          },
+          "secondary": {
+            "actual_mfe_mean": 0.0153175,
+            "actual_mae_mean": -0.0297105,
+            "exit_reason_counts": {
+              "HORIZON": 1,
+              "RISK": 1
+            }
+          }
+        }
+      },
+      "Mixed": {
+        "Watch": {
+          "n_total": 40,
+          "n_eligible": 40,
+          "primary": {
+            "target_reached_rate": 0.2,
+            "risk_reached_rate": 0.175,
+            "realized_return_mean": 0.0005133500000000001
+          },
+          "secondary": {
+            "actual_mfe_mean": 0.022615125,
+            "actual_mae_mean": -0.019261775000000002,
+            "exit_reason_counts": {
+              "HORIZON": 25,
+              "TARGET": 8,
+              "RISK": 6,
+              "RISK_GAP_THROUGH": 1
+            }
+          }
+        },
+        "Buy": {
+          "n_total": 2,
+          "n_eligible": 2,
+          "primary": {
+            "target_reached_rate": 1.0,
+            "risk_reached_rate": 0.0,
+            "realized_return_mean": 0.0520385
+          },
+          "secondary": {
+            "actual_mfe_mean": 0.0622615,
+            "actual_mae_mean": -0.010544000000000001,
+            "exit_reason_counts": {
+              "TARGET": 2
+            }
+          }
+        }
+      },
+      "Unfavourable": {
+        "NoTrade": {
+          "n_total": 46,
+          "n_eligible": 0,
+          "primary": {
+            "target_reached_rate": null,
+            "risk_reached_rate": null,
+            "realized_return_mean": null
+          },
+          "secondary": {
+            "actual_mfe_mean": 0.019263021739130436,
+            "actual_mae_mean": -0.021402065217391304,
+            "exit_reason_counts": {
+              "NO_TRADE": 46
+            }
+          }
+        }
+      },
+      "Insufficient": {
+        "NoTrade": {
+          "n_total": 1,
+          "n_eligible": 0,
+          "primary": {
+            "target_reached_rate": null,
+            "risk_reached_rate": null,
+            "realized_return_mean": null
+          },
+          "secondary": {
+            "actual_mfe_mean": 0.0571,
+            "actual_mae_mean": -0.004922,
+            "exit_reason_counts": {
+              "NO_TRADE": 1
+            }
+          }
+        }
+      }
+    },
+    "T4": {
+      "Favourable": {
+        "Sell": {
+          "n_total": 5,
+          "n_eligible": 5,
+          "primary": {
+            "target_reached_rate": 0.0,
+            "risk_reached_rate": 0.4,
+            "realized_return_mean": -0.0261006
+          },
+          "secondary": {
+            "actual_mfe_mean": 0.00521,
+            "actual_mae_mean": -0.0362564,
+            "exit_reason_counts": {
+              "HORIZON": 3,
+              "RISK": 2
+            }
+          }
+        },
+        "Buy": {
+          "n_total": 8,
+          "n_eligible": 8,
+          "primary": {
+            "target_reached_rate": 0.25,
+            "risk_reached_rate": 0.0,
+            "realized_return_mean": 0.01481425
+          },
+          "secondary": {
+            "actual_mfe_mean": 0.03186075,
+            "actual_mae_mean": -0.004586875,
+            "exit_reason_counts": {
+              "HORIZON": 6,
+              "TARGET": 2
+            }
+          }
+        }
+      },
+      "Mixed": {
+        "Watch": {
+          "n_total": 40,
+          "n_eligible": 40,
+          "primary": {
+            "target_reached_rate": 0.075,
+            "risk_reached_rate": 0.175,
+            "realized_return_mean": -0.005768799999999999
+          },
+          "secondary": {
+            "actual_mfe_mean": 0.013312125,
+            "actual_mae_mean": -0.021917575,
+            "exit_reason_counts": {
+              "RISK": 7,
+              "HORIZON": 30,
+              "TARGET": 3
+            }
+          }
+        },
+        "Buy": {
+          "n_total": 1,
+          "n_eligible": 1,
+          "primary": {
+            "target_reached_rate": 0.0,
+            "risk_reached_rate": 0.0,
+            "realized_return_mean": 0.00235
+          },
+          "secondary": {
+            "actual_mfe_mean": 0.042825,
+            "actual_mae_mean": -0.01162,
+            "exit_reason_counts": {
+              "HORIZON": 1
+            }
+          }
+        }
+      },
+      "Unfavourable": {
+        "NoTrade": {
+          "n_total": 47,
+          "n_eligible": 0,
+          "primary": {
+            "target_reached_rate": null,
+            "risk_reached_rate": null,
+            "realized_return_mean": null
+          },
+          "secondary": {
+            "actual_mfe_mean": 0.01133936170212766,
+            "actual_mae_mean": -0.032604297872340426,
+            "exit_reason_counts": {
+              "NO_TRADE": 47
+            }
+          }
+        }
+      },
+      "Insufficient": {
+        "NoTrade": {
+          "n_total": 1,
+          "n_eligible": 0,
+          "primary": {
+            "target_reached_rate": null,
+            "risk_reached_rate": null,
+            "realized_return_mean": null
+          },
+          "secondary": {
+            "actual_mfe_mean": 0.002418,
+            "actual_mae_mean": -0.015521,
+            "exit_reason_counts": {
+              "NO_TRADE": 1
+            }
+          }
+        }
+      }
+    },
+    "T5": {
+      "Favourable": {
+        "Buy": {
+          "n_total": 20,
+          "n_eligible": 20,
+          "primary": {
+            "target_reached_rate": 0.4,
+            "risk_reached_rate": 0.25,
+            "realized_return_mean": 0.0049734
+          },
+          "secondary": {
+            "actual_mfe_mean": 0.03303045,
+            "actual_mae_mean": -0.0178231,
+            "exit_reason_counts": {
+              "TARGET": 8,
+              "RISK": 5,
+              "HORIZON": 7
+            }
+          }
+        },
+        "Sell": {
+          "n_total": 2,
+          "n_eligible": 2,
+          "primary": {
+            "target_reached_rate": 0.0,
+            "risk_reached_rate": 1.0,
+            "realized_return_mean": -0.0453685
+          },
+          "secondary": {
+            "actual_mfe_mean": 0.0,
+            "actual_mae_mean": -0.0498695,
+            "exit_reason_counts": {
+              "RISK": 2
+            }
+          }
+        }
+      },
+      "Mixed": {
+        "Watch": {
+          "n_total": 40,
+          "n_eligible": 40,
+          "primary": {
+            "target_reached_rate": 0.4,
+            "risk_reached_rate": 0.1,
+            "realized_return_mean": 0.013226425
+          },
+          "secondary": {
+            "actual_mfe_mean": 0.0302884,
+            "actual_mae_mean": -0.01365325,
+            "exit_reason_counts": {
+              "TARGET_GAP_THROUGH": 1,
+              "HORIZON": 20,
+              "RISK": 4,
+              "TARGET": 15
+            }
+          }
+        },
+        "Buy": {
+          "n_total": 2,
+          "n_eligible": 2,
+          "primary": {
+            "target_reached_rate": 0.0,
+            "risk_reached_rate": 1.0,
+            "realized_return_mean": -0.0274545
+          },
+          "secondary": {
+            "actual_mfe_mean": 0.007897,
+            "actual_mae_mean": -0.039212000000000004,
+            "exit_reason_counts": {
+              "RISK": 2
+            }
+          }
+        }
+      },
+      "Unfavourable": {
+        "NoTrade": {
+          "n_total": 37,
+          "n_eligible": 0,
+          "primary": {
+            "target_reached_rate": null,
+            "risk_reached_rate": null,
+            "realized_return_mean": null
+          },
+          "secondary": {
+            "actual_mfe_mean": 0.022065702702702705,
+            "actual_mae_mean": -0.021053540540540542,
+            "exit_reason_counts": {
+              "NO_TRADE": 37
+            }
+          }
+        }
+      },
+      "Insufficient": {
+        "NoTrade": {
+          "n_total": 1,
+          "n_eligible": 0,
+          "primary": {
+            "target_reached_rate": null,
+            "risk_reached_rate": null,
+            "realized_return_mean": null
+          },
+          "secondary": {
+            "actual_mfe_mean": 0.016165,
+            "actual_mae_mean": -0.050219,
+            "exit_reason_counts": {
+              "NO_TRADE": 1
+            }
+          }
+        }
+      }
+    },
+    "T6": {
+      "Favourable": {
+        "Buy": {
+          "n_total": 14,
+          "n_eligible": 14,
+          "primary": {
+            "target_reached_rate": 0.9285714285714286,
+            "risk_reached_rate": 0.07142857142857142,
+            "realized_return_mean": 0.030737214285714288
+          },
+          "secondary": {
+            "actual_mfe_mean": 0.04998221428571429,
+            "actual_mae_mean": -0.005835357142857142,
+            "exit_reason_counts": {
+              "RISK": 1,
+              "TARGET": 12,
+              "TARGET_GAP_THROUGH": 1
+            }
+          }
+        }
+      },
+      "Mixed": {
+        "Watch": {
+          "n_total": 47,
+          "n_eligible": 47,
+          "primary": {
+            "target_reached_rate": 0.7021276595744681,
+            "risk_reached_rate": 0.1276595744680851,
+            "realized_return_mean": 0.020729574468085106
+          },
+          "secondary": {
+            "actual_mfe_mean": 0.03999002127659575,
+            "actual_mae_mean": -0.01037731914893617,
+            "exit_reason_counts": {
+              "TARGET": 31,
+              "HORIZON": 8,
+              "TARGET_GAP_THROUGH": 2,
+              "RISK": 6
+            }
+          }
+        },
+        "Buy": {
+          "n_total": 1,
+          "n_eligible": 1,
+          "primary": {
+            "target_reached_rate": 0.0,
+            "risk_reached_rate": 0.0,
+            "realized_return_mean": 0.084041
+          },
+          "secondary": {
+            "actual_mfe_mean": 0.107872,
+            "actual_mae_mean": 0.0,
+            "exit_reason_counts": {
+              "HORIZON": 1
+            }
+          }
+        }
+      },
+      "Unfavourable": {
+        "NoTrade": {
+          "n_total": 39,
+          "n_eligible": 0,
+          "primary": {
+            "target_reached_rate": null,
+            "risk_reached_rate": null,
+            "realized_return_mean": null
+          },
+          "secondary": {
+            "actual_mfe_mean": 0.03377976923076923,
+            "actual_mae_mean": -0.02078948717948718,
+            "exit_reason_counts": {
+              "NO_TRADE": 39
+            }
+          }
+        }
+      },
+      "Insufficient": {
+        "NoTrade": {
+          "n_total": 1,
+          "n_eligible": 0,
+          "primary": {
+            "target_reached_rate": null,
+            "risk_reached_rate": null,
+            "realized_return_mean": null
+          },
+          "secondary": {
+            "actual_mfe_mean": 0.05505,
+            "actual_mae_mean": 0.0,
+            "exit_reason_counts": {
+              "NO_TRADE": 1
+            }
+          }
+        }
+      }
+    }
+  },
+  "specific_comparisons": {
+    "Favourable_Buy_gt_Watch_target": {
+      "evidence_class": "Favourable",
+      "comparison": "Buy > Watch",
+      "metric": "target_reached_rate",
+      "cohorts_holding": 0,
+      "cohorts_with_data": 0,
+      "cohort_detail": {
+        "T1": null,
+        "T2": null,
+        "T3": null,
+        "T4": null,
+        "T5": null,
+        "T6": null
+      },
+      "verdict": "insufficient_data"
+    },
+    "Mixed_Watch_gt_NoTrade_target": {
+      "evidence_class": "Mixed",
+      "comparison": "Watch > NoTrade",
+      "metric": "target_reached_rate",
+      "cohorts_holding": 0,
+      "cohorts_with_data": 0,
+      "cohort_detail": {
+        "T1": null,
+        "T2": null,
+        "T3": null,
+        "T4": null,
+        "T5": null,
+        "T6": null
+      },
+      "verdict": "insufficient_data"
+    },
+    "Favourable_Buy_gt_Watch_return": {
+      "evidence_class": "Favourable",
+      "comparison": "Buy > Watch",
+      "metric": "realized_return_mean",
+      "cohorts_holding": 0,
+      "cohorts_with_data": 0,
+      "cohort_detail": {
+        "T1": null,
+        "T2": null,
+        "T3": null,
+        "T4": null,
+        "T5": null,
+        "T6": null
+      },
+      "verdict": "insufficient_data"
+    },
+    "Mixed_Watch_gt_NoTrade_return": {
+      "evidence_class": "Mixed",
+      "comparison": "Watch > NoTrade",
+      "metric": "realized_return_mean",
+      "cohorts_holding": 0,
+      "cohorts_with_data": 0,
+      "cohort_detail": {
+        "T1": null,
+        "T2": null,
+        "T3": null,
+        "T4": null,
+        "T5": null,
+        "T6": null
+      },
+      "verdict": "insufficient_data"
+    }
+  }
+}

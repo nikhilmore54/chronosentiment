@@ -1,0 +1,34 @@
+HISTORY
+1 n030w4
+
+NURSE_HISTORY
+HN_0 2 1 Late 0 0 1
+HN_1 2 0 Early 0 0 2
+HN_2 3 1 Night 1 1 0
+HN_3 5 1 Early 0 0 1
+NU_4 2 0 Late 0 0 3
+NU_5 2 0 Late 0 0 4
+NU_6 3 1 Night 1 1 0
+NU_7 4 1 Early 0 0 1
+NU_8 4 1 Late 0 0 1
+NU_9 5 1 Early 1 2 0
+NU_10 5 1 Night 1 1 0
+NU_11 4 1 Early 0 0 1
+NU_12 3 1 Early 0 0 1
+NU_13 2 0 Early 0 0 3
+NU_14 4 1 Night 0 0 1
+NU_15 4 0 Late 0 0 3
+NU_16 7 1 Day 1 7 0
+CT_17 2 1 Night 0 0 1
+CT_18 3 1 Early 1 1 0
+CT_19 4 1 Late 0 0 1
+CT_20 3 1 Early 1 1 0
+CT_21 2 0 Late 0 0 4
+CT_22 4 1 Early 1 2 0
+CT_23 2 1 Early 0 0 1
+CT_24 5 1 Early 0 0 1
+TR_25 4 0 Day 0 0 2
+TR_26 4 1 Late 0 0 1
+TR_27 3 1 Day 0 0 1
+TR_28 3 1 Early 1 1 0
+TR_29 3 1 Late 1 1 0

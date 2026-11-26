@@ -1,5 +1,7 @@
 use chronosentiment_core::{NormalizedMarketEvent, Side};
-use chronosentiment_financial_core::runtime::tick_replay::{ReplayConfig, TickReplayEngine, deterministic_latency};
+use chronosentiment_financial_core::runtime::tick_replay::{
+    ReplayConfig, TickReplayEngine, deterministic_latency,
+};
 
 #[test]
 fn test_replay_determinism() {
@@ -13,24 +15,30 @@ fn replay_is_chunking_invariant() {
         create_event(2, 101.0),
         create_event(3, 102.0),
     ];
-    
+
     // Simulate replaying batched (all at once)
     let mut eng_batch = TickReplayEngine::from_events(events.clone(), ReplayConfig::default());
     let mut batch_hashes = Vec::new();
     while let Some(e) = eng_batch.next_event() {
         batch_hashes.push(format!("{}_{}", e.simulated_ts, e.event.price));
     }
-    
+
     // Simulate streaming one by one (chunking)
     let mut stream_hashes = Vec::new();
     for e in events {
         let mut eng_stream = TickReplayEngine::from_events(vec![e], ReplayConfig::default());
         if let Some(stream_e) = eng_stream.next_event() {
-            stream_hashes.push(format!("{}_{}", stream_e.simulated_ts, stream_e.event.price));
+            stream_hashes.push(format!(
+                "{}_{}",
+                stream_e.simulated_ts, stream_e.event.price
+            ));
         }
     }
-    
-    assert_eq!(batch_hashes, stream_hashes, "Replay must produce identical causal traces regardless of input chunking.");
+
+    assert_eq!(
+        batch_hashes, stream_hashes,
+        "Replay must produce identical causal traces regardless of input chunking."
+    );
 }
 
 #[test]
@@ -40,10 +48,10 @@ fn same_event_stream_produces_same_replay() {
         create_event(20, 155.0),
         create_event(30, 153.0),
     ];
-    
+
     let mut eng1 = TickReplayEngine::from_events(events.clone(), ReplayConfig::default());
     let mut eng2 = TickReplayEngine::from_events(events.clone(), ReplayConfig::default());
-    
+
     while let (Some(a), Some(b)) = (eng1.next_event(), eng2.next_event()) {
         assert_eq!(a.simulated_ts, b.simulated_ts);
         assert_eq!(a.decision_ts, b.decision_ts);
@@ -56,7 +64,10 @@ fn same_event_stream_produces_same_replay() {
 fn execution_latency_is_deterministic() {
     let l1 = deterministic_latency(1000, 50, 150);
     let l2 = deterministic_latency(1000, 50, 150);
-    assert_eq!(l1, l2, "Deterministic latency must not drift for identical inputs.");
+    assert_eq!(
+        l1, l2,
+        "Deterministic latency must not drift for identical inputs."
+    );
 }
 
 #[test]
@@ -91,15 +102,25 @@ fn replay_state_hash_is_stable() {
     let digest_a2 = canonical_replay_hash(&events_a);
 
     // 1. Digest is stable across two independent runs of the same stream.
-    assert_eq!(digest_a1, digest_a2, "Replay state hash must be stable for identical input streams");
+    assert_eq!(
+        digest_a1, digest_a2,
+        "Replay state hash must be stable for identical input streams"
+    );
 
     // 2. Digest is a 64-char BLAKE3 hex string.
-    assert_eq!(digest_a1.len(), 64, "BLAKE3 hex digest must be 64 characters");
+    assert_eq!(
+        digest_a1.len(),
+        64,
+        "BLAKE3 hex digest must be 64 characters"
+    );
 
     // 3. A structurally different stream produces a different digest
     //    (proves price.to_bits() encoding is load-bearing).
     let digest_b = canonical_replay_hash(&events_b);
-    assert_ne!(digest_a1, digest_b, "Structurally different event streams must produce different digests");
+    assert_ne!(
+        digest_a1, digest_b,
+        "Structurally different event streams must produce different digests"
+    );
 }
 
 /// Canonical replay stream hash.

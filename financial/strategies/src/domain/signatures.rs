@@ -1,5 +1,5 @@
-use serde::{Serialize, Deserialize};
 use super::scoring::ConvictionOutcome;
+use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum AlphaPorosity {

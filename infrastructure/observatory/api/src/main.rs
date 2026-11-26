@@ -16,7 +16,7 @@ use tower_http::cors::CorsLayer;
 async fn main() {
     // Initialize logging
     env_logger::init();
-    
+
     let evaluation_service = EvaluationService::new();
 
     let cors = CorsLayer::new()

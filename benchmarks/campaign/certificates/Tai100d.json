@@ -1,0 +1,75 @@
+{
+  "identity": {
+    "certificate_id": "cert-Tai100d-73c2b799",
+    "certificate_version": "1.0.0",
+    "generated_at": "2026-08-05T12:32:51.547447+00:00",
+    "campaign_id": "campaign_v1.6",
+    "solver_version": "0.1.0"
+  },
+  "instance": {
+    "name": "Tai100d",
+    "family": "Tai",
+    "customers": 100,
+    "capacity": 1297,
+    "benchmark_vehicles": 11,
+    "vehicle_source": "REGISTRY",
+    "distance_metric": "TspLibEuc2D"
+  },
+  "objective": {
+    "best_distance": 1615.0,
+    "best_distance_float": 1626.1588190095445,
+    "bks": 1575.03,
+    "gap_pct": 2.537729440074159,
+    "gap_fp_pct": 3.246212390211265,
+    "quality_class": "🟡 Competitive",
+    "routes_used": 11,
+    "runtime_ms": 34992,
+    "generations": 90,
+    "termination_reason": "NoImprovement(30) at gen 59"
+  },
+  "fcf": {
+    "status": "FEASIBILITY_UNDETERMINED",
+    "confidence_level": 3,
+    "fc1_passed": true,
+    "fc1_reason": "n=100 customers, depot_id=1, capacity=1297, metric=TspLibEuc2D",
+    "fc2_5_passed": true,
+    "fc2_5_reason": "Registry consistent: K=11, Q=1297, BKS=Some(1575.03), family=Tai",
+    "fc2_passed": true,
+    "fc2_reason": "FC2: D=13592 KQ=14267 K_min=11 K=11 NC1:PASS NC2:PASS NC5:PASS",
+    "fc3_passed": true,
+    "fc3_reason": "FC3-FFD PASS: packed 13592 demand into 11/11 bins of Q=1297"
+  },
+  "fcs": {
+    "constraint_type": "ATMOST",
+    "declared_k": 11,
+    "routes_used": 11,
+    "outcome": "Valid",
+    "comparison_valid": true
+  },
+  "fuc": {
+    "avg_utilization": 0.9526880213079134,
+    "median_utilization": 0.9969159599074788,
+    "cv": 0.09824078375673059,
+    "rcr": 0.522962962962963,
+    "packing_classification": "WELL_PACKED",
+    "capacity_violations": 0,
+    "total_demand": 13592,
+    "total_fleet_capacity": 14267,
+    "fleet_capacity_used": 0.9526880213079134
+  },
+  "benchmark_context": {
+    "provenance_registry_version": "1.0",
+    "fleet_semantics_registry_version": "1.0",
+    "qualification_version": "1.0",
+    "bks_source": "CvrplibCatalog",
+    "fleet_semantics_evidence": "Minimum"
+  },
+  "governance": {
+    "fcf_version": "1.0",
+    "fcs_version": "1.0",
+    "fuc_version": "1.0",
+    "status": "ProvisionallyQualified",
+    "status_reason": "FCF PASS, FCS VALID, gap computed — Stage B route-count certificate pending",
+    "content_hash": "034b13eadd121968"
+  }
+}

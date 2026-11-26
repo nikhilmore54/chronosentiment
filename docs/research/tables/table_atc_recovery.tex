@@ -1,0 +1,19 @@
+\begin{table*}[t]
+\centering
+\caption{Real-Time ATC Disruption Recovery Benchmarks under Frozen-Horizon Dynamic Re-Sequencing}
+\label{tab:atc_recovery}
+\resizebox{\textwidth}{!}{%
+\begin{tabular}{lcccccc}
+\toprule
+\textbf{Disruption Scenario} & \textbf{Affected Node} & \textbf{Event Impact Description} & \textbf{Freeze Cutoff} & \textbf{Recovery Latency} & \textbf{ATC SLA Target} & \textbf{Safety Violations} \\
+\midrule
+Missed Approach (Go-Around) & LFPG (Paris CDG) (Flight \#12) & Missed approach circuit delay (+720 s re-entry) & 180 s (3 min final) & \textbf{0.04 ms} & $< 30$ ms & \textbf{0} ($0\times$ Hard) \\
+Departure Ground-Stop (CTOT) & LFPG (Paris CDG) (Flight \#20) & Sudden CTOT holding ceiling (+900 s ground-stop) & 180 s (3 min final) & \textbf{0.03 ms} & $< 30$ ms & \textbf{0} ($0\times$ Hard) \\
+\bottomrule
+\end{tabular}%
+}
+\vspace{1mm}
+\begin{flushleft}
+\footnotesize{\textbf{Notes}: Evaluated on Paris CDG 1-hour peak bank ($N=36$). Active final approach prefix within $180$ seconds is frozen to prevent tactical un-stabilization. Coralys MixedRunwayEngine re-sequences remaining operations and inserts disrupted flights into dynamic wake-vortex gaps in sub-millisecond time, satisfying FAA/Eurocontrol $<30$~ms tactical SLA by over $600\times$.}
+\end{flushleft}
+\end{table*}

@@ -128,7 +128,12 @@ pub fn repair_queue_dir(archive_root: &Path, batch_id: u32) -> PathBuf {
     archive_root.join(format!("repair_queue/batch_{batch_id:03}"))
 }
 
-pub fn repair_request_path(archive_root: &Path, batch_id: u32, target_ts: i64, symbol: &str) -> PathBuf {
+pub fn repair_request_path(
+    archive_root: &Path,
+    batch_id: u32,
+    target_ts: i64,
+    symbol: &str,
+) -> PathBuf {
     let safe_sym = symbol.replace('.', "_").replace('-', "_");
     repair_queue_dir(archive_root, batch_id).join(format!("{target_ts}_{safe_sym}.json"))
 }
@@ -136,8 +141,7 @@ pub fn repair_request_path(archive_root: &Path, batch_id: u32, target_ts: i64, s
 pub fn load_repair_request(path: &Path) -> Result<RepairRequest> {
     let text = fs::read_to_string(path)
         .with_context(|| format!("read repair request {}", path.display()))?;
-    serde_json::from_str(&text)
-        .with_context(|| format!("parse repair request {}", path.display()))
+    serde_json::from_str(&text).with_context(|| format!("parse repair request {}", path.display()))
 }
 
 pub fn save_repair_request(req: &RepairRequest, path: &Path) -> Result<()> {
@@ -229,11 +233,21 @@ pub fn fetch_exact_ts(symbol: &str, target_ts: i64, bar_sec: i64) -> Result<Opti
         .and_then(|v| v.as_array())
         .ok_or_else(|| anyhow::anyhow!("no timestamps in chart result"))?;
 
-    let opens = result.pointer("/indicators/quote/0/open").and_then(|v| v.as_array());
-    let highs = result.pointer("/indicators/quote/0/high").and_then(|v| v.as_array());
-    let lows = result.pointer("/indicators/quote/0/low").and_then(|v| v.as_array());
-    let closes = result.pointer("/indicators/quote/0/close").and_then(|v| v.as_array());
-    let volumes = result.pointer("/indicators/quote/0/volume").and_then(|v| v.as_array());
+    let opens = result
+        .pointer("/indicators/quote/0/open")
+        .and_then(|v| v.as_array());
+    let highs = result
+        .pointer("/indicators/quote/0/high")
+        .and_then(|v| v.as_array());
+    let lows = result
+        .pointer("/indicators/quote/0/low")
+        .and_then(|v| v.as_array());
+    let closes = result
+        .pointer("/indicators/quote/0/close")
+        .and_then(|v| v.as_array());
+    let volumes = result
+        .pointer("/indicators/quote/0/volume")
+        .and_then(|v| v.as_array());
 
     // Timestamp-locked verification: exact match only
     for (i, ts_val) in timestamps.iter().enumerate() {
@@ -395,8 +409,7 @@ pub fn process_repair_request(
     }));
 
     // ── FETCHED ───────────────────────────────────────────────────────────────
-    let ohlcv_opt = fetch_exact_ts(&symbol, target_ts, bar_sec)
-        .unwrap_or(None);
+    let ohlcv_opt = fetch_exact_ts(&symbol, target_ts, bar_sec).unwrap_or(None);
 
     if ohlcv_opt.is_none() {
         req.push_event(serde_json::json!({
@@ -479,7 +492,10 @@ pub fn process_repair_request(
     }));
 
     save_repair_request(req, path)?;
-    println!("  ✅ RECOVERED {symbol}@{target_ts} → {}", rev_path.display());
+    println!(
+        "  ✅ RECOVERED {symbol}@{target_ts} → {}",
+        rev_path.display()
+    );
     Ok(RepairStatus::Recovered)
 }
 
@@ -509,7 +525,8 @@ pub fn detect_gaps_from_steps(steps_path: &Path) -> Result<Vec<GapDescriptor>> {
             Err(_) => continue,
         };
 
-        let target_ts = step.get("target_ts")
+        let target_ts = step
+            .get("target_ts")
             .or_else(|| step.get("ts"))
             .and_then(|v| v.as_i64());
         let target_ts = match target_ts {
@@ -517,7 +534,8 @@ pub fn detect_gaps_from_steps(steps_path: &Path) -> Result<Vec<GapDescriptor>> {
             None => continue,
         };
 
-        let barrier_committed = step.get("barrier_committed")
+        let barrier_committed = step
+            .get("barrier_committed")
             .and_then(|v| v.as_bool())
             .unwrap_or(false);
 
@@ -585,11 +603,15 @@ pub fn cmd_queue(
 pub fn cmd_detect(cfg: &RepairConfig, run_label: &str) -> Result<()> {
     // Resolve steps log path
     let steps_path = if run_label.is_empty() {
-        cfg.archive_root
-            .join(format!("batches/batch_{:03}/metadata/live_session_steps.jsonl", cfg.batch_id))
+        cfg.archive_root.join(format!(
+            "batches/batch_{:03}/metadata/live_session_steps.jsonl",
+            cfg.batch_id
+        ))
     } else {
-        cfg.archive_root
-            .join(format!("batches/batch_{:03}/runs/{run_label}/metadata/live_session_steps.jsonl", cfg.batch_id))
+        cfg.archive_root.join(format!(
+            "batches/batch_{:03}/runs/{run_label}/metadata/live_session_steps.jsonl",
+            cfg.batch_id
+        ))
     };
 
     println!("🔍 Detecting gaps from {}", steps_path.display());

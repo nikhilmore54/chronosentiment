@@ -1,0 +1,272 @@
+[
+  {
+    "seed": 542,
+    "best_final_distance": 797.8718059878202,
+    "generation_of_first_elite_improvement": 1,
+    "time_spent_in_final_basin": 8949,
+    "avg_telemetry": {
+      "pop_diversity": 0.1887136339856935,
+      "elite_diversity": 0.051910000000007575,
+      "feasible_ratio": 1.000315000000005,
+      "parent_similarity": 0.9967196549958808,
+      "offspring_novelty": 0.0017418195295817408,
+      "structural_damage": 0.02697926436966625,
+      "elite_survival": 0.005531162123108568,
+      "active_memory_size": 495.9997,
+      "innovation_persistence": 0.5988063348433549,
+      "rediscovery_ratio": 0.4010336105885918
+    },
+    "progress_at_1000": {
+      "improvement_rate_100": 0.03,
+      "improvement_rate_500": 0.01,
+      "average_improvement_size_100": 1.6755005758605723,
+      "average_improvement_size_all_time": 15.852261254216959,
+      "largest_improvement": 125.29516286071089,
+      "stagnation_duration": 3,
+      "basin_residency_ratio": 0.003
+    }
+  },
+  {
+    "seed": 42,
+    "best_final_distance": 800.0626792340786,
+    "generation_of_first_elite_improvement": 1,
+    "time_spent_in_final_basin": 9407,
+    "avg_telemetry": {
+      "pop_diversity": 0.18814060711010688,
+      "elite_diversity": 0.05180000000000765,
+      "feasible_ratio": 1.0006490000000097,
+      "parent_similarity": 0.9973353818931125,
+      "offspring_novelty": 0.001498240992289805,
+      "structural_damage": 0.026241952205345594,
+      "elite_survival": 0.004632859725796742,
+      "active_memory_size": 495.9999,
+      "innovation_persistence": 0.5964017943804696,
+      "rediscovery_ratio": 0.40335621011829503
+    },
+    "progress_at_1000": {
+      "improvement_rate_100": 0.0,
+      "improvement_rate_500": 0.002,
+      "average_improvement_size_100": 0.0,
+      "average_improvement_size_all_time": 16.401529309903072,
+      "largest_improvement": 76.59336257285463,
+      "stagnation_duration": 407,
+      "basin_residency_ratio": 0.407
+    }
+  },
+  {
+    "seed": 642,
+    "best_final_distance": 800.0626792340786,
+    "generation_of_first_elite_improvement": 1,
+    "time_spent_in_final_basin": 1329,
+    "avg_telemetry": {
+      "pop_diversity": 0.18942824282880372,
+      "elite_diversity": 0.05210000000000739,
+      "feasible_ratio": 1.000674000000011,
+      "parent_similarity": 0.9962701742350677,
+      "offspring_novelty": 0.002004660721576598,
+      "structural_damage": 0.028977870889739365,
+      "elite_survival": 0.006290431816803715,
+      "active_memory_size": 495.9997,
+      "innovation_persistence": 0.5933919729676475,
+      "rediscovery_ratio": 0.4063962196771151
+    },
+    "progress_at_1000": {
+      "improvement_rate_100": 0.0,
+      "improvement_rate_500": 0.02,
+      "average_improvement_size_100": 0.0,
+      "average_improvement_size_all_time": 15.340039148603914,
+      "largest_improvement": 107.8176780470983,
+      "stagnation_duration": 180,
+      "basin_residency_ratio": 0.18
+    }
+  },
+  {
+    "seed": 742,
+    "best_final_distance": 800.0626792340786,
+    "generation_of_first_elite_improvement": 1,
+    "time_spent_in_final_basin": 7017,
+    "avg_telemetry": {
+      "pop_diversity": 0.18887018980836218,
+      "elite_diversity": 0.05205000000000733,
+      "feasible_ratio": 1.0008180000000106,
+      "parent_similarity": 0.9961960557783095,
+      "offspring_novelty": 0.002035993331991194,
+      "structural_damage": 0.02799609666527587,
+      "elite_survival": 0.006413442703807141,
+      "active_memory_size": 495.9997,
+      "innovation_persistence": 0.5970826814999608,
+      "rediscovery_ratio": 0.4027040107394756
+    },
+    "progress_at_1000": {
+      "improvement_rate_100": 0.0,
+      "improvement_rate_500": 0.0,
+      "average_improvement_size_100": 0.0,
+      "average_improvement_size_all_time": 18.352585585802625,
+      "largest_improvement": 114.93342982678973,
+      "stagnation_duration": 733,
+      "basin_residency_ratio": 0.733
+    }
+  },
+  {
+    "seed": 342,
+    "best_final_distance": 803.3936157814256,
+    "generation_of_first_elite_improvement": 1,
+    "time_spent_in_final_basin": 3583,
+    "avg_telemetry": {
+      "pop_diversity": 0.18831910627969706,
+      "elite_diversity": 0.05211000000000739,
+      "feasible_ratio": 1.0002490000000037,
+      "parent_similarity": 0.9961401893633043,
+      "offspring_novelty": 0.0017656351318291606,
+      "structural_damage": 0.028795227499238164,
+      "elite_survival": 0.006333363668728107,
+      "active_memory_size": 495.999,
+      "innovation_persistence": 0.6019021174068415,
+      "rediscovery_ratio": 0.39781936423093656
+    },
+    "progress_at_1000": {
+      "improvement_rate_100": 0.05,
+      "improvement_rate_500": 0.01,
+      "average_improvement_size_100": 2.860858487848236,
+      "average_improvement_size_all_time": 17.55146302498563,
+      "largest_improvement": 214.6557092927187,
+      "stagnation_duration": 38,
+      "basin_residency_ratio": 0.038
+    }
+  },
+  {
+    "seed": 842,
+    "best_final_distance": 817.7099883577134,
+    "generation_of_first_elite_improvement": 1,
+    "time_spent_in_final_basin": 7838,
+    "avg_telemetry": {
+      "pop_diversity": 0.18873611725880687,
+      "elite_diversity": 0.052045000000007426,
+      "feasible_ratio": 1.0000870000000015,
+      "parent_similarity": 0.9967776201985659,
+      "offspring_novelty": 0.0018807327750054994,
+      "structural_damage": 0.02912904952900738,
+      "elite_survival": 0.006664596439138038,
+      "active_memory_size": 495.9998,
+      "innovation_persistence": 0.6034627085428367,
+      "rediscovery_ratio": 0.3962800376355475
+    },
+    "progress_at_1000": {
+      "improvement_rate_100": 0.0,
+      "improvement_rate_500": 0.006,
+      "average_improvement_size_100": 0.0,
+      "average_improvement_size_all_time": 15.527487675958895,
+      "largest_improvement": 242.0519728708009,
+      "stagnation_duration": 185,
+      "basin_residency_ratio": 0.185
+    }
+  },
+  {
+    "seed": 242,
+    "best_final_distance": 921.650587897508,
+    "generation_of_first_elite_improvement": 1,
+    "time_spent_in_final_basin": 9488,
+    "avg_telemetry": {
+      "pop_diversity": 0.18741600000002312,
+      "elite_diversity": 0.05126500000000815,
+      "feasible_ratio": 1.0,
+      "parent_similarity": 0.9981921199117288,
+      "offspring_novelty": 0.0009265131766525988,
+      "structural_damage": 0.030992560984047304,
+      "elite_survival": 0.005539277648777271,
+      "active_memory_size": 495.9986,
+      "innovation_persistence": 0.6020952736222387,
+      "rediscovery_ratio": 0.39775156874031214
+    },
+    "progress_at_1000": {
+      "improvement_rate_100": 0.0,
+      "improvement_rate_500": 0.002,
+      "average_improvement_size_100": 0.0,
+      "average_improvement_size_all_time": 16.207303693428038,
+      "largest_improvement": 253.4202521416837,
+      "stagnation_duration": 488,
+      "basin_residency_ratio": 0.488
+    }
+  },
+  {
+    "seed": 442,
+    "best_final_distance": 936.7001259176933,
+    "generation_of_first_elite_improvement": 1,
+    "time_spent_in_final_basin": 9881,
+    "avg_telemetry": {
+      "pop_diversity": 0.18767700000002197,
+      "elite_diversity": 0.0517500000000077,
+      "feasible_ratio": 1.0,
+      "parent_similarity": 0.9976808865168052,
+      "offspring_novelty": 0.0012411490097185254,
+      "structural_damage": 0.030265411674999798,
+      "elite_survival": 0.0039056080112610174,
+      "active_memory_size": 495.9999,
+      "innovation_persistence": 0.6013914616293474,
+      "rediscovery_ratio": 0.3984242075432065
+    },
+    "progress_at_1000": {
+      "improvement_rate_100": 0.0,
+      "improvement_rate_500": 0.0,
+      "average_improvement_size_100": 0.0,
+      "average_improvement_size_all_time": 21.54948442323461,
+      "largest_improvement": 105.884614365061,
+      "stagnation_duration": 881,
+      "basin_residency_ratio": 0.881
+    }
+  },
+  {
+    "seed": 942,
+    "best_final_distance": 955.501415367379,
+    "generation_of_first_elite_improvement": 1,
+    "time_spent_in_final_basin": 9711,
+    "avg_telemetry": {
+      "pop_diversity": 0.1876450000000231,
+      "elite_diversity": 0.051455000000007974,
+      "feasible_ratio": 1.0,
+      "parent_similarity": 0.9974344890301429,
+      "offspring_novelty": 0.0013796233951741475,
+      "structural_damage": 0.029284883088645172,
+      "elite_survival": 0.004258862715920588,
+      "active_memory_size": 495.9997,
+      "innovation_persistence": 0.5965391139803088,
+      "rediscovery_ratio": 0.4032356732317501
+    },
+    "progress_at_1000": {
+      "improvement_rate_100": 0.0,
+      "improvement_rate_500": 0.0,
+      "average_improvement_size_100": 0.0,
+      "average_improvement_size_all_time": 17.994234686118745,
+      "largest_improvement": 112.6417226108631,
+      "stagnation_duration": 711,
+      "basin_residency_ratio": 0.711
+    }
+  },
+  {
+    "seed": 142,
+    "best_final_distance": 958.6487263739521,
+    "generation_of_first_elite_improvement": 1,
+    "time_spent_in_final_basin": 9217,
+    "avg_telemetry": {
+      "pop_diversity": 0.18833300000002243,
+      "elite_diversity": 0.05162500000000783,
+      "feasible_ratio": 1.0,
+      "parent_similarity": 0.9971879319689279,
+      "offspring_novelty": 0.0013001558572424735,
+      "structural_damage": 0.0322954349576767,
+      "elite_survival": 0.004191621305614311,
+      "active_memory_size": 495.9999,
+      "innovation_persistence": 0.5915624457283122,
+      "rediscovery_ratio": 0.4082248051922546
+    },
+    "progress_at_1000": {
+      "improvement_rate_100": 0.0,
+      "improvement_rate_500": 0.008,
+      "average_improvement_size_100": 0.0,
+      "average_improvement_size_all_time": 18.66684845869785,
+      "largest_improvement": 166.34487087031744,
+      "stagnation_duration": 217,
+      "basin_residency_ratio": 0.217
+    }
+  }
+]

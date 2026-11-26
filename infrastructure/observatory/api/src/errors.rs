@@ -1,4 +1,8 @@
-use axum::{http::StatusCode, response::{IntoResponse, Response}, Json};
+use axum::{
+    http::StatusCode,
+    response::{IntoResponse, Response},
+    Json,
+};
 use serde::Serialize;
 
 #[derive(Debug, Serialize)]
@@ -16,7 +20,13 @@ impl IntoResponse for ApiError {
             ApiError::InternalError(msg) => (StatusCode::INTERNAL_SERVER_ERROR, msg),
         };
 
-        (status, Json(ErrorMessage { message: error_message })).into_response()
+        (
+            status,
+            Json(ErrorMessage {
+                message: error_message,
+            }),
+        )
+            .into_response()
     }
 }
 

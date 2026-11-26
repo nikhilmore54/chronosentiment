@@ -1,0 +1,22 @@
+{
+  "run_id": "TIME009-20260911T175544Z",
+  "run_at": "2026-09-11T17:55:44.264925Z",
+  "producer": "time009_observe.v1",
+  "n_ledger_entries": 1174,
+  "n_complete": 656,
+  "n_pending": 218,
+  "n_duplicate_complete_skipped": 300,
+  "n_no_reference_price": 0,
+  "n_no_bars": 0,
+  "n_target_reached": 51,
+  "n_risk_reached": 51,
+  "n_horizon": 289,
+  "n_ambiguous": 0,
+  "n_no_trade": 265,
+  "observations_dir": "time_machine/analysis/TIME009/observations",
+  "ac_t9_01_t0_immutability": true,
+  "ac_t9_02_temporal_integrity": true,
+  "ac_t9_06_idempotency": true,
+  "ac_t9_07_no_algorithm_changes": true,
+  "ac_t9_09_missing_data_pending": true
+}

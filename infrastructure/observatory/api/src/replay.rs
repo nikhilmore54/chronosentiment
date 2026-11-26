@@ -1,4 +1,4 @@
-use chronosentiment_core::{Side, SimEvent, to_real};
+use chronosentiment_core::{to_real, Side, SimEvent};
 use std::collections::HashMap;
 
 use crate::dto::{OrderState, PortfolioState, SystemState};
@@ -39,7 +39,9 @@ pub fn reduce_replay_state(events: &[SimEvent], seq_id: u64) -> SystemState {
                 );
             }
             SimEvent::OrderEnteredQueue {
-                order_id, queue_ahead, ..
+                order_id,
+                queue_ahead,
+                ..
             } => {
                 if let Some(order) = orders.get_mut(order_id) {
                     order.status = "ACTIVE".to_string();
@@ -66,7 +68,9 @@ pub fn reduce_replay_state(events: &[SimEvent], seq_id: u64) -> SystemState {
                 }
             }
             SimEvent::QueueProgression {
-                order_id, queue_ahead, ..
+                order_id,
+                queue_ahead,
+                ..
             } => {
                 if let Some(order) = orders.get_mut(order_id) {
                     order.queue_ahead = *queue_ahead;
@@ -139,7 +143,10 @@ mod tests {
             .get("test_order")
             .expect("expected test order in replay state");
         assert!(
-            matches!(order.status.as_str(), "NEW" | "ACTIVE" | "PARTIAL" | "FILLED"),
+            matches!(
+                order.status.as_str(),
+                "NEW" | "ACTIVE" | "PARTIAL" | "FILLED"
+            ),
             "unexpected status: {}",
             order.status
         );

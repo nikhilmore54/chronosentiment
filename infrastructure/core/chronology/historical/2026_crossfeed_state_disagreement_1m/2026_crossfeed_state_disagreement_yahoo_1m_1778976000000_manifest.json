@@ -1,9 +1,0 @@
-{
-    "substrate": "BTC-USD",
-    "capture_start": 1778976000000,
-    "capture_end": 1779525180000,
-    "total_ticks": 9148,
-    "chronology_hash": "35ccedd25ed94d02280234d42f89979e744929de5b48e27de3774d3ee5032272",
-    "gaps": [],
-    "provenance": "yfinance python OHLCV"
-}

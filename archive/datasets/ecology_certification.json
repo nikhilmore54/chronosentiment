@@ -1,0 +1,9 @@
+{
+  "k": 2,
+  "silhouette": 0.35709544369243246,
+  "silhouette_null_p": 0.03225806451612903,
+  "bootstrap_ari_mean": 0.5633207264037229,
+  "bootstrap_ari_std": 0.23368274762458766,
+  "perturbation_ari_sigma_0.02": 0.455213216437049,
+  "notes": "Evidence artifact \u2013 no hard certification decision applied."
+}

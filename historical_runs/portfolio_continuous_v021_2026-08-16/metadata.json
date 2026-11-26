@@ -1,0 +1,43 @@
+{
+  "archived_at": "2026-08-16",
+  "arms": {
+    "coralys_v0": {
+      "capital_velocity_ratio": 10.786676966131205,
+      "contract": "coralys_exec_v0_atr_tmv_stop_enforced_20_sessions",
+      "n_horizon": 2,
+      "n_lots_opened": 119,
+      "n_stop": 70,
+      "n_target": 34,
+      "total_return_pct": 0.014917774550142166
+    },
+    "pe2": {
+      "capital_velocity_ratio": 5.581871770517828,
+      "contract": "targeted_execution_v0_fixed_5pct_20_sessions",
+      "n_horizon": 12,
+      "n_lots_opened": 49,
+      "n_stop": 0,
+      "n_target": 24,
+      "total_return_pct": 0.2345564598380104
+    }
+  },
+  "c3_002_artifact_hash": "5a43b9df97daa76d85edd7f7ef1c12c3a230ef292f7ecfa98ef9587647392121",
+  "certified_t": "2026-07-15T03:45:00+00:00",
+  "coralys_artifact_hash": "3876ffa232f75068636aa058c6775671ac2f935ad2751c1253edd49e0770883f",
+  "experiment": "Portfolio Replay v0.2.1 — Continuous Lifecycle",
+  "experiment_id": "portfolio_continuous_v021_2026-08-16",
+  "initial_capital_inr": 5000.0,
+  "n_sessions_simulated": 23,
+  "path_kind": "portfolio_replay_v0_2_1",
+  "purpose": "Continuous portfolio lifecycle: session-by-session loop, capital recycling, multiple lots per instrument (position upgrades allowed). P.E.2 arm (fixed +5%, no stop) vs Coralys v0 arm (ATR/TMV + enforced stop). Measures capital velocity and portfolio behaviour over the full P.E.2 period.",
+  "start_clock": "2026-07-15T03:45:00+00:00",
+  "status": "IMMUTABLE",
+  "universe": [
+    "HDFCBANK.NS",
+    "ICICIBANK.NS",
+    "INFY.NS",
+    "RELIANCE.NS",
+    "TCS.NS",
+    "IDEA.NS",
+    "MAHABANK.NS"
+  ]
+}

@@ -45,7 +45,9 @@ pub struct ReplayStepResult {
 }
 
 fn bar_at_ts(bars: &[FrozenBar], ts: i64) -> Option<&FrozenBar> {
-    bars.binary_search_by_key(&ts, |b| b.ts).ok().map(|i| &bars[i])
+    bars.binary_search_by_key(&ts, |b| b.ts)
+        .ok()
+        .map(|i| &bars[i])
 }
 
 pub fn run_replay_step(cfg: &ReplayStepConfig) -> Result<ReplayStepResult> {
@@ -85,9 +87,9 @@ pub fn run_replay_step(cfg: &ReplayStepConfig) -> Result<ReplayStepResult> {
         if batch.is_empty() {
             continue;
         }
-        
+
         let lines = observatory.run_barrier(*ts, &batch)?;
-        
+
         // Only parse and persist if we've reached the novel frontier.
         // The preceding bars were silently processed to perfectly rebuild mathematical state.
         if idx >= cfg.start_interval {
@@ -97,7 +99,7 @@ pub fn run_replay_step(cfg: &ReplayStepConfig) -> Result<ReplayStepResult> {
                 }
             }
             intervals_run += 1;
-            
+
             if interval_idx % 50 == 0 || interval_idx == end {
                 persistor.flush()?;
                 if interval_idx % 50 == 0 {

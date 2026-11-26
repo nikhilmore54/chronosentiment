@@ -1,0 +1,112 @@
+{
+  "policy_id": "Policy_C_Champion",
+  "alphabet": "WithExhaustion",
+  "seed": 66,
+  "population_size": 50,
+  "generation_limit": 30,
+  "champion_genome": {
+    "rules": [
+      {
+        "when": [
+          {
+            "concept": "VolumeBurst",
+            "present": true,
+            "direction": "Burst"
+          }
+        ],
+        "action": "SHORT"
+      },
+      {
+        "when": [
+          {
+            "concept": "Trend",
+            "present": true,
+            "direction": "Bullish"
+          },
+          {
+            "concept": "Volatility",
+            "present": true,
+            "direction": null
+          }
+        ],
+        "action": "LONG"
+      },
+      {
+        "when": [
+          {
+            "concept": "PriceRangeStretch",
+            "present": true,
+            "direction": "ExhaustedLow"
+          },
+          {
+            "concept": "PriceRangeStretch",
+            "present": true,
+            "direction": "ExhaustedHigh"
+          }
+        ],
+        "action": "NO_TRADE"
+      },
+      {
+        "when": [
+          {
+            "concept": "Trend",
+            "present": true,
+            "direction": "Bearish"
+          }
+        ],
+        "action": "SHORT"
+      },
+      {
+        "when": [
+          {
+            "concept": "Trend",
+            "present": true,
+            "direction": "Neutral"
+          },
+          {
+            "concept": "VWAPStretch",
+            "present": true,
+            "direction": "Overbought"
+          },
+          {
+            "concept": "VolumeBurst",
+            "present": true,
+            "direction": "Burst"
+          }
+        ],
+        "action": "LONG"
+      },
+      {
+        "when": [
+          {
+            "concept": "PriceRangeStretch",
+            "present": true,
+            "direction": "ExhaustedLow"
+          },
+          {
+            "concept": "VWAPStretch",
+            "present": true,
+            "direction": "Overbought"
+          }
+        ],
+        "action": "SHORT"
+      }
+    ],
+    "unmatched_action": "NO_TRADE"
+  },
+  "genome_hash": "80c689bae15e5fe9ec3c525cf0dc37bdaad17d4b896faab91beacd0b8fd6de05",
+  "fitness": 941.2338590244123,
+  "objectives": {
+    "net_return_usdt": 1150405.2889032771,
+    "net_return_bps": 115040.52889032771,
+    "max_drawdown_pct": 0.18030987945513324,
+    "max_drawdown_usdt": 287.578077849932,
+    "turnover_friction_usdt": 339894.1796955355,
+    "trade_count": 2825
+  },
+  "calmar_ratio": 4000.3233122087895,
+  "win_rate": 0.951858407079646,
+  "rejected_entries": 1999,
+  "dataset_sha256": "0fcc08c45f5871c77b6ee83227823224670f7f945e650fe2175cd3c8fb86be7d",
+  "frozen_timestamp_utc": "2026-10-24T10:02:16.700225+00:00"
+}

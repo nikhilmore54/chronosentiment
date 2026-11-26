@@ -1,0 +1,36 @@
+{
+  "session_id": "KITE_2025-05-23",
+  "capture_date": "2025-05-23",
+  "capture_start_utc": "2026-06-03T03:16:21.076378Z",
+  "script_version": "1.0.0",
+  "provider": "Zerodha Kite",
+  "symbols": {
+    "NIFTY": {
+      "provider_symbol": "NIFTY",
+      "instrument_token": 256265,
+      "raw_json_path": "historical_capture/batch_q2/2025-05-23/raw/NIFTY.json",
+      "raw_json_sha256": "d54b12d540fc4283b81d20d10357751d24071b26a8be09f17efc0ad269935dfe",
+      "canonical_1m_path": "historical_capture/batch_q2/2025-05-23/canonical/NIFTY_1m.csv",
+      "canonical_1m_sha256": "74798cf0f978afb458eaf6e34b4a909bdd8b985bd6e2d7dc0f048937791fbf20",
+      "derived_5m_path": "historical_capture/batch_q2/2025-05-23/derived/NIFTY_5m.csv",
+      "derived_5m_sha256": "54e87676f9237f7e15dd8daab73e59b2fad1a688808da22df09e6bb7beb2851d",
+      "retrieval_method": "kiteconnect",
+      "capture_timestamp_utc": "2026-06-03T03:16:21.355832Z",
+      "script_version": "1.0.0"
+    },
+    "BANKNIFTY": {
+      "provider_symbol": "BANKNIFTY",
+      "instrument_token": 260105,
+      "raw_json_path": "historical_capture/batch_q2/2025-05-23/raw/BANKNIFTY.json",
+      "raw_json_sha256": "ba286236bda9695a7953df9935160ab902b714fe7184e43e2c7fbf09e8226718",
+      "canonical_1m_path": "historical_capture/batch_q2/2025-05-23/canonical/BANKNIFTY_1m.csv",
+      "canonical_1m_sha256": "2281dfb6b5add82f247f9d58ff9689cdb5fe3b01436934e4d1cf4bc529c20e2f",
+      "derived_5m_path": "historical_capture/batch_q2/2025-05-23/derived/BANKNIFTY_5m.csv",
+      "derived_5m_sha256": "392be26012747f6475a147f38ac0d6d0eca2f7fc9e64dc9705b5d130d2974993",
+      "retrieval_method": "kiteconnect",
+      "capture_timestamp_utc": "2026-06-03T03:16:21.452391Z",
+      "script_version": "1.0.0"
+    }
+  },
+  "capture_end_utc": "2026-06-03T03:16:21.452407Z"
+}

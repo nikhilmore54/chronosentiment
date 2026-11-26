@@ -1,0 +1,293 @@
+{
+  "protocol": "RP608-NSE-P1-OF-DEPTH-LINK",
+  "threshold": 0.3,
+  "label": "ORDER_FLOW_SUPPORTED",
+  "classify_cases": [
+    {
+      "name": "long_strong",
+      "bid_qty": 90,
+      "ask_qty": 10,
+      "side": "LONG",
+      "imbalance": 0.8,
+      "classify": {
+        "order_flow_supported": true,
+        "order_flow_label": "ORDER_FLOW_SUPPORTED",
+        "order_flow_imbalance": 0.8,
+        "order_flow_source": "fixture_replay"
+      },
+      "inspect": {
+        "order_flow_supported": true,
+        "order_flow_label": "ORDER_FLOW_SUPPORTED",
+        "order_flow_imbalance": 0.8,
+        "order_flow_source": "fixture_replay",
+        "order_flow_side": "LONG",
+        "order_flow_long_supported": true,
+        "order_flow_short_supported": false,
+        "order_flow_inspection": true,
+        "order_flow_imbalance_threshold": 0.3
+      },
+      "exit_from_long": {
+        "exit": false,
+        "order_flow_exit_label": null,
+        "opposite_side": "SHORT",
+        "order_flow_imbalance": 0.8,
+        "order_flow_source": "fixture_replay",
+        "order_flow_label": null
+      }
+    },
+    {
+      "name": "long_boundary_030",
+      "bid_qty": 65,
+      "ask_qty": 35,
+      "side": "LONG",
+      "imbalance": 0.3,
+      "classify": {
+        "order_flow_supported": true,
+        "order_flow_label": "ORDER_FLOW_SUPPORTED",
+        "order_flow_imbalance": 0.3,
+        "order_flow_source": "fixture_replay"
+      },
+      "inspect": {
+        "order_flow_supported": true,
+        "order_flow_label": "ORDER_FLOW_SUPPORTED",
+        "order_flow_imbalance": 0.3,
+        "order_flow_source": "fixture_replay",
+        "order_flow_side": "LONG",
+        "order_flow_long_supported": true,
+        "order_flow_short_supported": false,
+        "order_flow_inspection": true,
+        "order_flow_imbalance_threshold": 0.3
+      },
+      "exit_from_long": {
+        "exit": false,
+        "order_flow_exit_label": null,
+        "opposite_side": "SHORT",
+        "order_flow_imbalance": 0.3,
+        "order_flow_source": "fixture_replay",
+        "order_flow_label": null
+      }
+    },
+    {
+      "name": "long_below",
+      "bid_qty": 64,
+      "ask_qty": 36,
+      "side": "LONG",
+      "imbalance": 0.28,
+      "classify": {
+        "order_flow_supported": false,
+        "order_flow_label": null,
+        "order_flow_imbalance": 0.28,
+        "order_flow_source": "fixture_replay"
+      },
+      "inspect": {
+        "order_flow_supported": false,
+        "order_flow_label": null,
+        "order_flow_imbalance": 0.28,
+        "order_flow_source": "fixture_replay",
+        "order_flow_side": "LONG",
+        "order_flow_long_supported": false,
+        "order_flow_short_supported": false,
+        "order_flow_inspection": true,
+        "order_flow_imbalance_threshold": 0.3
+      },
+      "exit_from_long": {
+        "exit": false,
+        "order_flow_exit_label": null,
+        "opposite_side": "SHORT",
+        "order_flow_imbalance": 0.28,
+        "order_flow_source": "fixture_replay",
+        "order_flow_label": null
+      }
+    },
+    {
+      "name": "short_strong",
+      "bid_qty": 10,
+      "ask_qty": 90,
+      "side": "SHORT",
+      "imbalance": -0.8,
+      "classify": {
+        "order_flow_supported": true,
+        "order_flow_label": "ORDER_FLOW_SUPPORTED",
+        "order_flow_imbalance": -0.8,
+        "order_flow_source": "fixture_replay"
+      },
+      "inspect": {
+        "order_flow_supported": true,
+        "order_flow_label": "ORDER_FLOW_SUPPORTED",
+        "order_flow_imbalance": -0.8,
+        "order_flow_source": "fixture_replay",
+        "order_flow_side": "SHORT",
+        "order_flow_long_supported": false,
+        "order_flow_short_supported": true,
+        "order_flow_inspection": true,
+        "order_flow_imbalance_threshold": 0.3
+      },
+      "exit_from_long": {
+        "exit": true,
+        "order_flow_exit_label": "ORDER_FLOW_EXIT",
+        "opposite_side": "SHORT",
+        "order_flow_imbalance": -0.8,
+        "order_flow_source": "fixture_replay",
+        "order_flow_label": "ORDER_FLOW_SUPPORTED"
+      }
+    },
+    {
+      "name": "short_boundary",
+      "bid_qty": 35,
+      "ask_qty": 65,
+      "side": "SHORT",
+      "imbalance": -0.3,
+      "classify": {
+        "order_flow_supported": true,
+        "order_flow_label": "ORDER_FLOW_SUPPORTED",
+        "order_flow_imbalance": -0.3,
+        "order_flow_source": "fixture_replay"
+      },
+      "inspect": {
+        "order_flow_supported": true,
+        "order_flow_label": "ORDER_FLOW_SUPPORTED",
+        "order_flow_imbalance": -0.3,
+        "order_flow_source": "fixture_replay",
+        "order_flow_side": "SHORT",
+        "order_flow_long_supported": false,
+        "order_flow_short_supported": true,
+        "order_flow_inspection": true,
+        "order_flow_imbalance_threshold": 0.3
+      },
+      "exit_from_long": {
+        "exit": true,
+        "order_flow_exit_label": "ORDER_FLOW_EXIT",
+        "opposite_side": "SHORT",
+        "order_flow_imbalance": -0.3,
+        "order_flow_source": "fixture_replay",
+        "order_flow_label": "ORDER_FLOW_SUPPORTED"
+      }
+    },
+    {
+      "name": "neutral",
+      "bid_qty": 50,
+      "ask_qty": 50,
+      "side": "LONG",
+      "imbalance": 0.0,
+      "classify": {
+        "order_flow_supported": false,
+        "order_flow_label": null,
+        "order_flow_imbalance": 0.0,
+        "order_flow_source": "fixture_replay"
+      },
+      "inspect": {
+        "order_flow_supported": false,
+        "order_flow_label": null,
+        "order_flow_imbalance": 0.0,
+        "order_flow_source": "fixture_replay",
+        "order_flow_side": "LONG",
+        "order_flow_long_supported": false,
+        "order_flow_short_supported": false,
+        "order_flow_inspection": true,
+        "order_flow_imbalance_threshold": 0.3
+      },
+      "exit_from_long": {
+        "exit": false,
+        "order_flow_exit_label": null,
+        "opposite_side": "SHORT",
+        "order_flow_imbalance": 0.0,
+        "order_flow_source": "fixture_replay",
+        "order_flow_label": null
+      }
+    },
+    {
+      "name": "empty_book",
+      "bid_qty": 0,
+      "ask_qty": 0,
+      "side": "LONG",
+      "imbalance": null,
+      "classify": {
+        "order_flow_supported": false,
+        "order_flow_label": null,
+        "order_flow_imbalance": null,
+        "order_flow_source": "fixture_replay"
+      },
+      "inspect": {
+        "order_flow_supported": false,
+        "order_flow_label": null,
+        "order_flow_imbalance": null,
+        "order_flow_source": "fixture_replay",
+        "order_flow_side": "LONG",
+        "order_flow_long_supported": false,
+        "order_flow_short_supported": false,
+        "order_flow_inspection": true,
+        "order_flow_imbalance_threshold": 0.3
+      },
+      "exit_from_long": {
+        "exit": false,
+        "order_flow_exit_label": null,
+        "opposite_side": "SHORT",
+        "order_flow_imbalance": null,
+        "order_flow_source": "fixture_replay",
+        "order_flow_label": null
+      }
+    }
+  ],
+  "packets": {
+    "pkt_a_hex": "0000190100002715000000000000000000003039000000000000000000000000000000000000000000000000000000000000000000000000000000006553f1000000000a0000271000000000000000140000270b000000000000001e000027060000000000000028000027010000000000000032000026fc000000000000000c0000271a00000000000000180000271f000000000000002400002724000000000000003000002729000000000000003c0000272e00000000",
+    "pkt_b_hex": "000019010000271a00000000000000000000303e000000000000000000000000000000000000000000000000000000000000000000000000000000006553f1010000000b0000271500000000000000160000271000000000000000210000270b000000000000002c00002706000000000000003700002701000000000000000d0000271f000000000000001a0000272400000000000000270000272900000000000000340000272e00000000000000410000273300000000",
+    "pkt_c_hex": "000b45010003d090000000000000000000000063000000000000000000000000000000000000000000000000000000000000000000000000000000006553f100000000050003d05e00000000000000050003cffa00000000000000050003cf9600000000000000050003cf3200000000000000050003cece00000000000000060003d0c200000000000000060003d12600000000000000060003d18a00000000000000060003d1ee00000000000000060003d25200000000",
+    "pkt_old_hex": "00001901000026ac000000000000000000000001000000000000000000000000000000000000000000000000000000000000000000000000000000006553f0880000000a0000271000000000000000140000270b000000000000001e000027060000000000000028000027010000000000000032000026fc000000000000000c0000271a00000000000000180000271f000000000000002400002724000000000000003000002729000000000000003c0000272e00000000",
+    "frame_ab_hex": "000200b80000190100002715000000000000000000003039000000000000000000000000000000000000000000000000000000000000000000000000000000006553f1000000000a0000271000000000000000140000270b000000000000001e000027060000000000000028000027010000000000000032000026fc000000000000000c0000271a00000000000000180000271f000000000000002400002724000000000000003000002729000000000000003c0000272e0000000000b8000019010000271a00000000000000000000303e000000000000000000000000000000000000000000000000000000000000000000000000000000006553f1010000000b0000271500000000000000160000271000000000000000210000270b000000000000002c00002706000000000000003700002701000000000000000d0000271f000000000000001a0000272400000000000000270000272900000000000000340000272e00000000000000410000273300000000",
+    "pkt_long_hex": "0000190100002715000000000000000000000001000000000000000000000000000000000000000000000000000000000000000000000000000000006553f10a0000005a00002710000000000000000a0000270b000000000000000a00002706000000000000000a00002701000000000000000a000026fc000000000000000a0000271a000000000000000a0000271f000000000000000a00002724000000000000000a00002729000000000000000a0000272e00000000"
+  },
+  "engine": {
+    "linked": [
+      {
+        "ingest_seq": 1,
+        "content_fp": 4336746938077864849,
+        "depth_ingest_seq": 1,
+        "depth_content_fp": 4336746938077864849,
+        "of_ingest_seq": 1,
+        "of_content_fp": 4336746938077864849,
+        "of_is_current": true,
+        "order_flow_supported": true,
+        "order_flow_imbalance": 0.8,
+        "depth_levels_buy": 5,
+        "depth_levels_sell": 5
+      },
+      {
+        "ingest_seq": 2,
+        "content_fp": 14653967075024316855,
+        "depth_ingest_seq": 2,
+        "depth_content_fp": 14653967075024316855,
+        "of_ingest_seq": 2,
+        "of_content_fp": 14653967075024316855,
+        "of_is_current": false,
+        "order_flow_supported": false,
+        "order_flow_imbalance": -0.090909,
+        "depth_levels_buy": 5,
+        "depth_levels_sell": 5
+      },
+      {
+        "ingest_seq": 3,
+        "content_fp": 6863563219690999833,
+        "depth_ingest_seq": 3,
+        "depth_content_fp": 6863563219690999833,
+        "of_ingest_seq": 3,
+        "of_content_fp": 6863563219690999833,
+        "of_is_current": true,
+        "order_flow_supported": false,
+        "order_flow_imbalance": -0.083333,
+        "depth_levels_buy": 5,
+        "depth_levels_sell": 5
+      }
+    ],
+    "before_disconnect_has_current": true,
+    "during_stale_current": null,
+    "while_stale_of_is_current": false,
+    "while_stale_suppressed_reason": "disconnect",
+    "during_recon_current": null,
+    "after_recon_current_cleared": true,
+    "after_live_has_current": true,
+    "after_live_imbalance": -0.083333,
+    "of_history_len": 3,
+    "depth_history_len": 3,
+    "accepted_len": 3
+  }
+}

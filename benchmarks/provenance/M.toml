@@ -1,0 +1,88 @@
+# Provenance Registry — M-family (Christofides large instances)
+# M18.1 — Provenance Registry v1.0
+# Generated: 2026-07-09
+
+[family]
+id                  = "M"
+full_name           = "Christofides M-family (large instances)"
+instance_count      = 2
+customer_range      = "150–199"
+in_campaign_scope   = true
+
+[source]
+primary             = "CVRPLIB (galgos.inf.puc-rio.br)"
+url                 = "https://galgos.inf.puc-rio.br/cvrplib/index.php/en/instances/1"
+mirror              = "OR-Library (Beasley, Imperial College London)"
+mirror_url          = "http://people.brunel.ac.uk/~mastjjb/jeb/orlib/vrpinfo.html"
+notes               = "Two instances: M-n151-k12 and M-n200-k17. These are the large-scale instances from the Christofides 1979 paper, distinct from the CMT set (CMT1–CMT14). Vehicle counts are NOT embedded in the .vrp files — sourced from CVRPLIB catalog."
+
+[publication]
+authors             = "Christofides, N., Mingozzi, A., Toth, P."
+title               = "The Vehicle Routing Problem"
+year                = 1979
+book                = "Combinatorial Optimization"
+editors             = "Christofides, N., Mingozzi, A., Toth, P., Sandi, C."
+publisher           = "Wiley, Chichester"
+pages               = "315–338"
+notes               = "Same publication as CMT family. M-n151-k12 and M-n200-k17 are the two largest instances from this paper. BKS values in the original paper are heuristic results; current CVRPLIB catalog values reflect improvements by subsequent algorithms."
+
+[objective]
+function            = "Minimize total route distance"
+multi_objective     = false
+fleet_cost          = false
+notes               = "Pure distance minimization. No fleet-size penalty in objective."
+
+[coordinate_type]
+type                = "EUC_2D"
+description         = "2D Euclidean coordinates in TSPLIB format"
+coordinate_source   = "NODE_COORD_SECTION in .vrp file"
+
+[rounding]
+rule                = "TSPLIB integer rounding"
+formula             = "nint(sqrt((x1-x2)^2 + (y1-y2)^2))"
+description         = "Distances rounded to nearest integer per TSPLIB convention"
+verified            = true
+
+[bks]
+source              = "CVRPLIB catalog (current)"
+url                 = "https://galgos.inf.puc-rio.br/cvrplib/index.php/en/instances/1"
+extraction_method   = "CVRPLIB catalog lookup (not from .vrp COMMENT field)"
+value_type          = "Integer (best known — improved over original 1979 values)"
+notes               = """
+PROVENANCE NOTE (P4):
+Registry BKS values: M-n151-k12 = 1053.00, M-n200-k17 = 1373.00.
+These are sourced from the CVRPLIB catalog and reflect current best-known solutions.
+
+Campaign v1.5 observed negative gaps: M-n151-k12 = -2.09%, M-n200-k17 = -2.99%.
+Best found: M-n151-k12 = 1031, M-n200-k17 = 1332.
+
+These negative gaps are under investigation (P4). Working hypotheses:
+  1. Fleet semantics mismatch: Coralys may be using more vehicles than K.
+  2. BKS provenance: registry values may differ from values used by comparison papers.
+  3. Distance rounding: float vs integer objective representation.
+
+Stage B verification required before any negative gap can be interpreted as improvement.
+"""
+
+[verification]
+status              = "Under Investigation"
+method              = "CVRPLIB catalog cross-check completed; Stage B certificates pending"
+date                = "2026-07"
+campaign_reference  = "Campaign v1.5 (EVIDENCE-v1.5.md)"
+qualification_level = "Under Investigation"
+open_items          = [
+    "P4 — BKS provenance: cross-check registry values against CVRPLIB.org and OR-Library",
+    "P5 — fleet semantics: confirm ATMOST vs EXACT from Christofides et al. 1979",
+    "Stage B — collect route-count certificates for M-n151-k12 and M-n200-k17",
+    "Negative-gap root cause: M-n151-k12 (-2.09%), M-n200-k17 (-2.99%)"
+]
+notes               = """
+M-family (2 instances) is under investigation due to negative gaps observed in Campaign v1.5.
+Vehicle counts sourced from CVRPLIB catalog (not in .vrp files):
+  M-n151-k12: 12 vehicles, 150 customers
+  M-n200-k17: 17 vehicles, 199 customers
+
+The M-family shares the same 1979 publication as CMT but represents the larger instances.
+Fleet semantics hypothesis: ATMOST(K) — same as CMT family hypothesis.
+Pending Stage B route-count certificates to determine whether routes_used > K.
+"""

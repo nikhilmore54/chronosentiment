@@ -1,0 +1,50 @@
+RP-406C REGIME ANALYSIS
+======================================================================
+
+PRIMARY FINDING: Two Fundamentally Different Optimisation Regimes
+
+Regime A — Construction/Search Failure:
+  Construction or local search fails to find a low-utilisation routing.
+  MLU is large. All downstream metrics are irrelevant.
+  Diagnosis required before any lexicographic work.
+
+Regime B — Shape Competition:
+  Construction succeeds. MLU is close to or matches published best.
+  Competition is decided by ranks 2+.
+  Two sub-regimes:
+    B-MLU: Small but non-zero MLU gap (we lose at rank 1 by a small margin)
+    B-Shape: MLU matched; we lose (or win) at rank 2 or deeper
+
+Instance     Regime                              Our MLU   Pub MLU   Gap      First Diff Winner
+----------------------------------------------------------------------------------------------------
+setA-01      Regime-B-Shape: MLU Matched, Shape Diverges  0.929384  0.929383 0.000001 2          pub
+setA-02      Regime-B-Shape: MLU Matched, Shape Diverges  0.903075  0.903074 0.000001 2          pub
+setA-03      Regime-B-MLU: Moderate MLU Gap       0.982168  0.943543 0.038625 1          pub
+setA-04      Regime-B-Shape: MLU Matched, Shape Diverges  0.588575  0.581237 0.007338 1          pub
+setA-05      Regime-B-Shape: MLU Matched, Shape Diverges  0.204986  0.204985 0.000001 2          pub
+setA-06      Regime-A: Construction/Search Failure  0.633803  0.098591 0.535212 1          pub
+setA-07      Regime-B-Shape: MLU Matched, Shape Diverges  0.907989  0.907989 0.000000 2          pub
+setA-08      Regime-A: Construction/Search Failure  0.561163  0.318903 0.242260 1          pub
+setA-09      Regime-B-MLU: Moderate MLU Gap       0.927677  0.849650 0.078027 1          pub
+setA-10      Regime-A: Construction/Search Failure  0.591304  0.071739 0.519565 1          pub
+setA-11      Regime-B-Shape: MLU Matched, Shape Diverges  0.785789  0.785788 0.000001 2          pub
+setA-12      Regime-B-Shape: MLU Matched, Shape Diverges  0.879873  0.879872 0.000001 2          coralys
+setA-13      Regime-A: Construction/Search Failure  0.854700  0.041025 0.813675 1          pub
+setA-14      Regime-B-MLU: Moderate MLU Gap       0.572104  0.517621 0.054483 1          pub
+setA-15      Regime-B-Shape: MLU Matched, Shape Diverges  0.898696  0.898695 0.000001 6          coralys
+setA-16      Regime-A: Construction/Search Failure  1.000000  0.044262 0.955738 1          pub
+setA-17      Regime-B-Shape: MLU Matched, Shape Diverges  0.424192  0.424192 0.000000 3          coralys
+setA-18      Regime-B-Shape: MLU Matched, Shape Diverges  0.999999  0.999998 0.000001 4          coralys
+setA-19      Regime-A: Construction/Search Failure  1.000000  0.046838 0.953162 1          pub
+setA-20      Regime-B-Shape: MLU Matched, Shape Diverges  0.991312  0.991312 0.000000 2          pub
+
+REGIME SUMMARY:
+  Regime A  (construction/search failure):  6 instances — setA-06, setA-08, setA-10, setA-13, setA-16, setA-19
+  Regime B-MLU (small MLU gap):             3 instances — setA-03, setA-09, setA-14
+  Regime B-Shape (MLU tied, pub wins):      7 instances — setA-01, setA-02, setA-04, setA-05, setA-07, setA-11, setA-20
+  Regime B-Shape (MLU tied, we win):        4 instances — setA-12, setA-15, setA-17, setA-18
+
+IMPLICATION:
+  6 instances require construction/search diagnosis (RP-407/408).
+  10 instances require lexicographic balancing (RP-409).
+  4 instances already beat the sprint reference — preserve these.

@@ -1,0 +1,578 @@
+{
+  "date": "2026-09-15",
+  "observations": 23386,
+  "frozen_armed_ids": [],
+  "asof_events": [
+    {
+      "ticker": "ADANIENT_NS",
+      "as_of_unix": 1789444560,
+      "offer": "ARMED",
+      "decision_id": "ASOF-2026-09-15-1789444560-ADANIENT_NS",
+      "entry_action": "ACT"
+    },
+    {
+      "ticker": "ADANIPORTS_NS",
+      "as_of_unix": 1789444560,
+      "offer": "ARMED",
+      "decision_id": "ASOF-2026-09-15-1789444560-ADANIPORTS_NS",
+      "entry_action": "ACT"
+    },
+    {
+      "ticker": "AMBUJACEM_NS",
+      "as_of_unix": 1789444560,
+      "offer": "ARMED",
+      "decision_id": "ASOF-2026-09-15-1789444560-AMBUJACEM_NS",
+      "entry_action": "ACT"
+    },
+    {
+      "ticker": "BAJFINANCE_NS",
+      "as_of_unix": 1789444560,
+      "offer": "ARMED",
+      "decision_id": "ASOF-2026-09-15-1789444560-BAJFINANCE_NS",
+      "entry_action": "ACT"
+    },
+    {
+      "ticker": "BANDHANBNK_NS",
+      "as_of_unix": 1789444560,
+      "offer": "ARMED",
+      "decision_id": "ASOF-2026-09-15-1789444560-BANDHANBNK_NS",
+      "entry_action": "ACT"
+    },
+    {
+      "ticker": "BANKBARODA_NS",
+      "as_of_unix": 1789444560,
+      "offer": "ARMED",
+      "decision_id": "ASOF-2026-09-15-1789444560-BANKBARODA_NS",
+      "entry_action": "ACT"
+    },
+    {
+      "ticker": "BHARTIARTL_NS",
+      "as_of_unix": 1789444560,
+      "offer": "ARMED",
+      "decision_id": "ASOF-2026-09-15-1789444560-BHARTIARTL_NS",
+      "entry_action": "ACT"
+    },
+    {
+      "ticker": "BOSCHLTD_NS",
+      "as_of_unix": 1789444560,
+      "offer": "ARMED",
+      "decision_id": "ASOF-2026-09-15-1789444560-BOSCHLTD_NS",
+      "entry_action": "ACT"
+    },
+    {
+      "ticker": "BRITANNIA_NS",
+      "as_of_unix": 1789444560,
+      "offer": "NOT_ACT",
+      "decision_id": "ASOF-2026-09-15-1789444560-BRITANNIA_NS",
+      "entry_action": "MONITOR"
+    },
+    {
+      "ticker": "CANBK_NS",
+      "as_of_unix": 1789444560,
+      "offer": "ARMED",
+      "decision_id": "ASOF-2026-09-15-1789444560-CANBK_NS",
+      "entry_action": "ACT"
+    },
+    {
+      "ticker": "CHOLAFIN_NS",
+      "as_of_unix": 1789444560,
+      "offer": "NOT_ACT",
+      "decision_id": "ASOF-2026-09-15-1789444560-CHOLAFIN_NS",
+      "entry_action": "AVOID"
+    },
+    {
+      "ticker": "DIVISLAB_NS",
+      "as_of_unix": 1789444560,
+      "offer": "NOT_ACT",
+      "decision_id": "ASOF-2026-09-15-1789444560-DIVISLAB_NS",
+      "entry_action": "AVOID"
+    },
+    {
+      "ticker": "DLF_NS",
+      "as_of_unix": 1789444560,
+      "offer": "ARMED",
+      "decision_id": "ASOF-2026-09-15-1789444560-DLF_NS",
+      "entry_action": "ACT"
+    },
+    {
+      "ticker": "EICHERMOT_NS",
+      "as_of_unix": 1789444560,
+      "offer": "ARMED",
+      "decision_id": "ASOF-2026-09-15-1789444560-EICHERMOT_NS",
+      "entry_action": "ACT"
+    },
+    {
+      "ticker": "GODREJCP_NS",
+      "as_of_unix": 1789444560,
+      "offer": "ARMED",
+      "decision_id": "ASOF-2026-09-15-1789444560-GODREJCP_NS",
+      "entry_action": "ACT"
+    },
+    {
+      "ticker": "GODREJPROP_NS",
+      "as_of_unix": 1789444560,
+      "offer": "ARMED",
+      "decision_id": "ASOF-2026-09-15-1789444560-GODREJPROP_NS",
+      "entry_action": "ACT"
+    },
+    {
+      "ticker": "HAVELLS_NS",
+      "as_of_unix": 1789444560,
+      "offer": "ARMED",
+      "decision_id": "ASOF-2026-09-15-1789444560-HAVELLS_NS",
+      "entry_action": "ACT"
+    },
+    {
+      "ticker": "HDFCBANK_NS",
+      "as_of_unix": 1789444560,
+      "offer": "NOT_ACT",
+      "decision_id": "ASOF-2026-09-15-1789444560-HDFCBANK_NS",
+      "entry_action": "AVOID"
+    },
+    {
+      "ticker": "HDFCLIFE_NS",
+      "as_of_unix": 1789444560,
+      "offer": "ARMED",
+      "decision_id": "ASOF-2026-09-15-1789444560-HDFCLIFE_NS",
+      "entry_action": "ACT"
+    },
+    {
+      "ticker": "HEROMOTOCO_NS",
+      "as_of_unix": 1789444560,
+      "offer": "ARMED",
+      "decision_id": "ASOF-2026-09-15-1789444560-HEROMOTOCO_NS",
+      "entry_action": "ACT"
+    },
+    {
+      "ticker": "HINDALCO_NS",
+      "as_of_unix": 1789444560,
+      "offer": "NOT_ACT",
+      "decision_id": "ASOF-2026-09-15-1789444560-HINDALCO_NS",
+      "entry_action": "AVOID"
+    },
+    {
+      "ticker": "HINDUNILVR_NS",
+      "as_of_unix": 1789444560,
+      "offer": "ARMED",
+      "decision_id": "ASOF-2026-09-15-1789444560-HINDUNILVR_NS",
+      "entry_action": "ACT"
+    },
+    {
+      "ticker": "ICICIBANK_NS",
+      "as_of_unix": 1789444560,
+      "offer": "ARMED",
+      "decision_id": "ASOF-2026-09-15-1789444560-ICICIBANK_NS",
+      "entry_action": "ACT"
+    },
+    {
+      "ticker": "IDEA_NS",
+      "as_of_unix": 1789444560,
+      "offer": "ARMED",
+      "decision_id": "ASOF-2026-09-15-1789444560-IDEA_NS",
+      "entry_action": "ACT"
+    },
+    {
+      "ticker": "INDHOTEL_NS",
+      "as_of_unix": 1789444560,
+      "offer": "ARMED",
+      "decision_id": "ASOF-2026-09-15-1789444560-INDHOTEL_NS",
+      "entry_action": "ACT"
+    },
+    {
+      "ticker": "INFY_NS",
+      "as_of_unix": 1789444560,
+      "offer": "ARMED",
+      "decision_id": "ASOF-2026-09-15-1789444560-INFY_NS",
+      "entry_action": "ACT"
+    },
+    {
+      "ticker": "ITC_NS",
+      "as_of_unix": 1789444560,
+      "offer": "ARMED",
+      "decision_id": "ASOF-2026-09-15-1789444560-ITC_NS",
+      "entry_action": "ACT"
+    },
+    {
+      "ticker": "JINDALSTEL_NS",
+      "as_of_unix": 1789444560,
+      "offer": "ARMED",
+      "decision_id": "ASOF-2026-09-15-1789444560-JINDALSTEL_NS",
+      "entry_action": "ACT"
+    },
+    {
+      "ticker": "JSWSTEEL_NS",
+      "as_of_unix": 1789444560,
+      "offer": "ARMED",
+      "decision_id": "ASOF-2026-09-15-1789444560-JSWSTEEL_NS",
+      "entry_action": "ACT"
+    },
+    {
+      "ticker": "KOTAKBANK_NS",
+      "as_of_unix": 1789444560,
+      "offer": "ARMED",
+      "decision_id": "ASOF-2026-09-15-1789444560-KOTAKBANK_NS",
+      "entry_action": "ACT"
+    },
+    {
+      "ticker": "LT_NS",
+      "as_of_unix": 1789444560,
+      "offer": "ARMED",
+      "decision_id": "ASOF-2026-09-15-1789444560-LT_NS",
+      "entry_action": "ACT"
+    },
+    {
+      "ticker": "M&M_NS",
+      "as_of_unix": 1789444560,
+      "offer": "ARMED",
+      "decision_id": "ASOF-2026-09-15-1789444560-M&M_NS",
+      "entry_action": "ACT"
+    },
+    {
+      "ticker": "MARICO_NS",
+      "as_of_unix": 1789444560,
+      "offer": "ARMED",
+      "decision_id": "ASOF-2026-09-15-1789444560-MARICO_NS",
+      "entry_action": "ACT"
+    },
+    {
+      "ticker": "MARUTI_NS",
+      "as_of_unix": 1789444560,
+      "offer": "ARMED",
+      "decision_id": "ASOF-2026-09-15-1789444560-MARUTI_NS",
+      "entry_action": "ACT"
+    },
+    {
+      "ticker": "MPHASIS_NS",
+      "as_of_unix": 1789444560,
+      "offer": "ARMED",
+      "decision_id": "ASOF-2026-09-15-1789444560-MPHASIS_NS",
+      "entry_action": "ACT"
+    },
+    {
+      "ticker": "NAUKRI_NS",
+      "as_of_unix": 1789444560,
+      "offer": "ARMED",
+      "decision_id": "ASOF-2026-09-15-1789444560-NAUKRI_NS",
+      "entry_action": "ACT"
+    },
+    {
+      "ticker": "NESTLEIND_NS",
+      "as_of_unix": 1789444560,
+      "offer": "ARMED",
+      "decision_id": "ASOF-2026-09-15-1789444560-NESTLEIND_NS",
+      "entry_action": "ACT"
+    },
+    {
+      "ticker": "NMDC_NS",
+      "as_of_unix": 1789444560,
+      "offer": "ARMED",
+      "decision_id": "ASOF-2026-09-15-1789444560-NMDC_NS",
+      "entry_action": "ACT"
+    },
+    {
+      "ticker": "OFSS_NS",
+      "as_of_unix": 1789444560,
+      "offer": "ARMED",
+      "decision_id": "ASOF-2026-09-15-1789444560-OFSS_NS",
+      "entry_action": "ACT"
+    },
+    {
+      "ticker": "ONGC_NS",
+      "as_of_unix": 1789444560,
+      "offer": "NOT_ACT",
+      "decision_id": "ASOF-2026-09-15-1789444560-ONGC_NS",
+      "entry_action": "AVOID"
+    },
+    {
+      "ticker": "PIDILITIND_NS",
+      "as_of_unix": 1789444560,
+      "offer": "ARMED",
+      "decision_id": "ASOF-2026-09-15-1789444560-PIDILITIND_NS",
+      "entry_action": "ACT"
+    },
+    {
+      "ticker": "POLYCAB_NS",
+      "as_of_unix": 1789444560,
+      "offer": "ARMED",
+      "decision_id": "ASOF-2026-09-15-1789444560-POLYCAB_NS",
+      "entry_action": "ACT"
+    },
+    {
+      "ticker": "POWERGRID_NS",
+      "as_of_unix": 1789444560,
+      "offer": "ARMED",
+      "decision_id": "ASOF-2026-09-15-1789444560-POWERGRID_NS",
+      "entry_action": "ACT"
+    },
+    {
+      "ticker": "RECLTD_NS",
+      "as_of_unix": 1789444560,
+      "offer": "NOT_ACT",
+      "decision_id": "ASOF-2026-09-15-1789444560-RECLTD_NS",
+      "entry_action": "MONITOR"
+    },
+    {
+      "ticker": "RELIANCE_NS",
+      "as_of_unix": 1789444560,
+      "offer": "NOT_ACT",
+      "decision_id": "ASOF-2026-09-15-1789444560-RELIANCE_NS",
+      "entry_action": "AVOID"
+    },
+    {
+      "ticker": "SAIL_NS",
+      "as_of_unix": 1789444560,
+      "offer": "NOT_ACT",
+      "decision_id": "ASOF-2026-09-15-1789444560-SAIL_NS",
+      "entry_action": "AVOID"
+    },
+    {
+      "ticker": "SBILIFE_NS",
+      "as_of_unix": 1789444560,
+      "offer": "ARMED",
+      "decision_id": "ASOF-2026-09-15-1789444560-SBILIFE_NS",
+      "entry_action": "ACT"
+    },
+    {
+      "ticker": "SBIN_NS",
+      "as_of_unix": 1789444560,
+      "offer": "ARMED",
+      "decision_id": "ASOF-2026-09-15-1789444560-SBIN_NS",
+      "entry_action": "ACT"
+    },
+    {
+      "ticker": "SIEMENS_NS",
+      "as_of_unix": 1789444560,
+      "offer": "ARMED",
+      "decision_id": "ASOF-2026-09-15-1789444560-SIEMENS_NS",
+      "entry_action": "ACT"
+    },
+    {
+      "ticker": "SRF_NS",
+      "as_of_unix": 1789444560,
+      "offer": "NOT_ACT",
+      "decision_id": "ASOF-2026-09-15-1789444560-SRF_NS",
+      "entry_action": "MONITOR"
+    },
+    {
+      "ticker": "SUNPHARMA_NS",
+      "as_of_unix": 1789444560,
+      "offer": "ARMED",
+      "decision_id": "ASOF-2026-09-15-1789444560-SUNPHARMA_NS",
+      "entry_action": "ACT"
+    },
+    {
+      "ticker": "TATASTEEL_NS",
+      "as_of_unix": 1789444560,
+      "offer": "ARMED",
+      "decision_id": "ASOF-2026-09-15-1789444560-TATASTEEL_NS",
+      "entry_action": "ACT"
+    },
+    {
+      "ticker": "TCS_NS",
+      "as_of_unix": 1789444560,
+      "offer": "ARMED",
+      "decision_id": "ASOF-2026-09-15-1789444560-TCS_NS",
+      "entry_action": "ACT"
+    },
+    {
+      "ticker": "TITAN_NS",
+      "as_of_unix": 1789444560,
+      "offer": "ARMED",
+      "decision_id": "ASOF-2026-09-15-1789444560-TITAN_NS",
+      "entry_action": "ACT"
+    },
+    {
+      "ticker": "TMCV_NS",
+      "as_of_unix": 1789444560,
+      "offer": "ARMED",
+      "decision_id": "ASOF-2026-09-15-1789444560-TMCV_NS",
+      "entry_action": "ACT"
+    },
+    {
+      "ticker": "TORNTPHARM_NS",
+      "as_of_unix": 1789444560,
+      "offer": "ARMED",
+      "decision_id": "ASOF-2026-09-15-1789444560-TORNTPHARM_NS",
+      "entry_action": "ACT"
+    },
+    {
+      "ticker": "TRENT_NS",
+      "as_of_unix": 1789444560,
+      "offer": "ARMED",
+      "decision_id": "ASOF-2026-09-15-1789444560-TRENT_NS",
+      "entry_action": "ACT"
+    },
+    {
+      "ticker": "TVSMOTOR_NS",
+      "as_of_unix": 1789444560,
+      "offer": "ARMED",
+      "decision_id": "ASOF-2026-09-15-1789444560-TVSMOTOR_NS",
+      "entry_action": "ACT"
+    },
+    {
+      "ticker": "ULTRACEMCO_NS",
+      "as_of_unix": 1789444560,
+      "offer": "ARMED",
+      "decision_id": "ASOF-2026-09-15-1789444560-ULTRACEMCO_NS",
+      "entry_action": "ACT"
+    },
+    {
+      "ticker": "UNITDSPR_NS",
+      "as_of_unix": 1789444560,
+      "offer": "ARMED",
+      "decision_id": "ASOF-2026-09-15-1789444560-UNITDSPR_NS",
+      "entry_action": "ACT"
+    },
+    {
+      "ticker": "UPL_NS",
+      "as_of_unix": 1789444560,
+      "offer": "ARMED",
+      "decision_id": "ASOF-2026-09-15-1789444560-UPL_NS",
+      "entry_action": "ACT"
+    },
+    {
+      "ticker": "VBL_NS",
+      "as_of_unix": 1789444560,
+      "offer": "ARMED",
+      "decision_id": "ASOF-2026-09-15-1789444560-VBL_NS",
+      "entry_action": "ACT"
+    },
+    {
+      "ticker": "VEDL_NS",
+      "as_of_unix": 1789444560,
+      "offer": "ARMED",
+      "decision_id": "ASOF-2026-09-15-1789444560-VEDL_NS",
+      "entry_action": "ACT"
+    },
+    {
+      "ticker": "WIPRO_NS",
+      "as_of_unix": 1789444560,
+      "offer": "ARMED",
+      "decision_id": "ASOF-2026-09-15-1789444560-WIPRO_NS",
+      "entry_action": "ACT"
+    },
+    {
+      "ticker": "MRF_NS",
+      "as_of_unix": 1789444620,
+      "offer": "NOT_ACT",
+      "decision_id": "ASOF-2026-09-15-1789444620-MRF_NS",
+      "entry_action": "AVOID"
+    }
+  ],
+  "asof_armed_ids": [
+    "ASOF-2026-09-15-1789444560-ADANIENT_NS",
+    "ASOF-2026-09-15-1789444560-ADANIPORTS_NS",
+    "ASOF-2026-09-15-1789444560-AMBUJACEM_NS",
+    "ASOF-2026-09-15-1789444560-BAJFINANCE_NS",
+    "ASOF-2026-09-15-1789444560-BANDHANBNK_NS",
+    "ASOF-2026-09-15-1789444560-BANKBARODA_NS",
+    "ASOF-2026-09-15-1789444560-BHARTIARTL_NS",
+    "ASOF-2026-09-15-1789444560-BOSCHLTD_NS",
+    "ASOF-2026-09-15-1789444560-CANBK_NS",
+    "ASOF-2026-09-15-1789444560-DLF_NS",
+    "ASOF-2026-09-15-1789444560-EICHERMOT_NS",
+    "ASOF-2026-09-15-1789444560-GODREJCP_NS",
+    "ASOF-2026-09-15-1789444560-GODREJPROP_NS",
+    "ASOF-2026-09-15-1789444560-HAVELLS_NS",
+    "ASOF-2026-09-15-1789444560-HDFCLIFE_NS",
+    "ASOF-2026-09-15-1789444560-HEROMOTOCO_NS",
+    "ASOF-2026-09-15-1789444560-HINDUNILVR_NS",
+    "ASOF-2026-09-15-1789444560-ICICIBANK_NS",
+    "ASOF-2026-09-15-1789444560-IDEA_NS",
+    "ASOF-2026-09-15-1789444560-INDHOTEL_NS",
+    "ASOF-2026-09-15-1789444560-INFY_NS",
+    "ASOF-2026-09-15-1789444560-ITC_NS",
+    "ASOF-2026-09-15-1789444560-JINDALSTEL_NS",
+    "ASOF-2026-09-15-1789444560-JSWSTEEL_NS",
+    "ASOF-2026-09-15-1789444560-KOTAKBANK_NS",
+    "ASOF-2026-09-15-1789444560-LT_NS",
+    "ASOF-2026-09-15-1789444560-M&M_NS",
+    "ASOF-2026-09-15-1789444560-MARICO_NS",
+    "ASOF-2026-09-15-1789444560-MARUTI_NS",
+    "ASOF-2026-09-15-1789444560-MPHASIS_NS",
+    "ASOF-2026-09-15-1789444560-NAUKRI_NS",
+    "ASOF-2026-09-15-1789444560-NESTLEIND_NS",
+    "ASOF-2026-09-15-1789444560-NMDC_NS",
+    "ASOF-2026-09-15-1789444560-OFSS_NS",
+    "ASOF-2026-09-15-1789444560-PIDILITIND_NS",
+    "ASOF-2026-09-15-1789444560-POLYCAB_NS",
+    "ASOF-2026-09-15-1789444560-POWERGRID_NS",
+    "ASOF-2026-09-15-1789444560-SBILIFE_NS",
+    "ASOF-2026-09-15-1789444560-SBIN_NS",
+    "ASOF-2026-09-15-1789444560-SIEMENS_NS",
+    "ASOF-2026-09-15-1789444560-SUNPHARMA_NS",
+    "ASOF-2026-09-15-1789444560-TATASTEEL_NS",
+    "ASOF-2026-09-15-1789444560-TCS_NS",
+    "ASOF-2026-09-15-1789444560-TITAN_NS",
+    "ASOF-2026-09-15-1789444560-TMCV_NS",
+    "ASOF-2026-09-15-1789444560-TORNTPHARM_NS",
+    "ASOF-2026-09-15-1789444560-TRENT_NS",
+    "ASOF-2026-09-15-1789444560-TVSMOTOR_NS",
+    "ASOF-2026-09-15-1789444560-ULTRACEMCO_NS",
+    "ASOF-2026-09-15-1789444560-UNITDSPR_NS",
+    "ASOF-2026-09-15-1789444560-UPL_NS",
+    "ASOF-2026-09-15-1789444560-VBL_NS",
+    "ASOF-2026-09-15-1789444560-VEDL_NS",
+    "ASOF-2026-09-15-1789444560-WIPRO_NS"
+  ],
+  "open": 0,
+  "exited": 0,
+  "horizon": 54,
+  "ledger_decision_ids": [
+    "ASOF-2026-09-15-1789444560-ADANIENT_NS",
+    "ASOF-2026-09-15-1789444560-ADANIPORTS_NS",
+    "ASOF-2026-09-15-1789444560-AMBUJACEM_NS",
+    "ASOF-2026-09-15-1789444560-BAJFINANCE_NS",
+    "ASOF-2026-09-15-1789444560-BANDHANBNK_NS",
+    "ASOF-2026-09-15-1789444560-BANKBARODA_NS",
+    "ASOF-2026-09-15-1789444560-BHARTIARTL_NS",
+    "ASOF-2026-09-15-1789444560-BOSCHLTD_NS",
+    "ASOF-2026-09-15-1789444560-CANBK_NS",
+    "ASOF-2026-09-15-1789444560-DLF_NS",
+    "ASOF-2026-09-15-1789444560-EICHERMOT_NS",
+    "ASOF-2026-09-15-1789444560-GODREJCP_NS",
+    "ASOF-2026-09-15-1789444560-GODREJPROP_NS",
+    "ASOF-2026-09-15-1789444560-HAVELLS_NS",
+    "ASOF-2026-09-15-1789444560-HDFCLIFE_NS",
+    "ASOF-2026-09-15-1789444560-HEROMOTOCO_NS",
+    "ASOF-2026-09-15-1789444560-HINDUNILVR_NS",
+    "ASOF-2026-09-15-1789444560-ICICIBANK_NS",
+    "ASOF-2026-09-15-1789444560-IDEA_NS",
+    "ASOF-2026-09-15-1789444560-INDHOTEL_NS",
+    "ASOF-2026-09-15-1789444560-INFY_NS",
+    "ASOF-2026-09-15-1789444560-ITC_NS",
+    "ASOF-2026-09-15-1789444560-JINDALSTEL_NS",
+    "ASOF-2026-09-15-1789444560-JSWSTEEL_NS",
+    "ASOF-2026-09-15-1789444560-KOTAKBANK_NS",
+    "ASOF-2026-09-15-1789444560-LT_NS",
+    "ASOF-2026-09-15-1789444560-M&M_NS",
+    "ASOF-2026-09-15-1789444560-MARICO_NS",
+    "ASOF-2026-09-15-1789444560-MARUTI_NS",
+    "ASOF-2026-09-15-1789444560-MPHASIS_NS",
+    "ASOF-2026-09-15-1789444560-NAUKRI_NS",
+    "ASOF-2026-09-15-1789444560-NESTLEIND_NS",
+    "ASOF-2026-09-15-1789444560-NMDC_NS",
+    "ASOF-2026-09-15-1789444560-OFSS_NS",
+    "ASOF-2026-09-15-1789444560-PIDILITIND_NS",
+    "ASOF-2026-09-15-1789444560-POLYCAB_NS",
+    "ASOF-2026-09-15-1789444560-POWERGRID_NS",
+    "ASOF-2026-09-15-1789444560-SBILIFE_NS",
+    "ASOF-2026-09-15-1789444560-SBIN_NS",
+    "ASOF-2026-09-15-1789444560-SIEMENS_NS",
+    "ASOF-2026-09-15-1789444560-SUNPHARMA_NS",
+    "ASOF-2026-09-15-1789444560-TATASTEEL_NS",
+    "ASOF-2026-09-15-1789444560-TCS_NS",
+    "ASOF-2026-09-15-1789444560-TITAN_NS",
+    "ASOF-2026-09-15-1789444560-TMCV_NS",
+    "ASOF-2026-09-15-1789444560-TORNTPHARM_NS",
+    "ASOF-2026-09-15-1789444560-TRENT_NS",
+    "ASOF-2026-09-15-1789444560-TVSMOTOR_NS",
+    "ASOF-2026-09-15-1789444560-ULTRACEMCO_NS",
+    "ASOF-2026-09-15-1789444560-UNITDSPR_NS",
+    "ASOF-2026-09-15-1789444560-UPL_NS",
+    "ASOF-2026-09-15-1789444560-VBL_NS",
+    "ASOF-2026-09-15-1789444560-VEDL_NS",
+    "ASOF-2026-09-15-1789444560-WIPRO_NS"
+  ],
+  "feed_status": "TapeExhausted"
+}

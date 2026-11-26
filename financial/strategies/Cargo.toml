@@ -17,3 +17,16 @@ clap = { version = "4.0", features = ["derive"] }
 chronosentiment_optimization = { path = "../../infrastructure/optimization" }
 sha2 = "0.11.0"
 chronosentiment_financial_core = { version = "0.1.0", path = "../core" }
+coralys-ecology = { version = "0.1.0", path = "../../coralys-ecology" }
+
+[[bin]]
+name = "execution_simulator"
+path = "src/bin/execution_simulator.rs"
+
+[[bin]]
+name = "strategy_simulator"
+path = "src/bin/strategy_simulator.rs"
+
+[[bin]]
+name = "trace_compiler"
+path = "src/bin/trace_compiler.rs"

@@ -1,0 +1,960 @@
+      |M|T|W|T|F|S|S|
+-----------------------
+HN_0  |-|-|E|D|L|L|E|
+HN_1  |L|-|-|L|-|N|N|
+HN_2  |E|-|-|E|E|E|D|
+HN_3  |N|-|-|-|-|-|D|
+NU_4  |E|E|-|-|D|-|D|
+NU_5  |-|-|L|N|D|-|-|
+NU_6  |-|E|-|N|-|-|N|
+NU_7  |L|-|D|D|L|D|L|
+NU_8  |-|N|N|L|-|-|N|
+NU_9  |-|N|-|E|N|-|N|
+NU_10 |-|E|D|L|N|-|-|
+NU_11 |N|L|-|-|-|-|-|
+NU_12 |E|-|-|D|N|-|D|
+NU_13 |E|L|-|D|L|N|-|
+NU_14 |E|L|N|-|D|-|-|
+NU_15 |N|L|N|N|-|E|E|
+NU_16 |D|-|N|E|N|L|D|
+CT_17 |L|L|L|N|N|D|-|
+CT_18 |D|-|D|D|-|-|-|
+CT_19 |L|L|-|L|N|-|E|
+CT_20 |E|-|L|N|-|-|D|
+CT_21 |-|D|-|-|D|L|N|
+CT_22 |L|-|-|E|E|D|L|
+CT_23 |-|D|-|D|-|-|-|
+CT_24 |-|N|D|-|E|-|-|
+TR_25 |D|L|-|-|L|L|-|
+TR_26 |-|D|-|N|-|-|-|
+TR_27 |E|E|-|-|-|-|N|
+TR_28 |-|E|D|-|-|L|D|
+TR_29 |-|N|N|-|-|E|N|
+
+
+Hard constraint violations
+--------------------------
+
+Minimal coverage constraints: 3
+Required skill constraints: 0
+Illegal shift type succession constraints: 17
+Single assignment per day: 14
+
+
+Cost per constraint type
+------------------------
+
+Total assignment constraints: 3120
+Consecutive constraints: 2640
+Non working days constraints: 810
+Preferences: 70
+Max working weekend: 0
+Complete weekends: 360
+Optimal coverage constraints: 360
+
+------------------------
+
+Total cost: 7360
+ 
+HN_0
+----
+
+   Total assignments 
+   -----------------
+     - Minimum total number of assignments, nurse HN_0, day: 0, cost: 200
+
+   Consecutive assignments 
+   -----------------------
+     - Minimum number of consecutive shift types (Day), nurse HN_0, day: 3, cost: 15
+     - Minimum number of consecutive shift types (Early), nurse HN_0, day: 2, cost: 15
+     - Illegal shift type succession (Late,Early), nurse HN_0, day: 6
+
+   Consecutive days off 
+   --------------------
+
+   Weekend constraints 
+   -------------------
+
+   Preferences 
+   -----------
+
+   Hard constraint violations 
+   --------------------------
+     - Illegal shift type succession (Late,Early), nurse HN_0, day: 6
+
+
+HN_1
+----
+
+   Total assignments 
+   -----------------
+     - Minimum total number of assignments, nurse HN_1, day: 0, cost: 20
+
+   Consecutive assignments 
+   -----------------------
+     - Minimum number of consecutive shift types (Late), nurse HN_1, day: 3, cost: 15
+     - Minimum number of consecutive working days, nurse HN_1, day: 3, cost: 30
+     - Minimum number of consecutive shift types (Late), nurse HN_1, day: 0, cost: 15
+     - Minimum number of consecutive working days, nurse HN_1, day: 0, cost: 30
+
+   Consecutive days off 
+   --------------------
+     - Minimum number of consecutive days off, nurse HN_1, day: 3, cost: 30
+
+   Weekend constraints 
+   -------------------
+
+   Preferences 
+   -----------
+
+   Hard constraint violations 
+   --------------------------
+
+
+HN_2
+----
+
+   Total assignments 
+   -----------------
+
+   Consecutive assignments 
+   -----------------------
+     - Minimum number of consecutive shift types (Early), nurse HN_2, day: 0, cost: 15
+     - Minimum number of consecutive working days, nurse HN_2, day: 0, cost: 30
+
+   Consecutive days off 
+   --------------------
+
+   Weekend constraints 
+   -------------------
+
+   Preferences 
+   -----------
+
+   Hard constraint violations 
+   --------------------------
+
+
+HN_3
+----
+
+   Total assignments 
+   -----------------
+     - Minimum total number of assignments, nurse HN_3, day: 0, cost: 100
+
+   Consecutive assignments 
+   -----------------------
+     - Minimum number of consecutive shift types (Night), nurse HN_3, day: 0, cost: 30
+
+   Consecutive days off 
+   --------------------
+     - Maximum number of consecutive days off, nurse HN_3, day: 0, cost: 30
+
+   Weekend constraints 
+   -------------------
+     - Complete working weekends, nurse HN_3, day: 6, cost: 30
+
+   Preferences 
+   -----------
+
+   Hard constraint violations 
+   --------------------------
+
+
+NU_4
+----
+
+   Total assignments 
+   -----------------
+     - Minimum total number of assignments, nurse NU_4, day: 0, cost: 20
+
+   Consecutive assignments 
+   -----------------------
+     - Minimum number of consecutive shift types (Day), nurse NU_4, day: 4, cost: 15
+     - Minimum number of consecutive working days, nurse NU_4, day: 4, cost: 30
+
+   Consecutive days off 
+   --------------------
+     - Minimum number of consecutive days off, nurse NU_4, day: 4, cost: 30
+
+   Weekend constraints 
+   -------------------
+     - Complete working weekends, nurse NU_4, day: 6, cost: 30
+
+   Preferences 
+   -----------
+     - Shift off request, nurse NU_4, day: 0, cost: 10
+
+   Hard constraint violations 
+   --------------------------
+
+
+NU_5
+----
+
+   Total assignments 
+   -----------------
+
+   Consecutive assignments 
+   -----------------------
+     - Minimum number of consecutive shift types (Night), nurse NU_5, day: 3, cost: 30
+     - Minimum number of consecutive shift types (Late), nurse NU_5, day: 2, cost: 15
+     - Minimum number of consecutive shift types (Early), nurse NU_5, day: 2, cost: 15
+     - Illegal shift type succession (Night,Day), nurse NU_5, day: 4
+     - Illegal shift type succession (Late,Day), nurse NU_5, day: 3
+
+   Consecutive days off 
+   --------------------
+
+   Weekend constraints 
+   -------------------
+
+   Preferences 
+   -----------
+
+   Hard constraint violations 
+   --------------------------
+     - Illegal shift type succession (Night,Day), nurse NU_5, day: 4
+     - Illegal shift type succession (Late,Day), nurse NU_5, day: 3
+     - Single assignment per day, nurse NU_5, day: 4
+     - Single assignment per day, nurse NU_5, day: 4
+
+
+NU_6
+----
+
+   Total assignments 
+   -----------------
+     - Minimum total number of assignments, nurse NU_6, day: 0, cost: 240
+
+   Consecutive assignments 
+   -----------------------
+     - Minimum number of consecutive shift types (Early), nurse NU_6, day: 1, cost: 15
+     - Minimum number of consecutive shift types (Night), nurse NU_6, day: 3, cost: 30
+     - Minimum number of consecutive working days, nurse NU_6, day: 3, cost: 60
+     - Minimum number of consecutive working days, nurse NU_6, day: 1, cost: 60
+
+   Consecutive days off 
+   --------------------
+     - Minimum number of consecutive days off, nurse NU_6, day: 1, cost: 30
+     - Minimum number of consecutive days off, nurse NU_6, day: 0, cost: 30
+
+   Weekend constraints 
+   -------------------
+     - Complete working weekends, nurse NU_6, day: 6, cost: 30
+
+   Preferences 
+   -----------
+
+   Hard constraint violations 
+   --------------------------
+
+
+NU_7
+----
+
+   Total assignments 
+   -----------------
+
+   Consecutive assignments 
+   -----------------------
+     - Minimum number of consecutive shift types (Day), nurse NU_7, day: 5, cost: 15
+     - Minimum number of consecutive shift types (Late), nurse NU_7, day: 4, cost: 15
+     - Minimum number of consecutive shift types (Late), nurse NU_7, day: 0, cost: 15
+     - Minimum number of consecutive shift types (Day), nurse NU_7, day: 0, cost: 15
+     - Illegal shift type succession (Late,Day), nurse NU_7, day: 5
+
+   Consecutive days off 
+   --------------------
+     - Minimum number of consecutive days off, nurse NU_7, day: 0, cost: 30
+
+   Weekend constraints 
+   -------------------
+
+   Preferences 
+   -----------
+
+   Hard constraint violations 
+   --------------------------
+     - Illegal shift type succession (Late,Day), nurse NU_7, day: 5
+     - Single assignment per day, nurse NU_7, day: 6
+
+
+NU_8
+----
+
+   Total assignments 
+   -----------------
+     - Minimum total number of assignments, nurse NU_8, day: 0, cost: 200
+
+   Consecutive assignments 
+   -----------------------
+     - Minimum number of consecutive shift types (Late), nurse NU_8, day: 3, cost: 15
+     - Minimum number of consecutive shift types (Early), nurse NU_8, day: 3, cost: 15
+     - Minimum number of consecutive shift types (Night), nurse NU_8, day: 2, cost: 15
+     - Minimum number of consecutive shift types (Night), nurse NU_8, day: 0, cost: 15
+     - Illegal shift type succession (Night,Late), nurse NU_8, day: 3
+     - Illegal shift type succession (Night,Early), nurse NU_8, day: 3
+
+   Consecutive days off 
+   --------------------
+     - Minimum number of consecutive days off, nurse NU_8, day: 0, cost: 30
+
+   Weekend constraints 
+   -------------------
+     - Complete working weekends, nurse NU_8, day: 6, cost: 30
+
+   Preferences 
+   -----------
+
+   Hard constraint violations 
+   --------------------------
+     - Illegal shift type succession (Night,Late), nurse NU_8, day: 3
+     - Illegal shift type succession (Night,Early), nurse NU_8, day: 3
+     - Single assignment per day, nurse NU_8, day: 6
+
+
+NU_9
+----
+
+   Total assignments 
+   -----------------
+
+   Consecutive assignments 
+   -----------------------
+     - Minimum number of consecutive shift types (Day), nurse NU_9, day: 1, cost: 15
+     - Minimum number of consecutive shift types (Early), nurse NU_9, day: 3, cost: 15
+     - Minimum number of consecutive shift types (Night), nurse NU_9, day: 4, cost: 30
+     - Minimum number of consecutive shift types (Night), nurse NU_9, day: 1, cost: 30
+     - Minimum number of consecutive working days, nurse NU_9, day: 1, cost: 30
+
+   Consecutive days off 
+   --------------------
+     - Minimum number of consecutive days off, nurse NU_9, day: 4, cost: 30
+     - Minimum number of consecutive days off, nurse NU_9, day: 1, cost: 30
+
+   Weekend constraints 
+   -------------------
+     - Complete working weekends, nurse NU_9, day: 6, cost: 30
+
+   Preferences 
+   -----------
+
+   Hard constraint violations 
+   --------------------------
+     - Single assignment per day, nurse NU_9, day: 6
+
+
+NU_10
+-----
+
+   Total assignments 
+   -----------------
+     - Minimum total number of assignments, nurse NU_10, day: 0, cost: 60
+
+   Consecutive assignments 
+   -----------------------
+     - Minimum number of consecutive shift types (Night), nurse NU_10, day: 4, cost: 30
+     - Minimum number of consecutive shift types (Late), nurse NU_10, day: 3, cost: 15
+     - Minimum number of consecutive shift types (Day), nurse NU_10, day: 2, cost: 15
+     - Minimum number of consecutive shift types (Early), nurse NU_10, day: 1, cost: 15
+     - Minimum number of consecutive shift types (Late), nurse NU_10, day: 0, cost: 15
+
+   Consecutive days off 
+   --------------------
+     - Minimum number of consecutive days off, nurse NU_10, day: 0, cost: 30
+
+   Weekend constraints 
+   -------------------
+
+   Preferences 
+   -----------
+
+   Hard constraint violations 
+   --------------------------
+
+
+NU_11
+-----
+
+   Total assignments 
+   -----------------
+     - Minimum total number of assignments, nurse NU_11, day: 0, cost: 240
+
+   Consecutive assignments 
+   -----------------------
+     - Minimum number of consecutive shift types (Night), nurse NU_11, day: 0, cost: 30
+     - Minimum number of consecutive shift types (Late), nurse NU_11, day: 1, cost: 15
+     - Minimum number of consecutive shift types (Day), nurse NU_11, day: 0, cost: 15
+     - Illegal shift type succession (Night,Late), nurse NU_11, day: 1
+
+   Consecutive days off 
+   --------------------
+     - Maximum number of consecutive days off, nurse NU_11, day: 6, cost: 60
+
+   Weekend constraints 
+   -------------------
+
+   Preferences 
+   -----------
+
+   Hard constraint violations 
+   --------------------------
+     - Illegal shift type succession (Night,Late), nurse NU_11, day: 1
+     - Single assignment per day, nurse NU_11, day: 1
+
+
+NU_12
+-----
+
+   Total assignments 
+   -----------------
+     - Minimum total number of assignments, nurse NU_12, day: 0, cost: 40
+
+   Consecutive assignments 
+   -----------------------
+     - Minimum number of consecutive shift types (Night), nurse NU_12, day: 4, cost: 30
+     - Minimum number of consecutive shift types (Late), nurse NU_12, day: 4, cost: 15
+     - Minimum number of consecutive shift types (Early), nurse NU_12, day: 0, cost: 15
+     - Minimum number of consecutive shift types (Day), nurse NU_12, day: 3, cost: 15
+     - Minimum number of consecutive working days, nurse NU_12, day: 4, cost: 30
+     - Minimum number of consecutive working days, nurse NU_12, day: 0, cost: 60
+
+   Consecutive days off 
+   --------------------
+     - Minimum number of consecutive days off, nurse NU_12, day: 4, cost: 30
+
+   Weekend constraints 
+   -------------------
+     - Complete working weekends, nurse NU_12, day: 6, cost: 30
+
+   Preferences 
+   -----------
+     - Shift off request, nurse NU_12, day: 4, cost: 20
+
+   Hard constraint violations 
+   --------------------------
+     - Single assignment per day, nurse NU_12, day: 6
+
+
+NU_13
+-----
+
+   Total assignments 
+   -----------------
+
+   Consecutive assignments 
+   -----------------------
+     - Minimum number of consecutive shift types (Night), nurse NU_13, day: 5, cost: 30
+     - Minimum number of consecutive shift types (Late), nurse NU_13, day: 4, cost: 15
+     - Minimum number of consecutive shift types (Day), nurse NU_13, day: 3, cost: 15
+     - Minimum number of consecutive shift types (Early), nurse NU_13, day: 0, cost: 15
+     - Minimum number of consecutive shift types (Late), nurse NU_13, day: 1, cost: 15
+
+   Consecutive days off 
+   --------------------
+     - Minimum number of consecutive days off, nurse NU_13, day: 1, cost: 30
+
+   Weekend constraints 
+   -------------------
+     - Complete working weekends, nurse NU_13, day: 5, cost: 30
+
+   Preferences 
+   -----------
+
+   Hard constraint violations 
+   --------------------------
+
+
+NU_14
+-----
+
+   Total assignments 
+   -----------------
+     - Minimum total number of assignments, nurse NU_14, day: 0, cost: 220
+
+   Consecutive assignments 
+   -----------------------
+     - Minimum number of consecutive shift types (Night), nurse NU_14, day: 2, cost: 30
+     - Minimum number of consecutive shift types (Late), nurse NU_14, day: 1, cost: 15
+     - Minimum number of consecutive shift types (Day), nurse NU_14, day: 4, cost: 15
+     - Minimum number of consecutive working days, nurse NU_14, day: 4, cost: 60
+
+   Consecutive days off 
+   --------------------
+     - Minimum number of consecutive days off, nurse NU_14, day: 2, cost: 30
+
+   Weekend constraints 
+   -------------------
+
+   Preferences 
+   -----------
+
+   Hard constraint violations 
+   --------------------------
+
+
+NU_15
+-----
+
+   Total assignments 
+   -----------------
+     - Minimum total number of assignments, nurse NU_15, day: 0, cost: 160
+
+   Consecutive assignments 
+   -----------------------
+     - Minimum number of consecutive shift types (Night), nurse NU_15, day: 3, cost: 15
+     - Minimum number of consecutive shift types (Night), nurse NU_15, day: 0, cost: 30
+     - Illegal shift type succession (Night,Late), nurse NU_15, day: 1
+
+   Consecutive days off 
+   --------------------
+     - Minimum number of consecutive days off, nurse NU_15, day: 3, cost: 30
+
+   Weekend constraints 
+   -------------------
+
+   Preferences 
+   -----------
+
+   Hard constraint violations 
+   --------------------------
+     - Illegal shift type succession (Night,Late), nurse NU_15, day: 1
+     - Single assignment per day, nurse NU_15, day: 6
+
+
+NU_16
+-----
+
+   Total assignments 
+   -----------------
+
+   Consecutive assignments 
+   -----------------------
+     - Minimum number of consecutive shift types (Night), nurse NU_16, day: 4, cost: 30
+     - Minimum number of consecutive shift types (Late), nurse NU_16, day: 5, cost: 15
+     - Minimum number of consecutive shift types (Day), nurse NU_16, day: 2, cost: 15
+     - Minimum number of consecutive shift types (Night), nurse NU_16, day: 2, cost: 30
+     - Minimum number of consecutive shift types (Day), nurse NU_16, day: 0, cost: 15
+     - Minimum number of consecutive working days, nurse NU_16, day: 0, cost: 30
+     - Illegal shift type succession (Night,Late), nurse NU_16, day: 5
+     - Illegal shift type succession (Night,Early), nurse NU_16, day: 5
+     - Illegal shift type succession (Late,Day), nurse NU_16, day: 6
+     - Maximum number of consecutive working days, nurse NU_16, day: 6, cost: 30
+     - Illegal shift type succession (Day,Early), nurse NU_16, day: 3
+     - Illegal shift type succession (Night,Early), nurse NU_16, day: 3
+
+   Consecutive days off 
+   --------------------
+     - Minimum number of consecutive days off, nurse NU_16, day: 0, cost: 30
+
+   Weekend constraints 
+   -------------------
+
+   Preferences 
+   -----------
+
+   Hard constraint violations 
+   --------------------------
+     - Illegal shift type succession (Night,Late), nurse NU_16, day: 5
+     - Illegal shift type succession (Night,Early), nurse NU_16, day: 5
+     - Illegal shift type succession (Late,Day), nurse NU_16, day: 6
+     - Illegal shift type succession (Day,Early), nurse NU_16, day: 3
+     - Illegal shift type succession (Night,Early), nurse NU_16, day: 3
+     - Single assignment per day, nurse NU_16, day: 6
+     - Single assignment per day, nurse NU_16, day: 6
+     - Single assignment per day, nurse NU_16, day: 6
+
+
+CT_17
+-----
+
+   Total assignments 
+   -----------------
+     - Minimum total number of assignments, nurse CT_17, day: 0, cost: 180
+
+   Consecutive assignments 
+   -----------------------
+     - Minimum number of consecutive shift types (Night), nurse CT_17, day: 4, cost: 15
+     - Minimum number of consecutive shift types (Day), nurse CT_17, day: 5, cost: 15
+     - Illegal shift type succession (Night,Day), nurse CT_17, day: 5
+     - Maximum number of consecutive working days, nurse CT_17, day: 5, cost: 30
+
+   Consecutive days off 
+   --------------------
+
+   Weekend constraints 
+   -------------------
+     - Complete working weekends, nurse CT_17, day: 5, cost: 30
+
+   Preferences 
+   -----------
+
+   Hard constraint violations 
+   --------------------------
+     - Illegal shift type succession (Night,Day), nurse CT_17, day: 5
+
+
+CT_18
+-----
+
+   Total assignments 
+   -----------------
+     - Minimum total number of assignments, nurse CT_18, day: 0, cost: 20
+
+   Consecutive assignments 
+   -----------------------
+     - Minimum number of consecutive shift types (Early), nurse CT_18, day: 2, cost: 15
+     - Minimum number of consecutive shift types (Day), nurse CT_18, day: 0, cost: 15
+     - Minimum number of consecutive working days, nurse CT_18, day: 0, cost: 30
+
+   Consecutive days off 
+   --------------------
+     - Minimum number of consecutive days off, nurse CT_18, day: 0, cost: 30
+
+   Weekend constraints 
+   -------------------
+
+   Preferences 
+   -----------
+
+   Hard constraint violations 
+   --------------------------
+     - Single assignment per day, nurse CT_18, day: 3
+
+
+CT_19
+-----
+
+   Total assignments 
+   -----------------
+     - Minimum total number of assignments, nurse CT_19, day: 0, cost: 200
+
+   Consecutive assignments 
+   -----------------------
+     - Minimum number of consecutive shift types (Night), nurse CT_19, day: 4, cost: 30
+     - Minimum number of consecutive shift types (Late), nurse CT_19, day: 3, cost: 15
+     - Minimum number of consecutive working days, nurse CT_19, day: 4, cost: 30
+     - Minimum number of consecutive shift types (Night), nurse CT_19, day: 0, cost: 15
+     - Illegal shift type succession (Night,Late), nurse CT_19, day: 0
+
+   Consecutive days off 
+   --------------------
+     - Minimum number of consecutive days off, nurse CT_19, day: 4, cost: 30
+     - Minimum number of consecutive days off, nurse CT_19, day: 1, cost: 30
+
+   Weekend constraints 
+   -------------------
+     - Complete working weekends, nurse CT_19, day: 6, cost: 30
+
+   Preferences 
+   -----------
+
+   Hard constraint violations 
+   --------------------------
+     - Illegal shift type succession (Night,Late), nurse CT_19, day: 0
+
+
+CT_20
+-----
+
+   Total assignments 
+   -----------------
+     - Minimum total number of assignments, nurse CT_20, day: 0, cost: 60
+
+   Consecutive assignments 
+   -----------------------
+     - Minimum number of consecutive shift types (Night), nurse CT_20, day: 3, cost: 30
+     - Minimum number of consecutive shift types (Late), nurse CT_20, day: 2, cost: 15
+     - Minimum number of consecutive shift types (Early), nurse CT_20, day: 0, cost: 15
+     - Minimum number of consecutive working days, nurse CT_20, day: 3, cost: 30
+     - Minimum number of consecutive working days, nurse CT_20, day: 0, cost: 60
+
+   Consecutive days off 
+   --------------------
+     - Minimum number of consecutive days off, nurse CT_20, day: 0, cost: 30
+
+   Weekend constraints 
+   -------------------
+     - Complete working weekends, nurse CT_20, day: 6, cost: 30
+
+   Preferences 
+   -----------
+
+   Hard constraint violations 
+   --------------------------
+
+
+CT_21
+-----
+
+   Total assignments 
+   -----------------
+     - Minimum total number of assignments, nurse CT_21, day: 0, cost: 60
+
+   Consecutive assignments 
+   -----------------------
+     - Minimum number of consecutive shift types (Late), nurse CT_21, day: 5, cost: 15
+     - Minimum number of consecutive shift types (Day), nurse CT_21, day: 4, cost: 15
+     - Minimum number of consecutive shift types (Day), nurse CT_21, day: 1, cost: 15
+     - Minimum number of consecutive working days, nurse CT_21, day: 1, cost: 60
+
+   Consecutive days off 
+   --------------------
+
+   Weekend constraints 
+   -------------------
+
+   Preferences 
+   -----------
+
+   Hard constraint violations 
+   --------------------------
+
+
+CT_22
+-----
+
+   Total assignments 
+   -----------------
+     - Minimum total number of assignments, nurse CT_22, day: 0, cost: 200
+
+   Consecutive assignments 
+   -----------------------
+     - Minimum number of consecutive shift types (Day), nurse CT_22, day: 5, cost: 15
+
+   Consecutive days off 
+   --------------------
+
+   Weekend constraints 
+   -------------------
+
+   Preferences 
+   -----------
+
+   Hard constraint violations 
+   --------------------------
+
+
+CT_23
+-----
+
+   Total assignments 
+   -----------------
+     - Minimum total number of assignments, nurse CT_23, day: 0, cost: 260
+
+   Consecutive assignments 
+   -----------------------
+     - Minimum number of consecutive shift types (Day), nurse CT_23, day: 3, cost: 15
+     - Minimum number of consecutive working days, nurse CT_23, day: 3, cost: 60
+     - Minimum number of consecutive shift types (Day), nurse CT_23, day: 1, cost: 15
+     - Minimum number of consecutive working days, nurse CT_23, day: 1, cost: 60
+
+   Consecutive days off 
+   --------------------
+     - Minimum number of consecutive days off, nurse CT_23, day: 1, cost: 30
+
+   Weekend constraints 
+   -------------------
+
+   Preferences 
+   -----------
+     - Shift off request, nurse CT_23, day: 1, cost: 10
+
+   Hard constraint violations 
+   --------------------------
+
+
+CT_24
+-----
+
+   Total assignments 
+   -----------------
+     - Minimum total number of assignments, nurse CT_24, day: 0, cost: 220
+
+   Consecutive assignments 
+   -----------------------
+     - Minimum number of consecutive shift types (Night), nurse CT_24, day: 1, cost: 30
+     - Minimum number of consecutive shift types (Early), nurse CT_24, day: 4, cost: 15
+     - Minimum number of consecutive working days, nurse CT_24, day: 4, cost: 60
+     - Minimum number of consecutive working days, nurse CT_24, day: 2, cost: 30
+     - Illegal shift type succession (Night,Day), nurse CT_24, day: 2
+
+   Consecutive days off 
+   --------------------
+     - Minimum number of consecutive days off, nurse CT_24, day: 2, cost: 30
+
+   Weekend constraints 
+   -------------------
+
+   Preferences 
+   -----------
+
+   Hard constraint violations 
+   --------------------------
+     - Illegal shift type succession (Night,Day), nurse CT_24, day: 2
+     - Single assignment per day, nurse CT_24, day: 4
+
+
+TR_25
+-----
+
+   Total assignments 
+   -----------------
+     - Minimum total number of assignments, nurse TR_25, day: 0, cost: 60
+
+   Consecutive assignments 
+   -----------------------
+     - Minimum number of consecutive shift types (Day), nurse TR_25, day: 0, cost: 15
+     - Minimum number of consecutive working days, nurse TR_25, day: 5, cost: 30
+     - Minimum number of consecutive shift types (Late), nurse TR_25, day: 1, cost: 15
+     - Minimum number of consecutive working days, nurse TR_25, day: 1, cost: 30
+
+   Consecutive days off 
+   --------------------
+
+   Weekend constraints 
+   -------------------
+     - Complete working weekends, nurse TR_25, day: 5, cost: 30
+
+   Preferences 
+   -----------
+     - Shift off request, nurse TR_25, day: 4, cost: 10
+
+   Hard constraint violations 
+   --------------------------
+
+
+TR_26
+-----
+
+   Total assignments 
+   -----------------
+     - Minimum total number of assignments, nurse TR_26, day: 0, cost: 100
+
+   Consecutive assignments 
+   -----------------------
+     - Minimum number of consecutive shift types (Night), nurse TR_26, day: 3, cost: 30
+     - Minimum number of consecutive shift types (Day), nurse TR_26, day: 1, cost: 15
+     - Minimum number of consecutive working days, nurse TR_26, day: 3, cost: 60
+     - Minimum number of consecutive working days, nurse TR_26, day: 1, cost: 60
+     - Minimum number of consecutive working days, nurse TR_26, day: 0, cost: 30
+
+   Consecutive days off 
+   --------------------
+     - Minimum number of consecutive days off, nurse TR_26, day: 1, cost: 30
+     - Minimum number of consecutive days off, nurse TR_26, day: 0, cost: 30
+
+   Weekend constraints 
+   -------------------
+
+   Preferences 
+   -----------
+
+   Hard constraint violations 
+   --------------------------
+
+
+TR_27
+-----
+
+   Total assignments 
+   -----------------
+     - Minimum total number of assignments, nurse TR_27, day: 0, cost: 40
+
+   Consecutive assignments 
+   -----------------------
+
+   Consecutive days off 
+   --------------------
+
+   Weekend constraints 
+   -------------------
+     - Complete working weekends, nurse TR_27, day: 6, cost: 30
+
+   Preferences 
+   -----------
+
+   Hard constraint violations 
+   --------------------------
+
+
+TR_28
+-----
+
+   Total assignments 
+   -----------------
+     - Minimum total number of assignments, nurse TR_28, day: 0, cost: 200
+
+   Consecutive assignments 
+   -----------------------
+     - Minimum number of consecutive shift types (Late), nurse TR_28, day: 5, cost: 15
+     - Minimum number of consecutive shift types (Early), nurse TR_28, day: 1, cost: 15
+     - Minimum number of consecutive shift types (Late), nurse TR_28, day: 0, cost: 15
+     - Minimum number of consecutive shift types (Day), nurse TR_28, day: 2, cost: 15
+     - Minimum number of consecutive working days, nurse TR_28, day: 2, cost: 30
+     - Illegal shift type succession (Late,Day), nurse TR_28, day: 6
+
+   Consecutive days off 
+   --------------------
+     - Minimum number of consecutive days off, nurse TR_28, day: 0, cost: 30
+
+   Weekend constraints 
+   -------------------
+
+   Preferences 
+   -----------
+     - Shift off request, nurse TR_28, day: 5, cost: 20
+
+   Hard constraint violations 
+   --------------------------
+     - Illegal shift type succession (Late,Day), nurse TR_28, day: 6
+     - Single assignment per day, nurse TR_28, day: 6
+
+
+TR_29
+-----
+
+   Total assignments 
+   -----------------
+     - Minimum total number of assignments, nurse TR_29, day: 0, cost: 20
+
+   Consecutive assignments 
+   -----------------------
+     - Minimum number of consecutive shift types (Early), nurse TR_29, day: 5, cost: 15
+     - Minimum number of consecutive shift types (Night), nurse TR_29, day: 2, cost: 15
+     - Minimum number of consecutive shift types (Night), nurse TR_29, day: 0, cost: 30
+
+   Consecutive days off 
+   --------------------
+     - Minimum number of consecutive days off, nurse TR_29, day: 0, cost: 30
+
+   Weekend constraints 
+   -------------------
+
+   Preferences 
+   -----------
+
+   Hard constraint violations 
+   --------------------------
+
+
+Insufficient staffing for minimal coverage: 
+--------------------------------------------
+   - Insufficient Late assignments for skill Trainee on day Monday in week 0
+   - Insufficient Early assignments for skill Trainee on day Wednesday in week 0
+   - Insufficient Late assignments for skill Trainee on day Sunday in week 0
+
+Insufficient staffing for optimal coverage: 
+---------------------------------------------
+   - 1 assignments short for optimal staffing for shift type (Early) for skill (Caretaker) on day (Monday) in week (0), cost 30
+   - 1 assignments short for optimal staffing for shift type (Day) for skill (Caretaker) on day (Monday) in week (0), cost 30
+   - 1 assignments short for optimal staffing for shift type (Night) for skill (Caretaker) on day (Monday) in week (0), cost 30
+   - 1 assignments short for optimal staffing for shift type (Night) for skill (Caretaker) on day (Tuesday) in week (0), cost 30
+   - 1 assignments short for optimal staffing for shift type (Late) for skill (Caretaker) on day (Thursday) in week (0), cost 30
+   - 1 assignments short for optimal staffing for shift type (Early) for skill (Caretaker) on day (Friday) in week (0), cost 30
+   - 1 assignments short for optimal staffing for shift type (Early) for skill (Trainee) on day (Friday) in week (0), cost 30
+   - 1 assignments short for optimal staffing for shift type (Day) for skill (Trainee) on day (Friday) in week (0), cost 30
+   - 1 assignments short for optimal staffing for shift type (Late) for skill (Caretaker) on day (Friday) in week (0), cost 30
+   - 1 assignments short for optimal staffing for shift type (Late) for skill (Nurse) on day (Saturday) in week (0), cost 30
+   - 2 assignments short for optimal staffing for shift type (Night) for skill (Caretaker) on day (Saturday) in week (0), cost 60

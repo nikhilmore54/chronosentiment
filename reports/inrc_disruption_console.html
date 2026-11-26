@@ -1,0 +1,320 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>UltraCrew — INRC Disruption Console</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Segoe UI',system-ui,sans-serif;background:#0f172a;color:#e2e8f0;height:100vh;display:flex;flex-direction:column;overflow:hidden}
+header{background:#1e293b;border-bottom:1px solid #334155;padding:10px 20px;display:flex;align-items:center;gap:14px;flex-shrink:0}
+.logo{font-size:17px;font-weight:700;color:#38bdf8}
+.logo span{color:#94a3b8;font-weight:400;font-size:13px;margin-left:8px}
+.badge{background:#7c3aed;color:#fff;font-size:11px;font-weight:600;padding:3px 10px;border-radius:12px}
+.disruption-badge{background:#dc2626;color:#fff;font-size:11px;font-weight:700;padding:3px 12px;border-radius:12px;margin-left:auto;display:none}
+.status-bar{background:#1e293b;border-bottom:1px solid #334155;padding:8px 20px;display:flex;gap:24px;flex-shrink:0}
+.stat{display:flex;flex-direction:column}
+.stat-label{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#64748b}
+.stat-val{font-size:15px;font-weight:700}
+.stat-val.green{color:#22c55e}
+.stat-val.amber{color:#f59e0b}
+.stat-val.red{color:#ef4444}
+.stat-val.blue{color:#38bdf8}
+.main{display:flex;flex:1;overflow:hidden}
+.panel-left{width:300px;background:#1e293b;border-right:1px solid #334155;display:flex;flex-direction:column;flex-shrink:0;overflow-y:auto}
+.panel-title{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#64748b;padding:12px 14px 6px}
+.nurse-card{padding:8px 14px;border-bottom:1px solid #0f172a;display:flex;align-items:center;gap:10px}
+.nurse-card:last-child{border-bottom:none}
+.avatar{width:34px;height:34px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:#fff;flex-shrink:0}
+.nurse-info{flex:1;min-width:0}
+.nurse-name{font-size:12px;font-weight:600;color:#e2e8f0}
+.nurse-meta{font-size:10px;color:#64748b;margin-top:1px}
+.nurse-hours{font-size:10px;color:#94a3b8}
+.mark-btn{font-size:10px;font-weight:600;padding:4px 10px;border-radius:5px;border:none;cursor:pointer;flex-shrink:0}
+.mark-btn.out{background:#dc2626;color:#fff}
+.mark-btn.out:hover{background:#b91c1c}
+.mark-btn.restore{background:#15803d;color:#fff}
+.mark-btn.restore:hover{background:#166534}
+.nurse-card.unavailable{background:#1a0a0a;opacity:.8}
+.panel-centre{flex:1;overflow-y:auto;padding:14px}
+.section-title{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#64748b;margin-bottom:8px}
+.impact-card{background:#1e293b;border:1px solid #334155;border-radius:8px;padding:14px;margin-bottom:12px}
+.impact-card.alert{border-color:#dc2626}
+.uncov-table{width:100%;border-collapse:collapse;font-size:12px}
+.uncov-table th{text-align:left;color:#64748b;font-weight:600;padding:5px 8px;border-bottom:1px solid #334155;font-size:10px;text-transform:uppercase}
+.uncov-table td{padding:6px 8px;border-bottom:1px solid #0f172a;vertical-align:middle}
+.uncov-table tr:last-child td{border-bottom:none}
+.assign-btn{font-size:10px;font-weight:600;padding:3px 10px;border-radius:4px;border:none;cursor:pointer;background:#1d4ed8;color:#fff}
+.assign-btn:hover{background:#2563eb}
+.cand-row{display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid #0f172a;font-size:11px}
+.cand-row:last-child{border-bottom:none}
+.cand-rank{width:20px;height:20px;border-radius:50%;background:#334155;text-align:center;line-height:20px;font-size:10px;font-weight:700;flex-shrink:0}
+.cand-rank.r1{background:#f59e0b;color:#000}
+.cand-name{flex:1;color:#e2e8f0}
+.cand-slack{color:#64748b;font-size:10px}
+.score-bar-bg{width:60px;background:#0f172a;border-radius:3px;height:5px;overflow:hidden}
+.score-bar-fill{height:100%;border-radius:3px;background:#3b82f6}
+.score-bar-fill.top{background:#22c55e}
+.panel-right{width:260px;background:#1e293b;border-left:1px solid #334155;display:flex;flex-direction:column;flex-shrink:0;overflow-y:auto}
+.log-entry{font-size:10px;padding:6px 14px;border-bottom:1px solid #0f172a;line-height:1.5}
+.log-entry:last-child{border-bottom:none}
+.log-time{color:#475569;margin-right:4px}
+.log-type-disruption{color:#ef4444;font-weight:700}
+.log-type-restore{color:#22c55e;font-weight:700}
+.log-type-assign{color:#38bdf8;font-weight:700}
+.empty-msg{color:#475569;font-size:11px;text-align:center;padding:30px 14px}
+.skill-pill{font-size:9px;font-weight:700;padding:1px 6px;border-radius:8px;margin-left:4px}
+.pill-HN{background:#78350f;color:#fde68a}
+.pill-N{background:#1e3a5f;color:#bfdbfe}
+.pill-SP{background:#3b0764;color:#e9d5ff}
+.pill-CA{background:#052e16;color:#bbf7d0}
+.pill-TR{background:#1e293b;color:#94a3b8}
+</style>
+</head>
+<body>
+<header>
+  <div class="logo">UltraCrew <span>INRC Disruption Console</span></div>
+  <div class="badge">WS-001 E2-02</div>
+  <div class="disruption-badge" id="disruptionBadge">DISRUPTION ACTIVE</div>
+</header>
+<div class="status-bar" id="statusBar"></div>
+<div class="main">
+  <div class="panel-left">
+    <div class="panel-title">Nurse Roster</div>
+    <div id="rosterList"></div>
+  </div>
+  <div class="panel-centre" id="panelCentre">
+    <div class="section-title">Impact Analysis</div>
+    <div class="empty-msg">No disruptions active. Mark a nurse as unavailable to see impact.</div>
+  </div>
+  <div class="panel-right">
+    <div class="panel-title">Action Log</div>
+    <div id="actionLog"><div class="empty-msg">No actions yet.</div></div>
+  </div>
+</div>
+<script>
+var NURSES = [
+  {id:"N01",name:"Alice Chen",     skill:"Head Nurse",    skillCode:"HN",contract:"FT",color:"#b45309",assignments:20},
+  {id:"N02",name:"Ben Okafor",     skill:"Nurse",         skillCode:"N", contract:"FT",color:"#1d4ed8",assignments:19},
+  {id:"N03",name:"Carla Reyes",    skill:"Specialist",    skillCode:"SP",contract:"FT",color:"#7c3aed",assignments:18},
+  {id:"N04",name:"David Kim",      skill:"Nurse",         skillCode:"N", contract:"FT",color:"#1d4ed8",assignments:18},
+  {id:"N05",name:"Elena Vasquez",  skill:"Care Assistant",skillCode:"CA",contract:"PT",color:"#15803d",assignments:11},
+  {id:"N06",name:"Femi Adeyemi",   skill:"Trainee",       skillCode:"TR",contract:"PT",color:"#475569",assignments:10},
+  {id:"N07",name:"Grace Liu",      skill:"Nurse",         skillCode:"N", contract:"FT",color:"#1d4ed8",assignments:19},
+  {id:"N08",name:"Hassan Malik",   skill:"Specialist",    skillCode:"SP",contract:"FT",color:"#7c3aed",assignments:18},
+  {id:"N09",name:"Ingrid Svensson",skill:"Care Assistant",skillCode:"CA",contract:"PT",color:"#15803d",assignments:10},
+  {id:"N10",name:"James O'Brien",  skill:"Head Nurse",    skillCode:"HN",contract:"FT",color:"#b45309",assignments:18}
+];
+
+var ASSIGNMENTS = [
+  {nurse:"N01",day:1,shift:"D"},{nurse:"N02",day:1,shift:"L"},{nurse:"N03",day:1,shift:"D"},
+  {nurse:"N07",day:1,shift:"L"},{nurse:"N10",day:1,shift:"N"},
+  {nurse:"N01",day:2,shift:"D"},{nurse:"N04",day:2,shift:"L"},{nurse:"N08",day:2,shift:"D"},{nurse:"N02",day:2,shift:"N"},
+  {nurse:"N03",day:3,shift:"L"},{nurse:"N07",day:3,shift:"D"},{nurse:"N10",day:3,shift:"D"},{nurse:"N05",day:3,shift:"L"},
+  {nurse:"N01",day:4,shift:"D"},{nurse:"N08",day:4,shift:"L"},{nurse:"N04",day:4,shift:"D"},{nurse:"N09",day:4,shift:"N"},
+  {nurse:"N02",day:5,shift:"D"},{nurse:"N07",day:5,shift:"L"},{nurse:"N10",day:5,shift:"N"},
+  {nurse:"N03",day:6,shift:"D"},{nurse:"N05",day:6,shift:"D"},{nurse:"N08",day:6,shift:"L"},
+  {nurse:"N01",day:7,shift:"D"},{nurse:"N04",day:7,shift:"L"},{nurse:"N06",day:7,shift:"D"},
+  {nurse:"N02",day:8,shift:"D"},{nurse:"N07",day:8,shift:"D"},{nurse:"N10",day:8,shift:"L"},{nurse:"N09",day:8,shift:"N"},
+  {nurse:"N03",day:9,shift:"D"},{nurse:"N08",day:9,shift:"L"},{nurse:"N01",day:9,shift:"N"},
+  {nurse:"N04",day:10,shift:"D"},{nurse:"N07",day:10,shift:"L"},{nurse:"N05",day:10,shift:"D"},
+  {nurse:"N02",day:11,shift:"D"},{nurse:"N10",day:11,shift:"D"},{nurse:"N06",day:11,shift:"L"},
+  {nurse:"N08",day:12,shift:"D"},{nurse:"N03",day:12,shift:"L"},{nurse:"N09",day:12,shift:"D"},
+  {nurse:"N01",day:13,shift:"D"},{nurse:"N07",day:13,shift:"L"},{nurse:"N04",day:13,shift:"N"},
+  {nurse:"N02",day:14,shift:"D"},{nurse:"N10",day:14,shift:"D"},{nurse:"N05",day:14,shift:"L"},
+  {nurse:"N03",day:15,shift:"D"},{nurse:"N08",day:15,shift:"D"},{nurse:"N06",day:15,shift:"N"},
+  {nurse:"N01",day:16,shift:"L"},{nurse:"N07",day:16,shift:"D"},{nurse:"N09",day:16,shift:"L"},
+  {nurse:"N04",day:17,shift:"D"},{nurse:"N02",day:17,shift:"D"},{nurse:"N10",day:17,shift:"L"},
+  {nurse:"N03",day:18,shift:"D"},{nurse:"N08",day:18,shift:"L"},{nurse:"N05",day:18,shift:"D"},
+  {nurse:"N01",day:19,shift:"D"},{nurse:"N07",day:19,shift:"D"},{nurse:"N06",day:19,shift:"L"},
+  {nurse:"N04",day:20,shift:"L"},{nurse:"N02",day:20,shift:"D"},{nurse:"N09",day:20,shift:"N"},
+  {nurse:"N10",day:21,shift:"D"},{nurse:"N03",day:21,shift:"D"},{nurse:"N08",day:21,shift:"L"},
+  {nurse:"N01",day:22,shift:"D"},{nurse:"N07",day:22,shift:"L"},{nurse:"N05",day:22,shift:"D"},
+  {nurse:"N04",day:23,shift:"D"},{nurse:"N02",day:23,shift:"L"},{nurse:"N06",day:23,shift:"N"},
+  {nurse:"N10",day:24,shift:"D"},{nurse:"N08",day:24,shift:"D"},{nurse:"N09",day:24,shift:"L"},
+  {nurse:"N03",day:25,shift:"D"},{nurse:"N01",day:25,shift:"L"},{nurse:"N07",day:25,shift:"N"},
+  {nurse:"N04",day:26,shift:"D"},{nurse:"N02",day:26,shift:"D"},{nurse:"N05",day:26,shift:"L"},
+  {nurse:"N10",day:27,shift:"D"},{nurse:"N08",day:27,shift:"L"},{nurse:"N06",day:27,shift:"D"},
+  {nurse:"N01",day:28,shift:"D"},{nurse:"N03",day:28,shift:"L"},{nurse:"N07",day:28,shift:"D"}
+];
+
+var unavailable = {};
+var actionLog = [];
+var reassignments = {};
+
+function nurseById(id){for(var i=0;i<NURSES.length;i++){if(NURSES[i].id===id)return NURSES[i];}return null;}
+function initials(name){return name.split(" ").map(function(p){return p[0];}).join("");}
+function nurseAssignments(nid){return ASSIGNMENTS.filter(function(a){return a.nurse===nid;});}
+function nurseHours(nid){var h=0;nurseAssignments(nid).forEach(function(a){h+=(a.shift==="N"?10:8);});return h;}
+function contractMax(n){return n.contract==="FT"?22:14;}
+function slack(nid){var n=nurseById(nid);return contractMax(n)-nurseAssignments(nid).length;}
+
+function markOut(nid){
+  unavailable[nid]=true;
+  var n=nurseById(nid);
+  var now=new Date().toLocaleTimeString();
+  actionLog.push({time:now,type:"disruption",msg:n.name+" marked unavailable"});
+  render();
+}
+function restore(nid){
+  delete unavailable[nid];
+  var n=nurseById(nid);
+  var now=new Date().toLocaleTimeString();
+  actionLog.push({time:now,type:"restore",msg:n.name+" restored to roster"});
+  render();
+}
+function doAssign(day,shift,fromNid,toNid){
+  var fromN=nurseById(fromNid);
+  var toN=nurseById(toNid);
+  var now=new Date().toLocaleTimeString();
+  reassignments[day+"-"+shift+"-"+fromNid]=toNid;
+  actionLog.push({time:now,type:"assign",msg:"D"+day+" "+shift+": "+fromN.name+" reassigned to "+toN.name});
+  render();
+}
+
+function renderStatusBar(){
+  var unavCount=Object.keys(unavailable).length;
+  var uncovShifts=getUncoveredShifts();
+  var totalSlots=84;
+  var covPct=Math.round((totalSlots-uncovShifts.length)/totalSlots*100);
+  document.getElementById("statusBar").innerHTML=
+    '<div class="stat"><div class="stat-label">Coverage</div><div class="stat-val '+(covPct>=100?"green":covPct>=90?"amber":"red")+'">'+covPct+'%</div></div>'
+    +'<div class="stat"><div class="stat-label">Shifts Covered</div><div class="stat-val blue">'+(totalSlots-uncovShifts.length)+'/'+totalSlots+'</div></div>'
+    +'<div class="stat"><div class="stat-label">Uncovered Shifts</div><div class="stat-val '+(uncovShifts.length===0?"green":"red")+'">'+uncovShifts.length+'</div></div>'
+    +'<div class="stat"><div class="stat-label">Nurses Unavailable</div><div class="stat-val '+(unavCount===0?"green":"red")+'">'+unavCount+'</div></div>'
+    +'<div class="stat"><div class="stat-label">Available Nurses</div><div class="stat-val">'+(NURSES.length-unavCount)+'</div></div>';
+  var badge=document.getElementById("disruptionBadge");
+  badge.style.display=unavCount>0?"block":"none";
+}
+
+function getUncoveredShifts(){
+  var uncov=[];
+  ASSIGNMENTS.forEach(function(a){
+    if(unavailable[a.nurse] && !reassignments[a.day+"-"+a.shift+"-"+a.nurse]){
+      uncov.push(a);
+    }
+  });
+  return uncov;
+}
+
+function getCandidates(shift,skill){
+  var cands=[];
+  NURSES.forEach(function(n){
+    if(unavailable[n.id])return;
+    if(n.skill!==skill)return;
+    var sl=slack(n.id);
+    if(sl<=0)return;
+    cands.push({n:n,slack:sl,score:sl/contractMax(n)});
+  });
+  cands.sort(function(a,b){return b.score-a.score;});
+  return cands;
+}
+
+function renderRoster(){
+  var html="";
+  NURSES.forEach(function(n){
+    var isOut=unavailable[n.id];
+    var h=nurseHours(n.id);
+    var ini=initials(n.name);
+    html+='<div class="nurse-card'+(isOut?" unavailable":"")+'">'
+      +'<div class="avatar" style="background:'+n.color+'">'+ini+'</div>'
+      +'<div class="nurse-info">'
+      +'<div class="nurse-name">'+n.name+'<span class="skill-pill pill-'+n.skillCode+'">'+n.skillCode+'</span></div>'
+      +'<div class="nurse-meta">'+n.skill+' &bull; '+n.contract+'</div>'
+      +'<div class="nurse-hours">'+n.assignments+' shifts &bull; '+h+'h</div>'
+      +'</div>'
+      +(isOut
+        ?'<button class="mark-btn restore" onclick="restore(\''+n.id+'\')">Restore</button>'
+        :'<button class="mark-btn out" onclick="markOut(\''+n.id+'\')">Mark out</button>')
+      +'</div>';
+  });
+  document.getElementById("rosterList").innerHTML=html;
+}
+
+function renderImpact(){
+  var uncov=getUncoveredShifts();
+  var unavIds=Object.keys(unavailable);
+  var centre=document.getElementById("panelCentre");
+  if(unavIds.length===0){
+    centre.innerHTML='<div class="section-title">Impact Analysis</div><div class="empty-msg">No disruptions active. Mark a nurse as unavailable to see impact.</div>';
+    return;
+  }
+  var disruptHtml='<div class="impact-card alert"><div class="section-title">Active Disruptions</div>';
+  unavIds.forEach(function(nid){
+    var n=nurseById(nid);
+    var cnt=nurseAssignments(nid).length;
+    disruptHtml+='<div style="font-size:12px;padding:4px 0;border-bottom:1px solid #2d0a0a;color:#fca5a5">'+n.name+' ('+n.skill+') &mdash; '+cnt+' shifts affected</div>';
+  });
+  disruptHtml+='</div>';
+
+  var uncovHtml='<div class="impact-card"><div class="section-title">Uncovered Shifts</div>';
+  if(uncov.length===0){
+    uncovHtml+='<div style="color:#22c55e;font-size:12px">All shifts covered via reassignments.</div>';
+  } else {
+    uncovHtml+='<table class="uncov-table"><thead><tr><th>Day</th><th>Shift</th><th>Skill</th><th>Best Candidate</th><th></th></tr></thead><tbody>';
+    uncov.forEach(function(a){
+      var fromN=nurseById(a.nurse);
+      var cands=getCandidates(a.shift,fromN.skill);
+      var best=cands.length>0?cands[0].n.name:"None available";
+      var bestId=cands.length>0?cands[0].n.id:"";
+      uncovHtml+='<tr>'
+        +'<td>D'+a.day+'</td>'
+        +'<td>'+a.shift+'</td>'
+        +'<td>'+fromN.skill+'</td>'
+        +'<td style="color:#38bdf8">'+best+'</td>'
+        +'<td>'+(bestId?'<button class="assign-btn" onclick="doAssign('+a.day+',\''+a.shift+'\',\''+a.nurse+'\',\''+bestId+'\')">Assign</button>':'')+'</td>'
+        +'</tr>';
+    });
+    uncovHtml+='</tbody></table>';
+  }
+  uncovHtml+='</div>';
+
+  var firstUncov=uncov[0];
+  var candHtml='';
+  if(firstUncov){
+    var fromN=nurseById(firstUncov.nurse);
+    var cands=getCandidates(firstUncov.shift,fromN.skill);
+    candHtml='<div class="impact-card"><div class="section-title">Candidates for D'+firstUncov.day+' '+firstUncov.shift+' ('+fromN.skill+')</div>';
+    if(cands.length===0){
+      candHtml+='<div style="color:#f59e0b;font-size:12px">No eligible candidates available.</div>';
+    } else {
+      cands.slice(0,5).forEach(function(c,idx){
+        var pct=Math.round(c.score*100);
+        candHtml+='<div class="cand-row">'
+          +'<div class="cand-rank'+(idx===0?" r1":"")+'">'+(idx+1)+'</div>'
+          +'<div class="cand-name">'+c.n.name+'</div>'
+          +'<div class="cand-slack">'+c.slack+' slots free</div>'
+          +'<div class="score-bar-bg"><div class="score-bar-fill'+(idx===0?" top":"")+'" style="width:'+pct+'%"></div></div>'
+          +'<div style="font-size:10px;color:#94a3b8;width:32px;text-align:right">'+pct+'%</div>'
+          +'</div>';
+      });
+    }
+    candHtml+='</div>';
+  }
+
+  centre.innerHTML='<div class="section-title">Impact Analysis</div>'+disruptHtml+uncovHtml+candHtml;
+}
+
+function renderActionLog(){
+  var logEl=document.getElementById("actionLog");
+  if(actionLog.length===0){logEl.innerHTML='<div class="empty-msg">No actions yet.</div>';return;}
+  var html="";
+  for(var i=actionLog.length-1;i>=0;i--){
+    var e=actionLog[i];
+    html+='<div class="log-entry"><span class="log-time">'+e.time+'</span>'
+      +'<span class="log-type-'+e.type+'"> ['+e.type.toUpperCase()+']</span> '+e.msg+'</div>';
+  }
+  logEl.innerHTML=html;
+}
+
+function render(){
+  renderStatusBar();
+  renderRoster();
+  renderImpact();
+  renderActionLog();
+}
+
+render();
+</script>
+</body>
+</html>

@@ -8,6 +8,10 @@ description = "Deterministic replay-bound ingest: frozen substrate, timeline, de
 name = "cs-ingest"
 path = "src/main.rs"
 
+[[example]]
+name = "live_observatory"
+path = "examples/live_observatory.rs"
+
 [dependencies]
 clap = { version = "4", features = ["derive"] }
 serde = { version = "1", features = ["derive"] }

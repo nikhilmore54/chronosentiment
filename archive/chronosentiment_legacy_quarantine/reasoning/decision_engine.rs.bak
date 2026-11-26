@@ -1,0 +1,74 @@
+use uuid::Uuid;
+use crate::portfolio::PortfolioSnapshot;
+use crate::reasoning::scenario::{Scenario, ScenarioStatus};
+use crate::reasoning::decision::{Decision, DecisionAction};
+
+pub struct ChronoDecisionEngine;
+
+impl ChronoDecisionEngine {
+    /// Compares policy-validated scenarios and selects the best one, explicitly logging rejected alternatives.
+    pub fn make_decision(&self, session_id: &str, mut scenarios: Vec<Scenario>, _portfolio: &Option<PortfolioSnapshot>) -> Decision {
+        // Collect policy rejected IDs before we do any mutable work
+        let original_rejected: Vec<String> = scenarios.iter()
+            .filter(|s| s.status == ScenarioStatus::PolicyRejected)
+            .map(|s| s.scenario_id.clone())
+            .collect();
+
+        // Filter out policy rejected scenarios
+        let mut valid_scenarios: Vec<&mut Scenario> = scenarios.iter_mut()
+            .filter(|s| s.status != ScenarioStatus::PolicyRejected)
+            .collect();
+            
+        // Sort by highest expected return (Naive selection logic)
+        valid_scenarios.sort_by(|a, b| b.expected_return.partial_cmp(&a.expected_return).unwrap());
+
+        if valid_scenarios.is_empty() {
+            // Fallback: Hold Wait
+            return Decision {
+                decision_id: Uuid::new_v4().to_string(),
+                research_session_id: session_id.to_string(),
+                action: DecisionAction::Wait,
+                quantity: 0.0,
+                confidence: 1.0,
+                expected_horizon_days: 0,
+                selected_scenario_id: "none".to_string(),
+                rejected_scenario_ids: original_rejected,
+            };
+        }
+
+        // Select the top scenario
+        let selected = valid_scenarios.remove(0);
+        selected.status = ScenarioStatus::Selected;
+        
+        let action = if selected.description.contains("Buy") {
+            DecisionAction::Buy
+        } else if selected.description.contains("Sell") {
+            DecisionAction::Sell
+        } else if selected.description.contains("Hold Cash") {
+            DecisionAction::Hold
+        } else {
+            DecisionAction::Wait
+        };
+        
+        let confidence = selected.expected_probability;
+        let selected_id = selected.scenario_id.clone();
+
+        // Mark the rest as rejected and collect their IDs
+        let mut final_rejected = original_rejected;
+        for alt in &mut valid_scenarios {
+            alt.status = ScenarioStatus::Rejected;
+            final_rejected.push(alt.scenario_id.clone());
+        }
+
+        Decision {
+            decision_id: Uuid::new_v4().to_string(),
+            research_session_id: session_id.to_string(),
+            action,
+            quantity: 1.0, // Should be sized by portfolio
+            confidence,
+            expected_horizon_days: 90,
+            selected_scenario_id: selected_id,
+            rejected_scenario_ids: final_rejected,
+        }
+    }
+}

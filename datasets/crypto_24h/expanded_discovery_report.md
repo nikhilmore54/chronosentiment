@@ -1,0 +1,72 @@
+# State Expansion v0.1: Baseline Feature Discovery (Train Only)
+
+Evaluation of all 12 expanded state variables on the Train block to measure unconditional linear Edge.
+
+| Feature | Horizon | Spearman | Pearson | HitRate | Q1_Ret | Q5_Ret | PosBlocks | N |
+|---|---|---|---|---|---|---|---|---|
+| volatility_1m_std_24h | 15m | 0.0039 | -0.0016 | 50.9% | 1.0bps | 0.4bps | 45.7% | 24882 |
+| volatility_1m_std_24h | 30m | 0.0027 | -0.0016 | 50.5% | 2.0bps | 0.9bps | 40.0% | 24882 |
+| volatility_1m_std_24h | 60m | 0.0089 | -0.0004 | 50.2% | 3.6bps | 2.0bps | 40.0% | 24882 |
+| volatility_1m_std_24h | 120m | 0.0358 | 0.0031 | 51.2% | 7.1bps | 5.5bps | 34.3% | 24882 |
+| volatility_1m_std_24h | 300m | 0.0718 | 0.0019 | 53.5% | 16.8bps | 14.5bps | 51.4% | 24882 |
+| upside_excursion_24h | 15m | -0.0377 | -0.0188 | 48.2% | 0.8bps | -0.5bps | 40.0% | 24882 |
+| upside_excursion_24h | 30m | -0.0535 | -0.0291 | 48.1% | 1.5bps | -1.5bps | 42.9% | 24882 |
+| upside_excursion_24h | 60m | -0.0649 | -0.0478 | 47.0% | 3.4bps | -3.7bps | 37.1% | 24882 |
+| upside_excursion_24h | 120m | -0.0949 | -0.0653 | 45.8% | 6.1bps | -7.5bps | 40.0% | 24882 |
+| upside_excursion_24h | 300m | -0.1209 | -0.0829 | 42.9% | 3.8bps | -15.0bps | 40.0% | 24882 |
+| downside_excursion_24h | 15m | -0.0488 | -0.0366 | 47.6% | 0.5bps | -0.6bps | 34.3% | 24882 |
+| downside_excursion_24h | 30m | -0.0654 | -0.0551 | 46.5% | 1.4bps | -1.1bps | 40.0% | 24882 |
+| downside_excursion_24h | 60m | -0.0850 | -0.0856 | 46.5% | 3.8bps | -3.7bps | 40.0% | 24882 |
+| downside_excursion_24h | 120m | -0.1368 | -0.1257 | 45.3% | 7.6bps | -9.6bps | 34.3% | 24882 |
+| downside_excursion_24h | 300m | -0.1863 | -0.1787 | 44.3% | 19.9bps | -11.3bps | 42.9% | 24882 |
+| trend_dir | 15m | -0.0311 | -0.0115 | 21.5% | 0.1bps | -0.3bps | 11.1% | 24882 |
+| trend_dir | 30m | -0.0360 | -0.0148 | 21.4% | 0.9bps | -0.7bps | 16.7% | 24882 |
+| trend_dir | 60m | -0.0353 | -0.0292 | 21.0% | 1.3bps | -1.0bps | 16.7% | 24882 |
+| trend_dir | 120m | -0.0909 | -0.0748 | 19.0% | 3.2bps | -3.2bps | 0.0% | 24882 |
+| trend_dir | 300m | -0.0859 | -0.0752 | 19.4% | 6.9bps | -4.4bps | 5.6% | 24882 |
+| trend_return_15m | 15m | -0.0289 | -0.0011 | 48.0% | -0.3bps | -0.5bps | 28.6% | 24882 |
+| trend_return_15m | 30m | -0.0350 | -0.0061 | 48.1% | -0.5bps | -1.0bps | 25.7% | 24882 |
+| trend_return_15m | 60m | -0.0191 | -0.0056 | 48.6% | -1.1bps | -0.9bps | 34.3% | 24882 |
+| trend_return_15m | 120m | -0.0209 | -0.0293 | 49.2% | -0.7bps | -1.4bps | 17.1% | 24882 |
+| trend_return_15m | 300m | 0.0030 | -0.0019 | 49.9% | -2.2bps | -0.4bps | 20.0% | 24882 |
+| trend_return_60m | 15m | -0.0413 | -0.0060 | 47.8% | -0.3bps | -0.3bps | 17.1% | 24882 |
+| trend_return_60m | 30m | -0.0517 | -0.0121 | 47.3% | 0.3bps | -0.9bps | 17.1% | 24882 |
+| trend_return_60m | 60m | -0.0459 | -0.0169 | 48.4% | 0.8bps | -1.3bps | 25.7% | 24882 |
+| trend_return_60m | 120m | -0.0592 | -0.0550 | 47.2% | 2.4bps | -1.6bps | 22.9% | 24882 |
+| trend_return_60m | 300m | -0.0166 | 0.0035 | 49.1% | -1.1bps | 0.2bps | 25.7% | 24882 |
+| trend_return_240m | 15m | -0.0393 | -0.0208 | 48.9% | -0.1bps | -1.0bps | 14.3% | 24882 |
+| trend_return_240m | 30m | -0.0337 | -0.0220 | 49.0% | 0.1bps | -1.2bps | 14.3% | 24882 |
+| trend_return_240m | 60m | -0.0253 | -0.0235 | 49.8% | -0.2bps | -1.6bps | 22.9% | 24882 |
+| trend_return_240m | 120m | -0.0181 | -0.0064 | 49.4% | 0.7bps | -0.3bps | 17.1% | 24882 |
+| trend_return_240m | 300m | -0.0326 | -0.0099 | 47.8% | -2.2bps | 0.7bps | 22.9% | 24882 |
+| volatility_std_60m | 15m | -0.0268 | -0.0349 | 48.5% | 0.3bps | -0.8bps | 45.7% | 24882 |
+| volatility_std_60m | 30m | -0.0282 | -0.0368 | 48.7% | 0.5bps | -1.2bps | 45.7% | 24882 |
+| volatility_std_60m | 60m | -0.0216 | -0.0168 | 47.5% | 1.1bps | -0.1bps | 48.6% | 24882 |
+| volatility_std_60m | 120m | 0.0084 | 0.0130 | 50.2% | 1.6bps | 0.7bps | 57.1% | 24882 |
+| volatility_std_60m | 300m | 0.0295 | 0.0507 | 51.5% | 3.1bps | 4.4bps | 60.0% | 24882 |
+| volatility_std_240m | 15m | -0.0080 | 0.0048 | 49.7% | 0.5bps | 0.5bps | 45.7% | 24882 |
+| volatility_std_240m | 30m | -0.0082 | 0.0120 | 50.0% | 0.9bps | 0.9bps | 51.4% | 24882 |
+| volatility_std_240m | 60m | -0.0058 | 0.0284 | 48.4% | 1.7bps | 2.2bps | 57.1% | 24882 |
+| volatility_std_240m | 120m | 0.0263 | 0.0474 | 50.7% | 3.8bps | 5.2bps | 57.1% | 24882 |
+| volatility_std_240m | 300m | 0.0016 | 0.0137 | 48.2% | 5.9bps | 5.1bps | 57.1% | 24882 |
+| volatility_ratio_60m_24h | 15m | -0.0228 | -0.0315 | 49.0% | 0.4bps | -0.8bps | 42.9% | 24882 |
+| volatility_ratio_60m_24h | 30m | -0.0166 | -0.0332 | 49.8% | 0.3bps | -0.9bps | 45.7% | 24882 |
+| volatility_ratio_60m_24h | 60m | -0.0038 | -0.0147 | 49.3% | -0.6bps | 0.5bps | 48.6% | 24882 |
+| volatility_ratio_60m_24h | 120m | 0.0248 | 0.0132 | 51.2% | -2.3bps | 0.5bps | 60.0% | 24882 |
+| volatility_ratio_60m_24h | 300m | 0.0422 | 0.0552 | 50.0% | -6.4bps | 3.8bps | 57.1% | 24882 |
+| volatility_ratio_240m_24h | 15m | 0.0048 | 0.0075 | 50.3% | -0.1bps | 0.5bps | 51.4% | 24882 |
+| volatility_ratio_240m_24h | 30m | 0.0158 | 0.0158 | 50.8% | -0.5bps | 0.7bps | 51.4% | 24882 |
+| volatility_ratio_240m_24h | 60m | 0.0301 | 0.0337 | 51.5% | -1.4bps | 1.8bps | 60.0% | 24882 |
+| volatility_ratio_240m_24h | 120m | 0.0563 | 0.0565 | 52.8% | -2.9bps | 3.2bps | 60.0% | 24882 |
+| volatility_ratio_240m_24h | 300m | 0.0155 | 0.0331 | 49.4% | 0.2bps | -1.5bps | 62.9% | 24882 |
+| persistence_60m | 15m | -0.0053 | -0.0144 | 49.9% | -0.1bps | -0.5bps | 45.7% | 24882 |
+| persistence_60m | 30m | 0.0057 | -0.0033 | 50.7% | -0.9bps | -0.9bps | 60.0% | 24882 |
+| persistence_60m | 60m | -0.0102 | -0.0148 | 49.9% | -1.3bps | -1.9bps | 54.3% | 24882 |
+| persistence_60m | 120m | 0.0060 | -0.0074 | 50.7% | -3.0bps | -3.0bps | 51.4% | 24882 |
+| persistence_60m | 300m | 0.0116 | -0.0085 | 50.9% | -2.7bps | -3.1bps | 51.4% | 24882 |
+| persistence_240m | 15m | -0.0044 | -0.0258 | 49.5% | -0.2bps | -0.6bps | 42.9% | 24882 |
+| persistence_240m | 30m | 0.0047 | -0.0111 | 49.7% | -1.5bps | -0.7bps | 51.4% | 24882 |
+| persistence_240m | 60m | -0.0012 | -0.0140 | 48.7% | -1.8bps | -1.1bps | 54.3% | 24882 |
+| persistence_240m | 120m | 0.0332 | -0.0027 | 51.8% | -2.0bps | 0.1bps | 51.4% | 24882 |
+| persistence_240m | 300m | 0.0516 | 0.0287 | 50.8% | -4.1bps | 3.1bps | 54.3% | 24882 |
+

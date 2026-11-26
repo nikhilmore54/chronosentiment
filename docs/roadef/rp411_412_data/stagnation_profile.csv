@@ -1,0 +1,10 @@
+metric,value
+instance_count,20
+mean_final_stagnation,4.6
+median_final_stagnation,1.0
+max_final_stagnation,20
+mean_final_gen,13.25
+median_final_gen,8.5
+max_final_gen,60
+stagnation_terminated_count,4
+generation_terminated_count,0

@@ -1,0 +1,20 @@
+{
+  "config_label": "v03_C_100",
+  "n_coralys_stops": 0,
+  "n_gap_through": 0,
+  "n_premature": 0,
+  "n_temporary_excursion": 0,
+  "n_stop_too_tight": 0,
+  "n_direction_failure": 0,
+  "n_genuine_adverse": 0,
+  "pct_gap_through": 0.0,
+  "pct_premature": 0.0,
+  "pct_temporary_excursion": 0.0,
+  "pct_stop_too_tight": 0.0,
+  "pct_direction_failure": 0.0,
+  "pct_genuine_adverse": 0.0,
+  "total_opportunity_cost_inr": -0.0,
+  "total_stop_realized_pnl_inr": -0.0,
+  "net_stop_benefit_inr": 0.0,
+  "diagnostics": []
+}

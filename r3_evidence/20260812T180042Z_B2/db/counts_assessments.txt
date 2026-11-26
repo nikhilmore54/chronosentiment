@@ -1,0 +1,3 @@
+ERROR:  relation "assessments" does not exist
+LINE 1: SELECT COUNT(*) FROM assessments;
+                             ^

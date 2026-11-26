@@ -1,0 +1,620 @@
+// ─── Domain types for the UltraCrew planner workflow ─────────────────────────
+
+export interface StaffMember {
+  id: string;
+  contract: string;
+  skills: string[];
+}
+
+export interface ImportSummary {
+  staffCount: number;
+  contracts: string[];
+  skills: string[];
+  warnings: string[];
+}
+
+export interface RuleSet {
+  id: string;
+  label: string;
+  description: string;
+  payload: object;
+}
+
+// ─── P3.1: Staffing demand — explicit requirements layer ─────────────────────
+//
+// StaffingRequirement is the canonical demand object. Coverage is always
+// computed as filledPositions / requiredPositions, never from optimizer fitness.
+// The same object is used by Explore Decision, Review/Edit, and Export.
+
+export interface StaffingRequirement {
+  dayIdx: number;       // 0–27 (relative to planning horizon start)
+  shiftType: string;    // 'Early' | 'Late' | 'Night'
+  required: number;     // how many staff are needed for this slot
+}
+
+export interface CoverageReport {
+  requiredPositions: number;   // sum of all StaffingRequirement.required
+  filledPositions: number;     // how many required positions have an assignment
+  coveragePct: number;         // filledPositions / requiredPositions × 100, 1 decimal
+  gapPositions: number;        // requiredPositions - filledPositions
+}
+
+// ─── P3: Roster alternative (one option presented to the scheduler) ───────────
+
+export interface RosterAlternativeMetrics {
+  coverage: number;        // 0.0–1.0 (filledPositions / requiredPositions)
+  filled_positions: number;
+  required_positions: number;
+  fairness_penalty: number;
+  utilization: number;     // 0.0–1.0 (total assignments / total slots)
+  cost: number;
+  diff_from_recommended: number; // number of assignments that differ
+}
+
+// P0-D: Factual constraint profile from the backend CandidateFeasibility struct.
+// The adapter evaluates every Pareto candidate with InrcConstraintEvaluator and
+// attaches this profile. The UI displays it; the scheduler decides what to do.
+// No frontend ranking or recommendation is derived from this data.
+export interface CandidateFeasibility {
+  /** True when hard_violations === 0 (matches validate_schedule() semantics). */
+  is_feasible: boolean;
+  /** Total hard constraint violations (HC1+HC2+HC3+HC4+rest). */
+  hard_violations: number;
+  /** Rest period violations. */
+  rest_violations: number;
+  /** HC1 (minimum coverage) violations. */
+  hc1_violations: number;
+  /** HC3 (forbidden shift succession) violations. */
+  hc3_violations: number;
+}
+
+export interface RosterAlternative {
+  id: string;
+  label: string;
+  metrics: RosterAlternativeMetrics;
+  schedule: Record<string, string[]>; // staffId → 28-day shift array
+  reasons: string[];                  // why this option is notable
+  // P0-D: Factual constraint profile. Present when the backend provides it.
+  // Optional for backward compatibility with existing test fixtures.
+  feasibility?: CandidateFeasibility;
+  // P0-D: Raw Pareto objective vector [hard_viol, rest_viol, fairness, fatigue, hc1_viol, hc3_viol].
+  // Present when the backend provides it. Used for trade-off display only — not for ranking.
+  objectives?: number[];
+}
+
+// ─── P3.3: Assignment provenance — four states, emitted not diffed ────────────
+//
+// Every assignment cell in the post-redistribution roster carries exactly one
+// of these four states. The state is emitted by the redistribution operation
+// at the moment it acts on the cell — never derived by post-hoc diff.
+
+export interface ShiftSlotMeta {
+  shiftId: number;
+  dayIdx: number;
+  label: string;
+  skill: string;
+  startHour: number;
+  durationHours?: number;
+}
+
+export type CustomShiftInput = ShiftSlotMeta;
+
+export type AssignmentProvenanceState =
+  | 'original'           // from the selected alternative, untouched
+  | 'scheduler_edit'     // scheduler-authored, locked — redistribution must not touch
+  | 'system_reassignment' // UltraRoster changed this during redistribution
+  | 'unchanged';         // redistribution ran but left this cell the same as original
+
+export interface ChangeRecord {
+  assignmentId: string;          // `${staffId}:${dayIdx}`
+  previousValue: string;         // shift value before redistribution ('' = off)
+  newValue: string;              // shift value after redistribution
+  redistributionOperationId: string;
+  reason: string;                // human-readable, e.g. "coverage gap on day 14 Night shift"
+  timestamp: string;             // ISO-8601
+}
+
+export interface RedistributionLog {
+  operationId: string;           // unique per redistribution run (crypto.randomUUID or fallback)
+  timestamp: string;             // ISO-8601 when redistribution completed
+  schedulerEditsPreserved: number;
+  assignmentsReassigned: number;
+  lockedAssignmentsChanged: number; // invariant: always 0 — non-zero blocks export
+  changeRecords: ChangeRecord[];
+  // Provenance map: `${staffId}:${dayIdx}` → AssignmentProvenanceState
+  provenanceMap: Record<string, AssignmentProvenanceState>;
+}
+
+// ─── P4.1: Recurring operational pattern (observe and surface only) ──────────
+
+export interface RecurringPattern {
+  /** The normalized reason string from ChangeRecord.reason */
+  reason: string;
+  /** Number of distinct operationIds in which this reason appeared */
+  operationCount: number;
+  /** ISO timestamp of the earliest redistribution operation containing this reason */
+  firstSeen: string;
+  /** ISO timestamp of the most recent redistribution operation containing this reason */
+  lastSeen: string;
+}
+
+// ─── P3: Decision record — what the scheduler chose ──────────────────────────
+//
+// P4.2 metrics capture: recommended_metrics and selected_metrics are captured
+// at decision time from RosterAlternative.metrics. They make the factual record
+// sufficiently informative to investigate recurring preference signals later.
+// They do NOT constitute learning — the optimizer is not changed.
+
+export interface SchedulerDecision {
+  decision_id: string;
+  created_at_iso: string;
+  recommended_id: string;
+  selected_id: string;
+  overrode_recommendation: boolean;
+  /** Metrics of the optimizer-recommended alternative at decision time. */
+  recommended_metrics: RosterAlternativeMetrics;
+  /** Metrics of the scheduler-selected alternative at decision time. */
+  selected_metrics: RosterAlternativeMetrics;
+}
+
+// ─── AT-42: Roster Provenance & Checkpoint Management ────────────────────────
+// Distinguishes four distinct roster states:
+// 1. Original recommendation (immutable system recommendation, e.g. Candidate A)
+// 2. Selected starting roster (immutable reference alternative chosen by planner, e.g. Candidate B)
+// 3. Current working roster (mutable active roster being edited)
+// 4. Saved checkpoints (named intermediate working versions, immutable & restorable)
+
+export type RosterChangeSource =
+  | 'alternative_selection'
+  | 'manual_edit'
+  | 'auto_rest_recovery'
+  | 'auto_redistribution'
+  | 'restored_checkpoint';
+
+export interface ShiftAssignmentDifference {
+  shiftId?: number;
+  staffId: string;
+  dayIdx: number;
+  originalShift: string;
+  currentShift: string;
+  source: RosterChangeSource;
+  sourceLabel: string;
+  description: string;
+}
+
+export interface RosterReference {
+  recommendationId: string;
+  scenarioId: string;
+  selectedCandidateId: string;
+  policySnapshotHash: string;
+  demandSnapshotId: string;
+  assignments: Record<string, string | null>;
+  schedule?: Record<string, string[]>;
+}
+
+export interface RosterCheckpoint {
+  checkpointId: string;
+  name: string;
+  createdAt: string;
+  sourceRevisionId: string;
+  restoredFromCheckpointId?: string;
+  recommendationId: string;
+  selectedCandidateId: string;
+  scenarioId: string;
+  policySnapshotHash: string;
+  demandSnapshotId: string;
+  assignments: Record<string, string | null>;
+  schedule: Record<string, string[]>;
+  lockedShiftIds: string[];
+  validationSummary: {
+    coverage: number;
+    hardViolations: number;
+    softViolations?: number;
+  };
+}
+
+// ─── P0-E: Raw backend API shapes ────────────────────────────────────────────
+//
+// The backend ScheduleResponse.alternatives field is Vec<ProductionParetoSolution>,
+// which has a different shape from RosterAlternative. These types represent the
+// actual JSON the backend sends. GenerateSchedule.tsx parses into these types
+// first, then calls mapParetoAlternatives() to produce RosterAlternative[].
+//
+// This mapping layer is the P0-E fix: it closes the type contract gap between
+// the Rust backend (shift_id → worker_id map) and the UI (staffId → shift[]).
+
+/** Raw backend CandidateFeasibility — matches Rust struct field names exactly. */
+export interface ParetoFeasibilityRaw {
+  is_feasible: boolean;
+  hard_violations: number;
+  rest_violations: number;
+  hc1_violations: number;
+  hc3_violations: number;
+}
+
+/**
+ * Raw backend ProductionParetoSolution — the actual JSON shape from the API.
+ * schedule: shift_id (string) → worker_id (number) — NOT staffId → shift[].
+ * metrics: flat HashMap<String, f64> — NOT RosterAlternativeMetrics.
+ */
+export interface ParetoAlternativeRaw {
+  /** shift_id (string key) → worker_id (number value) */
+  schedule: Record<string, number>;
+  /** Raw Pareto objective vector: [hard_viol, rest_viol, fairness, fatigue, hc1_viol, hc3_viol] */
+  objectives: number[];
+  /** Flat metric map from analyze_solution() */
+  metrics: Record<string, number>;
+  /** Factual constraint profile from InrcConstraintEvaluator */
+  feasibility: ParetoFeasibilityRaw;
+}
+
+/**
+ * Raw API response shape from POST /api/schedule.
+ * Use this type when parsing the fetch() response, then call
+ * mapParetoAlternatives() to convert alternatives to RosterAlternative[].
+ */
+export interface ScheduleRawResponse {
+  schedule: Record<string, number>;
+  metrics: Record<string, number>;
+  constraint_report: {
+    fitness: number;
+    is_valid: boolean;
+    hard_violations: number;
+    soft_violations: number;
+    violated_constraints: string[];
+    satisfied_constraints: string[];
+    warnings: string[];
+  } | null;
+  recommendations: Array<{
+    constraint_id: string;
+    severity: string;
+    explanation: string;
+    recommended_action: string;
+  }>;
+  /** Raw Pareto alternatives from the backend — must be mapped before use in UI. */
+  alternatives: ParetoAlternativeRaw[];
+  recommended_alternative_id?: string;
+}
+
+export interface ScheduleResult {
+  schedule: Record<string, number>;
+  metrics: Record<string, number>;
+  constraint_report: {
+    fitness: number;
+    is_valid: boolean;
+    hard_violations: number;
+    soft_violations: number;
+    violated_constraints: string[];
+    satisfied_constraints: string[];
+    warnings: string[];
+  } | null;
+  recommendations: Array<{
+    constraint_id: string;
+    severity: string;
+    explanation: string;
+    recommended_action: string;
+  }>;
+  // P3: alternatives presented to the scheduler (may be empty if engine returns only one)
+  alternatives?: RosterAlternative[];
+  recommended_alternative_id?: string;
+}
+
+// ─── Workflow step descriptor ─────────────────────────────────────────────────
+
+export interface WorkflowStep {
+  num: number;
+  label: string;
+}
+
+export const WORKFLOW_STEPS: WorkflowStep[] = [
+  { num: 1, label: 'Import Staff' },
+  { num: 2, label: 'Select Rules' },
+  { num: 3, label: 'Generate' },
+  { num: 4, label: 'Explore Decision' },
+  { num: 5, label: 'Review & Edit' },
+  { num: 6, label: 'Export' },
+];
+
+// ─── Rule presets ─────────────────────────────────────────────────────────────
+
+export const RULE_PRESETS: RuleSet[] = [
+  {
+    id: 'hospital_standard',
+    label: 'Hospital Standard',
+    description: 'Max 5 consecutive days, min 2 days off, no Night→Early succession, max 2 weekends/month.',
+    payload: { max_consecutive_working_days: 5, min_consecutive_days_off: 2, max_working_weekends: 2 },
+  },
+  {
+    id: 'inrc_demo',
+    label: 'INRC Demo',
+    description: 'INRC-II benchmark rules: 3–7 consecutive days, 1–4 days off, complete weekends.',
+    payload: { min_consecutive_working_days: 3, max_consecutive_working_days: 7, min_consecutive_days_off: 1, max_consecutive_days_off: 4, complete_weekends: true, max_working_weekends: 4 },
+  },
+  {
+    id: 'light',
+    label: 'Light Rules',
+    description: 'Minimal constraints for quick demos: max 6 consecutive days, 1 day off minimum.',
+    payload: { max_consecutive_working_days: 6, min_consecutive_days_off: 1, max_working_weekends: 4 },
+  },
+];
+
+// ─── Shift display constants ──────────────────────────────────────────────────
+
+export const SHIFT_CYCLE = ['Early', 'Late', 'Night', '', 'Early', 'Late', ''];
+
+export const SHIFT_COLORS: Record<string, string> = {
+  Early: '#38bdf8',
+  Late: '#f59e0b',
+  Night: '#818cf8',
+  '': 'var(--text-muted)',
+};
+
+// ─── Sample CSV for onboarding ────────────────────────────────────────────────
+// 20-person realistic hospital roster: mixed contracts, multi-skill workers,
+// realistic skill distribution (4 HeadNurse, 12 Nurse, 4 Nurse+HeadNurse).
+
+export const SAMPLE_CSV = `id,contract,skills
+Sarah_Chen,FullTime,HeadNurse;Nurse
+Marcus_Webb,FullTime,Nurse
+Priya_Nair,FullTime,HeadNurse;Nurse
+James_Okafor,FullTime,Nurse
+Elena_Vasquez,FullTime,Nurse
+Tom_Lindqvist,PartTime,Nurse
+Aisha_Diallo,FullTime,HeadNurse
+Ravi_Sharma,FullTime,Nurse
+Fatima_Al-Hassan,PartTime,Nurse
+Daniel_Park,FullTime,Nurse
+Ingrid_Sorensen,Night,Nurse
+Carlos_Mendez,FullTime,Nurse
+Yuki_Tanaka,PartTime,HeadNurse;Nurse
+Kwame_Asante,FullTime,Nurse
+Lena_Hoffmann,FullTime,Nurse
+Amara_Osei,Night,Nurse
+Patrick_Brennan,FullTime,HeadNurse
+Nadia_Petrov,PartTime,Nurse
+Soren_Andersen,FullTime,Nurse
+Mei_Lin_Zhou,FullTime,Nurse`;
+
+// ─── Optimal 12-Person Establishment with 22% Slack Uplift ───────────────────
+// Sized for 196 monthly shifts (7 shifts/day): 3 Supervisory (HeadNurse;Nurse)
+// + 9 Staff Nurses (Nurse). Delivers 81.7% utilization on 40h contracts with
+// 22% built-in relief uplift for annual leave, mandatory training, and sickness.
+
+export const OPTIMAL_12_STAFF_CSV = `id,contract,skills
+Sarah_Chen,FullTime,HeadNurse;Nurse
+Priya_Nair,FullTime,HeadNurse;Nurse
+Amara_Diallo,FullTime,HeadNurse;Nurse
+Marcus_Webb,FullTime,Nurse
+James_Okafor,FullTime,Nurse
+Elena_Vasquez,FullTime,Nurse
+Tom_Lindqvist,FullTime,Nurse
+Ravi_Sharma,FullTime,Nurse
+Fatima_Al-Hassan,FullTime,Nurse
+Daniel_Park,FullTime,Nurse
+Carlos_Mendez,FullTime,Nurse
+Lena_Hoffmann,FullTime,Nurse`;
+
+// ─── Gate 3 (G3.1): Historical Baseline Audit Data Contract ─────────────────
+
+export interface BaselineAssignment {
+  worker_id: string;
+  shift_id: number;
+}
+
+export interface BaselineFeasibility {
+  is_feasible: boolean;
+  hard_violations: number;
+}
+
+export interface BaselineCoverage {
+  required_positions: number;
+  filled_positions: number;
+  unfilled_positions: number;
+  coverage_pct: number;
+}
+
+export interface AssignmentIntegrityReport {
+  duplicate_assignments: number;
+  unknown_worker_errors: number;
+  unknown_workers: string[];
+  unmatched_excess_assignments: number;
+  unmatched_shift_ids: number[];
+  total_baseline_rows: number;
+  valid_assignments_count: number;
+}
+
+export interface AuditFinding {
+  code: string;
+  severity: string;
+  description: string;
+  worker_id?: string;
+  shift_id?: number;
+  day_idx?: number;
+}
+
+export interface BaselinePolicyParameters {
+  min_rest_hours: number;
+  max_weekly_hours: number;
+  weekly_contract_mode: string;
+  weekly_anchor_offset_hours: number;
+  senior_skill_name: string;
+}
+
+export interface BaselineAuditReport {
+  audit_id: string;
+  scenario_id?: string;
+  scenario_name?: string;
+  status: string;
+  audit_classification: 'VALID_AND_FEASIBLE' | 'VALID_BUT_INFEASIBLE' | 'INCOMPLETE_OR_UNVERIFIABLE';
+  policy_version: string;
+  policy_retrospective_note: string;
+  policy_parameters: BaselinePolicyParameters;
+  feasibility: BaselineFeasibility;
+  coverage: BaselineCoverage;
+  rest_violations: number;
+  weekly_contract_violations: number;
+  skill_coverage_deficits: number;
+  senior_coverage_deficits: number;
+  scheduled_overtime_hours: number;
+  workload_variance: number;
+  assignment_integrity: AssignmentIntegrityReport;
+  violated_constraints: string[];
+  satisfied_constraints: string[];
+  detailed_findings: AuditFinding[];
+}
+
+// ─── Gate 3 (G3.3): Shift-Level Delta & Executive Assessment Types ──────────
+
+export type ShiftDeltaClassification =
+  | 'UNTOUCHED'
+  | 'WORKER_REASSIGNED'
+  | 'UNFILLED_IN_BASELINE_NOW_COVERED'
+  | 'COVERED_IN_BASELINE_NOW_UNFILLED'
+  | 'UNFILLED_BOTH'
+  | 'UNMATCHED_EXCESS_IN_BASELINE'
+  | 'DUPLICATE_IN_BASELINE';
+
+export interface ShiftLevelDeltaRecord {
+  shift_id: number;
+  day_index: number | string;
+  date_or_day: string;
+  shift_type: string;
+  start_hour: number | string;
+  duration_hours: number | string;
+  required_skill: string;
+  baseline_worker_id: string;
+  candidate_worker_id: string;
+  change_classification: ShiftDeltaClassification;
+  notes?: string;
+}
+
+// ─── Coralys Staffing Requirement Recommendation (Level A Demand) ──────────
+
+export interface WardBedCategory {
+  id: string;
+  name: string;
+  totalBeds: number;
+  activeStaffedBeds: number;
+  defaultOccupancyPct: number; // 0.0 - 100.0
+}
+
+export interface BedCategoryShiftRatio {
+  bedCategoryId: string;
+  shiftType: string;
+  patientsPerNurse: number; // must be > 0
+}
+
+export interface ClinicalModifier {
+  id: string;
+  name: string;
+  description?: string;
+  additionalNursesPerPatient: number; // e.g. +0.15 nurse / affected patient
+  requiredCompetencySkills: string[];  // e.g. ["CardiacTelemetry"]
+  minimumCompetentStaffPerShift: number; // minimum staff with this competency
+}
+
+export interface ShiftSafetyPolicy {
+  shiftType: string;
+  startHourOfDay: number;       // 0–23 (e.g. 7 for 07:00)
+  durationHours: number;        // e.g. 8
+  safetyFloor: number;          // absolute minimum total nurses on ward
+  chargeNurseFloor: number;     // mandatory supervisory presence
+  seniorStaffRatioPct: number;  // 0.0 - 100.0 (e.g. 25.0)
+  seniorSkillName: string;      // e.g. 'HeadNurse'
+  generalSkillName: string;     // e.g. 'Nurse'
+}
+
+export interface ModifierOverlapPolicy {
+  /**
+   * 'additive': Increments from distinct clinical modifiers compound directly (standard hospital baseline).
+   * 'capped_per_patient': Compounding increments for a single patient are capped at a maximum ceiling (e.g. 1.0 for 1:1 dedicated care).
+   */
+  mode: 'additive' | 'capped_per_patient';
+  maxAdditionalNursesPerPatient?: number; // e.g. 1.0 (dedicated 1:1 care cap) or 0.5
+}
+
+export interface OverlappingPatientCohort {
+  cohortLabel?: string;
+  modifierIds: string[];
+  patientCount: number;
+}
+
+export interface HospitalWardConfiguration {
+  configVersion: string;
+  wardId: string;
+  wardName: string;
+  serviceType: 'inpatient_24_7';
+  bedCategories: WardBedCategory[];
+  ratios: BedCategoryShiftRatio[];
+  clinicalModifiers: ClinicalModifier[];
+  shiftSafetyPolicies: Record<string, ShiftSafetyPolicy>;
+  modifierOverlapPolicy?: ModifierOverlapPolicy;
+  governance: {
+    lastModifiedAtIso: string;
+    modifiedBy: string;
+    facilityStandardReference: string;
+  };
+}
+
+export interface ShiftCensusOverride {
+  dayIdx: number;
+  shiftType: string;
+  categoryCensus: Record<string, number>; // bedCategoryId -> actual/forecast patient count
+}
+
+export interface ShiftModifierCensusInput {
+  dayIdx: number;
+  shiftType: string;
+  affectedPatientCounts?: Record<string, number>; // modifierId -> affected patients
+  overlappingCohorts?: OverlappingPatientCohort[]; // patients carrying multiple concurrent modifiers
+}
+
+export interface DerivationCategoryBreakdown {
+  categoryId: string;
+  categoryName: string;
+  patientCensus: number;
+  ratio: number;
+  requiredNurses: number;
+}
+
+export interface DerivationModifierBreakdown {
+  modifierId: string;
+  modifierName: string;
+  affectedPatients: number;
+  additiveRatio: number;
+  additionalNursesEquiv: number;
+  competencySkillsRequired: string[];
+  minCompetentStaff: number;
+}
+
+export interface DerivationLogEntry {
+  dayIdx: number;
+  shiftType: string;
+  categoryBreakdown: DerivationCategoryBreakdown[];
+  baseNursesCalculated: number;
+  safetyFloor: number;
+  baseNursesFinal: number;
+  modifierBreakdown: DerivationModifierBreakdown[];
+  additionalNursesFromModifiers: number;
+  chargeNurseFloor: number;
+  totalNursesRequired: number;
+  seniorNursesRequired: number;
+  generalNursesRequired: number;
+  competencyRequirements: Record<string, number>;
+  derivationFormula: string;
+}
+
+export interface ApprovedDemandSnapshot {
+  scenarioId: string;
+  demandSnapshotId: string;
+  configVersion: string;
+  policySnapshotHash: string;
+  createdAtIso: string;
+  approvedAtIso: string;
+  approvedBy: string;
+  approvalNotes: string;
+  slots: ShiftSlotMeta[];
+  totalPositions: number;
+  totalClinicalHours: number;
+  derivationLogs: DerivationLogEntry[];
+}

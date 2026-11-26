@@ -1,0 +1,496 @@
+{
+  "topology_identifier": "osc_50_1.0",
+  "cognition_identifier": "event_reset",
+  "substrate_hash": "4285f0a534c958bcbeccc5d827a4eaf0202245afd91e6cc9939dcf399bcf7e24",
+  "total_ticks": 61,
+  "traces": [
+    {
+      "tick_index": 0,
+      "price": 252.92860412597656,
+      "occupancy": 0.0,
+      "overlap": 1.0,
+      "acceptance_ratio": 1.0,
+      "strictness_ratio": 1.0
+    },
+    {
+      "tick_index": 1,
+      "price": 251.3500061035156,
+      "occupancy": 0.0,
+      "overlap": 1.0,
+      "acceptance_ratio": 1.0,
+      "strictness_ratio": 0.996057350657239
+    },
+    {
+      "tick_index": 2,
+      "price": 250.2599945068359,
+      "occupancy": 0.0,
+      "overlap": 1.0,
+      "acceptance_ratio": 1.0,
+      "strictness_ratio": 0.9842915805643155
+    },
+    {
+      "tick_index": 3,
+      "price": 249.58810424804688,
+      "occupancy": 0.0,
+      "overlap": 1.0,
+      "acceptance_ratio": 1.0,
+      "strictness_ratio": 0.9648882429441257
+    },
+    {
+      "tick_index": 4,
+      "price": 249.77000427246097,
+      "occupancy": 0.0,
+      "overlap": 1.0,
+      "acceptance_ratio": 1.0,
+      "strictness_ratio": 0.9381533400219317
+    },
+    {
+      "tick_index": 5,
+      "price": 249.32000732421875,
+      "occupancy": 0.0,
+      "overlap": 1.0,
+      "acceptance_ratio": 1.0,
+      "strictness_ratio": 0.9045084971874737
+    },
+    {
+      "tick_index": 6,
+      "price": 249.47999572753903,
+      "occupancy": 0.0,
+      "overlap": 1.0,
+      "acceptance_ratio": 1.0,
+      "strictness_ratio": 0.8644843137107058
+    },
+    {
+      "tick_index": 7,
+      "price": 249.05999755859375,
+      "occupancy": 0.0,
+      "overlap": 1.0,
+      "acceptance_ratio": 1.0,
+      "strictness_ratio": 0.8187119948743449
+    },
+    {
+      "tick_index": 8,
+      "price": 248.53500366210935,
+      "occupancy": 0.0,
+      "overlap": 1.0,
+      "acceptance_ratio": 1.0,
+      "strictness_ratio": 0.7679133974894983
+    },
+    {
+      "tick_index": 9,
+      "price": 248.19500732421875,
+      "occupancy": 0.0,
+      "overlap": 1.0,
+      "acceptance_ratio": 1.0,
+      "strictness_ratio": 0.7128896457825363
+    },
+    {
+      "tick_index": 10,
+      "price": 248.39500427246097,
+      "occupancy": 0.0,
+      "overlap": 1.0,
+      "acceptance_ratio": 0.9545084971874738,
+      "strictness_ratio": 0.6545084971874737
+    },
+    {
+      "tick_index": 11,
+      "price": 247.6699981689453,
+      "occupancy": 0.0,
+      "overlap": 1.0,
+      "acceptance_ratio": 0.8936906572928625,
+      "strictness_ratio": 0.5936906572928624
+    },
+    {
+      "tick_index": 12,
+      "price": 247.9499969482422,
+      "occupancy": 0.0,
+      "overlap": 1.0,
+      "acceptance_ratio": 0.8313952597646568,
+      "strictness_ratio": 0.5313952597646567
+    },
+    {
+      "tick_index": 13,
+      "price": 247.82000732421875,
+      "occupancy": 0.0,
+      "overlap": 1.0,
+      "acceptance_ratio": 0.7686047402353433,
+      "strictness_ratio": 0.4686047402353433
+    },
+    {
+      "tick_index": 14,
+      "price": 247.3300018310547,
+      "occupancy": 1.0,
+      "overlap": 0.0,
+      "acceptance_ratio": 0.7063093427071376,
+      "strictness_ratio": 0.4063093427071376
+    },
+    {
+      "tick_index": 15,
+      "price": 247.3000030517578,
+      "occupancy": 0.8571428571428572,
+      "overlap": 0.14285714285714285,
+      "acceptance_ratio": 0.6454915028125263,
+      "strictness_ratio": 0.34549150281252633
+    },
+    {
+      "tick_index": 16,
+      "price": 246.55999755859375,
+      "occupancy": 0.0,
+      "overlap": 1.0,
+      "acceptance_ratio": 0.5871103542174636,
+      "strictness_ratio": 0.28711035421746367
+    },
+    {
+      "tick_index": 17,
+      "price": 246.1898956298828,
+      "occupancy": 0.0,
+      "overlap": 1.0,
+      "acceptance_ratio": 0.5320866025105015,
+      "strictness_ratio": 0.23208660251050156
+    },
+    {
+      "tick_index": 18,
+      "price": 245.9250030517578,
+      "occupancy": 1.0,
+      "overlap": 0.0,
+      "acceptance_ratio": 0.4812880051256551,
+      "strictness_ratio": 0.18128800512565513
+    },
+    {
+      "tick_index": 19,
+      "price": 246.28500366210935,
+      "occupancy": 0.75,
+      "overlap": 0.25,
+      "acceptance_ratio": 0.4355156862892943,
+      "strictness_ratio": 0.13551568628929433
+    },
+    {
+      "tick_index": 20,
+      "price": 246.8300018310547,
+      "occupancy": 0.6,
+      "overlap": 0.4,
+      "acceptance_ratio": 0.3954915028125263,
+      "strictness_ratio": 0.09549150281252633
+    },
+    {
+      "tick_index": 21,
+      "price": 247.34500122070312,
+      "occupancy": 1.0,
+      "overlap": 0.0,
+      "acceptance_ratio": 0.3618466599780683,
+      "strictness_ratio": 0.06184665997806832
+    },
+    {
+      "tick_index": 22,
+      "price": 247.27000427246097,
+      "occupancy": 1.0,
+      "overlap": 0.0,
+      "acceptance_ratio": 0.3351117570558743,
+      "strictness_ratio": 0.035111757055874326
+    },
+    {
+      "tick_index": 23,
+      "price": 247.82000732421875,
+      "occupancy": 1.0,
+      "overlap": 0.0,
+      "acceptance_ratio": 0.31570841943568445,
+      "strictness_ratio": 0.015708419435684462
+    },
+    {
+      "tick_index": 24,
+      "price": 247.56500244140625,
+      "occupancy": 0.8888888888888888,
+      "overlap": 0.1111111111111111,
+      "acceptance_ratio": 0.3039426493427611,
+      "strictness_ratio": 0.0039426493427611176
+    },
+    {
+      "tick_index": 25,
+      "price": 247.6300048828125,
+      "occupancy": 1.0,
+      "overlap": 0.0,
+      "acceptance_ratio": 0.3,
+      "strictness_ratio": 0.0
+    },
+    {
+      "tick_index": 26,
+      "price": 247.78500366210935,
+      "occupancy": 1.0,
+      "overlap": 0.0,
+      "acceptance_ratio": 0.30394264934276105,
+      "strictness_ratio": 0.003942649342761062
+    },
+    {
+      "tick_index": 27,
+      "price": 247.9900054931641,
+      "occupancy": 1.0,
+      "overlap": 0.0,
+      "acceptance_ratio": 0.31570841943568445,
+      "strictness_ratio": 0.015708419435684462
+    },
+    {
+      "tick_index": 28,
+      "price": 248.0500030517578,
+      "occupancy": 0.9230769230769231,
+      "overlap": 0.07692307692307693,
+      "acceptance_ratio": 0.33511175705587437,
+      "strictness_ratio": 0.03511175705587438
+    },
+    {
+      "tick_index": 29,
+      "price": 248.4600067138672,
+      "occupancy": 1.0,
+      "overlap": 0.0,
+      "acceptance_ratio": 0.36184665997806814,
+      "strictness_ratio": 0.06184665997806815
+    },
+    {
+      "tick_index": 30,
+      "price": 249.2899932861328,
+      "occupancy": 1.0,
+      "overlap": 0.0,
+      "acceptance_ratio": 0.39549150281252626,
+      "strictness_ratio": 0.09549150281252627
+    },
+    {
+      "tick_index": 31,
+      "price": 248.98500061035156,
+      "occupancy": 1.0,
+      "overlap": 0.0,
+      "acceptance_ratio": 0.4355156862892942,
+      "strictness_ratio": 0.13551568628929422
+    },
+    {
+      "tick_index": 32,
+      "price": 249.16000366210935,
+      "occupancy": 0.9411764705882353,
+      "overlap": 0.058823529411764705,
+      "acceptance_ratio": 0.4812880051256552,
+      "strictness_ratio": 0.18128800512565524
+    },
+    {
+      "tick_index": 33,
+      "price": 249.05999755859375,
+      "occupancy": 0.8888888888888888,
+      "overlap": 0.1111111111111111,
+      "acceptance_ratio": 0.5320866025105018,
+      "strictness_ratio": 0.23208660251050184
+    },
+    {
+      "tick_index": 34,
+      "price": 250.01499938964844,
+      "occupancy": 1.0,
+      "overlap": 0.0,
+      "acceptance_ratio": 0.5871103542174638,
+      "strictness_ratio": 0.2871103542174639
+    },
+    {
+      "tick_index": 35,
+      "price": 250.1699981689453,
+      "occupancy": 1.0,
+      "overlap": 0.0,
+      "acceptance_ratio": 0.6454915028125262,
+      "strictness_ratio": 0.3454915028125262
+    },
+    {
+      "tick_index": 36,
+      "price": 250.1750030517578,
+      "occupancy": 0.9523809523809523,
+      "overlap": 0.047619047619047616,
+      "acceptance_ratio": 0.7063093427071376,
+      "strictness_ratio": 0.4063093427071377
+    },
+    {
+      "tick_index": 37,
+      "price": 249.80999755859375,
+      "occupancy": 0.9090909090909091,
+      "overlap": 0.09090909090909091,
+      "acceptance_ratio": 0.7686047402353433,
+      "strictness_ratio": 0.4686047402353434
+    },
+    {
+      "tick_index": 38,
+      "price": 249.9499969482422,
+      "occupancy": 0.8695652173913043,
+      "overlap": 0.13043478260869565,
+      "acceptance_ratio": 0.8313952597646563,
+      "strictness_ratio": 0.5313952597646564
+    },
+    {
+      "tick_index": 39,
+      "price": 250.1699981689453,
+      "occupancy": 1.0,
+      "overlap": 0.0,
+      "acceptance_ratio": 0.8936906572928622,
+      "strictness_ratio": 0.5936906572928622
+    },
+    {
+      "tick_index": 40,
+      "price": 250.0249938964844,
+      "occupancy": 0.96,
+      "overlap": 0.04,
+      "acceptance_ratio": 0.9545084971874735,
+      "strictness_ratio": 0.6545084971874736
+    },
+    {
+      "tick_index": 41,
+      "price": 250.02999877929688,
+      "occupancy": 0.9230769230769231,
+      "overlap": 0.07692307692307693,
+      "acceptance_ratio": 1.0,
+      "strictness_ratio": 0.7128896457825359
+    },
+    {
+      "tick_index": 42,
+      "price": 251.7749938964844,
+      "occupancy": 0.8888888888888888,
+      "overlap": 0.1111111111111111,
+      "acceptance_ratio": 1.0,
+      "strictness_ratio": 0.767913397489498
+    },
+    {
+      "tick_index": 43,
+      "price": 251.6000061035156,
+      "occupancy": 0.8571428571428572,
+      "overlap": 0.14285714285714285,
+      "acceptance_ratio": 1.0,
+      "strictness_ratio": 0.8187119948743447
+    },
+    {
+      "tick_index": 44,
+      "price": 251.47000122070312,
+      "occupancy": 0.8275862068965517,
+      "overlap": 0.1724137931034483,
+      "acceptance_ratio": 1.0,
+      "strictness_ratio": 0.8644843137107057
+    },
+    {
+      "tick_index": 45,
+      "price": 251.7299041748047,
+      "occupancy": 0.8,
+      "overlap": 0.2,
+      "acceptance_ratio": 1.0,
+      "strictness_ratio": 0.9045084971874737
+    },
+    {
+      "tick_index": 46,
+      "price": 251.91000366210935,
+      "occupancy": 0.7741935483870968,
+      "overlap": 0.22580645161290322,
+      "acceptance_ratio": 1.0,
+      "strictness_ratio": 0.9381533400219317
+    },
+    {
+      "tick_index": 47,
+      "price": 251.5850067138672,
+      "occupancy": 0.75,
+      "overlap": 0.25,
+      "acceptance_ratio": 1.0,
+      "strictness_ratio": 0.9648882429441256
+    },
+    {
+      "tick_index": 48,
+      "price": 252.1649932861328,
+      "occupancy": 0.7272727272727273,
+      "overlap": 0.2727272727272727,
+      "acceptance_ratio": 1.0,
+      "strictness_ratio": 0.9842915805643155
+    },
+    {
+      "tick_index": 49,
+      "price": 252.0099945068359,
+      "occupancy": 0.7058823529411764,
+      "overlap": 0.29411764705882354,
+      "acceptance_ratio": 1.0,
+      "strictness_ratio": 0.9960573506572389
+    },
+    {
+      "tick_index": 50,
+      "price": 251.63999938964844,
+      "occupancy": 0.6857142857142857,
+      "overlap": 0.3142857142857143,
+      "acceptance_ratio": 1.0,
+      "strictness_ratio": 1.0
+    },
+    {
+      "tick_index": 51,
+      "price": 251.5500030517578,
+      "occupancy": 0.6666666666666667,
+      "overlap": 0.3333333333333333,
+      "acceptance_ratio": 1.0,
+      "strictness_ratio": 0.996057350657239
+    },
+    {
+      "tick_index": 52,
+      "price": 251.63999938964844,
+      "occupancy": 0.6486486486486487,
+      "overlap": 0.35135135135135137,
+      "acceptance_ratio": 1.0,
+      "strictness_ratio": 0.9842915805643155
+    },
+    {
+      "tick_index": 53,
+      "price": 251.69000244140625,
+      "occupancy": 0.631578947368421,
+      "overlap": 0.3684210526315789,
+      "acceptance_ratio": 1.0,
+      "strictness_ratio": 0.9648882429441257
+    },
+    {
+      "tick_index": 54,
+      "price": 251.9250030517578,
+      "occupancy": 0.6153846153846154,
+      "overlap": 0.38461538461538464,
+      "acceptance_ratio": 1.0,
+      "strictness_ratio": 0.9381533400219317
+    },
+    {
+      "tick_index": 55,
+      "price": 251.72000122070312,
+      "occupancy": 0.6,
+      "overlap": 0.4,
+      "acceptance_ratio": 1.0,
+      "strictness_ratio": 0.9045084971874735
+    },
+    {
+      "tick_index": 56,
+      "price": 251.6699981689453,
+      "occupancy": 0.5853658536585367,
+      "overlap": 0.4146341463414634,
+      "acceptance_ratio": 1.0,
+      "strictness_ratio": 0.8644843137107054
+    },
+    {
+      "tick_index": 57,
+      "price": 251.72999572753903,
+      "occupancy": 0.5714285714285714,
+      "overlap": 0.42857142857142855,
+      "acceptance_ratio": 1.0,
+      "strictness_ratio": 0.8187119948743451
+    },
+    {
+      "tick_index": 58,
+      "price": 251.35499572753903,
+      "occupancy": 0.5581395348837209,
+      "overlap": 0.4418604651162791,
+      "acceptance_ratio": 1.0,
+      "strictness_ratio": 0.7679133974894986
+    },
+    {
+      "tick_index": 59,
+      "price": 251.32000732421875,
+      "occupancy": 0.5454545454545454,
+      "overlap": 0.45454545454545453,
+      "acceptance_ratio": 1.0,
+      "strictness_ratio": 0.7128896457825366
+    },
+    {
+      "tick_index": 60,
+      "price": 251.36000061035156,
+      "occupancy": 0.5333333333333333,
+      "overlap": 0.4666666666666667,
+      "acceptance_ratio": 0.9545084971874738,
+      "strictness_ratio": 0.6545084971874738
+    }
+  ]
+}

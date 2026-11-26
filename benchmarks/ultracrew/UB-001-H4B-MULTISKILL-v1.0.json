@@ -1,0 +1,45 @@
+{
+  "benchmark": "UB-001-v1.0",
+  "run_date": "2026-07-13",
+  "hypothesis": "H4b-multiskill-lower-bound",
+  "note": "Global greedy (multi-skill aware), HC1 only, no HC2/HC3/rest",
+  "total_hours": 2656,
+  "mean_hours": 132.8,
+  "mathematical_ideal": {
+    "variance": 0.16,
+    "sc1_penalty": 1.6,
+    "implied_max_fitness": 9998.4
+  },
+  "global_greedy": {
+    "hours_per_worker": [
+      128,
+      128,
+      128,
+      128,
+      128,
+      128,
+      128,
+      128,
+      136,
+      136,
+      136,
+      136,
+      136,
+      136,
+      136,
+      136,
+      136,
+      136,
+      136,
+      136
+    ],
+    "variance": 15.36,
+    "sc1_penalty": 153.6,
+    "implied_max_fitness": 9846.4
+  },
+  "ga_result": {
+    "best_fitness": 9918.4,
+    "residual_sc1_plus_sc2": 81.60000000000036
+  },
+  "gap_greedy_vs_ga": -72.0
+}

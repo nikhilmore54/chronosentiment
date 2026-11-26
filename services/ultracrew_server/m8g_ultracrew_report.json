@@ -1,0 +1,1302 @@
+[
+  {
+    "seed": 1,
+    "final_score": 51445.0,
+    "progress_at_100": {
+      "improvement_rate_100": 0.0,
+      "improvement_rate_500": 0.0,
+      "average_improvement_size_100": 0.0,
+      "average_improvement_size_all_time": 0.0,
+      "largest_improvement": 0.0,
+      "stagnation_duration": 99,
+      "basin_residency_ratio": 0.99
+    }
+  },
+  {
+    "seed": 2,
+    "final_score": 46145.0,
+    "progress_at_100": {
+      "improvement_rate_100": 0.0,
+      "improvement_rate_500": 0.0,
+      "average_improvement_size_100": 0.0,
+      "average_improvement_size_all_time": 0.0,
+      "largest_improvement": 0.0,
+      "stagnation_duration": 99,
+      "basin_residency_ratio": 0.99
+    }
+  },
+  {
+    "seed": 3,
+    "final_score": 37175.0,
+    "progress_at_100": {
+      "improvement_rate_100": 0.0,
+      "improvement_rate_500": 0.0,
+      "average_improvement_size_100": 0.0,
+      "average_improvement_size_all_time": 0.0,
+      "largest_improvement": 0.0,
+      "stagnation_duration": 99,
+      "basin_residency_ratio": 0.99
+    }
+  },
+  {
+    "seed": 4,
+    "final_score": 48000.0,
+    "progress_at_100": {
+      "improvement_rate_100": 0.0,
+      "improvement_rate_500": 0.0,
+      "average_improvement_size_100": 0.0,
+      "average_improvement_size_all_time": 0.0,
+      "largest_improvement": 0.0,
+      "stagnation_duration": 99,
+      "basin_residency_ratio": 0.99
+    }
+  },
+  {
+    "seed": 5,
+    "final_score": 52445.0,
+    "progress_at_100": {
+      "improvement_rate_100": 0.0,
+      "improvement_rate_500": 0.0,
+      "average_improvement_size_100": 0.0,
+      "average_improvement_size_all_time": 0.0,
+      "largest_improvement": 0.0,
+      "stagnation_duration": 99,
+      "basin_residency_ratio": 0.99
+    }
+  },
+  {
+    "seed": 6,
+    "final_score": 55190.0,
+    "progress_at_100": {
+      "improvement_rate_100": 0.0,
+      "improvement_rate_500": 0.0,
+      "average_improvement_size_100": 0.0,
+      "average_improvement_size_all_time": 0.0,
+      "largest_improvement": 0.0,
+      "stagnation_duration": 99,
+      "basin_residency_ratio": 0.99
+    }
+  },
+  {
+    "seed": 7,
+    "final_score": 47395.0,
+    "progress_at_100": {
+      "improvement_rate_100": 0.0,
+      "improvement_rate_500": 0.0,
+      "average_improvement_size_100": 0.0,
+      "average_improvement_size_all_time": 0.0,
+      "largest_improvement": 0.0,
+      "stagnation_duration": 99,
+      "basin_residency_ratio": 0.99
+    }
+  },
+  {
+    "seed": 8,
+    "final_score": 48900.0,
+    "progress_at_100": {
+      "improvement_rate_100": 0.0,
+      "improvement_rate_500": 0.0,
+      "average_improvement_size_100": 0.0,
+      "average_improvement_size_all_time": 0.0,
+      "largest_improvement": 0.0,
+      "stagnation_duration": 99,
+      "basin_residency_ratio": 0.99
+    }
+  },
+  {
+    "seed": 9,
+    "final_score": 43345.0,
+    "progress_at_100": {
+      "improvement_rate_100": 0.0,
+      "improvement_rate_500": 0.0,
+      "average_improvement_size_100": 0.0,
+      "average_improvement_size_all_time": 0.0,
+      "largest_improvement": 0.0,
+      "stagnation_duration": 99,
+      "basin_residency_ratio": 0.99
+    }
+  },
+  {
+    "seed": 10,
+    "final_score": 41210.0,
+    "progress_at_100": {
+      "improvement_rate_100": 0.0,
+      "improvement_rate_500": 0.0,
+      "average_improvement_size_100": 0.0,
+      "average_improvement_size_all_time": 0.0,
+      "largest_improvement": 0.0,
+      "stagnation_duration": 99,
+      "basin_residency_ratio": 0.99
+    }
+  },
+  {
+    "seed": 11,
+    "final_score": 49245.0,
+    "progress_at_100": {
+      "improvement_rate_100": 0.0,
+      "improvement_rate_500": 0.0,
+      "average_improvement_size_100": 0.0,
+      "average_improvement_size_all_time": 0.0,
+      "largest_improvement": 0.0,
+      "stagnation_duration": 99,
+      "basin_residency_ratio": 0.99
+    }
+  },
+  {
+    "seed": 12,
+    "final_score": 42350.0,
+    "progress_at_100": {
+      "improvement_rate_100": 0.0,
+      "improvement_rate_500": 0.0,
+      "average_improvement_size_100": 0.0,
+      "average_improvement_size_all_time": 0.0,
+      "largest_improvement": 0.0,
+      "stagnation_duration": 99,
+      "basin_residency_ratio": 0.99
+    }
+  },
+  {
+    "seed": 13,
+    "final_score": 47695.0,
+    "progress_at_100": {
+      "improvement_rate_100": 0.0,
+      "improvement_rate_500": 0.0,
+      "average_improvement_size_100": 0.0,
+      "average_improvement_size_all_time": 0.0,
+      "largest_improvement": 0.0,
+      "stagnation_duration": 99,
+      "basin_residency_ratio": 0.99
+    }
+  },
+  {
+    "seed": 14,
+    "final_score": 38495.0,
+    "progress_at_100": {
+      "improvement_rate_100": 0.0,
+      "improvement_rate_500": 0.0,
+      "average_improvement_size_100": 0.0,
+      "average_improvement_size_all_time": 0.0,
+      "largest_improvement": 0.0,
+      "stagnation_duration": 99,
+      "basin_residency_ratio": 0.99
+    }
+  },
+  {
+    "seed": 15,
+    "final_score": 47420.0,
+    "progress_at_100": {
+      "improvement_rate_100": 0.0,
+      "improvement_rate_500": 0.0,
+      "average_improvement_size_100": 0.0,
+      "average_improvement_size_all_time": 0.0,
+      "largest_improvement": 0.0,
+      "stagnation_duration": 99,
+      "basin_residency_ratio": 0.99
+    }
+  },
+  {
+    "seed": 16,
+    "final_score": 49350.0,
+    "progress_at_100": {
+      "improvement_rate_100": 0.0,
+      "improvement_rate_500": 0.0,
+      "average_improvement_size_100": 0.0,
+      "average_improvement_size_all_time": 0.0,
+      "largest_improvement": 0.0,
+      "stagnation_duration": 99,
+      "basin_residency_ratio": 0.99
+    }
+  },
+  {
+    "seed": 17,
+    "final_score": 41495.0,
+    "progress_at_100": {
+      "improvement_rate_100": 0.0,
+      "improvement_rate_500": 0.0,
+      "average_improvement_size_100": 0.0,
+      "average_improvement_size_all_time": 0.0,
+      "largest_improvement": 0.0,
+      "stagnation_duration": 99,
+      "basin_residency_ratio": 0.99
+    }
+  },
+  {
+    "seed": 18,
+    "final_score": 51425.0,
+    "progress_at_100": {
+      "improvement_rate_100": 0.01,
+      "improvement_rate_500": 0.002,
+      "average_improvement_size_100": 25.0,
+      "average_improvement_size_all_time": 25.0,
+      "largest_improvement": 25.0,
+      "stagnation_duration": 98,
+      "basin_residency_ratio": 0.98
+    }
+  },
+  {
+    "seed": 19,
+    "final_score": 40205.0,
+    "progress_at_100": {
+      "improvement_rate_100": 0.0,
+      "improvement_rate_500": 0.0,
+      "average_improvement_size_100": 0.0,
+      "average_improvement_size_all_time": 0.0,
+      "largest_improvement": 0.0,
+      "stagnation_duration": 99,
+      "basin_residency_ratio": 0.99
+    }
+  },
+  {
+    "seed": 20,
+    "final_score": 45015.0,
+    "progress_at_100": {
+      "improvement_rate_100": 0.0,
+      "improvement_rate_500": 0.0,
+      "average_improvement_size_100": 0.0,
+      "average_improvement_size_all_time": 0.0,
+      "largest_improvement": 0.0,
+      "stagnation_duration": 99,
+      "basin_residency_ratio": 0.99
+    }
+  },
+  {
+    "seed": 21,
+    "final_score": 45885.0,
+    "progress_at_100": {
+      "improvement_rate_100": 0.0,
+      "improvement_rate_500": 0.0,
+      "average_improvement_size_100": 0.0,
+      "average_improvement_size_all_time": 0.0,
+      "largest_improvement": 0.0,
+      "stagnation_duration": 99,
+      "basin_residency_ratio": 0.99
+    }
+  },
+  {
+    "seed": 22,
+    "final_score": 55555.0,
+    "progress_at_100": {
+      "improvement_rate_100": 0.0,
+      "improvement_rate_500": 0.0,
+      "average_improvement_size_100": 0.0,
+      "average_improvement_size_all_time": 0.0,
+      "largest_improvement": 0.0,
+      "stagnation_duration": 99,
+      "basin_residency_ratio": 0.99
+    }
+  },
+  {
+    "seed": 23,
+    "final_score": 46350.0,
+    "progress_at_100": {
+      "improvement_rate_100": 0.0,
+      "improvement_rate_500": 0.0,
+      "average_improvement_size_100": 0.0,
+      "average_improvement_size_all_time": 0.0,
+      "largest_improvement": 0.0,
+      "stagnation_duration": 99,
+      "basin_residency_ratio": 0.99
+    }
+  },
+  {
+    "seed": 24,
+    "final_score": 43560.0,
+    "progress_at_100": {
+      "improvement_rate_100": 0.0,
+      "improvement_rate_500": 0.0,
+      "average_improvement_size_100": 0.0,
+      "average_improvement_size_all_time": 0.0,
+      "largest_improvement": 0.0,
+      "stagnation_duration": 99,
+      "basin_residency_ratio": 0.99
+    }
+  },
+  {
+    "seed": 25,
+    "final_score": 51925.0,
+    "progress_at_100": {
+      "improvement_rate_100": 0.0,
+      "improvement_rate_500": 0.0,
+      "average_improvement_size_100": 0.0,
+      "average_improvement_size_all_time": 0.0,
+      "largest_improvement": 0.0,
+      "stagnation_duration": 99,
+      "basin_residency_ratio": 0.99
+    }
+  },
+  {
+    "seed": 26,
+    "final_score": 51195.0,
+    "progress_at_100": {
+      "improvement_rate_100": 0.01,
+      "improvement_rate_500": 0.002,
+      "average_improvement_size_100": 85.0,
+      "average_improvement_size_all_time": 85.0,
+      "largest_improvement": 85.0,
+      "stagnation_duration": 12,
+      "basin_residency_ratio": 0.12
+    }
+  },
+  {
+    "seed": 27,
+    "final_score": 43735.0,
+    "progress_at_100": {
+      "improvement_rate_100": 0.0,
+      "improvement_rate_500": 0.0,
+      "average_improvement_size_100": 0.0,
+      "average_improvement_size_all_time": 0.0,
+      "largest_improvement": 0.0,
+      "stagnation_duration": 99,
+      "basin_residency_ratio": 0.99
+    }
+  },
+  {
+    "seed": 28,
+    "final_score": 46545.0,
+    "progress_at_100": {
+      "improvement_rate_100": 0.0,
+      "improvement_rate_500": 0.0,
+      "average_improvement_size_100": 0.0,
+      "average_improvement_size_all_time": 0.0,
+      "largest_improvement": 0.0,
+      "stagnation_duration": 99,
+      "basin_residency_ratio": 0.99
+    }
+  },
+  {
+    "seed": 29,
+    "final_score": 51365.0,
+    "progress_at_100": {
+      "improvement_rate_100": 0.0,
+      "improvement_rate_500": 0.0,
+      "average_improvement_size_100": 0.0,
+      "average_improvement_size_all_time": 0.0,
+      "largest_improvement": 0.0,
+      "stagnation_duration": 99,
+      "basin_residency_ratio": 0.99
+    }
+  },
+  {
+    "seed": 30,
+    "final_score": 56610.0,
+    "progress_at_100": {
+      "improvement_rate_100": 0.0,
+      "improvement_rate_500": 0.0,
+      "average_improvement_size_100": 0.0,
+      "average_improvement_size_all_time": 0.0,
+      "largest_improvement": 0.0,
+      "stagnation_duration": 99,
+      "basin_residency_ratio": 0.99
+    }
+  },
+  {
+    "seed": 31,
+    "final_score": 49385.0,
+    "progress_at_100": {
+      "improvement_rate_100": 0.0,
+      "improvement_rate_500": 0.0,
+      "average_improvement_size_100": 0.0,
+      "average_improvement_size_all_time": 0.0,
+      "largest_improvement": 0.0,
+      "stagnation_duration": 99,
+      "basin_residency_ratio": 0.99
+    }
+  },
+  {
+    "seed": 32,
+    "final_score": 48625.0,
+    "progress_at_100": {
+      "improvement_rate_100": 0.0,
+      "improvement_rate_500": 0.0,
+      "average_improvement_size_100": 0.0,
+      "average_improvement_size_all_time": 0.0,
+      "largest_improvement": 0.0,
+      "stagnation_duration": 99,
+      "basin_residency_ratio": 0.99
+    }
+  },
+  {
+    "seed": 33,
+    "final_score": 45840.0,
+    "progress_at_100": {
+      "improvement_rate_100": 0.0,
+      "improvement_rate_500": 0.0,
+      "average_improvement_size_100": 0.0,
+      "average_improvement_size_all_time": 0.0,
+      "largest_improvement": 0.0,
+      "stagnation_duration": 99,
+      "basin_residency_ratio": 0.99
+    }
+  },
+  {
+    "seed": 34,
+    "final_score": 53485.0,
+    "progress_at_100": {
+      "improvement_rate_100": 0.0,
+      "improvement_rate_500": 0.0,
+      "average_improvement_size_100": 0.0,
+      "average_improvement_size_all_time": 0.0,
+      "largest_improvement": 0.0,
+      "stagnation_duration": 99,
+      "basin_residency_ratio": 0.99
+    }
+  },
+  {
+    "seed": 35,
+    "final_score": 54305.0,
+    "progress_at_100": {
+      "improvement_rate_100": 0.0,
+      "improvement_rate_500": 0.0,
+      "average_improvement_size_100": 0.0,
+      "average_improvement_size_all_time": 0.0,
+      "largest_improvement": 0.0,
+      "stagnation_duration": 99,
+      "basin_residency_ratio": 0.99
+    }
+  },
+  {
+    "seed": 36,
+    "final_score": 48520.0,
+    "progress_at_100": {
+      "improvement_rate_100": 0.01,
+      "improvement_rate_500": 0.002,
+      "average_improvement_size_100": 2190.0,
+      "average_improvement_size_all_time": 2190.0,
+      "largest_improvement": 2190.0,
+      "stagnation_duration": 15,
+      "basin_residency_ratio": 0.15
+    }
+  },
+  {
+    "seed": 37,
+    "final_score": 49715.0,
+    "progress_at_100": {
+      "improvement_rate_100": 0.0,
+      "improvement_rate_500": 0.0,
+      "average_improvement_size_100": 0.0,
+      "average_improvement_size_all_time": 0.0,
+      "largest_improvement": 0.0,
+      "stagnation_duration": 99,
+      "basin_residency_ratio": 0.99
+    }
+  },
+  {
+    "seed": 38,
+    "final_score": 47420.0,
+    "progress_at_100": {
+      "improvement_rate_100": 0.0,
+      "improvement_rate_500": 0.0,
+      "average_improvement_size_100": 0.0,
+      "average_improvement_size_all_time": 0.0,
+      "largest_improvement": 0.0,
+      "stagnation_duration": 99,
+      "basin_residency_ratio": 0.99
+    }
+  },
+  {
+    "seed": 39,
+    "final_score": 47785.0,
+    "progress_at_100": {
+      "improvement_rate_100": 0.0,
+      "improvement_rate_500": 0.0,
+      "average_improvement_size_100": 0.0,
+      "average_improvement_size_all_time": 0.0,
+      "largest_improvement": 0.0,
+      "stagnation_duration": 99,
+      "basin_residency_ratio": 0.99
+    }
+  },
+  {
+    "seed": 40,
+    "final_score": 44015.0,
+    "progress_at_100": {
+      "improvement_rate_100": 0.0,
+      "improvement_rate_500": 0.0,
+      "average_improvement_size_100": 0.0,
+      "average_improvement_size_all_time": 0.0,
+      "largest_improvement": 0.0,
+      "stagnation_duration": 99,
+      "basin_residency_ratio": 0.99
+    }
+  },
+  {
+    "seed": 41,
+    "final_score": 54200.0,
+    "progress_at_100": {
+      "improvement_rate_100": 0.0,
+      "improvement_rate_500": 0.0,
+      "average_improvement_size_100": 0.0,
+      "average_improvement_size_all_time": 0.0,
+      "largest_improvement": 0.0,
+      "stagnation_duration": 99,
+      "basin_residency_ratio": 0.99
+    }
+  },
+  {
+    "seed": 42,
+    "final_score": 55875.0,
+    "progress_at_100": {
+      "improvement_rate_100": 0.0,
+      "improvement_rate_500": 0.0,
+      "average_improvement_size_100": 0.0,
+      "average_improvement_size_all_time": 0.0,
+      "largest_improvement": 0.0,
+      "stagnation_duration": 99,
+      "basin_residency_ratio": 0.99
+    }
+  },
+  {
+    "seed": 43,
+    "final_score": 43880.0,
+    "progress_at_100": {
+      "improvement_rate_100": 0.0,
+      "improvement_rate_500": 0.0,
+      "average_improvement_size_100": 0.0,
+      "average_improvement_size_all_time": 0.0,
+      "largest_improvement": 0.0,
+      "stagnation_duration": 99,
+      "basin_residency_ratio": 0.99
+    }
+  },
+  {
+    "seed": 44,
+    "final_score": 37110.0,
+    "progress_at_100": {
+      "improvement_rate_100": 0.0,
+      "improvement_rate_500": 0.0,
+      "average_improvement_size_100": 0.0,
+      "average_improvement_size_all_time": 0.0,
+      "largest_improvement": 0.0,
+      "stagnation_duration": 99,
+      "basin_residency_ratio": 0.99
+    }
+  },
+  {
+    "seed": 45,
+    "final_score": 52790.0,
+    "progress_at_100": {
+      "improvement_rate_100": 0.0,
+      "improvement_rate_500": 0.0,
+      "average_improvement_size_100": 0.0,
+      "average_improvement_size_all_time": 0.0,
+      "largest_improvement": 0.0,
+      "stagnation_duration": 99,
+      "basin_residency_ratio": 0.99
+    }
+  },
+  {
+    "seed": 46,
+    "final_score": 47690.0,
+    "progress_at_100": {
+      "improvement_rate_100": 0.0,
+      "improvement_rate_500": 0.0,
+      "average_improvement_size_100": 0.0,
+      "average_improvement_size_all_time": 0.0,
+      "largest_improvement": 0.0,
+      "stagnation_duration": 99,
+      "basin_residency_ratio": 0.99
+    }
+  },
+  {
+    "seed": 47,
+    "final_score": 45500.0,
+    "progress_at_100": {
+      "improvement_rate_100": 0.0,
+      "improvement_rate_500": 0.0,
+      "average_improvement_size_100": 0.0,
+      "average_improvement_size_all_time": 0.0,
+      "largest_improvement": 0.0,
+      "stagnation_duration": 99,
+      "basin_residency_ratio": 0.99
+    }
+  },
+  {
+    "seed": 48,
+    "final_score": 43995.0,
+    "progress_at_100": {
+      "improvement_rate_100": 0.0,
+      "improvement_rate_500": 0.0,
+      "average_improvement_size_100": 0.0,
+      "average_improvement_size_all_time": 0.0,
+      "largest_improvement": 0.0,
+      "stagnation_duration": 99,
+      "basin_residency_ratio": 0.99
+    }
+  },
+  {
+    "seed": 49,
+    "final_score": 48460.0,
+    "progress_at_100": {
+      "improvement_rate_100": 0.0,
+      "improvement_rate_500": 0.0,
+      "average_improvement_size_100": 0.0,
+      "average_improvement_size_all_time": 0.0,
+      "largest_improvement": 0.0,
+      "stagnation_duration": 99,
+      "basin_residency_ratio": 0.99
+    }
+  },
+  {
+    "seed": 50,
+    "final_score": 43285.0,
+    "progress_at_100": {
+      "improvement_rate_100": 0.0,
+      "improvement_rate_500": 0.0,
+      "average_improvement_size_100": 0.0,
+      "average_improvement_size_all_time": 0.0,
+      "largest_improvement": 0.0,
+      "stagnation_duration": 99,
+      "basin_residency_ratio": 0.99
+    }
+  },
+  {
+    "seed": 51,
+    "final_score": 52125.0,
+    "progress_at_100": {
+      "improvement_rate_100": 0.0,
+      "improvement_rate_500": 0.0,
+      "average_improvement_size_100": 0.0,
+      "average_improvement_size_all_time": 0.0,
+      "largest_improvement": 0.0,
+      "stagnation_duration": 99,
+      "basin_residency_ratio": 0.99
+    }
+  },
+  {
+    "seed": 52,
+    "final_score": 42820.0,
+    "progress_at_100": {
+      "improvement_rate_100": 0.0,
+      "improvement_rate_500": 0.0,
+      "average_improvement_size_100": 0.0,
+      "average_improvement_size_all_time": 0.0,
+      "largest_improvement": 0.0,
+      "stagnation_duration": 99,
+      "basin_residency_ratio": 0.99
+    }
+  },
+  {
+    "seed": 53,
+    "final_score": 47465.0,
+    "progress_at_100": {
+      "improvement_rate_100": 0.0,
+      "improvement_rate_500": 0.0,
+      "average_improvement_size_100": 0.0,
+      "average_improvement_size_all_time": 0.0,
+      "largest_improvement": 0.0,
+      "stagnation_duration": 99,
+      "basin_residency_ratio": 0.99
+    }
+  },
+  {
+    "seed": 54,
+    "final_score": 42800.0,
+    "progress_at_100": {
+      "improvement_rate_100": 0.0,
+      "improvement_rate_500": 0.0,
+      "average_improvement_size_100": 0.0,
+      "average_improvement_size_all_time": 0.0,
+      "largest_improvement": 0.0,
+      "stagnation_duration": 99,
+      "basin_residency_ratio": 0.99
+    }
+  },
+  {
+    "seed": 55,
+    "final_score": 50920.0,
+    "progress_at_100": {
+      "improvement_rate_100": 0.0,
+      "improvement_rate_500": 0.0,
+      "average_improvement_size_100": 0.0,
+      "average_improvement_size_all_time": 0.0,
+      "largest_improvement": 0.0,
+      "stagnation_duration": 99,
+      "basin_residency_ratio": 0.99
+    }
+  },
+  {
+    "seed": 56,
+    "final_score": 47245.0,
+    "progress_at_100": {
+      "improvement_rate_100": 0.01,
+      "improvement_rate_500": 0.002,
+      "average_improvement_size_100": 145.0,
+      "average_improvement_size_all_time": 145.0,
+      "largest_improvement": 145.0,
+      "stagnation_duration": 95,
+      "basin_residency_ratio": 0.95
+    }
+  },
+  {
+    "seed": 57,
+    "final_score": 40585.0,
+    "progress_at_100": {
+      "improvement_rate_100": 0.0,
+      "improvement_rate_500": 0.0,
+      "average_improvement_size_100": 0.0,
+      "average_improvement_size_all_time": 0.0,
+      "largest_improvement": 0.0,
+      "stagnation_duration": 99,
+      "basin_residency_ratio": 0.99
+    }
+  },
+  {
+    "seed": 58,
+    "final_score": 45045.0,
+    "progress_at_100": {
+      "improvement_rate_100": 0.0,
+      "improvement_rate_500": 0.0,
+      "average_improvement_size_100": 0.0,
+      "average_improvement_size_all_time": 0.0,
+      "largest_improvement": 0.0,
+      "stagnation_duration": 99,
+      "basin_residency_ratio": 0.99
+    }
+  },
+  {
+    "seed": 59,
+    "final_score": 47365.0,
+    "progress_at_100": {
+      "improvement_rate_100": 0.0,
+      "improvement_rate_500": 0.0,
+      "average_improvement_size_100": 0.0,
+      "average_improvement_size_all_time": 0.0,
+      "largest_improvement": 0.0,
+      "stagnation_duration": 99,
+      "basin_residency_ratio": 0.99
+    }
+  },
+  {
+    "seed": 60,
+    "final_score": 45825.0,
+    "progress_at_100": {
+      "improvement_rate_100": 0.0,
+      "improvement_rate_500": 0.0,
+      "average_improvement_size_100": 0.0,
+      "average_improvement_size_all_time": 0.0,
+      "largest_improvement": 0.0,
+      "stagnation_duration": 99,
+      "basin_residency_ratio": 0.99
+    }
+  },
+  {
+    "seed": 61,
+    "final_score": 39595.0,
+    "progress_at_100": {
+      "improvement_rate_100": 0.0,
+      "improvement_rate_500": 0.0,
+      "average_improvement_size_100": 0.0,
+      "average_improvement_size_all_time": 0.0,
+      "largest_improvement": 0.0,
+      "stagnation_duration": 99,
+      "basin_residency_ratio": 0.99
+    }
+  },
+  {
+    "seed": 62,
+    "final_score": 39370.0,
+    "progress_at_100": {
+      "improvement_rate_100": 0.0,
+      "improvement_rate_500": 0.0,
+      "average_improvement_size_100": 0.0,
+      "average_improvement_size_all_time": 0.0,
+      "largest_improvement": 0.0,
+      "stagnation_duration": 99,
+      "basin_residency_ratio": 0.99
+    }
+  },
+  {
+    "seed": 63,
+    "final_score": 49915.0,
+    "progress_at_100": {
+      "improvement_rate_100": 0.0,
+      "improvement_rate_500": 0.0,
+      "average_improvement_size_100": 0.0,
+      "average_improvement_size_all_time": 0.0,
+      "largest_improvement": 0.0,
+      "stagnation_duration": 99,
+      "basin_residency_ratio": 0.99
+    }
+  },
+  {
+    "seed": 64,
+    "final_score": 54960.0,
+    "progress_at_100": {
+      "improvement_rate_100": 0.0,
+      "improvement_rate_500": 0.0,
+      "average_improvement_size_100": 0.0,
+      "average_improvement_size_all_time": 0.0,
+      "largest_improvement": 0.0,
+      "stagnation_duration": 99,
+      "basin_residency_ratio": 0.99
+    }
+  },
+  {
+    "seed": 65,
+    "final_score": 45545.0,
+    "progress_at_100": {
+      "improvement_rate_100": 0.0,
+      "improvement_rate_500": 0.0,
+      "average_improvement_size_100": 0.0,
+      "average_improvement_size_all_time": 0.0,
+      "largest_improvement": 0.0,
+      "stagnation_duration": 99,
+      "basin_residency_ratio": 0.99
+    }
+  },
+  {
+    "seed": 66,
+    "final_score": 41930.0,
+    "progress_at_100": {
+      "improvement_rate_100": 0.0,
+      "improvement_rate_500": 0.0,
+      "average_improvement_size_100": 0.0,
+      "average_improvement_size_all_time": 0.0,
+      "largest_improvement": 0.0,
+      "stagnation_duration": 99,
+      "basin_residency_ratio": 0.99
+    }
+  },
+  {
+    "seed": 67,
+    "final_score": 52455.0,
+    "progress_at_100": {
+      "improvement_rate_100": 0.0,
+      "improvement_rate_500": 0.0,
+      "average_improvement_size_100": 0.0,
+      "average_improvement_size_all_time": 0.0,
+      "largest_improvement": 0.0,
+      "stagnation_duration": 99,
+      "basin_residency_ratio": 0.99
+    }
+  },
+  {
+    "seed": 68,
+    "final_score": 50520.0,
+    "progress_at_100": {
+      "improvement_rate_100": 0.0,
+      "improvement_rate_500": 0.0,
+      "average_improvement_size_100": 0.0,
+      "average_improvement_size_all_time": 0.0,
+      "largest_improvement": 0.0,
+      "stagnation_duration": 99,
+      "basin_residency_ratio": 0.99
+    }
+  },
+  {
+    "seed": 69,
+    "final_score": 47495.0,
+    "progress_at_100": {
+      "improvement_rate_100": 0.0,
+      "improvement_rate_500": 0.0,
+      "average_improvement_size_100": 0.0,
+      "average_improvement_size_all_time": 0.0,
+      "largest_improvement": 0.0,
+      "stagnation_duration": 99,
+      "basin_residency_ratio": 0.99
+    }
+  },
+  {
+    "seed": 70,
+    "final_score": 49450.0,
+    "progress_at_100": {
+      "improvement_rate_100": 0.0,
+      "improvement_rate_500": 0.0,
+      "average_improvement_size_100": 0.0,
+      "average_improvement_size_all_time": 0.0,
+      "largest_improvement": 0.0,
+      "stagnation_duration": 99,
+      "basin_residency_ratio": 0.99
+    }
+  },
+  {
+    "seed": 71,
+    "final_score": 50525.0,
+    "progress_at_100": {
+      "improvement_rate_100": 0.0,
+      "improvement_rate_500": 0.0,
+      "average_improvement_size_100": 0.0,
+      "average_improvement_size_all_time": 0.0,
+      "largest_improvement": 0.0,
+      "stagnation_duration": 99,
+      "basin_residency_ratio": 0.99
+    }
+  },
+  {
+    "seed": 72,
+    "final_score": 44085.0,
+    "progress_at_100": {
+      "improvement_rate_100": 0.0,
+      "improvement_rate_500": 0.0,
+      "average_improvement_size_100": 0.0,
+      "average_improvement_size_all_time": 0.0,
+      "largest_improvement": 0.0,
+      "stagnation_duration": 99,
+      "basin_residency_ratio": 0.99
+    }
+  },
+  {
+    "seed": 73,
+    "final_score": 44150.0,
+    "progress_at_100": {
+      "improvement_rate_100": 0.0,
+      "improvement_rate_500": 0.0,
+      "average_improvement_size_100": 0.0,
+      "average_improvement_size_all_time": 0.0,
+      "largest_improvement": 0.0,
+      "stagnation_duration": 99,
+      "basin_residency_ratio": 0.99
+    }
+  },
+  {
+    "seed": 74,
+    "final_score": 48175.0,
+    "progress_at_100": {
+      "improvement_rate_100": 0.0,
+      "improvement_rate_500": 0.0,
+      "average_improvement_size_100": 0.0,
+      "average_improvement_size_all_time": 0.0,
+      "largest_improvement": 0.0,
+      "stagnation_duration": 99,
+      "basin_residency_ratio": 0.99
+    }
+  },
+  {
+    "seed": 75,
+    "final_score": 46215.0,
+    "progress_at_100": {
+      "improvement_rate_100": 0.0,
+      "improvement_rate_500": 0.0,
+      "average_improvement_size_100": 0.0,
+      "average_improvement_size_all_time": 0.0,
+      "largest_improvement": 0.0,
+      "stagnation_duration": 99,
+      "basin_residency_ratio": 0.99
+    }
+  },
+  {
+    "seed": 76,
+    "final_score": 45145.0,
+    "progress_at_100": {
+      "improvement_rate_100": 0.0,
+      "improvement_rate_500": 0.0,
+      "average_improvement_size_100": 0.0,
+      "average_improvement_size_all_time": 0.0,
+      "largest_improvement": 0.0,
+      "stagnation_duration": 99,
+      "basin_residency_ratio": 0.99
+    }
+  },
+  {
+    "seed": 77,
+    "final_score": 46935.0,
+    "progress_at_100": {
+      "improvement_rate_100": 0.0,
+      "improvement_rate_500": 0.0,
+      "average_improvement_size_100": 0.0,
+      "average_improvement_size_all_time": 0.0,
+      "largest_improvement": 0.0,
+      "stagnation_duration": 99,
+      "basin_residency_ratio": 0.99
+    }
+  },
+  {
+    "seed": 78,
+    "final_score": 49830.0,
+    "progress_at_100": {
+      "improvement_rate_100": 0.0,
+      "improvement_rate_500": 0.0,
+      "average_improvement_size_100": 0.0,
+      "average_improvement_size_all_time": 0.0,
+      "largest_improvement": 0.0,
+      "stagnation_duration": 99,
+      "basin_residency_ratio": 0.99
+    }
+  },
+  {
+    "seed": 79,
+    "final_score": 41260.0,
+    "progress_at_100": {
+      "improvement_rate_100": 0.0,
+      "improvement_rate_500": 0.0,
+      "average_improvement_size_100": 0.0,
+      "average_improvement_size_all_time": 0.0,
+      "largest_improvement": 0.0,
+      "stagnation_duration": 99,
+      "basin_residency_ratio": 0.99
+    }
+  },
+  {
+    "seed": 80,
+    "final_score": 49370.0,
+    "progress_at_100": {
+      "improvement_rate_100": 0.0,
+      "improvement_rate_500": 0.0,
+      "average_improvement_size_100": 0.0,
+      "average_improvement_size_all_time": 0.0,
+      "largest_improvement": 0.0,
+      "stagnation_duration": 99,
+      "basin_residency_ratio": 0.99
+    }
+  },
+  {
+    "seed": 81,
+    "final_score": 45835.0,
+    "progress_at_100": {
+      "improvement_rate_100": 0.0,
+      "improvement_rate_500": 0.0,
+      "average_improvement_size_100": 0.0,
+      "average_improvement_size_all_time": 0.0,
+      "largest_improvement": 0.0,
+      "stagnation_duration": 99,
+      "basin_residency_ratio": 0.99
+    }
+  },
+  {
+    "seed": 82,
+    "final_score": 39450.0,
+    "progress_at_100": {
+      "improvement_rate_100": 0.0,
+      "improvement_rate_500": 0.0,
+      "average_improvement_size_100": 0.0,
+      "average_improvement_size_all_time": 0.0,
+      "largest_improvement": 0.0,
+      "stagnation_duration": 99,
+      "basin_residency_ratio": 0.99
+    }
+  },
+  {
+    "seed": 83,
+    "final_score": 48835.0,
+    "progress_at_100": {
+      "improvement_rate_100": 0.0,
+      "improvement_rate_500": 0.0,
+      "average_improvement_size_100": 0.0,
+      "average_improvement_size_all_time": 0.0,
+      "largest_improvement": 0.0,
+      "stagnation_duration": 99,
+      "basin_residency_ratio": 0.99
+    }
+  },
+  {
+    "seed": 84,
+    "final_score": 52585.0,
+    "progress_at_100": {
+      "improvement_rate_100": 0.0,
+      "improvement_rate_500": 0.0,
+      "average_improvement_size_100": 0.0,
+      "average_improvement_size_all_time": 0.0,
+      "largest_improvement": 0.0,
+      "stagnation_duration": 99,
+      "basin_residency_ratio": 0.99
+    }
+  },
+  {
+    "seed": 85,
+    "final_score": 41350.0,
+    "progress_at_100": {
+      "improvement_rate_100": 0.0,
+      "improvement_rate_500": 0.0,
+      "average_improvement_size_100": 0.0,
+      "average_improvement_size_all_time": 0.0,
+      "largest_improvement": 0.0,
+      "stagnation_duration": 99,
+      "basin_residency_ratio": 0.99
+    }
+  },
+  {
+    "seed": 86,
+    "final_score": 49360.0,
+    "progress_at_100": {
+      "improvement_rate_100": 0.0,
+      "improvement_rate_500": 0.0,
+      "average_improvement_size_100": 0.0,
+      "average_improvement_size_all_time": 0.0,
+      "largest_improvement": 0.0,
+      "stagnation_duration": 99,
+      "basin_residency_ratio": 0.99
+    }
+  },
+  {
+    "seed": 87,
+    "final_score": 57750.0,
+    "progress_at_100": {
+      "improvement_rate_100": 0.0,
+      "improvement_rate_500": 0.0,
+      "average_improvement_size_100": 0.0,
+      "average_improvement_size_all_time": 0.0,
+      "largest_improvement": 0.0,
+      "stagnation_duration": 99,
+      "basin_residency_ratio": 0.99
+    }
+  },
+  {
+    "seed": 88,
+    "final_score": 43900.0,
+    "progress_at_100": {
+      "improvement_rate_100": 0.0,
+      "improvement_rate_500": 0.0,
+      "average_improvement_size_100": 0.0,
+      "average_improvement_size_all_time": 0.0,
+      "largest_improvement": 0.0,
+      "stagnation_duration": 99,
+      "basin_residency_ratio": 0.99
+    }
+  },
+  {
+    "seed": 89,
+    "final_score": 43740.0,
+    "progress_at_100": {
+      "improvement_rate_100": 0.0,
+      "improvement_rate_500": 0.0,
+      "average_improvement_size_100": 0.0,
+      "average_improvement_size_all_time": 0.0,
+      "largest_improvement": 0.0,
+      "stagnation_duration": 99,
+      "basin_residency_ratio": 0.99
+    }
+  },
+  {
+    "seed": 90,
+    "final_score": 49520.0,
+    "progress_at_100": {
+      "improvement_rate_100": 0.0,
+      "improvement_rate_500": 0.0,
+      "average_improvement_size_100": 0.0,
+      "average_improvement_size_all_time": 0.0,
+      "largest_improvement": 0.0,
+      "stagnation_duration": 99,
+      "basin_residency_ratio": 0.99
+    }
+  },
+  {
+    "seed": 91,
+    "final_score": 45695.0,
+    "progress_at_100": {
+      "improvement_rate_100": 0.01,
+      "improvement_rate_500": 0.002,
+      "average_improvement_size_100": 5.0,
+      "average_improvement_size_all_time": 5.0,
+      "largest_improvement": 5.0,
+      "stagnation_duration": 25,
+      "basin_residency_ratio": 0.25
+    }
+  },
+  {
+    "seed": 92,
+    "final_score": 47220.0,
+    "progress_at_100": {
+      "improvement_rate_100": 0.0,
+      "improvement_rate_500": 0.0,
+      "average_improvement_size_100": 0.0,
+      "average_improvement_size_all_time": 0.0,
+      "largest_improvement": 0.0,
+      "stagnation_duration": 99,
+      "basin_residency_ratio": 0.99
+    }
+  },
+  {
+    "seed": 93,
+    "final_score": 55720.0,
+    "progress_at_100": {
+      "improvement_rate_100": 0.0,
+      "improvement_rate_500": 0.0,
+      "average_improvement_size_100": 0.0,
+      "average_improvement_size_all_time": 0.0,
+      "largest_improvement": 0.0,
+      "stagnation_duration": 99,
+      "basin_residency_ratio": 0.99
+    }
+  },
+  {
+    "seed": 94,
+    "final_score": 42515.0,
+    "progress_at_100": {
+      "improvement_rate_100": 0.0,
+      "improvement_rate_500": 0.0,
+      "average_improvement_size_100": 0.0,
+      "average_improvement_size_all_time": 0.0,
+      "largest_improvement": 0.0,
+      "stagnation_duration": 99,
+      "basin_residency_ratio": 0.99
+    }
+  },
+  {
+    "seed": 95,
+    "final_score": 49085.0,
+    "progress_at_100": {
+      "improvement_rate_100": 0.01,
+      "improvement_rate_500": 0.002,
+      "average_improvement_size_100": 1115.0,
+      "average_improvement_size_all_time": 1115.0,
+      "largest_improvement": 1115.0,
+      "stagnation_duration": 17,
+      "basin_residency_ratio": 0.17
+    }
+  },
+  {
+    "seed": 96,
+    "final_score": 51430.0,
+    "progress_at_100": {
+      "improvement_rate_100": 0.0,
+      "improvement_rate_500": 0.0,
+      "average_improvement_size_100": 0.0,
+      "average_improvement_size_all_time": 0.0,
+      "largest_improvement": 0.0,
+      "stagnation_duration": 99,
+      "basin_residency_ratio": 0.99
+    }
+  },
+  {
+    "seed": 97,
+    "final_score": 44600.0,
+    "progress_at_100": {
+      "improvement_rate_100": 0.0,
+      "improvement_rate_500": 0.0,
+      "average_improvement_size_100": 0.0,
+      "average_improvement_size_all_time": 0.0,
+      "largest_improvement": 0.0,
+      "stagnation_duration": 99,
+      "basin_residency_ratio": 0.99
+    }
+  },
+  {
+    "seed": 98,
+    "final_score": 52620.0,
+    "progress_at_100": {
+      "improvement_rate_100": 0.0,
+      "improvement_rate_500": 0.0,
+      "average_improvement_size_100": 0.0,
+      "average_improvement_size_all_time": 0.0,
+      "largest_improvement": 0.0,
+      "stagnation_duration": 99,
+      "basin_residency_ratio": 0.99
+    }
+  },
+  {
+    "seed": 99,
+    "final_score": 46840.0,
+    "progress_at_100": {
+      "improvement_rate_100": 0.0,
+      "improvement_rate_500": 0.0,
+      "average_improvement_size_100": 0.0,
+      "average_improvement_size_all_time": 0.0,
+      "largest_improvement": 0.0,
+      "stagnation_duration": 99,
+      "basin_residency_ratio": 0.99
+    }
+  },
+  {
+    "seed": 100,
+    "final_score": 49400.0,
+    "progress_at_100": {
+      "improvement_rate_100": 0.0,
+      "improvement_rate_500": 0.0,
+      "average_improvement_size_100": 0.0,
+      "average_improvement_size_all_time": 0.0,
+      "largest_improvement": 0.0,
+      "stagnation_duration": 99,
+      "basin_residency_ratio": 0.99
+    }
+  }
+]

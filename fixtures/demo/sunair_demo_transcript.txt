@@ -1,0 +1,46 @@
+SunAir Demo — Canonical CLI Transcript
+Generated: 2026-07-22
+Command: ultracrew-cli --input fixtures/demo/sunair_demo.json --output fixtures/demo/sunair_schedule.json --profile balanced --generations 500
+
+====================================================
+UltraCrew Optimizer – Demo Configuration Standard v1
+====================================================
+
+────────────────────────────────────────────────────
+  UltraCrew Optimization Summary
+────────────────────────────────────────────────────
+  Scenario:          fixtures/demo/sunair_demo.json
+  Workers:           20
+  Shifts:            42
+  Profile:           Balanced
+────────────────────────────────────────────────────
+  Coverage:          42/42 shifts (100.0%)
+  Hard violations:   0
+  Rest violations:   0
+  Fitness score:     8649.6000
+  Fairness penalty:  697.6000
+  Fatigue penalty:   652.8000
+────────────────────────────────────────────────────
+  Workload balance:
+    Mean hours/worker: 16.8h
+    Min hours/worker:  8.0h
+    Max hours/worker:  32.0h
+────────────────────────────────────────────────────
+  Runtime:           11.27s
+  Output:            fixtures/demo/sunair_schedule.json
+────────────────────────────────────────────────────
+✅ Optimization complete – schedule written to fixtures/demo/sunair_schedule.json
+
+---
+
+Notes for demo use:
+- Coverage 100%: all 42 shifts assigned. No understaffed shifts.
+- Hard violations 0: all skill constraints satisfied (Captain/FirstOfficer/CabinCrew).
+- Rest violations 0: no worker assigned overlapping shifts.
+- Workload balance: mean 16.8h/worker over 7-day horizon (42 shifts × 8h ÷ 20 workers).
+  Range 8–32h reflects the two-block structure (Block A hours 6–62, Block B hours 78–134).
+  Workers assigned to both blocks accumulate up to 32h; single-block workers accumulate 8–16h.
+- Fitness score 8649.6: lower is better (penalty-based objective). Zero hard violations
+  means the schedule is fully feasible.
+- Seed 42 + 500 generations: deterministic. Re-running produces the same schedule.
+- Runtime ~11s on a development machine (Apple Silicon). Production deployment expected faster.

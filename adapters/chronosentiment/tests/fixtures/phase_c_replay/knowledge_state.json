@@ -1,0 +1,10 @@
+{
+  "historical_cases": [
+    {
+      "id": "33333333-3333-3333-3333-333333333333",
+      "name": "Historical Analog 1",
+      "description": "Similar market conditions from 2025"
+    }
+  ],
+  "previous_strategies": []
+}

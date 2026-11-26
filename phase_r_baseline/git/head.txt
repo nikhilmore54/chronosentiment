@@ -1,0 +1,4 @@
+9297dbc72850c4ae0eb7a8234c2457e7df7aa128
+Branch: governance-hardening
+Remote: origin/governance-hardening
+Timestamp: 2026-08-11T14:35:21Z

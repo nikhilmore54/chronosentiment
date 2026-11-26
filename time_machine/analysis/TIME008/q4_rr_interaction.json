@@ -1,0 +1,1391 @@
+{
+  "question": "Q4 \u2014 R:R interaction",
+  "rr_tercile_boundaries": {
+    "low_upper": 0.952853,
+    "high_lower": 1.145301,
+    "note": "Computed once over all 612 rows; fixed thereafter"
+  },
+  "pooled_by_tercile": {
+    "low": {
+      "n": 203,
+      "by_evidence_class": {
+        "Mixed": {
+          "n_total": 96,
+          "n_eligible": 96,
+          "primary": {
+            "target_reached_rate": 0.3645833333333333,
+            "risk_reached_rate": 0.11458333333333333,
+            "realized_return_mean": 0.0061150520833333335
+          },
+          "secondary": {
+            "actual_mfe_mean": 0.02543317708333333,
+            "actual_mae_mean": -0.015577791666666667,
+            "exit_reason_counts": {
+              "HORIZON": 50,
+              "TARGET": 34,
+              "RISK": 10,
+              "RISK_GAP_THROUGH": 1,
+              "TARGET_GAP_THROUGH": 1
+            }
+          }
+        },
+        "Favourable": {
+          "n_total": 37,
+          "n_eligible": 37,
+          "primary": {
+            "target_reached_rate": 0.40540540540540543,
+            "risk_reached_rate": 0.13513513513513514,
+            "realized_return_mean": 0.006228297297297298
+          },
+          "secondary": {
+            "actual_mfe_mean": 0.030163702702702706,
+            "actual_mae_mean": -0.016595054054054054,
+            "exit_reason_counts": {
+              "HORIZON": 17,
+              "TARGET_GAP_THROUGH": 2,
+              "TARGET": 13,
+              "RISK": 5
+            }
+          }
+        },
+        "Unfavourable": {
+          "n_total": 70,
+          "n_eligible": 0,
+          "primary": {
+            "target_reached_rate": null,
+            "risk_reached_rate": null,
+            "realized_return_mean": null
+          },
+          "secondary": {
+            "actual_mfe_mean": 0.019909971428571427,
+            "actual_mae_mean": -0.0230323,
+            "exit_reason_counts": {
+              "NO_TRADE": 70
+            }
+          }
+        }
+      }
+    },
+    "medium": {
+      "n": 202,
+      "by_evidence_class": {
+        "Unfavourable": {
+          "n_total": 77,
+          "n_eligible": 0,
+          "primary": {
+            "target_reached_rate": null,
+            "risk_reached_rate": null,
+            "realized_return_mean": null
+          },
+          "secondary": {
+            "actual_mfe_mean": 0.018184207792207793,
+            "actual_mae_mean": -0.02007744155844156,
+            "exit_reason_counts": {
+              "NO_TRADE": 77
+            }
+          }
+        },
+        "Mixed": {
+          "n_total": 93,
+          "n_eligible": 93,
+          "primary": {
+            "target_reached_rate": 0.26881720430107525,
+            "risk_reached_rate": 0.06451612903225806,
+            "realized_return_mean": 0.010289537634408602
+          },
+          "secondary": {
+            "actual_mfe_mean": 0.025300129032258062,
+            "actual_mae_mean": -0.013616709677419354,
+            "exit_reason_counts": {
+              "HORIZON": 62,
+              "TARGET": 23,
+              "TARGET_GAP_THROUGH": 2,
+              "RISK": 6
+            }
+          }
+        },
+        "Favourable": {
+          "n_total": 32,
+          "n_eligible": 32,
+          "primary": {
+            "target_reached_rate": 0.4375,
+            "risk_reached_rate": 0.1875,
+            "realized_return_mean": 0.01144315625
+          },
+          "secondary": {
+            "actual_mfe_mean": 0.033021906250000004,
+            "actual_mae_mean": -0.01430903125,
+            "exit_reason_counts": {
+              "HORIZON": 12,
+              "TARGET": 13,
+              "TARGET_GAP_THROUGH": 1,
+              "RISK": 6
+            }
+          }
+        }
+      }
+    },
+    "high": {
+      "n": 201,
+      "by_evidence_class": {
+        "Unfavourable": {
+          "n_total": 114,
+          "n_eligible": 0,
+          "primary": {
+            "target_reached_rate": null,
+            "risk_reached_rate": null,
+            "realized_return_mean": null
+          },
+          "secondary": {
+            "actual_mfe_mean": 0.022179122807017546,
+            "actual_mae_mean": -0.022829263157894738,
+            "exit_reason_counts": {
+              "NO_TRADE": 114
+            }
+          }
+        },
+        "Mixed": {
+          "n_total": 72,
+          "n_eligible": 72,
+          "primary": {
+            "target_reached_rate": 0.19444444444444445,
+            "risk_reached_rate": 0.20833333333333334,
+            "realized_return_mean": 0.001922541666666667
+          },
+          "secondary": {
+            "actual_mfe_mean": 0.021572888888888888,
+            "actual_mae_mean": -0.019108791666666666,
+            "exit_reason_counts": {
+              "TARGET": 13,
+              "HORIZON": 43,
+              "RISK": 15,
+              "TARGET_GAP_THROUGH": 1
+            }
+          }
+        },
+        "Favourable": {
+          "n_total": 15,
+          "n_eligible": 15,
+          "primary": {
+            "target_reached_rate": 0.26666666666666666,
+            "risk_reached_rate": 0.2,
+            "realized_return_mean": 0.004485799999999999
+          },
+          "secondary": {
+            "actual_mfe_mean": 0.02593353333333333,
+            "actual_mae_mean": -0.014426266666666666,
+            "exit_reason_counts": {
+              "HORIZON": 8,
+              "TARGET_GAP_THROUGH": 1,
+              "RISK": 3,
+              "TARGET": 3
+            }
+          }
+        }
+      }
+    }
+  },
+  "per_cohort_by_tercile": {
+    "T1": {
+      "low": {
+        "n": 21,
+        "by_evidence_class": {
+          "Mixed": {
+            "n_total": 12,
+            "n_eligible": 12,
+            "primary": {
+              "target_reached_rate": 0.16666666666666666,
+              "risk_reached_rate": 0.08333333333333333,
+              "realized_return_mean": 0.0022426666666666667
+            },
+            "secondary": {
+              "actual_mfe_mean": 0.015607499999999998,
+              "actual_mae_mean": -0.012925666666666667,
+              "exit_reason_counts": {
+                "HORIZON": 9,
+                "TARGET": 2,
+                "RISK": 1
+              }
+            }
+          },
+          "Favourable": {
+            "n_total": 4,
+            "n_eligible": 4,
+            "primary": {
+              "target_reached_rate": 0.25,
+              "risk_reached_rate": 0.0,
+              "realized_return_mean": 0.003420750000000001
+            },
+            "secondary": {
+              "actual_mfe_mean": 0.0159995,
+              "actual_mae_mean": -0.015413,
+              "exit_reason_counts": {
+                "HORIZON": 3,
+                "TARGET_GAP_THROUGH": 1
+              }
+            }
+          },
+          "Unfavourable": {
+            "n_total": 5,
+            "n_eligible": 0,
+            "primary": {
+              "target_reached_rate": null,
+              "risk_reached_rate": null,
+              "realized_return_mean": null
+            },
+            "secondary": {
+              "actual_mfe_mean": 0.015607199999999998,
+              "actual_mae_mean": -0.014901199999999998,
+              "exit_reason_counts": {
+                "NO_TRADE": 5
+              }
+            }
+          }
+        }
+      },
+      "medium": {
+        "n": 37,
+        "by_evidence_class": {
+          "Unfavourable": {
+            "n_total": 13,
+            "n_eligible": 0,
+            "primary": {
+              "target_reached_rate": null,
+              "risk_reached_rate": null,
+              "realized_return_mean": null
+            },
+            "secondary": {
+              "actual_mfe_mean": 0.013477615384615385,
+              "actual_mae_mean": -0.011117307692307694,
+              "exit_reason_counts": {
+                "NO_TRADE": 13
+              }
+            }
+          },
+          "Mixed": {
+            "n_total": 20,
+            "n_eligible": 20,
+            "primary": {
+              "target_reached_rate": 0.1,
+              "risk_reached_rate": 0.0,
+              "realized_return_mean": 0.00459585
+            },
+            "secondary": {
+              "actual_mfe_mean": 0.01445485,
+              "actual_mae_mean": -0.0119823,
+              "exit_reason_counts": {
+                "HORIZON": 18,
+                "TARGET": 2
+              }
+            }
+          },
+          "Favourable": {
+            "n_total": 4,
+            "n_eligible": 4,
+            "primary": {
+              "target_reached_rate": 0.0,
+              "risk_reached_rate": 0.0,
+              "realized_return_mean": 0.0035784999999999996
+            },
+            "secondary": {
+              "actual_mfe_mean": 0.02173375,
+              "actual_mae_mean": -0.01007675,
+              "exit_reason_counts": {
+                "HORIZON": 4
+              }
+            }
+          }
+        }
+      },
+      "high": {
+        "n": 43,
+        "by_evidence_class": {
+          "Unfavourable": {
+            "n_total": 28,
+            "n_eligible": 0,
+            "primary": {
+              "target_reached_rate": null,
+              "risk_reached_rate": null,
+              "realized_return_mean": null
+            },
+            "secondary": {
+              "actual_mfe_mean": 0.014255535714285715,
+              "actual_mae_mean": -0.012175214285714286,
+              "exit_reason_counts": {
+                "NO_TRADE": 28
+              }
+            }
+          },
+          "Mixed": {
+            "n_total": 13,
+            "n_eligible": 13,
+            "primary": {
+              "target_reached_rate": 0.23076923076923078,
+              "risk_reached_rate": 0.0,
+              "realized_return_mean": 0.0072074615384615385
+            },
+            "secondary": {
+              "actual_mfe_mean": 0.018848076923076922,
+              "actual_mae_mean": -0.012127230769230769,
+              "exit_reason_counts": {
+                "TARGET": 3,
+                "HORIZON": 10
+              }
+            }
+          },
+          "Favourable": {
+            "n_total": 2,
+            "n_eligible": 2,
+            "primary": {
+              "target_reached_rate": 0.0,
+              "risk_reached_rate": 0.0,
+              "realized_return_mean": 0.004793
+            },
+            "secondary": {
+              "actual_mfe_mean": 0.0163155,
+              "actual_mae_mean": -0.008910000000000001,
+              "exit_reason_counts": {
+                "HORIZON": 2
+              }
+            }
+          }
+        }
+      }
+    },
+    "T2": {
+      "low": {
+        "n": 37,
+        "by_evidence_class": {
+          "Mixed": {
+            "n_total": 18,
+            "n_eligible": 18,
+            "primary": {
+              "target_reached_rate": 0.16666666666666666,
+              "risk_reached_rate": 0.05555555555555555,
+              "realized_return_mean": 0.0035218888888888886
+            },
+            "secondary": {
+              "actual_mfe_mean": 0.0196535,
+              "actual_mae_mean": -0.016296722222222223,
+              "exit_reason_counts": {
+                "HORIZON": 14,
+                "TARGET": 3,
+                "RISK": 1
+              }
+            }
+          },
+          "Unfavourable": {
+            "n_total": 13,
+            "n_eligible": 0,
+            "primary": {
+              "target_reached_rate": null,
+              "risk_reached_rate": null,
+              "realized_return_mean": null
+            },
+            "secondary": {
+              "actual_mfe_mean": 0.021875615384615386,
+              "actual_mae_mean": -0.020147384615384616,
+              "exit_reason_counts": {
+                "NO_TRADE": 13
+              }
+            }
+          },
+          "Favourable": {
+            "n_total": 6,
+            "n_eligible": 6,
+            "primary": {
+              "target_reached_rate": 0.3333333333333333,
+              "risk_reached_rate": 0.0,
+              "realized_return_mean": 0.012057833333333332
+            },
+            "secondary": {
+              "actual_mfe_mean": 0.035495,
+              "actual_mae_mean": -0.012476666666666665,
+              "exit_reason_counts": {
+                "HORIZON": 4,
+                "TARGET": 2
+              }
+            }
+          }
+        }
+      },
+      "medium": {
+        "n": 29,
+        "by_evidence_class": {
+          "Unfavourable": {
+            "n_total": 11,
+            "n_eligible": 0,
+            "primary": {
+              "target_reached_rate": null,
+              "risk_reached_rate": null,
+              "realized_return_mean": null
+            },
+            "secondary": {
+              "actual_mfe_mean": 0.01346,
+              "actual_mae_mean": -0.023040272727272725,
+              "exit_reason_counts": {
+                "NO_TRADE": 11
+              }
+            }
+          },
+          "Favourable": {
+            "n_total": 5,
+            "n_eligible": 5,
+            "primary": {
+              "target_reached_rate": 0.4,
+              "risk_reached_rate": 0.0,
+              "realized_return_mean": 0.0189322
+            },
+            "secondary": {
+              "actual_mfe_mean": 0.0348638,
+              "actual_mae_mean": -0.0101434,
+              "exit_reason_counts": {
+                "TARGET": 1,
+                "HORIZON": 3,
+                "TARGET_GAP_THROUGH": 1
+              }
+            }
+          },
+          "Mixed": {
+            "n_total": 13,
+            "n_eligible": 13,
+            "primary": {
+              "target_reached_rate": 0.07692307692307693,
+              "risk_reached_rate": 0.07692307692307693,
+              "realized_return_mean": 0.0009859230769230772
+            },
+            "secondary": {
+              "actual_mfe_mean": 0.018159538461538463,
+              "actual_mae_mean": -0.014444076923076922,
+              "exit_reason_counts": {
+                "HORIZON": 11,
+                "TARGET_GAP_THROUGH": 1,
+                "RISK": 1
+              }
+            }
+          }
+        }
+      },
+      "high": {
+        "n": 35,
+        "by_evidence_class": {
+          "Unfavourable": {
+            "n_total": 22,
+            "n_eligible": 0,
+            "primary": {
+              "target_reached_rate": null,
+              "risk_reached_rate": null,
+              "realized_return_mean": null
+            },
+            "secondary": {
+              "actual_mfe_mean": 0.031116727272727275,
+              "actual_mae_mean": -0.02630890909090909,
+              "exit_reason_counts": {
+                "NO_TRADE": 22
+              }
+            }
+          },
+          "Mixed": {
+            "n_total": 12,
+            "n_eligible": 12,
+            "primary": {
+              "target_reached_rate": 0.08333333333333333,
+              "risk_reached_rate": 0.25,
+              "realized_return_mean": -0.0029191666666666667
+            },
+            "secondary": {
+              "actual_mfe_mean": 0.018110416666666667,
+              "actual_mae_mean": -0.025996916666666665,
+              "exit_reason_counts": {
+                "HORIZON": 8,
+                "TARGET": 1,
+                "RISK": 3
+              }
+            }
+          },
+          "Favourable": {
+            "n_total": 1,
+            "n_eligible": 1,
+            "primary": {
+              "target_reached_rate": 0.0,
+              "risk_reached_rate": 0.0,
+              "realized_return_mean": 0.015621
+            },
+            "secondary": {
+              "actual_mfe_mean": 0.018745,
+              "actual_mae_mean": -0.017135,
+              "exit_reason_counts": {
+                "HORIZON": 1
+              }
+            }
+          }
+        }
+      }
+    },
+    "T3": {
+      "low": {
+        "n": 39,
+        "by_evidence_class": {
+          "Mixed": {
+            "n_total": 19,
+            "n_eligible": 19,
+            "primary": {
+              "target_reached_rate": 0.21052631578947367,
+              "risk_reached_rate": 0.15789473684210525,
+              "realized_return_mean": -0.0013519999999999997
+            },
+            "secondary": {
+              "actual_mfe_mean": 0.02496836842105263,
+              "actual_mae_mean": -0.020762736842105264,
+              "exit_reason_counts": {
+                "HORIZON": 12,
+                "TARGET": 4,
+                "RISK": 2,
+                "RISK_GAP_THROUGH": 1
+              }
+            }
+          },
+          "Unfavourable": {
+            "n_total": 14,
+            "n_eligible": 0,
+            "primary": {
+              "target_reached_rate": null,
+              "risk_reached_rate": null,
+              "realized_return_mean": null
+            },
+            "secondary": {
+              "actual_mfe_mean": 0.0229205,
+              "actual_mae_mean": -0.019160214285714287,
+              "exit_reason_counts": {
+                "NO_TRADE": 14
+              }
+            }
+          },
+          "Favourable": {
+            "n_total": 6,
+            "n_eligible": 6,
+            "primary": {
+              "target_reached_rate": 0.3333333333333333,
+              "risk_reached_rate": 0.3333333333333333,
+              "realized_return_mean": -0.0023371666666666658
+            },
+            "secondary": {
+              "actual_mfe_mean": 0.021717,
+              "actual_mae_mean": -0.023530166666666668,
+              "exit_reason_counts": {
+                "TARGET": 2,
+                "HORIZON": 2,
+                "RISK": 2
+              }
+            }
+          }
+        }
+      },
+      "medium": {
+        "n": 32,
+        "by_evidence_class": {
+          "Mixed": {
+            "n_total": 11,
+            "n_eligible": 11,
+            "primary": {
+              "target_reached_rate": 0.18181818181818182,
+              "risk_reached_rate": 0.18181818181818182,
+              "realized_return_mean": -0.0008372727272727272
+            },
+            "secondary": {
+              "actual_mfe_mean": 0.01752309090909091,
+              "actual_mae_mean": -0.01979418181818182,
+              "exit_reason_counts": {
+                "HORIZON": 7,
+                "TARGET": 2,
+                "RISK": 2
+              }
+            }
+          },
+          "Unfavourable": {
+            "n_total": 15,
+            "n_eligible": 0,
+            "primary": {
+              "target_reached_rate": null,
+              "risk_reached_rate": null,
+              "realized_return_mean": null
+            },
+            "secondary": {
+              "actual_mfe_mean": 0.0147284,
+              "actual_mae_mean": -0.019495866666666663,
+              "exit_reason_counts": {
+                "NO_TRADE": 15
+              }
+            }
+          },
+          "Favourable": {
+            "n_total": 6,
+            "n_eligible": 6,
+            "primary": {
+              "target_reached_rate": 0.3333333333333333,
+              "risk_reached_rate": 0.3333333333333333,
+              "realized_return_mean": -0.0021464999999999987
+            },
+            "secondary": {
+              "actual_mfe_mean": 0.025681333333333334,
+              "actual_mae_mean": -0.021459166666666668,
+              "exit_reason_counts": {
+                "TARGET": 2,
+                "HORIZON": 2,
+                "RISK": 2
+              }
+            }
+          }
+        }
+      },
+      "high": {
+        "n": 30,
+        "by_evidence_class": {
+          "Mixed": {
+            "n_total": 12,
+            "n_eligible": 12,
+            "primary": {
+              "target_reached_rate": 0.3333333333333333,
+              "risk_reached_rate": 0.16666666666666666,
+              "realized_return_mean": 0.013292416666666668
+            },
+            "secondary": {
+              "actual_mfe_mean": 0.03016458333333333,
+              "actual_mae_mean": -0.01494425,
+              "exit_reason_counts": {
+                "HORIZON": 6,
+                "TARGET": 4,
+                "RISK": 2
+              }
+            }
+          },
+          "Unfavourable": {
+            "n_total": 17,
+            "n_eligible": 0,
+            "primary": {
+              "target_reached_rate": null,
+              "risk_reached_rate": null,
+              "realized_return_mean": null
+            },
+            "secondary": {
+              "actual_mfe_mean": 0.020252117647058827,
+              "actual_mae_mean": -0.02493023529411765,
+              "exit_reason_counts": {
+                "NO_TRADE": 17
+              }
+            }
+          },
+          "Favourable": {
+            "n_total": 1,
+            "n_eligible": 1,
+            "primary": {
+              "target_reached_rate": 1.0,
+              "risk_reached_rate": 0.0,
+              "realized_return_mean": 0.043542
+            },
+            "secondary": {
+              "actual_mfe_mean": 0.046477,
+              "actual_mae_mean": 0.0,
+              "exit_reason_counts": {
+                "TARGET_GAP_THROUGH": 1
+              }
+            }
+          }
+        }
+      }
+    },
+    "T4": {
+      "low": {
+        "n": 34,
+        "by_evidence_class": {
+          "Mixed": {
+            "n_total": 14,
+            "n_eligible": 14,
+            "primary": {
+              "target_reached_rate": 0.21428571428571427,
+              "risk_reached_rate": 0.21428571428571427,
+              "realized_return_mean": -0.007521857142857143
+            },
+            "secondary": {
+              "actual_mfe_mean": 0.016537285714285716,
+              "actual_mae_mean": -0.023307714285714286,
+              "exit_reason_counts": {
+                "RISK": 3,
+                "HORIZON": 8,
+                "TARGET": 3
+              }
+            }
+          },
+          "Unfavourable": {
+            "n_total": 14,
+            "n_eligible": 0,
+            "primary": {
+              "target_reached_rate": null,
+              "risk_reached_rate": null,
+              "realized_return_mean": null
+            },
+            "secondary": {
+              "actual_mfe_mean": 0.013102285714285714,
+              "actual_mae_mean": -0.034994285714285714,
+              "exit_reason_counts": {
+                "NO_TRADE": 14
+              }
+            }
+          },
+          "Favourable": {
+            "n_total": 6,
+            "n_eligible": 6,
+            "primary": {
+              "target_reached_rate": 0.16666666666666666,
+              "risk_reached_rate": 0.0,
+              "realized_return_mean": 0.0056303333333333335
+            },
+            "secondary": {
+              "actual_mfe_mean": 0.022921999999999998,
+              "actual_mae_mean": -0.012766166666666667,
+              "exit_reason_counts": {
+                "HORIZON": 5,
+                "TARGET": 1
+              }
+            }
+          }
+        }
+      },
+      "medium": {
+        "n": 34,
+        "by_evidence_class": {
+          "Unfavourable": {
+            "n_total": 16,
+            "n_eligible": 0,
+            "primary": {
+              "target_reached_rate": null,
+              "risk_reached_rate": null,
+              "realized_return_mean": null
+            },
+            "secondary": {
+              "actual_mfe_mean": 0.011248875,
+              "actual_mae_mean": -0.027205625,
+              "exit_reason_counts": {
+                "NO_TRADE": 16
+              }
+            }
+          },
+          "Mixed": {
+            "n_total": 15,
+            "n_eligible": 15,
+            "primary": {
+              "target_reached_rate": 0.0,
+              "risk_reached_rate": 0.06666666666666667,
+              "realized_return_mean": 0.0034934000000000002
+            },
+            "secondary": {
+              "actual_mfe_mean": 0.016143866666666666,
+              "actual_mae_mean": -0.01762333333333333,
+              "exit_reason_counts": {
+                "HORIZON": 14,
+                "RISK": 1
+              }
+            }
+          },
+          "Favourable": {
+            "n_total": 3,
+            "n_eligible": 3,
+            "primary": {
+              "target_reached_rate": 0.3333333333333333,
+              "risk_reached_rate": 0.3333333333333333,
+              "realized_return_mean": 0.0021013333333333335
+            },
+            "secondary": {
+              "actual_mfe_mean": 0.027345333333333333,
+              "actual_mae_mean": -0.01881366666666667,
+              "exit_reason_counts": {
+                "TARGET": 1,
+                "RISK": 1,
+                "HORIZON": 1
+              }
+            }
+          }
+        }
+      },
+      "high": {
+        "n": 33,
+        "by_evidence_class": {
+          "Unfavourable": {
+            "n_total": 17,
+            "n_eligible": 0,
+            "primary": {
+              "target_reached_rate": null,
+              "risk_reached_rate": null,
+              "realized_return_mean": null
+            },
+            "secondary": {
+              "actual_mfe_mean": 0.00997270588235294,
+              "actual_mae_mean": -0.03571717647058823,
+              "exit_reason_counts": {
+                "NO_TRADE": 17
+              }
+            }
+          },
+          "Mixed": {
+            "n_total": 12,
+            "n_eligible": 12,
+            "primary": {
+              "target_reached_rate": 0.0,
+              "risk_reached_rate": 0.25,
+              "realized_return_mean": -0.014624749999999999
+            },
+            "secondary": {
+              "actual_mfe_mean": 0.008469166666666667,
+              "actual_mae_mean": -0.024805416666666667,
+              "exit_reason_counts": {
+                "HORIZON": 9,
+                "RISK": 3
+              }
+            }
+          },
+          "Favourable": {
+            "n_total": 4,
+            "n_eligible": 4,
+            "primary": {
+              "target_reached_rate": 0.0,
+              "risk_reached_rate": 0.25,
+              "realized_return_mean": -0.013018749999999999
+            },
+            "secondary": {
+              "actual_mfe_mean": 0.015342,
+              "actual_mae_mean": -0.02123475,
+              "exit_reason_counts": {
+                "HORIZON": 3,
+                "RISK": 1
+              }
+            }
+          }
+        }
+      }
+    },
+    "T5": {
+      "low": {
+        "n": 35,
+        "by_evidence_class": {
+          "Unfavourable": {
+            "n_total": 13,
+            "n_eligible": 0,
+            "primary": {
+              "target_reached_rate": null,
+              "risk_reached_rate": null,
+              "realized_return_mean": null
+            },
+            "secondary": {
+              "actual_mfe_mean": 0.016198384615384614,
+              "actual_mae_mean": -0.022709846153846153,
+              "exit_reason_counts": {
+                "NO_TRADE": 13
+              }
+            }
+          },
+          "Favourable": {
+            "n_total": 7,
+            "n_eligible": 7,
+            "primary": {
+              "target_reached_rate": 0.2857142857142857,
+              "risk_reached_rate": 0.2857142857142857,
+              "realized_return_mean": -0.009188714285714284
+            },
+            "secondary": {
+              "actual_mfe_mean": 0.02559842857142857,
+              "actual_mae_mean": -0.025512714285714284,
+              "exit_reason_counts": {
+                "TARGET": 2,
+                "HORIZON": 3,
+                "RISK": 2
+              }
+            }
+          },
+          "Mixed": {
+            "n_total": 15,
+            "n_eligible": 15,
+            "primary": {
+              "target_reached_rate": 0.6,
+              "risk_reached_rate": 0.06666666666666667,
+              "realized_return_mean": 0.014633733333333334
+            },
+            "secondary": {
+              "actual_mfe_mean": 0.03568713333333333,
+              "actual_mae_mean": -0.011105266666666667,
+              "exit_reason_counts": {
+                "TARGET": 9,
+                "HORIZON": 5,
+                "RISK": 1
+              }
+            }
+          }
+        }
+      },
+      "medium": {
+        "n": 33,
+        "by_evidence_class": {
+          "Favourable": {
+            "n_total": 10,
+            "n_eligible": 10,
+            "primary": {
+              "target_reached_rate": 0.5,
+              "risk_reached_rate": 0.3,
+              "realized_return_mean": 0.0095126
+            },
+            "secondary": {
+              "actual_mfe_mean": 0.033534999999999995,
+              "actual_mae_mean": -0.0181112,
+              "exit_reason_counts": {
+                "TARGET": 5,
+                "RISK": 3,
+                "HORIZON": 2
+              }
+            }
+          },
+          "Unfavourable": {
+            "n_total": 9,
+            "n_eligible": 0,
+            "primary": {
+              "target_reached_rate": null,
+              "risk_reached_rate": null,
+              "realized_return_mean": null
+            },
+            "secondary": {
+              "actual_mfe_mean": 0.017032444444444444,
+              "actual_mae_mean": -0.022778666666666666,
+              "exit_reason_counts": {
+                "NO_TRADE": 9
+              }
+            }
+          },
+          "Mixed": {
+            "n_total": 14,
+            "n_eligible": 14,
+            "primary": {
+              "target_reached_rate": 0.2857142857142857,
+              "risk_reached_rate": 0.07142857142857142,
+              "realized_return_mean": 0.016302214285714284
+            },
+            "secondary": {
+              "actual_mfe_mean": 0.029802,
+              "actual_mae_mean": -0.014829071428571428,
+              "exit_reason_counts": {
+                "HORIZON": 9,
+                "TARGET": 4,
+                "RISK": 1
+              }
+            }
+          }
+        }
+      },
+      "high": {
+        "n": 33,
+        "by_evidence_class": {
+          "Mixed": {
+            "n_total": 13,
+            "n_eligible": 13,
+            "primary": {
+              "target_reached_rate": 0.23076923076923078,
+              "risk_reached_rate": 0.3076923076923077,
+              "realized_return_mean": 0.0020316153846153847
+            },
+            "secondary": {
+              "actual_mfe_mean": 0.021138076923076923,
+              "actual_mae_mean": -0.019259076923076927,
+              "exit_reason_counts": {
+                "TARGET_GAP_THROUGH": 1,
+                "HORIZON": 6,
+                "RISK": 4,
+                "TARGET": 2
+              }
+            }
+          },
+          "Unfavourable": {
+            "n_total": 15,
+            "n_eligible": 0,
+            "primary": {
+              "target_reached_rate": null,
+              "risk_reached_rate": null,
+              "realized_return_mean": null
+            },
+            "secondary": {
+              "actual_mfe_mean": 0.03017066666666667,
+              "actual_mae_mean": -0.018583000000000002,
+              "exit_reason_counts": {
+                "NO_TRADE": 15
+              }
+            }
+          },
+          "Favourable": {
+            "n_total": 5,
+            "n_eligible": 5,
+            "primary": {
+              "target_reached_rate": 0.2,
+              "risk_reached_rate": 0.4,
+              "realized_return_mean": -0.004414800000000002
+            },
+            "secondary": {
+              "actual_mfe_mean": 0.029214,
+              "actual_mae_mean": -0.0193,
+              "exit_reason_counts": {
+                "RISK": 2,
+                "TARGET": 1,
+                "HORIZON": 2
+              }
+            }
+          }
+        }
+      }
+    },
+    "T6": {
+      "low": {
+        "n": 37,
+        "by_evidence_class": {
+          "Mixed": {
+            "n_total": 18,
+            "n_eligible": 18,
+            "primary": {
+              "target_reached_rate": 0.7777777777777778,
+              "risk_reached_rate": 0.1111111111111111,
+              "realized_return_mean": 0.022679277777777777
+            },
+            "secondary": {
+              "actual_mfe_mean": 0.036628,
+              "actual_mae_mean": -0.00886888888888889,
+              "exit_reason_counts": {
+                "TARGET": 13,
+                "TARGET_GAP_THROUGH": 1,
+                "RISK": 2,
+                "HORIZON": 2
+              }
+            }
+          },
+          "Favourable": {
+            "n_total": 8,
+            "n_eligible": 8,
+            "primary": {
+              "target_reached_rate": 0.875,
+              "risk_reached_rate": 0.125,
+              "realized_return_mean": 0.023622375
+            },
+            "secondary": {
+              "actual_mfe_mean": 0.04900825,
+              "actual_mae_mean": -0.01014225,
+              "exit_reason_counts": {
+                "RISK": 1,
+                "TARGET": 6,
+                "TARGET_GAP_THROUGH": 1
+              }
+            }
+          },
+          "Unfavourable": {
+            "n_total": 11,
+            "n_eligible": 0,
+            "primary": {
+              "target_reached_rate": null,
+              "risk_reached_rate": null,
+              "realized_return_mean": null
+            },
+            "secondary": {
+              "actual_mfe_mean": 0.02876190909090909,
+              "actual_mae_mean": -0.020222545454545455,
+              "exit_reason_counts": {
+                "NO_TRADE": 11
+              }
+            }
+          }
+        }
+      },
+      "medium": {
+        "n": 37,
+        "by_evidence_class": {
+          "Unfavourable": {
+            "n_total": 13,
+            "n_eligible": 0,
+            "primary": {
+              "target_reached_rate": null,
+              "risk_reached_rate": null,
+              "realized_return_mean": null
+            },
+            "secondary": {
+              "actual_mfe_mean": 0.04020884615384616,
+              "actual_mae_mean": -0.016558384615384617,
+              "exit_reason_counts": {
+                "NO_TRADE": 13
+              }
+            }
+          },
+          "Mixed": {
+            "n_total": 20,
+            "n_eligible": 20,
+            "primary": {
+              "target_reached_rate": 0.8,
+              "risk_reached_rate": 0.05,
+              "realized_return_mean": 0.029038550000000003
+            },
+            "secondary": {
+              "actual_mfe_mean": 0.048780050000000005,
+              "actual_mae_mean": -0.007462099999999999,
+              "exit_reason_counts": {
+                "TARGET": 15,
+                "HORIZON": 3,
+                "RISK": 1,
+                "TARGET_GAP_THROUGH": 1
+              }
+            }
+          },
+          "Favourable": {
+            "n_total": 4,
+            "n_eligible": 4,
+            "primary": {
+              "target_reached_rate": 1.0,
+              "risk_reached_rate": 0.0,
+              "realized_return_mean": 0.04216375
+            },
+            "secondary": {
+              "actual_mfe_mean": 0.05599325,
+              "actual_mae_mean": -0.00013925,
+              "exit_reason_counts": {
+                "TARGET": 4
+              }
+            }
+          }
+        }
+      },
+      "high": {
+        "n": 27,
+        "by_evidence_class": {
+          "Unfavourable": {
+            "n_total": 15,
+            "n_eligible": 0,
+            "primary": {
+              "target_reached_rate": null,
+              "risk_reached_rate": null,
+              "realized_return_mean": null
+            },
+            "secondary": {
+              "actual_mfe_mean": 0.03188766666666667,
+              "actual_mae_mean": -0.0248722,
+              "exit_reason_counts": {
+                "NO_TRADE": 15
+              }
+            }
+          },
+          "Mixed": {
+            "n_total": 10,
+            "n_eligible": 10,
+            "primary": {
+              "target_reached_rate": 0.3,
+              "risk_reached_rate": 0.3,
+              "realized_return_mean": 0.006933300000000001
+            },
+            "secondary": {
+              "actual_mfe_mean": 0.0352498,
+              "actual_mae_mean": -0.0178852,
+              "exit_reason_counts": {
+                "HORIZON": 4,
+                "TARGET": 3,
+                "RISK": 3
+              }
+            }
+          },
+          "Favourable": {
+            "n_total": 2,
+            "n_eligible": 2,
+            "primary": {
+              "target_reached_rate": 1.0,
+              "risk_reached_rate": 0.0,
+              "realized_return_mean": 0.0363435
+            },
+            "secondary": {
+              "actual_mfe_mean": 0.041856000000000004,
+              "actual_mae_mean": 0.0,
+              "exit_reason_counts": {
+                "TARGET": 2
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "consistency": {
+    "low": {
+      "target_reached_Fav_gt_Mix_gt_Unf": {
+        "tercile": "low",
+        "ordering": [
+          "Favourable",
+          "Mixed",
+          "Unfavourable"
+        ],
+        "metric": "target_reached_rate",
+        "cohorts_holding": 0,
+        "cohort_detail": {
+          "T1": false,
+          "T2": false,
+          "T3": false,
+          "T4": false,
+          "T5": false,
+          "T6": false
+        },
+        "verdict": "inconsistent"
+      },
+      "risk_reached_Unf_gt_Mix_gt_Fav": {
+        "tercile": "low",
+        "ordering": [
+          "Unfavourable",
+          "Mixed",
+          "Favourable"
+        ],
+        "metric": "risk_reached_rate",
+        "cohorts_holding": 0,
+        "cohort_detail": {
+          "T1": false,
+          "T2": false,
+          "T3": false,
+          "T4": false,
+          "T5": false,
+          "T6": false
+        },
+        "verdict": "inconsistent"
+      },
+      "realized_return_Fav_gt_Mix_gt_Unf": {
+        "tercile": "low",
+        "ordering": [
+          "Favourable",
+          "Mixed",
+          "Unfavourable"
+        ],
+        "metric": "realized_return_mean",
+        "cohorts_holding": 0,
+        "cohort_detail": {
+          "T1": false,
+          "T2": false,
+          "T3": false,
+          "T4": false,
+          "T5": false,
+          "T6": false
+        },
+        "verdict": "inconsistent"
+      }
+    },
+    "medium": {
+      "target_reached_Fav_gt_Mix_gt_Unf": {
+        "tercile": "medium",
+        "ordering": [
+          "Favourable",
+          "Mixed",
+          "Unfavourable"
+        ],
+        "metric": "target_reached_rate",
+        "cohorts_holding": 0,
+        "cohort_detail": {
+          "T1": false,
+          "T2": false,
+          "T3": false,
+          "T4": false,
+          "T5": false,
+          "T6": false
+        },
+        "verdict": "inconsistent"
+      },
+      "risk_reached_Unf_gt_Mix_gt_Fav": {
+        "tercile": "medium",
+        "ordering": [
+          "Unfavourable",
+          "Mixed",
+          "Favourable"
+        ],
+        "metric": "risk_reached_rate",
+        "cohorts_holding": 0,
+        "cohort_detail": {
+          "T1": false,
+          "T2": false,
+          "T3": false,
+          "T4": false,
+          "T5": false,
+          "T6": false
+        },
+        "verdict": "inconsistent"
+      },
+      "realized_return_Fav_gt_Mix_gt_Unf": {
+        "tercile": "medium",
+        "ordering": [
+          "Favourable",
+          "Mixed",
+          "Unfavourable"
+        ],
+        "metric": "realized_return_mean",
+        "cohorts_holding": 0,
+        "cohort_detail": {
+          "T1": false,
+          "T2": false,
+          "T3": false,
+          "T4": false,
+          "T5": false,
+          "T6": false
+        },
+        "verdict": "inconsistent"
+      }
+    },
+    "high": {
+      "target_reached_Fav_gt_Mix_gt_Unf": {
+        "tercile": "high",
+        "ordering": [
+          "Favourable",
+          "Mixed",
+          "Unfavourable"
+        ],
+        "metric": "target_reached_rate",
+        "cohorts_holding": 0,
+        "cohort_detail": {
+          "T1": false,
+          "T2": false,
+          "T3": false,
+          "T4": false,
+          "T5": false,
+          "T6": false
+        },
+        "verdict": "inconsistent"
+      },
+      "risk_reached_Unf_gt_Mix_gt_Fav": {
+        "tercile": "high",
+        "ordering": [
+          "Unfavourable",
+          "Mixed",
+          "Favourable"
+        ],
+        "metric": "risk_reached_rate",
+        "cohorts_holding": 0,
+        "cohort_detail": {
+          "T1": false,
+          "T2": false,
+          "T3": false,
+          "T4": false,
+          "T5": false,
+          "T6": false
+        },
+        "verdict": "inconsistent"
+      },
+      "realized_return_Fav_gt_Mix_gt_Unf": {
+        "tercile": "high",
+        "ordering": [
+          "Favourable",
+          "Mixed",
+          "Unfavourable"
+        ],
+        "metric": "realized_return_mean",
+        "cohorts_holding": 0,
+        "cohort_detail": {
+          "T1": false,
+          "T2": false,
+          "T3": false,
+          "T4": false,
+          "T5": false,
+          "T6": false
+        },
+        "verdict": "inconsistent"
+      }
+    }
+  }
+}

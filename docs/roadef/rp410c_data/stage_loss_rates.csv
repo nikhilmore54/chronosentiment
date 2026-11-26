@@ -1,0 +1,6 @@
+stage,peak_in,peak_out,peak_loss_pct,shoulder_in,shoulder_out,shoulder_loss_pct
+Generated → Valid,253,253,0.00%,1237,1237,0.00%
+Valid → Won Tournament,253,5,98.02%,1237,91,92.64%
+Won Tournament → Entered Pop.,5,0,100.00%,91,0,100.00%
+Entered Pop. → Replaced Elite,0,0,N/A,0,0,N/A
+Entered Pop. → Global Best,0,5,N/A,0,91,N/A

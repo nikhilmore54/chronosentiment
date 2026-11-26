@@ -1,6 +1,6 @@
-use chronosentiment_core::*;
 use crate::ApiError;
-use serde::{Serialize, Deserialize};
+use chronosentiment_core::*;
+use serde::{Deserialize, Serialize};
 use std::collections::HashSet;
 
 /// Canonical event type enum. Conforms to `event_taxonomy.md`.
@@ -53,10 +53,26 @@ pub struct MinimalEvent {
 pub fn to_minimal_event(event: &SimEvent) -> MinimalEvent {
     let scale = chronosentiment_core::PRICE_SCALE as f64;
     let (event_type, queue_ahead, filled_qty, price) = match event {
-        SimEvent::OrderIntent { price, .. } => (EventType::OrderIntent, None, None, Some(*price as f64 / scale)),
-        SimEvent::OrderEnteredQueue { queue_ahead, .. } => (EventType::OrderEnteredQueue, Some(*queue_ahead), None, None),
-        SimEvent::QueueProgression { queue_ahead, .. } => (EventType::QueueProgression, Some(*queue_ahead), None, None),
-        SimEvent::PartialFill { filled_qty, price, .. } => (EventType::PartialFill, None, Some(*filled_qty), Some(*price as f64 / scale)),
+        SimEvent::OrderIntent { price, .. } => (
+            EventType::OrderIntent,
+            None,
+            None,
+            Some(*price as f64 / scale),
+        ),
+        SimEvent::OrderEnteredQueue { queue_ahead, .. } => {
+            (EventType::OrderEnteredQueue, Some(*queue_ahead), None, None)
+        }
+        SimEvent::QueueProgression { queue_ahead, .. } => {
+            (EventType::QueueProgression, Some(*queue_ahead), None, None)
+        }
+        SimEvent::PartialFill {
+            filled_qty, price, ..
+        } => (
+            EventType::PartialFill,
+            None,
+            Some(*filled_qty),
+            Some(*price as f64 / scale),
+        ),
         SimEvent::OrderFilled { .. } => (EventType::OrderFilled, None, None, None),
         // Decompose non-canonical MarketEvent wrapper into canonical market subtypes
         SimEvent::MarketEvent { subtype, price, .. } => {
@@ -66,7 +82,7 @@ pub fn to_minimal_event(event: &SimEvent) -> MinimalEvent {
                 MarketEventType::Cancel => EventType::MarketCancel,
             };
             (canonical_type, None, None, Some(*price as f64 / scale))
-        },
+        }
     };
 
     MinimalEvent {
@@ -120,7 +136,11 @@ pub struct TradeInspectorResponse {
     pub causal_chain: Option<Vec<MinimalEvent>>,
 }
 
-pub fn build_trade_inspector(events: &Vec<SimEvent>, order_id: &str, include_chain: bool) -> Result<TradeInspectorResponse, ApiError> {
+pub fn build_trade_inspector(
+    events: &Vec<SimEvent>,
+    order_id: &str,
+    include_chain: bool,
+) -> Result<TradeInspectorResponse, ApiError> {
     let mut decision_dto: Option<DecisionLayerDto> = None;
     let mut execution_events_json: Vec<MinimalEvent> = Vec::new();
     let mut outcome: OutcomeLayer = OutcomeLayer {
@@ -147,7 +167,16 @@ pub fn build_trade_inspector(events: &Vec<SimEvent>, order_id: &str, include_cha
             false
         }
     }) {
-        if let SimEvent::OrderIntent { order_id: o_id, side, price, quantity, timestamp, sequence_id, .. } = intent_event {
+        if let SimEvent::OrderIntent {
+            order_id: o_id,
+            side,
+            price,
+            quantity,
+            timestamp,
+            sequence_id,
+            ..
+        } = intent_event
+        {
             let scale = chronosentiment_core::PRICE_SCALE as f64;
             decision_dto = Some(DecisionLayerDto {
                 order_id: o_id.clone(),
@@ -163,7 +192,10 @@ pub fn build_trade_inspector(events: &Vec<SimEvent>, order_id: &str, include_cha
             order_price = *price;
         }
     } else {
-        return Err(ApiError::ValidationError(format!("OrderIntent for {} not found", order_id)));
+        return Err(ApiError::ValidationError(format!(
+            "OrderIntent for {} not found",
+            order_id
+        )));
     }
 
     // Hybrid event collection
@@ -187,7 +219,10 @@ pub fn build_trade_inspector(events: &Vec<SimEvent>, order_id: &str, include_cha
 
     while let Some(current_event_on_stack) = stack_for_causal_traversal.pop() {
         // Add children to be processed (events that have current_event as their parent)
-        for next_event in events.iter().filter(|e| e.parent_sequence_id() == Some(current_event_on_stack.sequence_id())) {
+        for next_event in events
+            .iter()
+            .filter(|e| e.parent_sequence_id() == Some(current_event_on_stack.sequence_id()))
+        {
             if seen_for_causal_traversal.insert(next_event.sequence_id()) {
                 events_to_process.push(next_event.clone());
                 stack_for_causal_traversal.push(next_event.clone());
@@ -210,10 +245,18 @@ pub fn build_trade_inspector(events: &Vec<SimEvent>, order_id: &str, include_cha
     // Pre-calculate final_execution_seq
     for current_event in &events_to_process {
         match current_event {
-            SimEvent::PartialFill { order_id: o_id, sequence_id, .. } if o_id == order_id => {
+            SimEvent::PartialFill {
+                order_id: o_id,
+                sequence_id,
+                ..
+            } if o_id == order_id => {
                 final_execution_seq = Some(*sequence_id);
             }
-            SimEvent::OrderFilled { order_id: o_id, sequence_id, .. } if o_id == order_id => {
+            SimEvent::OrderFilled {
+                order_id: o_id,
+                sequence_id,
+                ..
+            } if o_id == order_id => {
                 final_execution_seq = Some(*sequence_id);
             }
             _ => {}
@@ -231,7 +274,11 @@ pub fn build_trade_inspector(events: &Vec<SimEvent>, order_id: &str, include_cha
             SimEvent::OrderIntent { order_id: o_id, .. } if o_id == order_id => {
                 order_status_internal = OrderStatus::New;
             }
-            SimEvent::OrderEnteredQueue { order_id: o_id, sequence_id, .. } if o_id == order_id => {
+            SimEvent::OrderEnteredQueue {
+                order_id: o_id,
+                sequence_id,
+                ..
+            } if o_id == order_id => {
                 execution_events_json.push(to_minimal_event(&current_event));
                 order_status_internal = OrderStatus::Active;
                 order_entered_queue_seq = Some(*sequence_id);
@@ -239,14 +286,24 @@ pub fn build_trade_inspector(events: &Vec<SimEvent>, order_id: &str, include_cha
             SimEvent::QueueProgression { order_id: o_id, .. } if o_id == order_id => {
                 execution_events_json.push(to_minimal_event(&current_event));
             }
-            SimEvent::PartialFill { order_id: o_id, filled_qty, price, sequence_id, .. } if o_id == order_id => {
+            SimEvent::PartialFill {
+                order_id: o_id,
+                filled_qty,
+                price,
+                sequence_id,
+                ..
+            } if o_id == order_id => {
                 execution_events_json.push(to_minimal_event(&current_event));
                 total_filled_qty += filled_qty;
                 total_filled_value += (*filled_qty as f64) * (*price as f64);
                 order_status_internal = OrderStatus::Partial;
                 final_execution_seq = Some(*sequence_id);
             }
-            SimEvent::OrderFilled { order_id: o_id, sequence_id, .. } if o_id == order_id => {
+            SimEvent::OrderFilled {
+                order_id: o_id,
+                sequence_id,
+                ..
+            } if o_id == order_id => {
                 execution_events_json.push(to_minimal_event(&current_event));
                 if total_filled_qty < initial_order_quantity {
                     let newly_filled_qty = initial_order_quantity - total_filled_qty;
@@ -256,22 +313,30 @@ pub fn build_trade_inspector(events: &Vec<SimEvent>, order_id: &str, include_cha
                 order_status_internal = OrderStatus::Filled;
                 final_execution_seq = Some(*sequence_id);
             }
-            SimEvent::MarketEvent { subtype, price, sequence_id, .. } => {
+            SimEvent::MarketEvent {
+                subtype,
+                price,
+                sequence_id,
+                ..
+            } => {
                 let earliest_event_seq = decision_dto.as_ref().map_or(0, |e| e.timestamp);
                 let effective_start_seq = order_entered_queue_seq.unwrap_or(earliest_event_seq);
 
                 if let Some(final_seq) = final_execution_seq {
-                    if *sequence_id > effective_start_seq && *sequence_id <= final_seq && *price == order_price {
+                    if *sequence_id > effective_start_seq
+                        && *sequence_id <= final_seq
+                        && *price == order_price
+                    {
                         match subtype {
                             MarketEventType::Trade | MarketEventType::Cancel => {
                                 execution_events_json.push(to_minimal_event(&current_event));
-                            },
-                            _ => {},
+                            }
+                            _ => {}
                         }
                     }
                 }
-            },
-            _ => {},
+            }
+            _ => {}
         }
     }
 
@@ -281,14 +346,22 @@ pub fn build_trade_inspector(events: &Vec<SimEvent>, order_id: &str, include_cha
     outcome.remaining_qty = initial_order_quantity - total_filled_qty;
     outcome.status = map_status(order_status_internal);
     let scale = chronosentiment_core::PRICE_SCALE as f64;
-    outcome.avg_price = if total_filled_qty > 0 { (total_filled_value / total_filled_qty as f64) / scale } else { 0.0 };
+    outcome.avg_price = if total_filled_qty > 0 {
+        (total_filled_value / total_filled_qty as f64) / scale
+    } else {
+        0.0
+    };
 
     let response = TradeInspectorResponse {
         order_id: order_id.to_string(),
         decision: decision_dto.unwrap(), // Safe to unwrap as we checked for its presence
         execution: execution_events_json,
         outcome,
-        causal_chain: if include_chain { Some(causal_chain_events_json) } else { None },
+        causal_chain: if include_chain {
+            Some(causal_chain_events_json)
+        } else {
+            None
+        },
     };
 
     // MANDATORY PROOF: Print actual JSON output
@@ -433,15 +506,17 @@ mod tests {
         assert_eq!(response.outcome.avg_price, 0.01); // 100 internal units / PRICE_SCALE(10000) = ₹0.01
 
         // Verify Execution Layer and canonical market event type decomposition
-        let execution_event_types: Vec<EventType> = response.execution.iter().map(|event_value| {
-            event_value.event_type.clone()
-        }).collect();
-        
+        let execution_event_types: Vec<EventType> = response
+            .execution
+            .iter()
+            .map(|event_value| event_value.event_type.clone())
+            .collect();
+
         assert!(execution_event_types.contains(&EventType::OrderEnteredQueue));
         assert!(execution_event_types.contains(&EventType::QueueProgression));
         assert!(execution_event_types.contains(&EventType::PartialFill));
         assert!(execution_event_types.contains(&EventType::OrderFilled));
-        
+
         // MarketEvent (Trade) at sequence 7 should be included as canonical MARKET_TRADE
         // (non-canonical MarketEvent wrapper is now decomposed into MarketTrade/MarketNewOrder/MarketCancel)
         assert!(execution_event_types.contains(&EventType::MarketTrade));
@@ -463,11 +538,17 @@ mod tests {
 
         // Ensure all fields are identical for deterministic output
         assert_eq!(response1.order_id, response2.order_id);
-        assert_eq!(response1.decision.sequence_id, response2.decision.sequence_id); 
+        assert_eq!(
+            response1.decision.sequence_id,
+            response2.decision.sequence_id
+        );
         assert_eq!(response1.execution.len(), response2.execution.len());
         // More thorough comparison would iterate through execution events and compare
         for i in 0..response1.execution.len() {
-            assert_eq!(response1.execution[i].sequence_id, response2.execution[i].sequence_id);
+            assert_eq!(
+                response1.execution[i].sequence_id,
+                response2.execution[i].sequence_id
+            );
         }
         assert_eq!(response1.outcome, response2.outcome);
         assert_eq!(response1.causal_chain, response2.causal_chain);
@@ -478,10 +559,16 @@ mod tests {
         assert_eq!(response3.causal_chain, None);
         assert_eq!(response4.causal_chain, None);
         assert_eq!(response3.order_id, response4.order_id);
-        assert_eq!(response3.decision.sequence_id, response4.decision.sequence_id);
+        assert_eq!(
+            response3.decision.sequence_id,
+            response4.decision.sequence_id
+        );
         assert_eq!(response3.execution.len(), response4.execution.len());
         for i in 0..response3.execution.len() {
-            assert_eq!(response3.execution[i].sequence_id, response4.execution[i].sequence_id);
+            assert_eq!(
+                response3.execution[i].sequence_id,
+                response4.execution[i].sequence_id
+            );
         }
         assert_eq!(response3.outcome, response4.outcome);
     }

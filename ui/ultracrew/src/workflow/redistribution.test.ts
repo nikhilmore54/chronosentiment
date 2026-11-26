@@ -1,0 +1,943 @@
+// @vitest-environment jsdom
+// P3.3-CR Regression tests for redistributeWithLocks()
+//
+// G-8: Locked-cell preservation — scheduler edit on cell X → redistribution → cell X exactly unchanged.
+// G-9: Adjacent provenance — redistribution changes surrounding assignments → every changed cell
+//      has an individual system_reassignment provenance record with all required fields.
+//
+// P3.3-CR: redistributeWithLocks() now calls POST /api/reschedule (Coralys-backed).
+// fetch is mocked to return a controlled schedule so tests remain deterministic.
+// The invariants (locked cells preserved, provenance correct) are unchanged.
+
+import { describe, test, expect, vi, beforeEach } from 'vitest';
+import {
+  redistributeWithLocks,
+  buildSyntheticSchedule,
+  buildSchedulePayload,
+  buildLockedShiftIds,
+  getScheduleSlotMeta,
+  scheduleToAssignments,
+  buildEditableSchedule,
+  parseStaffCSV,
+  VERIFIED_SAMPLE_SCHEDULE,
+  VERIFIED_OPTIMAL_12_SCHEDULE,
+  computeCanonicalCoverage,
+  buildStaffingRequirements,
+  detectScheduleViolations,
+  localRebalanceSchedule,
+  getUnfilledSlotsForShift,
+} from './WorkflowUtils';
+import type { StaffMember } from './WorkflowTypes';
+import { SAMPLE_CSV, OPTIMAL_12_STAFF_CSV } from './WorkflowTypes';
+
+// Minimal staff fixture — 8 members, all Nurse skill
+const STAFF: StaffMember[] = [
+  { id: 'Alice',   contract: 'FullTime', skills: ['Nurse'] },
+  { id: 'Bob',     contract: 'FullTime', skills: ['Nurse'] },
+  { id: 'Carol',   contract: 'FullTime', skills: ['Nurse'] },
+  { id: 'David',   contract: 'PartTime', skills: ['Nurse'] },
+  { id: 'Eve',     contract: 'FullTime', skills: ['Nurse'] },
+  { id: 'Frank',   contract: 'Night',    skills: ['Nurse'] },
+  { id: 'Grace',   contract: 'FullTime', skills: ['Nurse'] },
+  { id: 'Hank',    contract: 'PartTime', skills: ['Nurse'] },
+];
+
+// Build a valid apiSchedule (shift_id → worker_id) for the STAFF fixture.
+// For 8 staff all with skill 'Nurse', buildSchedulePayload generates 5 shifts (IDs 1–5).
+// We assign each shift to a different worker (1-indexed).
+function makeApiSchedule(overrides: Record<number, number> = {}): Record<string, number> {
+  const base: Record<string, number> = {
+    '1': 1, // shift 1 (Mon Early) → Alice (worker 1)
+    '2': 2, // shift 2 (Tue Late)  → Bob   (worker 2)
+    '3': 3, // shift 3 (Wed Early) → Carol (worker 3)
+    '4': 4, // shift 4 (Thu Late)  → David (worker 4)
+    '5': 5, // shift 5 (Fri Early) → Eve   (worker 5)
+  };
+  for (const [k, v] of Object.entries(overrides)) {
+    base[k] = v;
+  }
+  return base;
+}
+
+// Mock fetch to return a controlled reschedule response.
+// The mock returns the same apiSchedule by default (no changes), or a custom one.
+function mockFetch(responseSchedule: Record<string, number>) {
+  vi.stubGlobal('fetch', vi.fn().mockImplementation((url: string) => {
+    if (url === '/api/csrf-token') {
+      return Promise.resolve({ ok: true, json: () => Promise.resolve({ csrf_token: 'test-token' }) });
+    }
+    if (url === '/api/reschedule') {
+      return Promise.resolve({
+        ok: true,
+        json: () => Promise.resolve({ schedule: responseSchedule }),
+      });
+    }
+    return Promise.reject(new Error(`Unexpected fetch: ${url}`));
+  }));
+}
+
+// ─── G-8: Locked-cell preservation ───────────────────────────────────────────
+
+test('G-8: locked cell is exactly unchanged after redistribution', async () => {
+  const baseSchedule = buildSyntheticSchedule(STAFF);
+  const apiSchedule = makeApiSchedule();
+
+  // Scheduler edits Alice day 0 to 'Night' and locks it
+  const editedSchedule = { ...baseSchedule, Alice: [...baseSchedule['Alice']] };
+  editedSchedule['Alice'][0] = 'Night';
+  const lockedCells = new Set(['Alice:0']);
+
+  // Mock: API returns the same apiSchedule (no changes to unlocked cells)
+  mockFetch(apiSchedule);
+
+  const result = await redistributeWithLocks(STAFF, editedSchedule, lockedCells, apiSchedule, {}, 'test-token');
+
+  // G-8: Alice day 0 must be exactly 'Night' — the scheduler's edit
+  expect(result.schedule['Alice'][0]).toBe('Night');
+
+  // G-8: provenance for Alice:0 must be 'scheduler_edit'
+  expect(result.log.provenanceMap['Alice:0']).toBe('scheduler_edit');
+
+  // G-8: lockedAssignmentsChanged must be 0 — the invariant
+  expect(result.log.lockedAssignmentsChanged).toBe(0);
+});
+
+test('G-8: multiple locked cells are all preserved', async () => {
+  const baseSchedule = buildSyntheticSchedule(STAFF);
+  const apiSchedule = makeApiSchedule();
+
+  const editedSchedule = {
+    ...baseSchedule,
+    Alice: [...baseSchedule['Alice']],
+    Bob:   [...baseSchedule['Bob']],
+  };
+  editedSchedule['Alice'][3] = 'Late';
+  editedSchedule['Bob'][7]   = '';
+
+  const lockedCells = new Set(['Alice:3', 'Bob:7']);
+
+  mockFetch(apiSchedule);
+
+  const result = await redistributeWithLocks(STAFF, editedSchedule, lockedCells, apiSchedule, {}, 'test-token');
+
+  expect(result.schedule['Alice'][3]).toBe('Late');
+  expect(result.schedule['Bob'][7]).toBe('');
+  expect(result.log.provenanceMap['Alice:3']).toBe('scheduler_edit');
+  expect(result.log.provenanceMap['Bob:7']).toBe('scheduler_edit');
+  expect(result.log.lockedAssignmentsChanged).toBe(0);
+  expect(result.log.schedulerEditsPreserved).toBe(2);
+});
+
+// ─── G-9: Adjacent provenance — every changed cell has a ChangeRecord ─────────
+
+test('G-9: every system_reassignment cell has a ChangeRecord with all required fields', async () => {
+  // Build a schedule that is DIFFERENT from what the API will return so that
+  // unlocked cells will actually be changed by redistribution.
+  const differentSchedule: Record<string, string[]> = {};
+  for (const s of STAFF) {
+    differentSchedule[s.id] = Array(28).fill('Late');
+  }
+
+  // Lock Carol day 5 to 'Night' — redistribution must not touch it
+  differentSchedule['Carol'] = [...differentSchedule['Carol']];
+  differentSchedule['Carol'][5] = 'Night';
+  const lockedCells = new Set(['Carol:5']);
+
+  // API returns a schedule that differs from differentSchedule for unlocked cells
+  // (shift 3 → Carol, dayOfWeek=2, so days 2,9,16,23 will change from 'Late' to 'Early')
+  const apiSchedule = makeApiSchedule();
+  mockFetch(apiSchedule);
+
+  const result = await redistributeWithLocks(STAFF, differentSchedule, lockedCells, apiSchedule, {}, 'test-token');
+
+  // Find all system_reassignment cells
+  const reassignedKeys = Object.entries(result.log.provenanceMap)
+    .filter(([, state]) => state === 'system_reassignment')
+    .map(([key]) => key);
+
+  // G-9: there must be at least one actual reassignment (not a no-op)
+  expect(reassignedKeys.length).toBeGreaterThan(0);
+
+  // G-9: every reassigned cell must have a ChangeRecord with all required fields
+  for (const key of reassignedKeys) {
+    const record = result.log.changeRecords.find(r => r.assignmentId === key);
+    expect(record).toBeDefined();
+    if (!record) continue;
+
+    expect(typeof record.assignmentId).toBe('string');
+    expect(record.assignmentId).toBe(key);
+    expect(typeof record.previousValue).toBe('string');
+    expect(typeof record.newValue).toBe('string');
+    expect(typeof record.redistributionOperationId).toBe('string');
+    expect(record.redistributionOperationId.length).toBeGreaterThan(0);
+    expect(typeof record.reason).toBe('string');
+    expect(record.reason.length).toBeGreaterThan(0);
+    expect(typeof record.timestamp).toBe('string');
+    // timestamp must be a valid ISO-8601 date
+    expect(new Date(record.timestamp).getTime()).not.toBeNaN();
+  }
+});
+
+test('G-9: ChangeRecord count matches system_reassignment count in provenanceMap', async () => {
+  const baseSchedule = buildSyntheticSchedule(STAFF);
+  const apiSchedule = makeApiSchedule();
+  const lockedCells = new Set(['David:10', 'Eve:15']);
+
+  mockFetch(apiSchedule);
+
+  const result = await redistributeWithLocks(STAFF, baseSchedule, lockedCells, apiSchedule, {}, 'test-token');
+
+  const reassignedCount = Object.values(result.log.provenanceMap)
+    .filter(s => s === 'system_reassignment').length;
+
+  expect(result.log.changeRecords.length).toBe(reassignedCount);
+  expect(result.log.assignmentsReassigned).toBe(reassignedCount);
+});
+
+// ─── Invariant: log fields are consistent ─────────────────────────────────────
+
+test('log.operationId is stable and non-empty', async () => {
+  const baseSchedule = buildSyntheticSchedule(STAFF);
+  const apiSchedule = makeApiSchedule();
+
+  mockFetch(apiSchedule);
+
+  const result = await redistributeWithLocks(STAFF, baseSchedule, new Set(), apiSchedule, {}, 'test-token');
+
+  expect(typeof result.log.operationId).toBe('string');
+  expect(result.log.operationId.length).toBeGreaterThan(0);
+
+  // All ChangeRecords reference the same operationId
+  for (const record of result.log.changeRecords) {
+    expect(record.redistributionOperationId).toBe(result.log.operationId);
+  }
+});
+
+test('provenance map covers every cell in the schedule', async () => {
+  const baseSchedule = buildSyntheticSchedule(STAFF);
+  const apiSchedule = makeApiSchedule();
+  const lockedCells = new Set(['Alice:0']);
+  const editedSchedule = { ...baseSchedule, Alice: [...baseSchedule['Alice']] };
+  editedSchedule['Alice'][0] = 'Night';
+
+  mockFetch(apiSchedule);
+
+  const result = await redistributeWithLocks(STAFF, editedSchedule, lockedCells, apiSchedule, {}, 'test-token');
+
+  // Every staffId × dayIdx combination must appear in the provenanceMap
+  for (const s of STAFF) {
+    for (let d = 0; d < 28; d++) {
+      const key = `${s.id}:${d}`;
+      expect(result.log.provenanceMap[key]).toBeDefined();
+      expect(['original', 'scheduler_edit', 'system_reassignment', 'unchanged'])
+        .toContain(result.log.provenanceMap[key]);
+    }
+  }
+});
+
+// ─── P3.3-CR: API path verification ──────────────────────────────────────────
+
+test('P3.3-CR: POST /api/reschedule is called with existing_assignments and locked_shift_ids', async () => {
+  const baseSchedule = buildSyntheticSchedule(STAFF);
+  const apiSchedule = makeApiSchedule();
+  // Lock Alice day 0 — shift 1 (Mon Early, dayOfWeek=0) is assigned to Alice (worker 1)
+  const lockedCells = new Set(['Alice:0']);
+
+  mockFetch(apiSchedule);
+
+  await redistributeWithLocks(STAFF, baseSchedule, lockedCells, apiSchedule, {}, 'test-token');
+
+  // Verify fetch was called with /api/reschedule
+  const fetchMock = vi.mocked(fetch);
+  const rescheduleCall = fetchMock.mock.calls.find(
+    (call: unknown[]) => call[0] === '/api/reschedule'
+  );
+  expect(rescheduleCall).toBeDefined();
+
+  const body = JSON.parse((rescheduleCall![1] as RequestInit).body as string);
+  // existing_assignments must be present
+  expect(body.existing_assignments).toBeDefined();
+  // locked_shift_ids must include shift 1 (Alice day 0 = Mon = dayOfWeek 0 = shift 1)
+  expect(body.locked_shift_ids).toContain(1);
+});
+
+test('P3.3-CR: no locked_shift_ids when no cells are locked', async () => {
+  const baseSchedule = buildSyntheticSchedule(STAFF);
+  const apiSchedule = makeApiSchedule();
+
+  mockFetch(apiSchedule);
+
+  await redistributeWithLocks(STAFF, baseSchedule, new Set(), apiSchedule, {}, 'test-token');
+
+  const fetchMock = vi.mocked(fetch);
+  const rescheduleCall = fetchMock.mock.calls.find(
+    (call: unknown[]) => call[0] === '/api/reschedule'
+  );
+  expect(rescheduleCall).toBeDefined();
+
+  const body = JSON.parse((rescheduleCall![1] as RequestInit).body as string);
+  expect(body.locked_shift_ids).toBeNull();
+});
+
+test('AT-05: 28-day exact shift locking does not collapse across weeks', () => {
+  const payload = buildSchedulePayload(STAFF, {});
+  // Payload should have 196 shifts (28 days * 7 canonical hospital shift slots)
+  expect(payload.shifts.length).toBe(196);
+
+  // Map 28-day apiSchedule: shift 1..20
+  const fullApiSchedule: Record<string, number> = {};
+  payload.shifts.forEach((s, idx) => {
+    fullApiSchedule[String(s.id)] = (idx % STAFF.length) + 1;
+  });
+
+  // Week 2 Tuesday is dayIdx = 2 * 7 + 1 = 15
+  const slotMeta = getScheduleSlotMeta(STAFF);
+  const week2TueShift = Object.values(slotMeta).find(m => m.dayIdx === 15);
+  expect(week2TueShift).toBeDefined();
+
+  const workerOnWeek2Tue = fullApiSchedule[String(week2TueShift!.shiftId)];
+  const staffMember = STAFF[workerOnWeek2Tue - 1];
+
+  // Lock ONLY Week 2 Tuesday
+  const lockedCells = new Set([`${staffMember.id}:15`]);
+  const lockedIds = buildLockedShiftIds(STAFF, fullApiSchedule, lockedCells);
+
+  // MUST contain exactly the shift for day 15, and NOT shifts for day 1, 8, or 22!
+  expect(lockedIds).toContain(week2TueShift!.shiftId);
+  expect(lockedIds.length).toBe(1);
+
+  const week0TueShift = Object.values(slotMeta).find(m => m.dayIdx === 1);
+  const week1TueShift = Object.values(slotMeta).find(m => m.dayIdx === 8);
+  const week3TueShift = Object.values(slotMeta).find(m => m.dayIdx === 22);
+  expect(lockedIds).not.toContain(week0TueShift!.shiftId);
+  expect(lockedIds).not.toContain(week1TueShift!.shiftId);
+  expect(lockedIds).not.toContain(week3TueShift!.shiftId);
+});
+
+// ─── AT-36: Single Manual Edit Regression Suite ─────────────────────────────
+
+test('AT-36.1: Verified sample roster initial state is 100% conserved with zero unmapped slots', () => {
+  const { staff } = parseStaffCSV(SAMPLE_CSV);
+  const slotMeta = getScheduleSlotMeta(staff);
+  const baseSchedule = buildEditableSchedule(staff, VERIFIED_SAMPLE_SCHEDULE, slotMeta);
+
+  const conversion = scheduleToAssignments(staff, baseSchedule, slotMeta);
+  expect(conversion.totalUiAssignments).toBe(196);
+  expect(conversion.totalMappedAssignments).toBe(196);
+  expect(conversion.isConserved).toBe(true);
+  expect(conversion.unmappedUiAssignments).toEqual([]);
+  expect(conversion.duplicateAssignments).toEqual([]);
+
+  const reqs = buildStaffingRequirements(slotMeta);
+  const cov = computeCanonicalCoverage(reqs, baseSchedule);
+  expect(cov.coveragePct).toBe(100);
+  expect(cov.gapPositions).toBe(0);
+});
+
+test('AT-36.2: 1 manual edit followed by redistribution preserves >= 95% of roster and zero hard violations', async () => {
+  const { staff } = parseStaffCSV(SAMPLE_CSV);
+  const slotMeta = getScheduleSlotMeta(staff);
+  const baseSchedule = buildEditableSchedule(staff, VERIFIED_SAMPLE_SCHEDULE, slotMeta);
+
+  // Edit Tom_Lindqvist on Day 2 to 'Night'
+  const editedSchedule: Record<string, string[]> = {};
+  for (const s of staff) {
+    editedSchedule[s.id] = [...(baseSchedule[s.id] || [])];
+  }
+  editedSchedule['Tom_Lindqvist'][2] = 'Night';
+  const lockedCells = new Set(['Tom_Lindqvist:2']);
+
+  // Mock API returning failure or cold-scramble to trigger quality gate fallback
+  mockFetch({});
+
+  const result = await redistributeWithLocks(
+    staff,
+    editedSchedule,
+    lockedCells,
+    VERIFIED_SAMPLE_SCHEDULE,
+    {},
+    'test-csrf-token',
+    slotMeta,
+  );
+
+  // Invariant 1: Locked scheduler edit MUST be preserved
+  expect(result.schedule['Tom_Lindqvist'][2]).toBe('Night');
+  expect(result.log.lockedAssignmentsChanged).toBe(0);
+  expect(result.log.schedulerEditsPreserved).toBe(1);
+
+  // Invariant 2: Minimal churn — 1 edit must NOT reassign hundreds of shifts (user saw 409!)
+  expect(result.changedCount).toBeLessThanOrEqual(4);
+  expect(result.unchangedCount).toBeGreaterThanOrEqual(555);
+
+  // Invariant 3: Full conservation of demand coverage
+  const reqs = buildStaffingRequirements(slotMeta);
+  const cov = computeCanonicalCoverage(reqs, result.schedule);
+  expect(cov.coveragePct).toBe(100);
+  expect(cov.gapPositions).toBe(0);
+  expect(cov.filledPositions).toBe(196);
+
+  // Invariant 4: No unmapped assignments or duplicate assignments
+  const conversion = scheduleToAssignments(staff, result.schedule, slotMeta);
+  expect(conversion.isConserved).toBe(true);
+  expect(conversion.unmappedUiAssignments).toEqual([]);
+  expect(conversion.duplicateAssignments).toEqual([]);
+});
+
+test('AT-36.3: buildLockedShiftIds correctly maps user manual edits from currentSchedule', () => {
+  const { staff } = parseStaffCSV(SAMPLE_CSV);
+  const slotMeta = getScheduleSlotMeta(staff);
+  const baseSchedule = buildEditableSchedule(staff, VERIFIED_SAMPLE_SCHEDULE, slotMeta);
+
+  // Edit Tom_Lindqvist on Day 2 to 'Night'
+  const editedSchedule: Record<string, string[]> = {};
+  for (const s of staff) {
+    editedSchedule[s.id] = [...(baseSchedule[s.id] || [])];
+  }
+  editedSchedule['Tom_Lindqvist'][2] = 'Night';
+  const lockedCells = new Set(['Tom_Lindqvist:2']);
+
+  const lockedIds = buildLockedShiftIds(staff, {}, lockedCells, slotMeta, editedSchedule);
+  expect(lockedIds.length).toBe(1);
+  const lockedMeta = slotMeta[lockedIds[0]];
+  expect(lockedMeta).toBeDefined();
+  expect(lockedMeta.dayIdx).toBe(2);
+  expect(lockedMeta.label).toBe('Night');
+});
+
+test('AT-36.4: Backend preservation of manually locked assignments and protection of last valid schedule', async () => {
+  const { staff } = parseStaffCSV(SAMPLE_CSV);
+  const slotMeta = getScheduleSlotMeta(staff);
+  const baseSchedule = buildEditableSchedule(staff, VERIFIED_SAMPLE_SCHEDULE, slotMeta);
+
+  // 1. Manually reassign Tom_Lindqvist on Day 2 to 'Night'
+  const editedSchedule: Record<string, string[]> = {};
+  for (const s of staff) {
+    editedSchedule[s.id] = [...(baseSchedule[s.id] || [])];
+  }
+  editedSchedule['Tom_Lindqvist'][2] = 'Night';
+  const lockedCells = new Set(['Tom_Lindqvist:2']);
+
+  // Find the exact shift ID corresponding to Tom's edit on Day 2
+  const activeConversion = scheduleToAssignments(staff, editedSchedule, slotMeta);
+  const editedShiftId = Object.entries(activeConversion.assignments).find(
+    ([sid, wid]) => wid === 6 && slotMeta[Number(sid)]?.dayIdx === 2
+  )?.[0];
+  expect(editedShiftId).toBeDefined();
+
+  // 2. Mock /api/reschedule returning a response where the locked shift is preserved
+  const mockApiReturn = { ...activeConversion.assignments };
+  mockApiReturn[editedShiftId!] = 6; // strictly preserved
+  mockFetch(mockApiReturn);
+
+  const result = await redistributeWithLocks(
+    staff,
+    editedSchedule,
+    lockedCells,
+    VERIFIED_SAMPLE_SCHEDULE,
+    {},
+    'test-csrf-token',
+    slotMeta,
+  );
+
+  // 3. Verify outgoing payload: ONLY the manually edited shift is in locked_shift_ids (not all 196!)
+  const fetchMock = vi.mocked(fetch);
+  const rescheduleCall = fetchMock.mock.calls.find(
+    (call: unknown[]) => call[0] === '/api/reschedule'
+  );
+  expect(rescheduleCall).toBeDefined();
+  const requestBody = JSON.parse((rescheduleCall![1] as RequestInit).body as string);
+  expect(requestBody.locked_shift_ids).toEqual([Number(editedShiftId)]);
+  expect(requestBody.locked_shift_ids.length).toBe(1);
+
+  // 4. Invariant: manually edited (worker, shift) remains unchanged
+  expect(result.schedule['Tom_Lindqvist'][2]).toBe('Night');
+  expect(result.log.lockedAssignmentsChanged).toBe(0);
+  expect(result.log.schedulerEditsPreserved).toBe(1);
+
+  // 5. Independently validate returned schedule
+  const finalConversion = scheduleToAssignments(staff, result.schedule, slotMeta);
+  expect(finalConversion.isConserved).toBe(true);
+  expect(finalConversion.unmappedUiAssignments).toEqual([]);
+  expect(finalConversion.duplicateAssignments).toEqual([]);
+
+  const reqs = buildStaffingRequirements(slotMeta);
+  const cov = computeCanonicalCoverage(reqs, result.schedule);
+  expect(cov.coveragePct).toBe(100);
+  expect(cov.gapPositions).toBe(0);
+
+  // 6. Protection check: If the backend throws or returns an error, the schedule is protected
+  vi.stubGlobal('fetch', vi.fn().mockImplementation((url: string) => {
+    if (url === '/api/reschedule') {
+      return Promise.resolve({ ok: false, status: 500 });
+    }
+    return Promise.resolve({ ok: true, json: () => Promise.resolve({ csrf_token: 'tok' }) });
+  }));
+
+  const protectedResult = await redistributeWithLocks(
+    staff,
+    editedSchedule,
+    lockedCells,
+    VERIFIED_SAMPLE_SCHEDULE,
+    {},
+    'test-csrf-token',
+    slotMeta,
+  );
+
+  // The local preservation fallback ensures the scheduler's edit and coverage are safely protected
+  expect(protectedResult.schedule['Tom_Lindqvist'][2]).toBe('Night');
+  expect(protectedResult.log.lockedAssignmentsChanged).toBe(0);
+  const protectedCov = computeCanonicalCoverage(reqs, protectedResult.schedule);
+  expect(protectedCov.coveragePct).toBe(100);
+  expect(protectedCov.gapPositions).toBe(0);
+});
+
+test('AT-37: Manual edit to Night shift resolves rest-succession (HC2) and eliminates 0-hour turnaround', async () => {
+  const { staff } = parseStaffCSV(SAMPLE_CSV);
+  const slotMeta = getScheduleSlotMeta(staff);
+  const baseSchedule = buildEditableSchedule(staff, VERIFIED_SAMPLE_SCHEDULE, slotMeta);
+
+  // 1. Recreate the user's scenario on Aisha_Diallo:
+  // Aisha_Diallo (HeadNurse) has Early on Day 11.
+  // The scheduler manually changes Day 10 to 'Night'.
+  const editedSchedule: Record<string, string[]> = {};
+  for (const s of staff) {
+    editedSchedule[s.id] = [...(baseSchedule[s.id] || [])];
+  }
+  editedSchedule['Aisha_Diallo'][10] = 'Night';
+  const lockedCells = new Set(['Aisha_Diallo:10']);
+
+  // Before redistribution: Day 10 is Night and Day 11 is Early -> 0-hour turnaround violation!
+  expect(editedSchedule['Aisha_Diallo'][10]).toBe('Night');
+  expect(editedSchedule['Aisha_Diallo'][11]).toBe('Early');
+
+  // 2. Run redistribution (using local rebalance or backend)
+  const result = await redistributeWithLocks(
+    staff,
+    editedSchedule,
+    lockedCells,
+    VERIFIED_SAMPLE_SCHEDULE,
+    {},
+    'test-csrf-token',
+    slotMeta,
+  );
+
+  // Invariant 1: Locked edit on Day 10 is strictly preserved
+  expect(result.schedule['Aisha_Diallo'][10]).toBe('Night');
+  expect(result.log.lockedAssignmentsChanged).toBe(0);
+  expect(result.log.schedulerEditsPreserved).toBe(1);
+
+  // Invariant 2: Day 11 Early shift is evacuated to Off (rest) to resolve the 0h turnaround!
+  expect(result.schedule['Aisha_Diallo'][11]).toBe('');
+
+  // Invariant 3: Total demand coverage is conserved at 100% (196/196)
+  const reqs = buildStaffingRequirements(slotMeta);
+  const cov = computeCanonicalCoverage(reqs, result.schedule);
+  expect(cov.coveragePct).toBe(100);
+  expect(cov.gapPositions).toBe(0);
+  expect(cov.filledPositions).toBe(196);
+});
+
+test('AT-39: Manual edit to Early shift resolves root cause of preceding Late shift (HC2 8-hour turnaround)', async () => {
+  const { staff } = parseStaffCSV(SAMPLE_CSV);
+  const slotMeta = getScheduleSlotMeta(staff);
+  const baseSchedule = buildEditableSchedule(staff, VERIFIED_SAMPLE_SCHEDULE, slotMeta);
+
+  // Recreate user scenario on Ingrid_Sorensen:
+  // In baseline, Ingrid has Late on Day 10 (24/7).
+  // Scheduler manually sets Day 11 (25/7) to 'Early'.
+  expect(baseSchedule['Ingrid_Sorensen'][10]).toBe('Late');
+
+  const editedSchedule: Record<string, string[]> = {};
+  for (const s of staff) {
+    editedSchedule[s.id] = [...(baseSchedule[s.id] || [])];
+  }
+  editedSchedule['Ingrid_Sorensen'][11] = 'Early';
+  const lockedCells = new Set(['Ingrid_Sorensen:11']);
+
+  // Run redistribution with locks
+  const result = await redistributeWithLocks(
+    staff,
+    editedSchedule,
+    lockedCells,
+    VERIFIED_SAMPLE_SCHEDULE,
+    {},
+    'test-csrf-token',
+    slotMeta,
+  );
+
+  // Invariant 1: Locked edit on Day 11 is strictly preserved
+  expect(result.schedule['Ingrid_Sorensen'][11]).toBe('Early');
+  expect(result.log.lockedAssignmentsChanged).toBe(0);
+  expect(result.log.schedulerEditsPreserved).toBe(1);
+
+  // Invariant 2: Root cause (Day 10 Late shift) is resolved on Ingrid to eliminate 8h turnaround!
+  // Ingrid is either switched to an alternate legal shift (Early -> 16h rest) or evacuated to Off, never leaving Late
+  expect(result.schedule['Ingrid_Sorensen'][10]).not.toBe('Late');
+
+  // Invariant 3: The evacuated Day 10 Late shift is covered by another eligible off nurse
+  const day10LateStaff = staff.filter(s => result.schedule[s.id][10] === 'Late');
+  expect(day10LateStaff.length).toBe(2); // Exactly 2 Late shifts on Day 10 as required
+
+  // Invariant 4: Total demand coverage is conserved at 100% (196/196)
+  const reqs = buildStaffingRequirements(slotMeta);
+  const cov = computeCanonicalCoverage(reqs, result.schedule);
+  expect(cov.coveragePct).toBe(100);
+  expect(cov.gapPositions).toBe(0);
+  expect(cov.filledPositions).toBe(196);
+});
+
+test('AT-36.5: Locked skill-violation recovery — explicit Off releases shift to eligible replacement with zero violations', async () => {
+  const { staff } = parseStaffCSV(SAMPLE_CSV);
+  const slotMeta = getScheduleSlotMeta(staff);
+  const baseSchedule = buildEditableSchedule(staff, VERIFIED_SAMPLE_SCHEDULE, slotMeta);
+
+  // 1. Recreate the user scenario where Priya Nair is locked on Day 3 Night
+  // and Aisha Diallo (HeadNurse only) is locked on Day 10 to incompatible 'Late' shift.
+  const scheduleWithViolation: Record<string, string[]> = {};
+  for (const s of staff) {
+    scheduleWithViolation[s.id] = [...(baseSchedule[s.id] || [])];
+  }
+  scheduleWithViolation['Priya_Nair'][3] = 'Night';
+  scheduleWithViolation['Aisha_Diallo'][10] = 'Late';
+  const initialLocks = new Set(['Priya_Nair:3', 'Aisha_Diallo:10']);
+
+  // Run initial rebalance: rest turnaround conflicts on Day 4 and Day 11 are resolved,
+  // leaving ONLY the locked skill violation on Aisha Diallo!
+  const rebalancedWithViolation = localRebalanceSchedule(staff, scheduleWithViolation, initialLocks, slotMeta);
+
+  // Confirm existing skill violation is detected and visible
+  const violationsBefore = detectScheduleViolations(staff, rebalancedWithViolation, slotMeta);
+  expect(violationsBefore.length).toBe(1);
+  expect(violationsBefore[0].type).toBe('skill');
+  expect(violationsBefore[0].staffId).toBe('Aisha_Diallo');
+  expect(violationsBefore[0].dayIdx).toBe(10);
+
+  // 2. Scheduler explicitly changes Aisha to 'Off' on Day 10
+  const scheduleWithOff: Record<string, string[]> = {};
+  for (const s of staff) {
+    scheduleWithOff[s.id] = [...(rebalancedWithViolation[s.id] || [])];
+  }
+  scheduleWithOff['Aisha_Diallo'][10] = ''; // Changed to Off
+  const locksWithOff = new Set(['Priya_Nair:3', 'Aisha_Diallo:10']); // Aisha is locked as Off
+
+  // 3. Run redistribution
+  const result = await redistributeWithLocks(
+    staff,
+    scheduleWithOff,
+    locksWithOff,
+    VERIFIED_SAMPLE_SCHEDULE,
+    {},
+    'test-csrf-token',
+    slotMeta,
+  );
+
+  // Invariant 1: Aisha remains protected as Off on Day 10 (she is unavailable that day)
+  expect(result.schedule['Aisha_Diallo'][10]).toBe('');
+
+  // Invariant 2: Unrelated locked assignment on Priya_Nair (Day 3 Night) is strictly preserved
+  expect(result.schedule['Priya_Nair'][3]).toBe('Night');
+
+  // Invariant 3: The vacant Late shift position on Day 10 is released and assigned to an eligible replacement nurse
+  const day10LateStaff = staff.filter(s => result.schedule[s.id][10] === 'Late');
+  expect(day10LateStaff.length).toBe(2); // Exactly 2 Late shifts on Day 10
+  expect(day10LateStaff.map(s => s.id)).not.toContain('Aisha_Diallo');
+
+  const replacement = day10LateStaff.find(s => s.id !== 'Ingrid_Sorensen');
+  expect(replacement).toBeDefined();
+  expect(replacement!.skills).toContain('Nurse'); // Replacement has Nurse qualification
+
+  // Invariant 4: No locked assignments changed
+  expect(result.log.lockedAssignmentsChanged).toBe(0);
+
+  // Invariant 5: 100% Demand coverage conserved (196/196 positions)
+  const reqs = buildStaffingRequirements(slotMeta);
+  const cov = computeCanonicalCoverage(reqs, result.schedule);
+  expect(cov.coveragePct).toBe(100);
+  expect(cov.gapPositions).toBe(0);
+  expect(cov.filledPositions).toBe(196);
+
+  // Invariant 6: Independent validation confirms ZERO hard violations across the entire roster!
+  const violationsAfter = detectScheduleViolations(staff, result.schedule, slotMeta);
+  expect(violationsAfter.length).toBe(0);
+});
+
+test('AT-40.1: Alternate shift swap — Marcus moves to Early, Daniel absorbs Late, both pass rest/skill checks, locked assignment preserved', async () => {
+  const { staff } = parseStaffCSV(SAMPLE_CSV);
+  const slotMeta = getScheduleSlotMeta(staff);
+  const baseSchedule = buildEditableSchedule(staff, VERIFIED_SAMPLE_SCHEDULE, slotMeta);
+
+  // Set up the exact Marcus-Daniel July 22-23 (Days 8-9) scenario:
+  // Day 8 (July 22): Marcus has Late (14:00-22:00), Daniel has Early (06:00-14:00)
+  // Day 9 (July 23): Marcus is manually edited to Early (06:00-14:00)
+  const currentSchedule: Record<string, string[]> = {};
+  for (const s of staff) {
+    currentSchedule[s.id] = [...(baseSchedule[s.id] || [])];
+  }
+  currentSchedule['Marcus_Webb'][8] = 'Late';
+  currentSchedule['James_Okafor'][8] = ''; // James yields Late slot on Day 8 to Marcus
+  currentSchedule['Marcus_Webb'][9] = 'Early'; // The scheduler edit
+  currentSchedule['Daniel_Park'][8] = 'Early';
+
+  // Lock Marcus Day 9 edit, and lock Priya and Kwame on Day 8 so Daniel is the selected swap candidate
+  const lockedCells = new Set(['Marcus_Webb:9', 'Priya_Nair:8', 'Kwame_Asante:8']);
+
+  // Run redistribution with locks
+  const result = await redistributeWithLocks(
+    staff,
+    currentSchedule,
+    lockedCells,
+    VERIFIED_SAMPLE_SCHEDULE,
+    {},
+    'test-csrf-token',
+    slotMeta,
+  );
+
+  // 1. Marcus moves to Early on Day 8 (July 22)
+  expect(result.schedule['Marcus_Webb'][8]).toBe('Early');
+
+  // 2. Daniel absorbs Late on Day 8 (July 22)
+  expect(result.schedule['Daniel_Park'][8]).toBe('Late');
+
+  // 3. The locked manual assignment on Marcus on Day 9 is strictly preserved
+  expect(result.schedule['Marcus_Webb'][9]).toBe('Early');
+  expect(result.log.lockedAssignmentsChanged).toBe(0);
+
+  // 4. Both workers pass rest and skill checks:
+  // Marcus rest between Day 8 Early (ends 14:00) and Day 9 Early (starts 06:00) = 16h (>= configured 10h min)
+  // Daniel rest between Day 7 Early (ends 14:00) and Day 8 Late (starts 14:00) = 24h (>= configured 10h min)
+  const violations = detectScheduleViolations(staff, result.schedule, slotMeta);
+  const marcusViolations = violations.filter(v => v.staffId === 'Marcus_Webb');
+  const danielViolations = violations.filter(v => v.staffId === 'Daniel_Park');
+  expect(marcusViolations.length).toBe(0);
+  expect(danielViolations.length).toBe(0);
+
+  // 5. Total assigned hours remain conserved (196/196 required positions)
+  const reqs = buildStaffingRequirements(slotMeta);
+  const cov = computeCanonicalCoverage(reqs, result.schedule);
+  expect(cov.coveragePct).toBe(100);
+  expect(cov.gapPositions).toBe(0);
+  expect(cov.filledPositions).toBe(196);
+});
+
+test('AT-40.2: No valid alternate — manual decision preserved, unresolved violation visible, no assignment silently dropped to Off', async () => {
+  const { staff } = parseStaffCSV(SAMPLE_CSV);
+  const slotMeta = getScheduleSlotMeta(staff);
+  const baseSchedule = buildEditableSchedule(staff, VERIFIED_SAMPLE_SCHEDULE, slotMeta);
+
+  // Set up scenario where Marcus has Late on Day 8, manually locked to Early on Day 9.
+  // BUT all colleagues on Day 8 are locked, so NO valid swap or off-staff rebalance can take place:
+  const currentSchedule: Record<string, string[]> = {};
+  for (const s of staff) {
+    currentSchedule[s.id] = [...(baseSchedule[s.id] || [])];
+  }
+  currentSchedule['Marcus_Webb'][8] = 'Late';
+  currentSchedule['James_Okafor'][8] = ''; // James yields Late slot on Day 8 to Marcus
+  currentSchedule['Marcus_Webb'][9] = 'Early';
+
+  // Lock Marcus Day 9 AND all colleagues on Day 8
+  const lockedCells = new Set(['Marcus_Webb:9']);
+  staff.forEach(s => {
+    if (s.id !== 'Marcus_Webb') lockedCells.add(`${s.id}:8`);
+  });
+
+  const resolved = localRebalanceSchedule(staff, currentSchedule, lockedCells, slotMeta);
+
+  // 1. Manual locked edit on Marcus is preserved
+  expect(resolved['Marcus_Webb'][9]).toBe('Early');
+
+  // 2. Crucial: Marcus\'s Day 8 assignment is NOT silently dropped to Off (\'\')
+  expect(resolved['Marcus_Webb'][8]).toBe('Late');
+
+  // 3. Unresolved rest violation remains visible to the scheduler
+  const violations = detectScheduleViolations(staff, resolved, slotMeta);
+  const marcusRestViolation = violations.find(
+    v => v.staffId === 'Marcus_Webb' && v.type === 'rest'
+  );
+  expect(marcusRestViolation).toBeDefined();
+  expect(marcusRestViolation!.message).toContain('configured 10h min');
+});
+
+test('AT-40.3: Incomplete seed recovery — missing positions completed safely or produce controlled failure without panic or lock loss', async () => {
+  const { staff } = parseStaffCSV(SAMPLE_CSV);
+  const slotMeta = getScheduleSlotMeta(staff);
+  const baseSchedule = buildEditableSchedule(staff, VERIFIED_SAMPLE_SCHEDULE, slotMeta);
+
+  // Intentionally introduce 5 unassigned / missing positions across the schedule
+  const incompleteSchedule: Record<string, string[]> = {};
+  for (const s of staff) {
+    incompleteSchedule[s.id] = [...(baseSchedule[s.id] || [])];
+  }
+  // Clear shifts on 5 workers on Day 15
+  incompleteSchedule['Sarah_Chen'][15] = '';
+  incompleteSchedule['Marcus_Webb'][15] = '';
+  incompleteSchedule['James_Okafor'][15] = '';
+  incompleteSchedule['Elena_Vasquez'][15] = '';
+  incompleteSchedule['Daniel_Park'][15] = '';
+
+  // Lock a critical assignment on Day 3
+  incompleteSchedule['Priya_Nair'][3] = 'Night';
+  const lockedCells = new Set(['Priya_Nair:3']);
+
+  // Call redistributeWithLocks with incomplete schedule
+  const result = await redistributeWithLocks(
+    staff,
+    incompleteSchedule,
+    lockedCells,
+    VERIFIED_SAMPLE_SCHEDULE,
+    {},
+    'test-csrf-token',
+    slotMeta,
+  );
+
+  // 1. Does not panic and returns a valid schedule structure
+  expect(result.schedule).toBeDefined();
+
+  // 2. Invariant: Locked assignment is strictly preserved
+  expect(result.schedule['Priya_Nair'][3]).toBe('Night');
+  expect(result.log.lockedAssignmentsChanged).toBe(0);
+
+  // 3. Independent validator verifies the schedule
+  const violations = detectScheduleViolations(staff, result.schedule, slotMeta);
+  // Independent validation confirms no hard violations on preserved locks
+  expect(violations.filter(v => v.staffId === 'Priya_Nair' && v.dayIdx === 3).length).toBe(0);
+
+  // 4. Missing positions are filled safely: 100% canonical demand covered
+  const reqs = buildStaffingRequirements(slotMeta);
+  const cov = computeCanonicalCoverage(reqs, result.schedule);
+  expect(cov.coveragePct).toBe(100);
+  expect(cov.gapPositions).toBe(0);
+  expect(cov.filledPositions).toBe(196);
+});
+
+test('AT-41: Manual edit of supervisory HeadNurse rebalances HeadNurse slot without HC1 skill mismatch on standard Nurse', async () => {
+  const { staff } = parseStaffCSV(OPTIMAL_12_STAFF_CSV);
+  const slotMeta = getScheduleSlotMeta(staff);
+  const baseSchedule = buildEditableSchedule(staff, VERIFIED_OPTIMAL_12_SCHEDULE, slotMeta);
+
+  // Replicate user scenario:
+  // Sarah Chen (HeadNurse;Nurse) is manually edited on Day 7 (dayIdx 7, 21/7) from Early to Late ('Late').
+  const currentSchedule: Record<string, string[]> = {};
+  for (const s of staff) {
+    currentSchedule[s.id] = [...(baseSchedule[s.id] || [])];
+  }
+  currentSchedule['Sarah_Chen'][7] = 'Late';
+  const lockedCells = new Set(['Sarah_Chen:7']);
+
+  // Run localized rebalance (the root-cause recovery invoked on cell edit)
+  const resolved = localRebalanceSchedule(staff, currentSchedule, lockedCells, slotMeta);
+
+  // 1. Manual edit on Sarah Chen Day 7 is strictly preserved
+  expect(resolved['Sarah_Chen'][7]).toBe('Late');
+
+  // 2. Coverage is 100% conserved (196 / 196 shifts) — no unassigned shift gap
+  const reqs = buildStaffingRequirements(slotMeta);
+  const cov = computeCanonicalCoverage(reqs, resolved);
+  expect(cov.coveragePct).toBe(100);
+  expect(cov.gapPositions).toBe(0);
+  expect(cov.filledPositions).toBe(196);
+
+  // 3. Independent validator confirms ZERO hard violations across the entire roster
+  const violations = detectScheduleViolations(staff, resolved, slotMeta);
+  const hardViolations = violations.filter(v => v.type === 'skill' || v.type === 'rest');
+  expect(hardViolations).toEqual([]);
+
+  // 4. Specifically verify Carlos Mendez (Nurse) does NOT have an HC1 skill mismatch on Day 8 / Day 9
+  const carlosMismatch = violations.find(v => v.staffId === 'Carlos_Mendez' && v.type === 'skill');
+  expect(carlosMismatch).toBeUndefined();
+
+  // 5. Test redistributeWithLocks completes with valid provenance and zero hard violations
+  const redistResult = await redistributeWithLocks(
+    staff,
+    currentSchedule,
+    lockedCells,
+    VERIFIED_OPTIMAL_12_SCHEDULE,
+    {},
+    'test-csrf-token',
+    slotMeta,
+  );
+  expect(redistResult.schedule['Sarah_Chen'][7]).toBe('Late');
+  expect(redistResult.log.lockedAssignmentsChanged).toBe(0);
+  const redistViolations = detectScheduleViolations(staff, redistResult.schedule, slotMeta);
+  expect(redistViolations.filter(v => v.type === 'skill' || v.type === 'rest')).toEqual([]);
+});
+
+test('AT-41.2: Position-level competency accounting — HeadNurse occupying general Nurse position leaves HeadNurse position vacant; standard Nurse cannot fill vacancy', () => {
+  const { staff } = parseStaffCSV(OPTIMAL_12_STAFF_CSV);
+  const slotMeta = getScheduleSlotMeta(staff);
+
+  const sarah = staff.find(s => s.id === 'Sarah_Chen')!; // skills: ['HeadNurse', 'Nurse']
+  const carlos = staff.find(s => s.id === 'Carlos_Mendez')!; // skills: ['Nurse']
+  const marcus = staff.find(s => s.id === 'Marcus_Webb')!; // skills: ['Nurse']
+  const priya = staff.find(s => s.id === 'Priya_Nair')!; // skills: ['HeadNurse', 'Nurse']
+
+  // Day 8 (dayIdx 8, WED 22/7):
+  // Shift 57: label 'Early', skill 'HeadNurse'
+  // Shift 58: label 'Early', skill 'Nurse'
+  // Shift 59: label 'Early', skill 'Nurse'
+  expect(slotMeta[57].skill).toBe('HeadNurse');
+  expect(slotMeta[58].skill).toBe('Nurse');
+  expect(slotMeta[59].skill).toBe('Nurse');
+
+  // Scenario: Sarah (HeadNurse+Nurse) is pinned to general Nurse position (Shift 58).
+  // Carlos (Nurse) is pinned to general Nurse position (Shift 59).
+  // The dedicated supervisory position (Shift 57, HeadNurse) remains vacant.
+  const pinnedAssignments: Record<number, StaffMember> = {
+    58: sarah,
+    59: carlos,
+  };
+
+  // 1. Verify getUnfilledSlotsForShift identifies Shift 57 as the unfilled position requiring HeadNurse
+  const unfilled = getUnfilledSlotsForShift(8, 'Early', [sarah, carlos], slotMeta, pinnedAssignments);
+  expect(unfilled.length).toBe(1);
+  expect(unfilled[0].shiftId).toBe(57);
+  expect(unfilled[0].skill).toBe('HeadNurse');
+
+  // 2. Invariant verification: A standard Nurse (Marcus Webb) cannot fill this vacancy
+  expect(marcus.skills.includes(unfilled[0].skill)).toBe(false);
+
+  // 3. Invariant verification: Only a qualified HeadNurse (Priya Nair) can fill this vacancy
+  expect(priya.skills.includes(unfilled[0].skill)).toBe(true);
+
+  // 4. Test with localRebalanceSchedule:
+  // With Sarah and Carlos assigned to Early, and Shift 57 vacant:
+  // Provide only standard Nurses (Marcus) in offStaff.
+  // Confirm Marcus is NOT assigned to fill the HeadNurse vacancy!
+  const currentSchedule: Record<string, string[]> = {};
+  for (const s of staff) currentSchedule[s.id] = Array(28).fill('');
+  currentSchedule['Sarah_Chen'][8] = 'Early';
+  currentSchedule['Carlos_Mendez'][8] = 'Early';
+
+  // Only provide standard Nurses off-duty (Marcus_Webb)
+  const standardOnlyStaff = [sarah, carlos, marcus];
+  const rebalanced = localRebalanceSchedule(
+    standardOnlyStaff,
+    currentSchedule,
+    new Set(['Sarah_Chen:8', 'Carlos_Mendez:8']),
+    slotMeta,
+    pinnedAssignments,
+  );
+
+  // Marcus Webb must NOT be assigned to Early because he lacks HeadNurse
+  expect(rebalanced['Marcus_Webb'][8]).not.toBe('Early');
+
+  // 5. When a qualified HeadNurse (Priya) is available, Priya successfully fills the vacancy
+  const staffWithPriya = [sarah, carlos, priya];
+  const rebalancedWithPriya = localRebalanceSchedule(
+    staffWithPriya,
+    currentSchedule,
+    new Set(['Sarah_Chen:8', 'Carlos_Mendez:8']),
+    slotMeta,
+    pinnedAssignments,
+  );
+  expect(rebalancedWithPriya['Priya_Nair'][8]).toBe('Early');
+
+  // 6. Explicit competency semantics:
+  // Aisha Diallo has ONLY ['HeadNurse'] (no Nurse qualification).
+  // Confirm Aisha cannot satisfy a slot requiring 'Nurse'.
+  const aishaOnlyHead: StaffMember = { id: 'Aisha_Test', contract: 'FullTime', skills: ['HeadNurse'] };
+  expect(aishaOnlyHead.skills.includes('Nurse')).toBe(false);
+  expect(aishaOnlyHead.skills.includes(slotMeta[58].skill)).toBe(false);
+});
+
+
+

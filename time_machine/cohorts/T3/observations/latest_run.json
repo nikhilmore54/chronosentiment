@@ -1,0 +1,23 @@
+{
+  "run_id": "TIME005-20260619T034500Z-gen20260820T104957542438Z",
+  "run_at": "2026-08-20T10:49:57.542438Z",
+  "producer": "time005_observe.v1",
+  "decision_replay_id": "TIME003-20260619T034500Z-gen20260820T104955096765Z",
+  "as_of": "2026-06-19T03:45:00Z",
+  "n_total_decisions": 102,
+  "n_observed": 102,
+  "n_duplicate_skipped": 0,
+  "n_no_reference_price": 0,
+  "n_insufficient_data": 0,
+  "n_no_trade": 47,
+  "n_target_reached": 15,
+  "n_risk_reached": 11,
+  "n_horizon": 29,
+  "n_ambiguous": 0,
+  "observations_dir": "time_machine/cohorts/T3/observations",
+  "ac_t5_01_temporal_boundary": true,
+  "ac_t5_04_t0_immutability": true,
+  "ac_t5_05_idempotency": true,
+  "ac_t5_06_no_trade_handled": true,
+  "ac_t5_07_accounting": true
+}

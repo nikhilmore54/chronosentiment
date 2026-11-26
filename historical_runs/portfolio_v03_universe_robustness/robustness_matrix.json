@@ -1,0 +1,71 @@
+[
+  {
+    "config_label": "v03_A_25",
+    "coralys": {
+      "capital_velocity": 10.349067765390199,
+      "max_drawdown_pct": 1.4195259241412816,
+      "n_lots": 300,
+      "net_stop_benefit_inr": -254.06482219089955,
+      "pct_direction_failure": 12.76595744680851,
+      "pct_genuine_adverse": 2.127659574468085,
+      "pct_premature": 27.659574468085108,
+      "pct_stop_too_tight": 1.4184397163120568,
+      "pct_temporary_excursion": 56.02836879432624,
+      "stop_rate_pct": 47.0,
+      "total_return_pct": 8.75428548528027
+    },
+    "pe2": {
+      "capital_velocity": 4.6251447629952285,
+      "max_drawdown_pct": 1.7354440878023187,
+      "n_lots": 125,
+      "total_return_pct": 6.8356010299898475
+    },
+    "universe_size": 25
+  },
+  {
+    "config_label": "v03_B_50",
+    "coralys": {
+      "capital_velocity": 4.072602111401502,
+      "max_drawdown_pct": 0.06157527816429954,
+      "n_lots": 200,
+      "net_stop_benefit_inr": 28.17020628800705,
+      "pct_direction_failure": 17.307692307692307,
+      "pct_genuine_adverse": 0.0,
+      "pct_premature": 34.61538461538461,
+      "pct_stop_too_tight": 0.9615384615384616,
+      "pct_temporary_excursion": 47.11538461538461,
+      "stop_rate_pct": 52.0,
+      "total_return_pct": 3.590889919672554
+    },
+    "pe2": {
+      "capital_velocity": 4.051223944199405,
+      "max_drawdown_pct": 1.774919902060021,
+      "n_lots": 200,
+      "total_return_pct": 3.1154804073446942
+    },
+    "universe_size": 50
+  },
+  {
+    "config_label": "v03_C_100",
+    "coralys": {
+      "capital_velocity": -0.0,
+      "max_drawdown_pct": 0.0,
+      "n_lots": 0,
+      "net_stop_benefit_inr": 0.0,
+      "pct_direction_failure": 0.0,
+      "pct_genuine_adverse": 0.0,
+      "pct_premature": 0.0,
+      "pct_stop_too_tight": 0.0,
+      "pct_temporary_excursion": 0.0,
+      "stop_rate_pct": 0.0,
+      "total_return_pct": 0.0
+    },
+    "pe2": {
+      "capital_velocity": -0.0,
+      "max_drawdown_pct": 0.0,
+      "n_lots": 0,
+      "total_return_pct": 0.0
+    },
+    "universe_size": 100
+  }
+]

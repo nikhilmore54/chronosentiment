@@ -1,0 +1,82 @@
+{
+  "summary": {
+    "sessions": 0,
+    "symbols_cached": 102,
+    "symbols_entered": 0,
+    "act_decisions": 0,
+    "paper_entries": 0,
+    "n_target": 0,
+    "n_stop": 0,
+    "n_horizon": 0,
+    "n_open": 0,
+    "n_win": 0,
+    "n_loss": 0,
+    "mean_return": null,
+    "total_return": null,
+    "mean_closed_return": null,
+    "mean_open_mark": null,
+    "mean_fill_vs_decision": null,
+    "losses": {
+      "loss_count": 0,
+      "closed_count": 0,
+      "loss_rate": null,
+      "open_underwater": 0,
+      "worst_symbols": [],
+      "worst_directions": [],
+      "worst_exit_reasons": [],
+      "largest_individual_losses": []
+    },
+    "note": "Descriptive Deferred Live paper observation across cached 1m dates. Realized losses are closed TARGET/STOP/HORIZON with ret < 0. OPEN is mark-to-last-observation, not an exit. Frozen path unchanged. Not a G-GATE claim. Not paper_trader_v2 replay."
+  },
+  "coverage": {
+    "cache_dates": [
+      "2026-09-09",
+      "2026-09-10",
+      "2026-09-11",
+      "2026-09-15",
+      "2026-09-16",
+      "2026-09-17"
+    ],
+    "brief_dates": [
+      "2026-08-20",
+      "2026-08-21",
+      "2026-08-24",
+      "2026-08-25",
+      "2026-08-26",
+      "2026-08-28",
+      "2026-08-31",
+      "2026-09-02",
+      "2026-09-03",
+      "2026-09-04",
+      "2026-09-07"
+    ],
+    "sessions_run": [],
+    "cache_only_dates": [
+      "2026-09-09",
+      "2026-09-10",
+      "2026-09-11",
+      "2026-09-15",
+      "2026-09-16",
+      "2026-09-17"
+    ],
+    "brief_only_dates": [
+      "2026-08-20",
+      "2026-08-21",
+      "2026-08-24",
+      "2026-08-25",
+      "2026-08-26",
+      "2026-08-28",
+      "2026-08-31",
+      "2026-09-02",
+      "2026-09-03",
+      "2026-09-04",
+      "2026-09-07"
+    ],
+    "cache_symbols": 102,
+    "act_with_cache": 0,
+    "act_without_cache": 0,
+    "skipped_not_act": 0
+  },
+  "rows": [],
+  "losses": []
+}

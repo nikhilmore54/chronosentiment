@@ -1,0 +1,4 @@
+operator,total,peak,shoulder,transition,tail,mixed,neutral,peak_pct,shoulder_pct,transition_pct,tail_pct,mixed_pct,neutral_pct
+crossover,61,0,15,13,16,17,0,0.0,24.59,21.31,26.23,27.87,0.0
+crossover+mutation,38,1,6,7,12,12,0,2.63,15.79,18.42,31.58,31.58,0.0
+mutation,13,0,5,3,0,3,2,0.0,38.46,23.08,0.0,23.08,15.38

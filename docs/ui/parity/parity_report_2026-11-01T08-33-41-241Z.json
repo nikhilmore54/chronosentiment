@@ -1,0 +1,26 @@
+{
+  "status": "PASS",
+  "snapshot": "pi_state_2026-11-01T08-33-41-241Z.json",
+  "envelope_fetched_at": "2026-11-01T08:34:31.976Z",
+  "server_time_ist": "2026-11-01 14:03:53 IST",
+  "fail_count": 0,
+  "fails": [],
+  "watch_mismatches": 0,
+  "authority": 0,
+  "crypto": {
+    "b": "LONG",
+    "c": "LONG",
+    "plan": "OPEN",
+    "of_active": false,
+    "of_exit": true
+  },
+  "nse": {
+    "n": 20,
+    "of": 9,
+    "univ": [
+      119,
+      102,
+      17
+    ]
+  }
+}

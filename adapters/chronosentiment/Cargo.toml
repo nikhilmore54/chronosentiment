@@ -1,0 +1,586 @@
+[package]
+name = "chronosentiment_adapter"
+version = "0.1.0"
+edition = "2021"
+
+[features]
+default = []
+# B3/B4 Knowledge Lake generators (DecisionEngine / StrategyEngine) and heritage tests.
+# Not the product TradingDecision path. Required to reproduce historical lake population.
+legacy-lake = []
+# G-GATE / predictive-value research laboratory. Not required to compile the product adapter.
+research = ["legacy-lake"]
+
+[dependencies]
+coralys-ecology = { path = "../../coralys-ecology" }
+coralys-moga = { path = "../../coralys-moga" }
+coralys-decision = { path = "../../coralys-decision" }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1.0"
+tokio = { version = "1", features = ["full"] }
+sqlx = { version = "0.8", features = ["runtime-tokio", "tls-rustls", "postgres", "chrono", "uuid", "json"] }
+chrono = { version = "0.4", features = ["serde"] }
+uuid = { version = "1.0", features = ["v4", "serde"] }
+reqwest = { version = "0.11", features = ["json", "blocking"] }
+async-trait = "0.1"
+rand = "0.8"
+sha2 = "0.10"
+# Vendored OpenSSL so Pi aarch64-linux cross-builds (cargo zigbuild) do not need a sysroot.
+openssl = { version = "0.10", features = ["vendored"] }
+
+
+# ---------------------------------------------------------------------------
+# Legacy B3/B4 generators and demos — not built unless `--features legacy-lake`
+# ---------------------------------------------------------------------------
+[[bin]]
+name = "m4_populate_knowledge_lake"
+path = "legacy/bin/m4_populate_knowledge_lake.rs"
+required-features = ["legacy-lake"]
+
+[[bin]]
+name = "m4_validation_gate"
+path = "legacy/bin/m4_validation_gate.rs"
+required-features = ["legacy-lake"]
+
+[[bin]]
+name = "m4_time_machine_demo"
+path = "legacy/bin/m4_time_machine_demo.rs"
+required-features = ["legacy-lake"]
+
+[[bin]]
+name = "m1_reliance"
+path = "legacy/bin/m1_reliance.rs"
+required-features = ["legacy-lake"]
+
+[[bin]]
+name = "m2_week1_demo"
+path = "legacy/bin/m2_week1_demo.rs"
+required-features = ["legacy-lake"]
+
+[[bin]]
+name = "m2_week2_demo"
+path = "legacy/bin/m2_week2_demo.rs"
+required-features = ["legacy-lake"]
+
+[[bin]]
+name = "m3_reasoning_demo"
+path = "legacy/bin/m3_reasoning_demo.rs"
+required-features = ["legacy-lake"]
+
+[[bin]]
+name = "csp002_b4_historical_run"
+path = "legacy/bin/csp002_b4_historical_run.rs"
+required-features = ["legacy-lake"]
+
+[[bin]]
+name = "csp003_forward_session"
+path = "legacy/bin/csp003_forward_session.rs"
+required-features = ["legacy-lake"]
+
+[[bin]]
+name = "csp004_enrichment_certify"
+path = "legacy/bin/csp004_enrichment_certify.rs"
+required-features = ["legacy-lake"]
+
+[[bin]]
+name = "csp004_historical_lab"
+path = "legacy/bin/csp004_historical_lab.rs"
+required-features = ["legacy-lake"]
+
+[[bin]]
+name = "csp005_factor_ecology"
+path = "legacy/bin/csp005_factor_ecology.rs"
+required-features = ["legacy-lake"]
+
+[[bin]]
+name = "csp006_c3_comparison"
+path = "legacy/bin/csp006_c3_comparison.rs"
+required-features = ["legacy-lake"]
+
+[[bin]]
+name = "csp006_c3_implementation"
+path = "legacy/bin/csp006_c3_implementation.rs"
+required-features = ["legacy-lake"]
+
+[[bin]]
+name = "csp006_c3_rule_ecology"
+path = "legacy/bin/csp006_c3_rule_ecology.rs"
+required-features = ["legacy-lake"]
+
+[[bin]]
+name = "csp006_c3_rule_persistence"
+path = "legacy/bin/csp006_c3_rule_persistence.rs"
+required-features = ["legacy-lake"]
+
+[[bin]]
+name = "csp006_c3_search"
+path = "legacy/bin/csp006_c3_search.rs"
+required-features = ["legacy-lake"]
+
+[[bin]]
+name = "csp006_c3_state_landscape"
+path = "legacy/bin/csp006_c3_state_landscape.rs"
+required-features = ["legacy-lake"]
+
+[[bin]]
+name = "csp006_decision_value"
+path = "legacy/bin/csp006_decision_value.rs"
+required-features = ["legacy-lake"]
+
+[[bin]]
+name = "csp006_decision_value_harness"
+path = "legacy/bin/csp006_decision_value_harness.rs"
+required-features = ["legacy-lake"]
+
+[[bin]]
+name = "csp006_policy_discovery"
+path = "legacy/bin/csp006_policy_discovery.rs"
+required-features = ["legacy-lake"]
+
+[[bin]]
+name = "csp006_population_ecology"
+path = "legacy/bin/csp006_population_ecology.rs"
+required-features = ["legacy-lake"]
+
+[[bin]]
+name = "csp006_recommendation_outcome"
+path = "legacy/bin/csp006_recommendation_outcome.rs"
+required-features = ["legacy-lake"]
+
+[[bin]]
+name = "csp006_research_snapshot"
+path = "legacy/bin/csp006_research_snapshot.rs"
+required-features = ["legacy-lake"]
+
+[[bin]]
+name = "csp006_search_diagnosis"
+path = "legacy/bin/csp006_search_diagnosis.rs"
+required-features = ["legacy-lake"]
+
+[[bin]]
+name = "csp006_selection_review"
+path = "legacy/bin/csp006_selection_review.rs"
+required-features = ["legacy-lake"]
+
+[[bin]]
+name = "csp007_portfolio_replay"
+path = "legacy/bin/csp007_portfolio_replay.rs"
+required-features = ["legacy-lake"]
+
+[[bin]]
+name = "csp008_portfolio_replay_v02"
+path = "legacy/bin/csp008_portfolio_replay_v02.rs"
+required-features = ["legacy-lake"]
+
+[[bin]]
+name = "csp009_portfolio_continuous"
+path = "legacy/bin/csp009_portfolio_continuous.rs"
+required-features = ["legacy-lake"]
+
+# ---------------------------------------------------------------------------
+# Research binaries — not built unless `--features research`
+# ---------------------------------------------------------------------------
+[[bin]]
+name = "m5_assessment_predictive_value"
+path = "research/bin/m5_assessment_predictive_value.rs"
+required-features = ["research"]
+
+[[bin]]
+name = "m6_predictive_value_experiment"
+path = "research/bin/m6_predictive_value_experiment.rs"
+required-features = ["research"]
+
+[[bin]]
+name = "m6_phase_g_experiment"
+path = "research/bin/m6_phase_g_experiment.rs"
+required-features = ["research"]
+
+[[bin]]
+name = "csp010_portfolio_v03"
+path = "research/bin/csp010_portfolio_v03.rs"
+required-features = ["research"]
+
+[[bin]]
+name = "csp011_portfolio_v04"
+path = "research/bin/csp011_portfolio_v04.rs"
+required-features = ["research"]
+
+[[bin]]
+name = "csp012_portfolio_v041"
+path = "research/bin/csp012_portfolio_v041.rs"
+required-features = ["research"]
+
+[[bin]]
+name = "rp608_research_audit"
+path = "research/bin/rp608_research_audit.rs"
+required-features = ["research"]
+
+[[bin]]
+name = "rp608_offline_policy_freeze"
+path = "research/bin/rp608_offline_policy_freeze.rs"
+required-features = ["research"]
+
+[[bin]]
+name = "rp608_champion_integrity_audit"
+path = "research/bin/rp608_champion_integrity_audit.rs"
+required-features = ["research"]
+
+[[bin]]
+name = "rp608_structural_validity_gate"
+path = "research/bin/rp608_structural_validity_gate.rs"
+required-features = ["research"]
+
+[[bin]]
+name = "rp608_exit_ablation_study"
+path = "research/bin/rp608_exit_ablation_study.rs"
+required-features = ["research"]
+
+[[bin]]
+name = "rp608_exit_reconciliation_audit"
+path = "research/bin/rp608_exit_reconciliation_audit.rs"
+required-features = ["research"]
+
+[[bin]]
+name = "rp608_telemetry_validation_gate"
+path = "research/bin/rp608_telemetry_validation_gate.rs"
+required-features = ["research"]
+
+[[bin]]
+name = "rp609_observe"
+path = "research/bin/rp609_observe.rs"
+required-features = ["research"]
+
+[[bin]]
+name = "rp610_crypto_observe"
+path = "research/bin/rp610_crypto_observe.rs"
+required-features = ["research"]
+
+[[bin]]
+name = "rp608_multi_horizon_status"
+path = "research/bin/rp608_multi_horizon_status.rs"
+required-features = ["research"]
+
+[[bin]]
+name = "rp608_wl_crypto_plan_discovery_v2"
+path = "research/bin/rp608_wl_crypto_plan_discovery_v2.rs"
+required-features = ["research"]
+
+# Pi transitional JSON CLI → gate2x_decide (see docs/research/rp608_position_decide_cli.md)
+[[bin]]
+name = "rp608_position_decide"
+path = "src/bin/rp608_position_decide.rs"
+
+[[test]]
+name = "research_dataset_tests"
+path = "research/tests/research_dataset_tests.rs"
+required-features = ["research"]
+
+[[test]]
+name = "research_laboratory_tests"
+path = "research/tests/research_laboratory_tests.rs"
+required-features = ["research"]
+
+[[test]]
+name = "phase_g_predictive_value_tests"
+path = "research/tests/phase_g_predictive_value_tests.rs"
+required-features = ["research"]
+
+[[test]]
+name = "rp608_audit_reconciliation_tests"
+path = "research/tests/rp608_audit_reconciliation_tests.rs"
+required-features = ["research"]
+
+[[test]]
+name = "rp608_crypto_replay_tests"
+path = "research/tests/rp608_crypto_replay_tests.rs"
+required-features = ["research"]
+
+[[test]]
+name = "rp608_offline_policy_tests"
+path = "research/tests/rp608_offline_policy_tests.rs"
+required-features = ["research"]
+
+[[test]]
+name = "rp608_causal_invariant_tests"
+path = "research/tests/rp608_causal_invariant_tests.rs"
+required-features = ["research"]
+
+[[test]]
+name = "rp608_telemetry_invariants_tests"
+path = "research/tests/rp608_telemetry_invariants_tests.rs"
+required-features = ["research"]
+
+[[test]]
+name = "rp608_tel001a_reconciliation_tests"
+path = "research/tests/rp608_tel001a_reconciliation_tests.rs"
+required-features = ["research"]
+
+[[test]]
+name = "rp608_shadow_readiness_tests"
+path = "research/tests/rp608_shadow_readiness_tests.rs"
+required-features = ["research"]
+
+[[test]]
+name = "rp609_multi_horizon_tests"
+path = "research/tests/rp609_multi_horizon_tests.rs"
+required-features = ["research"]
+
+[[test]]
+name = "rp610_crypto_multi_horizon_tests"
+path = "research/tests/rp610_crypto_multi_horizon_tests.rs"
+required-features = ["research"]
+
+[[test]]
+name = "rp608_regime_breakout_tests"
+path = "research/tests/rp608_regime_breakout_tests.rs"
+required-features = ["research"]
+
+# ---------------------------------------------------------------------------
+# CLEAN-003-D — CS-P-006 ecology / heritage / sqlx gated behind research
+# Default cargo test keeps discipline + product Gate2X/NSE/TIME signal.
+# ---------------------------------------------------------------------------
+[[test]]
+name = "assessment_enrichment_tests"
+path = "tests/assessment_enrichment_tests.rs"
+required-features = ["research"]
+
+[[test]]
+name = "csp006_snapshot_tests"
+path = "tests/csp006_snapshot_tests.rs"
+required-features = ["research"]
+
+[[test]]
+name = "csp006b_protocol_tests"
+path = "tests/csp006b_protocol_tests.rs"
+required-features = ["research"]
+
+[[test]]
+name = "csp006c2_gap_review_tests"
+path = "tests/csp006c2_gap_review_tests.rs"
+required-features = ["research"]
+
+[[test]]
+name = "csp006c2d_decision_value_tests"
+path = "tests/csp006c2d_decision_value_tests.rs"
+required-features = ["research"]
+
+[[test]]
+name = "csp006c2o_observability_tests"
+path = "tests/csp006c2o_observability_tests.rs"
+required-features = ["research"]
+
+[[test]]
+name = "csp006c2p_population_ecology_tests"
+path = "tests/csp006c2p_population_ecology_tests.rs"
+required-features = ["research"]
+
+[[test]]
+name = "csp006c2r_recommendation_outcome_tests"
+path = "tests/csp006c2r_recommendation_outcome_tests.rs"
+required-features = ["research"]
+
+[[test]]
+name = "csp006c2s_selection_review_tests"
+path = "tests/csp006c2s_selection_review_tests.rs"
+required-features = ["research"]
+
+[[test]]
+name = "csp006c3_protocol_tests"
+path = "tests/csp006c3_protocol_tests.rs"
+required-features = ["research"]
+
+[[test]]
+name = "csp006c3c_comparison_tests"
+path = "tests/csp006c3c_comparison_tests.rs"
+required-features = ["research"]
+
+[[test]]
+name = "csp006c3d_rule_ecology_tests"
+path = "tests/csp006c3d_rule_ecology_tests.rs"
+required-features = ["research"]
+
+[[test]]
+name = "csp006c3e_rule_persistence_tests"
+path = "tests/csp006c3e_rule_persistence_tests.rs"
+required-features = ["research"]
+
+[[test]]
+name = "csp006c3f_state_landscape_tests"
+path = "tests/csp006c3f_state_landscape_tests.rs"
+required-features = ["research"]
+
+[[test]]
+name = "csp006c3g_regime_question_tests"
+path = "tests/csp006c3g_regime_question_tests.rs"
+required-features = ["research"]
+
+[[test]]
+name = "csp006c3i_implementation_tests"
+path = "tests/csp006c3i_implementation_tests.rs"
+required-features = ["research"]
+
+[[test]]
+name = "csp006c3r_search_tests"
+path = "tests/csp006c3r_search_tests.rs"
+required-features = ["research"]
+
+[[test]]
+name = "csp006m1_decision_value_specification_tests"
+path = "tests/csp006m1_decision_value_specification_tests.rs"
+required-features = ["research"]
+
+[[test]]
+name = "csp006m_decision_value_model_tests"
+path = "tests/csp006m_decision_value_model_tests.rs"
+required-features = ["research"]
+
+[[test]]
+name = "csp006n_decision_value_harness_tests"
+path = "tests/csp006n_decision_value_harness_tests.rs"
+required-features = ["research"]
+
+[[test]]
+name = "csp006p_decision_intent_tests"
+path = "tests/csp006p_decision_intent_tests.rs"
+required-features = ["research"]
+
+[[test]]
+name = "csp006p_observatory_execution_tests"
+path = "tests/csp006p_observatory_execution_tests.rs"
+required-features = ["research"]
+
+[[test]]
+name = "csp006p_observatory_live_execution_tests"
+path = "tests/csp006p_observatory_live_execution_tests.rs"
+required-features = ["research"]
+
+[[test]]
+name = "csp006p_observatory_maturity_tests"
+path = "tests/csp006p_observatory_maturity_tests.rs"
+required-features = ["research"]
+
+[[test]]
+name = "csp006p_observatory_prospective_tests"
+path = "tests/csp006p_observatory_prospective_tests.rs"
+required-features = ["research"]
+
+[[test]]
+name = "csp006p_observatory_slice_tests"
+path = "tests/csp006p_observatory_slice_tests.rs"
+required-features = ["research"]
+
+[[test]]
+name = "csp006p_observatory_tests"
+path = "tests/csp006p_observatory_tests.rs"
+required-features = ["research"]
+
+[[test]]
+name = "csp007_protocol_tests"
+path = "tests/csp007_protocol_tests.rs"
+required-features = ["research"]
+
+[[test]]
+name = "csp_test_001_verification_matrix"
+path = "tests/csp_test_001_verification_matrix.rs"
+required-features = ["research"]
+
+[[test]]
+name = "dataset_partition_tests"
+path = "tests/dataset_partition_tests.rs"
+required-features = ["research"]
+
+[[test]]
+name = "factor_ecology_tests"
+path = "tests/factor_ecology_tests.rs"
+required-features = ["research"]
+
+[[test]]
+name = "forward_paper_tests"
+path = "tests/forward_paper_tests.rs"
+required-features = ["research"]
+
+[[test]]
+name = "historical_laboratory_tests"
+path = "tests/historical_laboratory_tests.rs"
+required-features = ["research"]
+
+[[test]]
+name = "knowledge_outcome_tests"
+path = "tests/knowledge_outcome_tests.rs"
+required-features = ["research"]
+
+[[test]]
+name = "knowledge_tests"
+path = "tests/knowledge_tests.rs"
+required-features = ["research"]
+
+[[test]]
+name = "outcome_determinism_tests"
+path = "tests/outcome_determinism_tests.rs"
+required-features = ["research"]
+
+[[test]]
+name = "outcome_engine_sqlx_tests"
+path = "tests/outcome_engine_sqlx_tests.rs"
+required-features = ["research"]
+
+[[test]]
+name = "outcome_engine_tests"
+path = "tests/outcome_engine_tests.rs"
+required-features = ["research"]
+
+[[test]]
+name = "performance_engine_sqlx_tests"
+path = "tests/performance_engine_sqlx_tests.rs"
+required-features = ["research"]
+
+[[test]]
+name = "performance_engine_tests"
+path = "tests/performance_engine_tests.rs"
+required-features = ["research"]
+
+[[test]]
+name = "policy_discovery_tests"
+path = "tests/policy_discovery_tests.rs"
+required-features = ["research"]
+
+[[test]]
+name = "policy_search_diagnosis_tests"
+path = "tests/policy_search_diagnosis_tests.rs"
+required-features = ["research"]
+
+[[test]]
+name = "replay_adapter_sqlx_tests"
+path = "tests/replay_adapter_sqlx_tests.rs"
+required-features = ["research"]
+
+[[test]]
+name = "replay_adapter_tests"
+path = "tests/replay_adapter_tests.rs"
+required-features = ["research"]
+
+[[test]]
+name = "replay_backtest_sqlx_tests"
+path = "tests/replay_backtest_sqlx_tests.rs"
+required-features = ["research"]
+
+[[test]]
+name = "replay_backtest_tests"
+path = "tests/replay_backtest_tests.rs"
+required-features = ["research"]
+
+[[test]]
+name = "replay_tests"
+path = "tests/replay_tests.rs"
+required-features = ["research"]
+
+[[test]]
+name = "repository_tests"
+path = "tests/repository_tests.rs"
+required-features = ["research"]
+
+[[test]]
+name = "week1_tests"
+path = "tests/week1_tests.rs"
+required-features = ["research"]
+

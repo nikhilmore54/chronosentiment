@@ -1,0 +1,32 @@
+[
+  {
+    "event_id": "trend_001",
+    "date": "2025-01-01",
+    "symbol": "NIFTY",
+    "classification": "trend_day"
+  },
+  {
+    "event_id": "gapup_001",
+    "date": "2025-01-02",
+    "symbol": "BANKNIFTY",
+    "classification": "gap_up_day"
+  },
+  {
+    "event_id": "gapdown_001",
+    "date": "2025-01-03",
+    "symbol": "NIFTY",
+    "classification": "gap_down_day"
+  },
+  {
+    "event_id": "highvol_001",
+    "date": "2025-01-04",
+    "symbol": "BANKNIFTY",
+    "classification": "high_vol_day"
+  },
+  {
+    "event_id": "lowvol_001",
+    "date": "2025-01-05",
+    "symbol": "NIFTY",
+    "classification": "low_vol_day"
+  }
+]

@@ -1,0 +1,210 @@
+{
+  "seed": 12345,
+  "total_generations": 1000,
+  "diagnostics": {
+    "EcologyLockIn": {
+      "confidence": 0.5639313043904428,
+      "severity": 0.5639313043904428,
+      "evidence_count": 200,
+      "supporting_metrics": [
+        {
+          "name": "gini_coefficient",
+          "value": 0.06541030434143358
+        },
+        {
+          "name": "best_target_delta",
+          "value": 0.0
+        }
+      ]
+    },
+    "TradeoffBasin": {
+      "confidence": 0.0,
+      "severity": 0.0,
+      "evidence_count": 200,
+      "supporting_metrics": [
+        {
+          "name": "correlation_x_y",
+          "value": 0.0
+        },
+        {
+          "name": "tradeoff_probability_y_given_x",
+          "value": 0.0
+        }
+      ]
+    },
+    "AccumulationFailure": {
+      "confidence": 0.8115942028985508,
+      "severity": 0.4940138626339005,
+      "evidence_count": 46,
+      "supporting_metrics": [
+        {
+          "name": "rejection_rate",
+          "value": 0.6086956521739131
+        },
+        {
+          "name": "target_improving_count",
+          "value": 46.0
+        },
+        {
+          "name": "rejected_target_improving_count",
+          "value": 28.0
+        }
+      ]
+    },
+    "Attractor": {
+      "confidence": 0.6601234191586076,
+      "severity": 0.23892209833581005,
+      "evidence_count": 200,
+      "supporting_metrics": [
+        {
+          "name": "correlation_obj_0",
+          "value": 0.09722984042551765
+        },
+        {
+          "name": "correlation_obj_1",
+          "value": 0.0
+        },
+        {
+          "name": "correlation_obj_2",
+          "value": 0.0
+        },
+        {
+          "name": "correlation_obj_3",
+          "value": -0.1016030537499207
+        },
+        {
+          "name": "correlation_obj_4",
+          "value": 0.3619354978199983
+        },
+        {
+          "name": "correlation_obj_5",
+          "value": 0.22991081398827676
+        },
+        {
+          "name": "attractor_index",
+          "value": 4.0
+        },
+        {
+          "name": "max_correlation",
+          "value": 0.3619354978199983
+        }
+      ]
+    },
+    "ProxySuppression": {
+      "confidence": 0.49107142857142855,
+      "severity": 0.19292091836734693,
+      "evidence_count": 28,
+      "supporting_metrics": [
+        {
+          "name": "suppression_ratio",
+          "value": 0.39285714285714285
+        },
+        {
+          "name": "rejected_target_improving_count",
+          "value": 28.0
+        },
+        {
+          "name": "degraded_proxy_count",
+          "value": 11.0
+        }
+      ]
+    }
+  },
+  "memory_ecology": {
+    "novel_signatures_discovered": 0,
+    "novelty_ratio": 0.0,
+    "persistence_ratio": 1.0,
+    "rediscovery_ratio": 0.0,
+    "extinction_ratio": 0.0,
+    "active_memory_size": 4354
+  },
+  "recommendation": {
+    "generated_at_generation": 1000,
+    "recommendations": [
+      {
+        "action": "Reserve archive slots for target-improving solutions",
+        "rationale": "Target-improving candidate solutions are being rejected at a high rate. Reserving dedicated archive capacity prevents proxy objectives from dominating selection.",
+        "confidence": 0.8524250111304907,
+        "evidence": [
+          "accumulation_failure mean confidence = 0.8524",
+          "accumulation_failure mean severity = 0.5454",
+          "latest rejection_rate = 0.6087",
+          "latest target_improving_count = 46.0000",
+          "latest rejected_target_improving_count = 28.0000"
+        ]
+      },
+      {
+        "action": "Reduce archive admission strictness",
+        "rationale": "Allowing solutions with minor proxy degradation to be admitted temporarily gives target-improving solutions time to accumulate and mutate.",
+        "confidence": 0.8524250111304907,
+        "evidence": [
+          "accumulation_failure mean confidence = 0.8524",
+          "accumulation_failure mean severity = 0.5454",
+          "latest rejection_rate = 0.6087",
+          "latest target_improving_count = 46.0000",
+          "latest rejected_target_improving_count = 28.0000"
+        ]
+      },
+      {
+        "action": "Reduce selection pressure / preference weight for attractor objective (Index 4)",
+        "rationale": "Objective Index 4 is dominating the Pareto archive geometry and pulling search towards it. Restricting its dominance allows search to progress along other axes.",
+        "confidence": 0.8649455398556354,
+        "evidence": [
+          "attractor mean confidence = 0.8649",
+          "latest correlation_obj_0 = 0.0972",
+          "latest correlation_obj_1 = 0.0000",
+          "latest correlation_obj_2 = 0.0000",
+          "latest correlation_obj_3 = -0.1016",
+          "latest correlation_obj_4 = 0.3619",
+          "latest correlation_obj_5 = 0.2299",
+          "latest attractor_index = 4.0000",
+          "latest max_correlation = 0.3619"
+        ]
+      },
+      {
+        "action": "Increase mutation scale / reweighting",
+        "rationale": "Introduce random search perturbations to break out of the attractor basin.",
+        "confidence": 0.8649455398556354,
+        "evidence": [
+          "attractor mean confidence = 0.8649",
+          "latest correlation_obj_0 = 0.0972",
+          "latest correlation_obj_1 = 0.0000",
+          "latest correlation_obj_2 = 0.0000",
+          "latest correlation_obj_3 = -0.1016",
+          "latest correlation_obj_4 = 0.3619",
+          "latest correlation_obj_5 = 0.2299",
+          "latest attractor_index = 4.0000",
+          "latest max_correlation = 0.3619"
+        ]
+      },
+      {
+        "action": "Increase mutation entropy / scaling",
+        "rationale": "Archive diversity has collapsed and target score progress is stagnant. Increasing mutation entropy triggers high-entropy search diversification.",
+        "confidence": 0.5547021648160657,
+        "evidence": [
+          "lock_in mean confidence = 0.5547",
+          "latest gini_coefficient = 0.0654",
+          "latest best_target_delta = 0.0000"
+        ]
+      },
+      {
+        "action": "Inject random solutions into archive",
+        "rationale": "Force search diversification by seeding new un-evolved candidates directly to break lock-in.",
+        "confidence": 0.5547021648160657,
+        "evidence": [
+          "lock_in mean confidence = 0.5547",
+          "latest gini_coefficient = 0.0654",
+          "latest best_target_delta = 0.0000"
+        ]
+      }
+    ]
+  },
+  "decision": {
+    "action": "Reserve archive slots for target-improving solutions",
+    "confidence": 0.8524250111304907,
+    "rationales": [
+      "Target-improving candidate solutions are being rejected at a high rate. Reserving dedicated archive capacity prevents proxy objectives from dominating selection.",
+      "Evidence: accumulation_failure mean confidence = 0.8524; accumulation_failure mean severity = 0.5454; latest rejection_rate = 0.6087; latest target_improving_count = 46.0000; latest rejected_target_improving_count = 28.0000"
+    ]
+  }
+}

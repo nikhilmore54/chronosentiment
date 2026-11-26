@@ -1,5 +1,5 @@
-use chronosentiment_optimization::Candidate as Strategy;
 use chronosentiment_core::NormalizedMarketEvent;
+use chronosentiment_optimization::Candidate as Strategy;
 use serde::{Deserialize, Serialize};
 use std::cmp::Ordering;
 
@@ -346,7 +346,10 @@ mod tests {
                 mom_floor: 20,
                 edge_ratio: 150,
                 participation_threshold: 30,
-            exec_aggression: 50, latency_bias: 10, fill_threshold: 50, entry_offset: 0
+                exec_aggression: 50,
+                latency_bias: 10,
+                fill_threshold: 50,
+                entry_offset: 0,
             },
             preferred_regimes: regimes,
             confidence_weight: 0.8,

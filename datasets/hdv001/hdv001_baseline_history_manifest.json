@@ -1,0 +1,376 @@
+{
+  "version": "hdv001_baseline_history_v1",
+  "built_at": "2026-08-17T08:06:01.431215+00:00",
+  "fetch_start": "2026-06-01",
+  "fetch_end": "2026-07-14",
+  "n_instruments": 52,
+  "ok": 52,
+  "warn": 0,
+  "fail": 0,
+  "instruments": [
+    {
+      "symbol": "ADANIENT.NS",
+      "status": "OK",
+      "n_bars": 31,
+      "first": "2026-06-01",
+      "last": "2026-07-13"
+    },
+    {
+      "symbol": "ADANIPORTS.NS",
+      "status": "OK",
+      "n_bars": 31,
+      "first": "2026-06-01",
+      "last": "2026-07-13"
+    },
+    {
+      "symbol": "ASIANPAINT.NS",
+      "status": "OK",
+      "n_bars": 31,
+      "first": "2026-06-01",
+      "last": "2026-07-13"
+    },
+    {
+      "symbol": "AXISBANK.NS",
+      "status": "OK",
+      "n_bars": 31,
+      "first": "2026-06-01",
+      "last": "2026-07-13"
+    },
+    {
+      "symbol": "BAJAJFINSV.NS",
+      "status": "OK",
+      "n_bars": 31,
+      "first": "2026-06-01",
+      "last": "2026-07-13"
+    },
+    {
+      "symbol": "BAJFINANCE.NS",
+      "status": "OK",
+      "n_bars": 31,
+      "first": "2026-06-01",
+      "last": "2026-07-13"
+    },
+    {
+      "symbol": "BHARTIARTL.NS",
+      "status": "OK",
+      "n_bars": 31,
+      "first": "2026-06-01",
+      "last": "2026-07-13"
+    },
+    {
+      "symbol": "BPCL.NS",
+      "status": "OK",
+      "n_bars": 31,
+      "first": "2026-06-01",
+      "last": "2026-07-13"
+    },
+    {
+      "symbol": "CIPLA.NS",
+      "status": "OK",
+      "n_bars": 31,
+      "first": "2026-06-01",
+      "last": "2026-07-13"
+    },
+    {
+      "symbol": "COALINDIA.NS",
+      "status": "OK",
+      "n_bars": 31,
+      "first": "2026-06-01",
+      "last": "2026-07-13"
+    },
+    {
+      "symbol": "DIVISLAB.NS",
+      "status": "OK",
+      "n_bars": 31,
+      "first": "2026-06-01",
+      "last": "2026-07-13"
+    },
+    {
+      "symbol": "DRREDDY.NS",
+      "status": "OK",
+      "n_bars": 31,
+      "first": "2026-06-01",
+      "last": "2026-07-13"
+    },
+    {
+      "symbol": "EICHERMOT.NS",
+      "status": "OK",
+      "n_bars": 31,
+      "first": "2026-06-01",
+      "last": "2026-07-13"
+    },
+    {
+      "symbol": "GRASIM.NS",
+      "status": "OK",
+      "n_bars": 31,
+      "first": "2026-06-01",
+      "last": "2026-07-13"
+    },
+    {
+      "symbol": "HCLTECH.NS",
+      "status": "OK",
+      "n_bars": 31,
+      "first": "2026-06-01",
+      "last": "2026-07-13"
+    },
+    {
+      "symbol": "HDFCBANK.NS",
+      "status": "OK",
+      "n_bars": 31,
+      "first": "2026-06-01",
+      "last": "2026-07-13"
+    },
+    {
+      "symbol": "HDFCLIFE.NS",
+      "status": "OK",
+      "n_bars": 31,
+      "first": "2026-06-01",
+      "last": "2026-07-13"
+    },
+    {
+      "symbol": "HEROMOTOCO.NS",
+      "status": "OK",
+      "n_bars": 31,
+      "first": "2026-06-01",
+      "last": "2026-07-13"
+    },
+    {
+      "symbol": "HINDALCO.NS",
+      "status": "OK",
+      "n_bars": 31,
+      "first": "2026-06-01",
+      "last": "2026-07-13"
+    },
+    {
+      "symbol": "HINDUNILVR.NS",
+      "status": "OK",
+      "n_bars": 31,
+      "first": "2026-06-01",
+      "last": "2026-07-13"
+    },
+    {
+      "symbol": "ICICIBANK.NS",
+      "status": "OK",
+      "n_bars": 31,
+      "first": "2026-06-01",
+      "last": "2026-07-13"
+    },
+    {
+      "symbol": "IDEA.NS",
+      "status": "OK",
+      "n_bars": 31,
+      "first": "2026-06-01",
+      "last": "2026-07-13"
+    },
+    {
+      "symbol": "INDUSINDBK.NS",
+      "status": "OK",
+      "n_bars": 31,
+      "first": "2026-06-01",
+      "last": "2026-07-13"
+    },
+    {
+      "symbol": "INFY.NS",
+      "status": "OK",
+      "n_bars": 31,
+      "first": "2026-06-01",
+      "last": "2026-07-13"
+    },
+    {
+      "symbol": "ITC.NS",
+      "status": "OK",
+      "n_bars": 31,
+      "first": "2026-06-01",
+      "last": "2026-07-13"
+    },
+    {
+      "symbol": "JSWSTEEL.NS",
+      "status": "OK",
+      "n_bars": 31,
+      "first": "2026-06-01",
+      "last": "2026-07-13"
+    },
+    {
+      "symbol": "KOTAKBANK.NS",
+      "status": "OK",
+      "n_bars": 31,
+      "first": "2026-06-01",
+      "last": "2026-07-13"
+    },
+    {
+      "symbol": "LT.NS",
+      "status": "OK",
+      "n_bars": 31,
+      "first": "2026-06-01",
+      "last": "2026-07-13"
+    },
+    {
+      "symbol": "M&M.NS",
+      "status": "OK",
+      "n_bars": 31,
+      "first": "2026-06-01",
+      "last": "2026-07-13"
+    },
+    {
+      "symbol": "MAHABANK.NS",
+      "status": "OK",
+      "n_bars": 31,
+      "first": "2026-06-01",
+      "last": "2026-07-13"
+    },
+    {
+      "symbol": "MARUTI.NS",
+      "status": "OK",
+      "n_bars": 31,
+      "first": "2026-06-01",
+      "last": "2026-07-13"
+    },
+    {
+      "symbol": "NESTLEIND.NS",
+      "status": "OK",
+      "n_bars": 31,
+      "first": "2026-06-01",
+      "last": "2026-07-13"
+    },
+    {
+      "symbol": "NTPC.NS",
+      "status": "OK",
+      "n_bars": 31,
+      "first": "2026-06-01",
+      "last": "2026-07-13"
+    },
+    {
+      "symbol": "ONGC.NS",
+      "status": "OK",
+      "n_bars": 31,
+      "first": "2026-06-01",
+      "last": "2026-07-13"
+    },
+    {
+      "symbol": "PIDILITIND.NS",
+      "status": "OK",
+      "n_bars": 31,
+      "first": "2026-06-01",
+      "last": "2026-07-13"
+    },
+    {
+      "symbol": "POWERGRID.NS",
+      "status": "OK",
+      "n_bars": 31,
+      "first": "2026-06-01",
+      "last": "2026-07-13"
+    },
+    {
+      "symbol": "RELIANCE.NS",
+      "status": "OK",
+      "n_bars": 31,
+      "first": "2026-06-01",
+      "last": "2026-07-13"
+    },
+    {
+      "symbol": "SBILIFE.NS",
+      "status": "OK",
+      "n_bars": 31,
+      "first": "2026-06-01",
+      "last": "2026-07-13"
+    },
+    {
+      "symbol": "SBIN.NS",
+      "status": "OK",
+      "n_bars": 31,
+      "first": "2026-06-01",
+      "last": "2026-07-13"
+    },
+    {
+      "symbol": "SHREECEM.NS",
+      "status": "OK",
+      "n_bars": 31,
+      "first": "2026-06-01",
+      "last": "2026-07-13"
+    },
+    {
+      "symbol": "SUNPHARMA.NS",
+      "status": "OK",
+      "n_bars": 31,
+      "first": "2026-06-01",
+      "last": "2026-07-13"
+    },
+    {
+      "symbol": "TATACONSUM.NS",
+      "status": "OK",
+      "n_bars": 31,
+      "first": "2026-06-01",
+      "last": "2026-07-13"
+    },
+    {
+      "symbol": "TATASTEEL.NS",
+      "status": "OK",
+      "n_bars": 31,
+      "first": "2026-06-01",
+      "last": "2026-07-13"
+    },
+    {
+      "symbol": "TCS.NS",
+      "status": "OK",
+      "n_bars": 31,
+      "first": "2026-06-01",
+      "last": "2026-07-13"
+    },
+    {
+      "symbol": "TECHM.NS",
+      "status": "OK",
+      "n_bars": 31,
+      "first": "2026-06-01",
+      "last": "2026-07-13"
+    },
+    {
+      "symbol": "TITAN.NS",
+      "status": "OK",
+      "n_bars": 31,
+      "first": "2026-06-01",
+      "last": "2026-07-13"
+    },
+    {
+      "symbol": "TMPV.NS",
+      "status": "OK",
+      "n_bars": 31,
+      "first": "2026-06-01",
+      "last": "2026-07-13"
+    },
+    {
+      "symbol": "ULTRACEMCO.NS",
+      "status": "OK",
+      "n_bars": 31,
+      "first": "2026-06-01",
+      "last": "2026-07-13"
+    },
+    {
+      "symbol": "UNITDSPR.NS",
+      "status": "OK",
+      "n_bars": 31,
+      "first": "2026-06-01",
+      "last": "2026-07-13"
+    },
+    {
+      "symbol": "UPL.NS",
+      "status": "OK",
+      "n_bars": 31,
+      "first": "2026-06-01",
+      "last": "2026-07-13"
+    },
+    {
+      "symbol": "VEDL.NS",
+      "status": "OK",
+      "n_bars": 31,
+      "first": "2026-06-01",
+      "last": "2026-07-13"
+    },
+    {
+      "symbol": "WIPRO.NS",
+      "status": "OK",
+      "n_bars": 31,
+      "first": "2026-06-01",
+      "last": "2026-07-13"
+    }
+  ]
+}

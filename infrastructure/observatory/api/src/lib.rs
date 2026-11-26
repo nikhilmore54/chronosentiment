@@ -1,27 +1,29 @@
+pub mod certify;
 pub mod dto;
 pub mod errors;
-pub mod inspect_projection;
-pub mod scenario;
-pub mod simulate;
-pub mod inspector;
-pub mod timeline;
-pub mod replay;
 pub mod events;
-pub mod certify;
+pub mod inspect_projection;
+pub mod inspector;
 pub mod market_adapter;
 pub mod market_data_simulate;
+pub mod replay;
+pub mod scenario;
 pub mod signatures;
+pub mod simulate;
+pub mod timeline;
 
 pub use errors::ApiError;
 
-pub use simulate::*;
-pub use inspector::{TradeInspectorResponse, MinimalEvent, build_trade_inspector, handle_inspect, to_minimal_event};
-pub use timeline::*;
-pub use replay::reduce_replay_state;
-pub use events::*;
 pub use certify::*;
+pub use events::*;
+pub use inspector::{
+    build_trade_inspector, handle_inspect, to_minimal_event, MinimalEvent, TradeInspectorResponse,
+};
 pub use market_adapter::*;
 pub use market_data_simulate::*;
+pub use replay::reduce_replay_state;
+pub use simulate::*;
+pub use timeline::*;
 
 #[derive(Debug, Clone, serde::Serialize)]
 pub struct SimulateOutputDto {
@@ -57,4 +59,3 @@ pub struct DeterminismFingerprint {
     pub final_hash: String,
     pub config_hash: String,
 }
-

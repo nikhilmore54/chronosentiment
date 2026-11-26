@@ -1,0 +1,11 @@
+{
+  "protocol": "RP-608-REGIME-BREAKOUT-001",
+  "phase": 0,
+  "live_order_authority": "0.0%",
+  "holdout": "SEALED_UNTOUCHED",
+  "nse_fixture": "fixtures/rp608_regime_breakout/arm_a_nse_golden.json",
+  "nse_fingerprint_sha256": "688e39f1b32bcaacd5ac5b8774f372102f0bdc62ab5d018d09666377cc6e18ed",
+  "crypto_fixture": "fixtures/rp608_regime_breakout/arm_a_crypto_golden.json",
+  "crypto_fingerprint_sha256": "2aa7d1218a6bad2d68086904bc0151dc0b05898289179c5070f35bcbf73df5b2",
+  "reproducible": true
+}

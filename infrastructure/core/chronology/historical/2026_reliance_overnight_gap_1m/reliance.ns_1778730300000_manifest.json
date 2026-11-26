@@ -1,9 +1,0 @@
-{
-  "substrate": "RELIANCE.NS",
-  "capture_start": 1778730300000,
-  "capture_end": 1779443940000,
-  "total_ticks": 2625,
-  "chronology_hash": "d00b464d807cc1cdd48538a41557c5972973a81cc53b8674eb7a2566673ba0c3",
-  "gaps": [],
-  "provenance": "Python Yahoo API (7-day rolling)"
-}

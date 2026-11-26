@@ -37,11 +37,7 @@ impl ObservatoryProcess {
         })
     }
 
-    pub fn run_barrier(
-        &mut self,
-        ts: i64,
-        bars: &[(String, &FrozenBar)],
-    ) -> Result<Vec<String>> {
+    pub fn run_barrier(&mut self, ts: i64, bars: &[(String, &FrozenBar)]) -> Result<Vec<String>> {
         let batch: Vec<SymbolicCandle> = bars
             .iter()
             .map(|(sym, b)| SymbolicCandle {

@@ -1,0 +1,22 @@
+{
+  "campaign_id": "pipeline_ab_v2.5_deterministic_parallel",
+  "timestamp": "2026-08-22T02:30:12.108007+00:00",
+  "budget_mode": "evaluations",
+  "hypothesis": "V2 Harness",
+  "arm_a_description": "Legacy",
+  "arm_b_description": "Pipeline",
+  "statistical_note": "Parallel Deterministic",
+  "total_instances": 0,
+  "arm_a_mean_ifr": 0.0,
+  "arm_b_mean_ifr": 0.0,
+  "ifr_improvement": 0.0,
+  "arm_a_valid_count": 0,
+  "arm_b_valid_count": 0,
+  "arm_b_better_obj_count": 0,
+  "arm_b_better_ifr_count": 0,
+  "invariant_violation_count_a": 0,
+  "invariant_violation_count_b": 0,
+  "comparisons": [],
+  "arm_a_results": [],
+  "arm_b_results": []
+}

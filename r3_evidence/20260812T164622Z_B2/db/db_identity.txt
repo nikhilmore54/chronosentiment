@@ -1,0 +1,5 @@
+            current_database            | inet_server_addr | inet_server_port 
+----------------------------------------+------------------+------------------
+ chronosentiment_r3_b2_20260812T164622Z |                  |                 
+(1 row)
+

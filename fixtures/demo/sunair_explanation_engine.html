@@ -1,0 +1,417 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>SunAir — Explanation Engine</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Segoe UI',system-ui,sans-serif;background:#0f172a;color:#e2e8f0;height:100vh;display:flex;flex-direction:column;overflow:hidden}
+header{background:#1e293b;border-bottom:1px solid #334155;padding:12px 20px;display:flex;align-items:center;gap:16px;flex-shrink:0}
+.logo{font-size:18px;font-weight:700;color:#38bdf8;letter-spacing:.5px}
+.logo span{color:#94a3b8;font-weight:400;font-size:14px;margin-left:8px}
+.badge{background:#7c3aed;color:#fff;font-size:11px;font-weight:600;padding:3px 10px;border-radius:12px;letter-spacing:.5px}
+.main{display:flex;flex:1;overflow:hidden;gap:0}
+
+/* LEFT PANEL */
+.panel-left{width:260px;background:#1e293b;border-right:1px solid #334155;display:flex;flex-direction:column;flex-shrink:0}
+.panel-title{font-size:11px;font-weight:700;color:#64748b;letter-spacing:1px;text-transform:uppercase;padding:14px 16px 8px}
+.filter-row{padding:0 12px 10px;display:flex;flex-direction:column;gap:6px}
+.filter-row select{background:#0f172a;border:1px solid #334155;color:#e2e8f0;font-size:12px;padding:5px 8px;border-radius:6px;width:100%}
+.shift-list{flex:1;overflow-y:auto;padding:0 8px 8px}
+.shift-item{padding:8px 10px;border-radius:6px;cursor:pointer;margin-bottom:3px;border:1px solid transparent;transition:all .15s}
+.shift-item:hover{background:#334155}
+.shift-item.active{background:#1d4ed8;border-color:#3b82f6}
+.shift-item .si-label{font-size:12px;font-weight:600;color:#e2e8f0}
+.shift-item .si-meta{font-size:11px;color:#64748b;margin-top:2px}
+.skill-dot{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:4px}
+.dot-CPT{background:#3b82f6}
+.dot-FO{background:#22c55e}
+.dot-CC{background:#f97316}
+
+/* CENTRE PANEL */
+.panel-centre{flex:1;overflow-y:auto;padding:16px;display:flex;flex-direction:column;gap:12px}
+.explain-card{background:#1e293b;border:1px solid #334155;border-radius:10px;overflow:hidden}
+.explain-card-header{padding:10px 14px;font-size:12px;font-weight:700;color:#94a3b8;letter-spacing:.5px;text-transform:uppercase;border-bottom:1px solid #334155}
+.explain-card-body{padding:14px}
+.nl-summary{font-size:14px;line-height:1.7;color:#e2e8f0}
+.nl-worker{display:inline-flex;align-items:center;gap:6px;background:#1d4ed8;padding:2px 10px;border-radius:12px;font-weight:600;font-size:13px;color:#fff;margin:0 2px}
+.nl-shift{font-weight:600;color:#38bdf8}
+.reason-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.reason-block{border-radius:8px;padding:12px;border-left:3px solid}
+.reason-block.skill{background:#052e16;border-color:#22c55e}
+.reason-block.capacity{background:#0c1a2e;border-color:#3b82f6}
+.reason-block.fairness{background:#1c1400;border-color:#f59e0b}
+.reason-block.rest{background:#1a0a2e;border-color:#a855f7}
+.reason-icon{font-size:18px;margin-bottom:6px}
+.reason-title{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px}
+.reason-block.skill .reason-title{color:#22c55e}
+.reason-block.capacity .reason-title{color:#3b82f6}
+.reason-block.fairness .reason-title{color:#f59e0b}
+.reason-block.rest .reason-title{color:#a855f7}
+.reason-text{font-size:12px;color:#94a3b8;line-height:1.5}
+.metrics-row{display:flex;flex-wrap:wrap;gap:8px}
+.metric-chip{background:#0f172a;border:1px solid #334155;border-radius:8px;padding:8px 12px;min-width:110px}
+.metric-label{font-size:10px;color:#64748b;text-transform:uppercase;letter-spacing:.5px;display:block;margin-bottom:3px}
+.metric-value{font-size:16px;font-weight:700;color:#e2e8f0}
+.metric-value.green{color:#22c55e}
+.metric-value.amber{color:#f59e0b}
+.cand-table{width:100%;border-collapse:collapse;font-size:12px}
+.cand-table th{text-align:left;color:#64748b;font-weight:600;padding:6px 8px;border-bottom:1px solid #334155;font-size:11px;text-transform:uppercase}
+.cand-table td{padding:7px 8px;border-bottom:1px solid #1e293b;vertical-align:middle}
+.cand-table tr.assigned-row td{background:#1d3a6e}
+.score-bar-wrap{width:80px;background:#0f172a;border-radius:4px;height:6px;overflow:hidden;display:inline-block;vertical-align:middle;margin-right:6px}
+.score-bar-fill{height:100%;border-radius:4px;background:#3b82f6}
+.score-bar-fill.top{background:#22c55e}
+.rank-badge{display:inline-block;width:20px;height:20px;border-radius:50%;background:#334155;text-align:center;line-height:20px;font-size:10px;font-weight:700}
+.rank-badge.r1{background:#f59e0b;color:#000}
+.placeholder{color:#475569;font-size:14px;text-align:center;padding:60px 20px;line-height:1.8}
+
+/* RIGHT PANEL */
+.panel-right{width:240px;background:#1e293b;border-left:1px solid #334155;display:flex;flex-direction:column;flex-shrink:0;overflow-y:auto}
+.ctx-header{padding:14px 16px 8px;font-size:11px;font-weight:700;color:#64748b;letter-spacing:1px;text-transform:uppercase}
+.ctx-avatar{width:56px;height:56px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:20px;font-weight:700;margin:0 auto 8px;color:#fff}
+.ctx-name{text-align:center;font-size:14px;font-weight:600;color:#e2e8f0}
+.ctx-skill{text-align:center;font-size:11px;color:#64748b;margin-bottom:12px}
+.ctx-section{padding:0 14px 12px}
+.ctx-label{font-size:10px;color:#64748b;text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px}
+.workload-bar{background:#0f172a;border-radius:4px;height:8px;overflow:hidden;margin-bottom:4px}
+.workload-fill{height:100%;border-radius:4px;background:#3b82f6;transition:width .3s}
+.workload-fill.high{background:#f59e0b}
+.workload-fill.full{background:#ef4444}
+.ctx-hours{font-size:12px;color:#94a3b8;margin-bottom:10px}
+.shift-tags{display:flex;flex-wrap:wrap;gap:4px}
+.shift-tag{font-size:10px;padding:2px 7px;border-radius:10px;font-weight:600}
+.tag-CPT{background:#1d4ed8;color:#bfdbfe}
+.tag-FO{background:#14532d;color:#bbf7d0}
+.tag-CC{background:#7c2d12;color:#fed7aa}
+.ctx-stat{display:flex;justify-content:space-between;font-size:12px;padding:3px 0;border-bottom:1px solid #1e293b}
+.ctx-stat-label{color:#64748b}
+.ctx-stat-value{color:#e2e8f0;font-weight:600}
+</style>
+</head>
+<body>
+<header>
+  <div class="logo">SunAir <span>Coralys Explanation Engine</span></div>
+  <div class="badge">S3-03</div>
+</header>
+<div class="main">
+  <div class="panel-left">
+    <div class="panel-title">Shifts</div>
+    <div class="filter-row">
+      <select id="skillFilter" onchange="applyFilters()">
+        <option value="">All Skills</option>
+        <option value="CPT">Captain (CPT)</option>
+        <option value="FO">First Officer (FO)</option>
+        <option value="CC">Cabin Crew (CC)</option>
+      </select>
+      <select id="workerFilter" onchange="applyFilters()">
+        <option value="">All Workers</option>
+      </select>
+    </div>
+    <div class="shift-list" id="shiftList"></div>
+  </div>
+  <div class="panel-centre" id="panelCentre">
+    <div class="placeholder">
+      Select a shift from the list to see the scheduling explanation.
+    </div>
+  </div>
+  <div class="panel-right" id="panelRight">
+    <div class="ctx-header">Worker Context</div>
+    <div style="color:#475569;font-size:12px;text-align:center;padding:40px 16px">Select a shift to view worker context.</div>
+  </div>
+</div>
+<script>
+var WORKERS = [
+  {id:1,name:"Alice Mercer",skill:"CPT",color:"#1d4ed8"},
+  {id:2,name:"Bob Tanaka",skill:"CPT",color:"#1d4ed8"},
+  {id:3,name:"Carol Singh",skill:"CPT",color:"#1d4ed8"},
+  {id:4,name:"David Osei",skill:"CPT",color:"#1d4ed8"},
+  {id:5,name:"Eva Rossi",skill:"FO",color:"#15803d"},
+  {id:6,name:"Frank Muller",skill:"FO",color:"#15803d"},
+  {id:7,name:"Grace Kim",skill:"FO",color:"#15803d"},
+  {id:8,name:"Hiro Nakamura",skill:"FO",color:"#15803d"},
+  {id:9,name:"Isla Patel",skill:"FO",color:"#15803d"},
+  {id:10,name:"James Okafor",skill:"CC",color:"#c2410c"},
+  {id:11,name:"Kira Novak",skill:"CC",color:"#c2410c"},
+  {id:12,name:"Leo Ferreira",skill:"CC",color:"#c2410c"},
+  {id:13,name:"Mia Johansson",skill:"CC",color:"#c2410c"},
+  {id:14,name:"Nate Dubois",skill:"CC",color:"#c2410c"},
+  {id:15,name:"Olivia Chen",skill:"CC",color:"#c2410c"},
+  {id:16,name:"Paul Adeyemi",skill:"CC",color:"#c2410c"},
+  {id:17,name:"Quinn Larsen",skill:"CC",color:"#c2410c"},
+  {id:18,name:"Rosa Mendez",skill:"CC",color:"#c2410c"},
+  {id:19,name:"Sam Obi",skill:"CC",color:"#c2410c"},
+  {id:20,name:"Tara Flynn",skill:"CC",color:"#c2410c"}
+];
+
+var SHIFTS = [];
+(function(){
+  var skills = ["CPT","CPT","CPT","CPT","FO","FO","FO","FO","FO","CC","CC","CC","CC","CC","CC","CC","CC","CC","CC","CC","CC"];
+  var si = 0;
+  for(var i=0;i<21;i++){
+    var start = 6 + i*3;
+    SHIFTS.push({id:si+1,skill:skills[i%skills.length],start_h:start,dur:8});
+    si++;
+  }
+  for(var j=0;j<21;j++){
+    var start2 = 78 + j*3;
+    SHIFTS.push({id:si+1,skill:skills[j%skills.length],start_h:start2,dur:8});
+    si++;
+  }
+})();
+
+var ASSIGNMENTS = {
+  1:1,2:2,3:3,4:4,5:1,6:2,7:3,
+  8:5,9:6,10:7,11:8,12:9,13:5,14:6,
+  15:10,16:11,17:12,18:13,19:14,20:15,21:16,
+  22:4,23:1,24:2,25:3,26:4,27:1,28:2,
+  29:7,30:8,31:9,32:5,33:6,34:7,35:8,
+  36:17,37:18,38:19,39:20,40:10,41:11,42:12
+};
+
+var HIST = {1:38,2:36,3:40,4:34,5:32,6:30,7:28,8:35,9:33,10:26,11:24,12:28,13:22,14:20,15:25,16:23,17:21,18:19,19:27,20:18};
+
+var selectedShiftId = null;
+
+function workerById(wid){
+  for(var i=0;i<WORKERS.length;i++){if(WORKERS[i].id===wid)return WORKERS[i];}
+  return null;
+}
+function shiftById(sid){
+  for(var i=0;i<SHIFTS.length;i++){if(SHIFTS[i].id===sid)return SHIFTS[i];}
+  return null;
+}
+function workerHours(wid){
+  var h=0;
+  for(var sid in ASSIGNMENTS){if(ASSIGNMENTS[sid]===wid){var s=shiftById(parseInt(sid));if(s)h+=s.dur;}}
+  return h;
+}
+function workerShiftIds(wid){
+  var arr=[];
+  for(var sid in ASSIGNMENTS){if(ASSIGNMENTS[sid]===wid)arr.push(parseInt(sid));}
+  return arr;
+}
+function scoreWorker(wid,shift){
+  var w=workerById(wid);
+  if(!w||w.skill!==shift.skill)return -1;
+  var h=workerHours(wid);
+  var slack=48-h;
+  if(slack<shift.dur)return -1;
+  return slack/48;
+}
+
+function initWorkerFilter(){
+  var sel=document.getElementById("workerFilter");
+  for(var i=0;i<WORKERS.length;i++){
+    var o=document.createElement("option");
+    o.value=WORKERS[i].id;
+    o.textContent=WORKERS[i].name;
+    sel.appendChild(o);
+  }
+}
+
+function applyFilters(){renderShiftList();}
+
+function renderShiftList(){
+  var skillF=document.getElementById("skillFilter").value;
+  var workerF=parseInt(document.getElementById("workerFilter").value)||0;
+  var list=document.getElementById("shiftList");
+  list.innerHTML="";
+  for(var i=0;i<SHIFTS.length;i++){
+    var s=SHIFTS[i];
+    if(skillF&&s.skill!==skillF)continue;
+    var wid=ASSIGNMENTS[s.id]||0;
+    if(workerF&&wid!==workerF)continue;
+    var w=workerById(wid);
+    var wname=w?w.name:"Unassigned";
+    var active=selectedShiftId===s.id?"active":"";
+    var dot='<span class="skill-dot dot-'+s.skill+'"></span>';
+    var div=document.createElement("div");
+    div.className="shift-item "+active;
+    div.setAttribute("data-sid",s.id);
+    div.innerHTML='<div class="si-label">'+dot+'S'+s.id+' &mdash; '+s.skill+'</div>'
+      +'<div class="si-meta">h'+s.start_h+'&ndash;h'+(s.start_h+s.dur)+' &bull; '+wname+'</div>';
+    div.onclick=(function(sid){return function(){selectShift(sid);};})(s.id);
+    list.appendChild(div);
+  }
+}
+
+function selectShift(sid){
+  selectedShiftId=sid;
+  renderShiftList();
+  renderExplanation(sid);
+  renderWorkerContext(sid);
+}
+
+function renderExplanation(sid){
+  var shift=shiftById(sid);
+  if(!shift){document.getElementById("panelCentre").innerHTML='<div class="placeholder">Shift not found.</div>';return;}
+  var wid=ASSIGNMENTS[sid]||0;
+  var w=workerById(wid);
+  var hours=wid?workerHours(wid):0;
+  var slack=48-hours;
+  var myShifts=wid?workerShiftIds(wid):[];
+  var hist=wid?(HIST[wid]||0):0;
+
+  // Build candidate list
+  var eligible=[];
+  for(var i=0;i<WORKERS.length;i++){
+    var sc=scoreWorker(WORKERS[i].id,shift);
+    if(sc>=0)eligible.push({w:WORKERS[i],score:sc,hours:workerHours(WORKERS[i].id)});
+  }
+  eligible.sort(function(a,b){return b.score-a.score;});
+  var rank=1;
+  for(var j=0;j<eligible.length;j++){if(eligible[j].w.id===wid){rank=j+1;break;}}
+
+  // NL summary
+  var wname=w?w.name:"Unknown";
+  var initials=wname.split(" ").map(function(p){return p[0];}).join("");
+  var avatarBg=w?w.color:"#475569";
+  var nlText="";
+  if(w){
+    nlText="Worker <span class='nl-worker' style='background:"+avatarBg+"'>"+initials+" "+wname+"</span>"
+      +" was assigned to <span class='nl-shift'>Shift S"+sid+"</span> ("+shift.skill+", h"+shift.start_h+"&ndash;h"+(shift.start_h+shift.dur)+")"
+      +" because they hold the required <strong>"+shift.skill+"</strong> qualification,"
+      +" have <strong>"+slack+"h</strong> of remaining weekly capacity,"
+      +" and ranked <strong>#"+rank+"</strong> of "+eligible.length+" eligible crew members"
+      +" on the combined fairness and fatigue score.";
+  } else {
+    nlText="Shift S"+sid+" ("+shift.skill+") is currently <strong>unassigned</strong>. No eligible worker was available.";
+  }
+
+  // Reason blocks
+  var skillOk=w&&w.skill===shift.skill;
+  var capOk=slack>=shift.dur;
+  var fairPct=Math.round((slack/48)*100);
+  var fatigue=hours>36?"High":hours>24?"Moderate":"Low";
+  var fatigueColor=hours>36?"#ef4444":hours>24?"#f59e0b":"#22c55e";
+
+  var reasonsHtml='<div class="reason-grid">'
+    +'<div class="reason-block skill">'
+    +'<div class="reason-icon">&#9989;</div>'
+    +'<div class="reason-title">Skill Match</div>'
+    +'<div class="reason-text">Worker holds <strong>'+shift.skill+'</strong> qualification. Shift requires <strong>'+shift.skill+'</strong>. Constraint satisfied.</div>'
+    +'</div>'
+    +'<div class="reason-block capacity">'
+    +'<div class="reason-icon">&#9200;</div>'
+    +'<div class="reason-title">Capacity</div>'
+    +'<div class="reason-text">'+hours+'h assigned of 48h weekly limit. <strong>'+slack+'h remaining</strong> &mdash; shift needs '+shift.dur+'h. '+(capOk?'Fits within limit.':'Exceeds limit.')+'</div>'
+    +'</div>'
+    +'<div class="reason-block fairness">'
+    +'<div class="reason-icon">&#9878;</div>'
+    +'<div class="reason-title">Fairness</div>'
+    +'<div class="reason-text">Fairness score <strong>'+fairPct+'%</strong> (slack/48h). 4-week historical avg: <strong>'+hist+'h</strong>. Ranked #'+rank+' among eligible crew.</div>'
+    +'</div>'
+    +'<div class="reason-block rest">'
+    +'<div class="reason-icon">&#128564;</div>'
+    +'<div class="reason-title">Fatigue</div>'
+    +'<div class="reason-text">Current load: <strong>'+hours+'h</strong>. Fatigue level: <strong style="color:'+fatigueColor+'">'+fatigue+'</strong>. Rest compliance verified against 168h horizon.</div>'
+    +'</div>'
+    +'</div>';
+
+  // Metrics chips
+  var metricsHtml='<div class="metrics-row">'
+    +'<div class="metric-chip"><span class="metric-label">Hours assigned</span><span class="metric-value">'+hours+'h</span></div>'
+    +'<div class="metric-chip"><span class="metric-label">Remaining capacity</span><span class="metric-value '+(slack>=16?"green":"amber")+'">'+slack+'h</span></div>'
+    +'<div class="metric-chip"><span class="metric-label">Shifts assigned</span><span class="metric-value">'+myShifts.length+'</span></div>'
+    +'<div class="metric-chip"><span class="metric-label">Candidate rank</span><span class="metric-value">#'+rank+' / '+eligible.length+'</span></div>'
+    +'<div class="metric-chip"><span class="metric-label">Hist avg (4wk)</span><span class="metric-value">'+hist+'h</span></div>'
+    +'</div>';
+
+  // Candidate table
+  var topN=eligible.slice(0,5);
+  var tableRows="";
+  for(var k=0;k<topN.length;k++){
+    var cand=topN[k];
+    var isAssigned=cand.w.id===wid;
+    var pct=Math.round(cand.score*100);
+    var barClass=k===0?"top":"";
+    var rankBadge=k===0?'<span class="rank-badge r1">1</span>':'<span class="rank-badge">'+(k+1)+'</span>';
+    var rowClass=isAssigned?"assigned-row":"";
+    var candInitials=cand.w.name.split(" ").map(function(p){return p[0];}).join("");
+    tableRows+='<tr class="'+rowClass+'">'
+      +'<td>'+rankBadge+'</td>'
+      +'<td>'+candInitials+' '+cand.w.name+(isAssigned?' <span style="color:#38bdf8;font-size:10px">(assigned)</span>':'')+'</td>'
+      +'<td><span class="skill-dot dot-'+cand.w.skill+'"></span>'+cand.w.skill+'</td>'
+      +'<td>'+cand.hours+'h</td>'
+      +'<td><span class="score-bar-wrap"><span class="score-bar-fill '+barClass+'" style="width:'+pct+'%"></span></span>'+pct+'%</td>'
+      +'</tr>';
+  }
+  var candHtml='<table class="cand-table">'
+    +'<thead><tr><th>#</th><th>Worker</th><th>Skill</th><th>Hours</th><th>Score</th></tr></thead>'
+    +'<tbody>'+tableRows+'</tbody>'
+    +'</table>';
+
+  var html='<div class="explain-card">'
+    +'<div class="explain-card-header">Natural Language Summary</div>'
+    +'<div class="explain-card-body"><div class="nl-summary">'+nlText+'</div></div>'
+    +'</div>'
+    +'<div class="explain-card">'
+    +'<div class="explain-card-header">Decision Factors</div>'
+    +'<div class="explain-card-body">'+reasonsHtml+'</div>'
+    +'</div>'
+    +'<div class="explain-card">'
+    +'<div class="explain-card-header">Assignment Metrics</div>'
+    +'<div class="explain-card-body">'+metricsHtml+'</div>'
+    +'</div>'
+    +'<div class="explain-card">'
+    +'<div class="explain-card-header">Candidate Ranking (Top 5 Eligible)</div>'
+    +'<div class="explain-card-body">'+candHtml+'</div>'
+    +'</div>';
+
+  document.getElementById("panelCentre").innerHTML=html;
+}
+
+function renderWorkerContext(sid){
+  var shift=shiftById(sid);
+  var wid=ASSIGNMENTS[sid]||0;
+  var w=workerById(wid);
+  var panel=document.getElementById("panelRight");
+  if(!w){
+    panel.innerHTML='<div class="ctx-header">Worker Context</div>'
+      +'<div style="color:#475569;font-size:12px;text-align:center;padding:40px 16px">No worker assigned to this shift.</div>';
+    return;
+  }
+  var hours=workerHours(wid);
+  var slack=48-hours;
+  var pct=Math.min(100,Math.round((hours/48)*100));
+  var fillClass=pct>=90?"full":pct>=70?"high":"";
+  var initials=w.name.split(" ").map(function(p){return p[0];}).join("");
+  var myShifts=workerShiftIds(wid);
+  var tags="";
+  for(var i=0;i<myShifts.length;i++){
+    var s=shiftById(myShifts[i]);
+    if(s)tags+='<span class="shift-tag tag-'+s.skill+'">S'+s.id+'</span>';
+  }
+  var hist=HIST[wid]||0;
+  var html='<div class="ctx-header">Worker Context</div>'
+    +'<div class="ctx-section" style="padding-top:14px">'
+    +'<div class="ctx-avatar" style="background:'+w.color+'">'+initials+'</div>'
+    +'<div class="ctx-name">'+w.name+'</div>'
+    +'<div class="ctx-skill">'+w.skill+'</div>'
+    +'</div>'
+    +'<div class="ctx-section">'
+    +'<div class="ctx-label">Weekly Workload</div>'
+    +'<div class="workload-bar"><div class="workload-fill '+fillClass+'" style="width:'+pct+'%"></div></div>'
+    +'<div class="ctx-hours">'+hours+'h / 48h &mdash; '+slack+'h remaining</div>'
+    +'</div>'
+    +'<div class="ctx-section">'
+    +'<div class="ctx-label">Assigned Shifts</div>'
+    +'<div class="shift-tags">'+tags+'</div>'
+    +'</div>'
+    +'<div class="ctx-section" style="margin-top:10px">'
+    +'<div class="ctx-stat"><span class="ctx-stat-label">Shift count</span><span class="ctx-stat-value">'+myShifts.length+'</span></div>'
+    +'<div class="ctx-stat"><span class="ctx-stat-label">Hist avg (4wk)</span><span class="ctx-stat-value">'+hist+'h</span></div>'
+    +'<div class="ctx-stat"><span class="ctx-stat-label">Skill</span><span class="ctx-stat-value">'+w.skill+'</span></div>'
+    +'<div class="ctx-stat"><span class="ctx-stat-label">Capacity used</span><span class="ctx-stat-value">'+pct+'%</span></div>'
+    +'</div>';
+  panel.innerHTML=html;
+}
+
+initWorkerFilter();
+renderShiftList();
+selectShift(1);
+</script>
+</body>
+</html>

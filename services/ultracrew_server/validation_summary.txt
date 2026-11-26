@@ -1,0 +1,13 @@
+Validation Summary - n050w4
+-----------------------------
+Pearson: 0.0528
+Spearman: -0.8505
+R²: 0.0028
+Monotonicity Violations: 1662094 / 2001000 (83.06%)
+Top 1% Champion Agreement: 0.00%
+Top 5% Champion Agreement: 0.00%
+Alignment Loss: 1645
+Champion Retention Error: 1
+
+Success Criteria check:
+Result: RED (Stop immediately. Re-evaluate objective space.)

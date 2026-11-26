@@ -1,0 +1,66 @@
+{
+  "meta": {
+    "instance": "INRC-II Sprint01",
+    "programme": "WS-001",
+    "horizon_days": 28,
+    "canonical_run": { "seed": 42, "generations": 500, "population": 100, "profile": "balanced" }
+  },
+  "nurses": [
+    {"id":"N01","name":"Alice Chen",     "skill":"Head Nurse",    "contract":"Full-Time"},
+    {"id":"N02","name":"Ben Okafor",     "skill":"Nurse",         "contract":"Full-Time"},
+    {"id":"N03","name":"Carla Reyes",    "skill":"Specialist",    "contract":"Full-Time"},
+    {"id":"N04","name":"David Kim",      "skill":"Nurse",         "contract":"Full-Time"},
+    {"id":"N05","name":"Elena Vasquez",  "skill":"Care Assistant","contract":"Part-Time"},
+    {"id":"N06","name":"Femi Adeyemi",   "skill":"Trainee",       "contract":"Part-Time"},
+    {"id":"N07","name":"Grace Liu",      "skill":"Nurse",         "contract":"Full-Time"},
+    {"id":"N08","name":"Hassan Malik",   "skill":"Specialist",    "contract":"Full-Time"},
+    {"id":"N09","name":"Ingrid Svensson","skill":"Care Assistant","contract":"Part-Time"},
+    {"id":"N10","name":"James O'Brien",  "skill":"Head Nurse",    "contract":"Full-Time"}
+  ],
+  "shift_types": [
+    {"code":"D","name":"Day",  "start":"07:00","end":"15:00","duration_h":8},
+    {"code":"L","name":"Late", "start":"13:00","end":"21:00","duration_h":8},
+    {"code":"N","name":"Night","start":"21:00","end":"07:00","duration_h":10}
+  ],
+  "contracts": {
+    "Full-Time": {"min_assignments":18,"max_assignments":22,"period_days":28},
+    "Part-Time":  {"min_assignments":10,"max_assignments":14,"period_days":28}
+  },
+  "cover_requirements": [
+    {"shift":"D","min_staff":3,"ideal_staff":4,"skill_requirement":"Head Nurse or Specialist (>=1)"},
+    {"shift":"L","min_staff":2,"ideal_staff":3,"skill_requirement":"Nurse or above (>=1)"},
+    {"shift":"N","min_staff":1,"ideal_staff":2,"skill_requirement":"Nurse or above (>=1)"}
+  ],
+  "hard_constraints": [
+    {"id":"H1","description":"No nurse works two shifts on the same day"},
+    {"id":"H2","description":"Night shift must be followed by a rest day"},
+    {"id":"H3","description":"Minimum cover must be met for every shift slot"},
+    {"id":"H4","description":"Contract min/max assignments must be respected"}
+  ],
+  "soft_constraints": [
+    {"id":"S1","description":"Ideal cover not met",                     "penalty_per_violation":10},
+    {"id":"S2","description":"More than 5 consecutive working days",    "penalty_per_violation":20},
+    {"id":"S3","description":"Nurse preference not honoured",           "penalty_per_violation":5},
+    {"id":"S4","description":"Skill mix below ideal",                   "penalty_per_violation":15},
+    {"id":"S5","description":"Weekend split (Sat without Sun or vice versa)","penalty_per_violation":8}
+  ],
+  "shift_preferences": [
+    {"nurse_id":"N01","day":1, "shift":"D","type":"on", "weight":2},
+    {"nurse_id":"N01","day":7, "shift":"N","type":"off","weight":3},
+    {"nurse_id":"N02","day":3, "shift":"L","type":"on", "weight":1},
+    {"nurse_id":"N03","day":5, "shift":"D","type":"off","weight":2},
+    {"nurse_id":"N04","day":2, "shift":"N","type":"off","weight":3},
+    {"nurse_id":"N05","day":6, "shift":"D","type":"on", "weight":1},
+    {"nurse_id":"N06","day":4, "shift":"L","type":"off","weight":2},
+    {"nurse_id":"N07","day":8, "shift":"D","type":"on", "weight":2},
+    {"nurse_id":"N08","day":10,"shift":"N","type":"off","weight":3},
+    {"nurse_id":"N09","day":12,"shift":"L","type":"on", "weight":1},
+    {"nurse_id":"N10","day":14,"shift":"D","type":"on", "weight":2},
+    {"nurse_id":"N01","day":15,"shift":"L","type":"off","weight":1},
+    {"nurse_id":"N02","day":17,"shift":"D","type":"on", "weight":2},
+    {"nurse_id":"N03","day":20,"shift":"N","type":"off","weight":3},
+    {"nurse_id":"N07","day":22,"shift":"L","type":"on", "weight":1},
+    {"nurse_id":"N08","day":25,"shift":"D","type":"on", "weight":2},
+    {"nurse_id":"N10","day":28,"shift":"N","type":"off","weight":3}
+  ]
+}

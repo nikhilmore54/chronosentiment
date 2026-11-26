@@ -1,0 +1,394 @@
+warning: unused import: `LocalSearchOperator`
+ --> coralys-moga/src/observatory.rs:1:58
+  |
+1 | use crate::traits::{Genome, Evaluated, FitnessEvaluator, LocalSearchOperator, ObservedTransitionMetric, RegionIdentifier};
+  |                                                          ^^^^^^^^^^^^^^^^^^^
+  |
+  = note: `#[warn(unused_imports)]` (part of `#[warn(unused)]`) on by default
+
+warning: variable `elite_preserved` is assigned to, but never used
+   --> coralys-moga/src/engine.rs:289:17
+    |
+289 |         let mut elite_preserved: usize;
+    |                 ^^^^^^^^^^^^^^^
+    |
+    = note: consider using `_elite_preserved` instead
+    = note: `#[warn(unused_variables)]` (part of `#[warn(unused)]`) on by default
+
+warning: variable `crossover_ops` is assigned to, but never used
+   --> coralys-moga/src/engine.rs:290:17
+    |
+290 |         let mut crossover_ops: usize;
+    |                 ^^^^^^^^^^^^^
+    |
+    = note: consider using `_crossover_ops` instead
+
+warning: variable `mutation_ops` is assigned to, but never used
+   --> coralys-moga/src/engine.rs:291:17
+    |
+291 |         let mut mutation_ops: usize;
+    |                 ^^^^^^^^^^^^
+    |
+    = note: consider using `_mutation_ops` instead
+
+warning: value assigned to `elite_preserved` is never read
+   --> coralys-moga/src/engine.rs:441:13
+    |
+441 |             elite_preserved = config.elite_count;
+    |             ^^^^^^^^^^^^^^^
+    |
+    = help: maybe it is overwritten before being read?
+    = note: `#[warn(unused_assignments)]` (part of `#[warn(unused)]`) on by default
+
+warning: `coralys-moga` (lib) generated 5 warnings (run `cargo fix --lib -p coralys-moga` to apply 1 suggestion)
+warning: value assigned to `termination_reason` is never read
+    --> adapters/roadef/src/moga_impl.rs:1532:13
+     |
+1532 |     let mut termination_reason = String::new(); // set before every break in the loop below
+     |             ^^^^^^^^^^^^^^^^^^
+     |
+     = help: maybe it is overwritten before being read?
+     = note: `#[warn(unused_assignments)]` (part of `#[warn(unused)]`) on by default
+
+warning: variable `t_telemetry_ms` is assigned to, but never used
+    --> adapters/roadef/src/moga_impl.rs:1582:17
+     |
+1582 |         let mut t_telemetry_ms: f64 = 0.0;
+     |                 ^^^^^^^^^^^^^^
+     |
+     = note: consider using `_t_telemetry_ms` instead
+     = note: `#[warn(unused_variables)]` (part of `#[warn(unused)]`) on by default
+
+warning: value assigned to `t_telemetry_ms` is never read
+    --> adapters/roadef/src/moga_impl.rs:2253:13
+     |
+2253 |             t_telemetry_ms += t_tel_start.elapsed().as_secs_f64() * 1000.0;
+     |             ^^^^^^^^^^^^^^
+     |
+     = help: maybe it is overwritten before being read?
+
+warning: unused variable: `run_uuid`
+    --> adapters/roadef/src/moga_impl.rs:2636:9
+     |
+2636 |     let run_uuid = {
+     |         ^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_run_uuid`
+
+warning: unused variable: `g`
+    --> adapters/roadef/src/moga_impl.rs:2770:21
+     |
+2770 |             let mut g = if rng.gen_bool(config.crossover_rate) && population.len() >= 2 {
+     |                     ^
+     |
+help: if this is intentional, prefix it with an underscore
+     |
+2770 |             let mut _g = if rng.gen_bool(config.crossover_rate) && population.len() >= 2 {
+     |                     +
+help: you might have meant to pattern match on the similarly named constant `_`
+     |
+2770 -             let mut g = if rng.gen_bool(config.crossover_rate) && population.len() >= 2 {
+2770 +             let mut telemetry::_ = if rng.gen_bool(config.crossover_rate) && population.len() >= 2 {
+     |
+
+warning: value assigned to `best_g` is never read
+    --> adapters/roadef/src/moga_impl.rs:2790:29
+     |
+2790 | ...                   best_g = repaired;
+     |                       ^^^^^^
+     |
+     = help: maybe it is overwritten before being read?
+
+warning: value assigned to `best_g` is never read
+    --> adapters/roadef/src/moga_impl.rs:2833:29
+     |
+2833 | ...                   best_g = repaired;
+     |                       ^^^^^^
+     |
+     = help: maybe it is overwritten before being read?
+
+warning: unused variable: `telemetry`
+    --> adapters/roadef/src/moga_impl.rs:2626:5
+     |
+2626 |     telemetry: &mut dyn TelemetrySink,
+     |     ^^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_telemetry`
+
+warning: variable does not need to be mutable
+    --> adapters/roadef/src/moga_impl.rs:2770:17
+     |
+2770 |             let mut g = if rng.gen_bool(config.crossover_rate) && population.len() >= 2 {
+     |                 ----^
+     |                 |
+     |                 help: remove this `mut`
+     |
+     = note: `#[warn(unused_mut)]` (part of `#[warn(unused)]`) on by default
+
+warning: variable does not need to be mutable
+    --> adapters/roadef/src/moga_impl.rs:2773:22
+     |
+2773 |                 let (mut child1, _child2) = crossover.crossover(p1, p2, &mut rng);
+     |                      ----^^^^^^
+     |                      |
+     |                      help: remove this `mut`
+
+warning: unused variable: `evaluation_cache`
+  --> adapters/roadef/src/pipeline_impl.rs:62:13
+   |
+62 |     let mut evaluation_cache: std::collections::HashMap<RoadefGenome, RoadefEvaluation> =
+   |             ^^^^^^^^^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_evaluation_cache`
+
+warning: value assigned to `termination_reason` is never read
+   --> adapters/roadef/src/pipeline_impl.rs:246:13
+    |
+246 |     let mut termination_reason = String::new(); // set before every break in the loop below
+    |             ^^^^^^^^^^^^^^^^^^
+    |
+    = help: maybe it is overwritten before being read?
+
+warning: unused variable: `trajectory`
+   --> adapters/roadef/src/pipeline_impl.rs:273:13
+    |
+273 |     let mut trajectory: Vec<crate::moga_impl::GenerationSummary> = Vec::new();
+    |             ^^^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_trajectory`
+
+warning: unused variable: `gen_start`
+   --> adapters/roadef/src/pipeline_impl.rs:275:13
+    |
+275 |         let gen_start = std::time::Instant::now();
+    |             ^^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_gen_start`
+
+warning: unused variable: `t_eval_ms`
+   --> adapters/roadef/src/pipeline_impl.rs:298:17
+    |
+298 |         let mut t_eval_ms: f64 = 0.0;
+    |                 ^^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_t_eval_ms`
+
+warning: variable `t_telemetry_ms` is assigned to, but never used
+   --> adapters/roadef/src/pipeline_impl.rs:299:17
+    |
+299 |         let mut t_telemetry_ms: f64 = 0.0;
+    |                 ^^^^^^^^^^^^^^
+    |
+    = note: consider using `_t_telemetry_ms` instead
+
+warning: value assigned to `ca_tag` is never read
+   --> adapters/roadef/src/pipeline_impl.rs:606:25
+    |
+606 |                 let mut ca_tag: &'static str = "crossover";
+    |                         ^^^^^^
+    |
+    = help: maybe it is overwritten before being read?
+
+warning: value assigned to `cb_tag` is never read
+   --> adapters/roadef/src/pipeline_impl.rs:607:25
+    |
+607 |                 let mut cb_tag: &'static str = "crossover";
+    |                         ^^^^^^
+    |
+    = help: maybe it is overwritten before being read?
+
+warning: value assigned to `ca_tag` is never read
+   --> adapters/roadef/src/pipeline_impl.rs:612:21
+    |
+612 |                     ca_tag = "crossover+mutation";
+    |                     ^^^^^^
+    |
+    = help: maybe it is overwritten before being read?
+
+warning: value assigned to `cb_tag` is never read
+   --> adapters/roadef/src/pipeline_impl.rs:616:21
+    |
+616 |                     cb_tag = "crossover+mutation";
+    |                     ^^^^^^
+    |
+    = help: maybe it is overwritten before being read?
+
+warning: value assigned to `child_tag` is never read
+   --> adapters/roadef/src/pipeline_impl.rs:681:25
+    |
+681 |                 let mut child_tag = "mutation";
+    |                         ^^^^^^^^^
+    |
+    = help: maybe it is overwritten before being read?
+
+warning: unused variable: `t_eval_start`
+   --> adapters/roadef/src/pipeline_impl.rs:710:13
+    |
+710 |         let t_eval_start = Instant::now();
+    |             ^^^^^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_t_eval_start`
+
+warning: unused variable: `t_eval_start`
+   --> adapters/roadef/src/pipeline_impl.rs:726:13
+    |
+726 |         let t_eval_start = std::time::Instant::now();
+    |             ^^^^^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_t_eval_start`
+
+warning: value assigned to `t_telemetry_ms` is never read
+   --> adapters/roadef/src/pipeline_impl.rs:957:13
+    |
+957 |             t_telemetry_ms += t_tel_start.elapsed().as_secs_f64() * 1000.0;
+    |             ^^^^^^^^^^^^^^
+    |
+    = help: maybe it is overwritten before being read?
+
+warning: variable does not need to be mutable
+  --> adapters/roadef/src/pipeline_impl.rs:62:9
+   |
+62 |     let mut evaluation_cache: std::collections::HashMap<RoadefGenome, RoadefEvaluation> =
+   |         ----^^^^^^^^^^^^^^^^
+   |         |
+   |         help: remove this `mut`
+
+warning: variable does not need to be mutable
+   --> adapters/roadef/src/pipeline_impl.rs:273:9
+    |
+273 |     let mut trajectory: Vec<crate::moga_impl::GenerationSummary> = Vec::new();
+    |         ----^^^^^^^^^^
+    |         |
+    |         help: remove this `mut`
+
+warning: variable does not need to be mutable
+   --> adapters/roadef/src/pipeline_impl.rs:298:13
+    |
+298 |         let mut t_eval_ms: f64 = 0.0;
+    |             ----^^^^^^^^^
+    |             |
+    |             help: remove this `mut`
+
+warning: unused variable: `run_uuid`
+    --> adapters/roadef/src/pipeline_impl.rs:1287:9
+     |
+1287 |     let run_uuid = {
+     |         ^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_run_uuid`
+
+warning: unused variable: `t_health`
+    --> adapters/roadef/src/pipeline_impl.rs:1391:13
+     |
+1391 |     let mut t_health = Instant::now();
+     |             ^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_t_health`
+
+warning: value assigned to `tag` is never read
+    --> adapters/roadef/src/pipeline_impl.rs:1513:25
+     |
+1513 |                 let mut tag = "crossover_mutation";
+     |                         ^^^
+     |
+     = help: maybe it is overwritten before being read?
+
+warning: value assigned to `tag` is never read
+    --> adapters/roadef/src/pipeline_impl.rs:1572:25
+     |
+1572 |                 let mut tag = "mutation";
+     |                         ^^^
+     |
+     = help: maybe it is overwritten before being read?
+
+warning: unused variable: `telemetry`
+    --> adapters/roadef/src/pipeline_impl.rs:1274:5
+     |
+1274 |     telemetry: &mut dyn TelemetrySink,
+     |     ^^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_telemetry`
+
+warning: variable does not need to be mutable
+    --> adapters/roadef/src/pipeline_impl.rs:1391:9
+     |
+1391 |     let mut t_health = Instant::now();
+     |         ----^^^^^^^^
+     |         |
+     |         help: remove this `mut`
+
+warning: variable does not need to be mutable
+    --> adapters/roadef/src/pipeline_impl.rs:1415:13
+     |
+1415 |         let mut t_feasibility_ms: f64 = 0.0;
+     |             ----^^^^^^^^^^^^^^^^
+     |             |
+     |             help: remove this `mut`
+
+warning: variable does not need to be mutable
+    --> adapters/roadef/src/pipeline_impl.rs:1441:13
+     |
+1441 |         let mut n_cross_repair = 0;
+     |             ----^^^^^^^^^^^^^^
+     |             |
+     |             help: remove this `mut`
+
+warning: variable does not need to be mutable
+    --> adapters/roadef/src/pipeline_impl.rs:1442:13
+     |
+1442 |         let mut n_mut_repair = 0;
+     |             ----^^^^^^^^^^^^
+     |             |
+     |             help: remove this `mut`
+
+warning: variable does not need to be mutable
+    --> adapters/roadef/src/pipeline_impl.rs:1443:13
+     |
+1443 |         let mut n_cross_maj = 0;
+     |             ----^^^^^^^^^^^
+     |             |
+     |             help: remove this `mut`
+
+warning: variable does not need to be mutable
+    --> adapters/roadef/src/pipeline_impl.rs:1444:13
+     |
+1444 |         let mut n_mut_maj = 0;
+     |             ----^^^^^^^^^
+     |             |
+     |             help: remove this `mut`
+
+warning: `roadef` (lib) generated 38 warnings (run `cargo fix --lib -p roadef` to apply 12 suggestions)
+    Finished `release` profile [optimized] target(s) in 0.25s
+     Running `target/release/phase7_loop_profile --instance setA-01 --gens 50 --seed 42`
+=== Phase 7 Evolution Loop Overhead Profile ===
+Instance   : setA-01
+Generations: 50
+Seed       : 42
+Pop size   : 50
+
+Gen-0 IFR  : 1.0000
+
+=== Phase 8 Operator Attribution Summary: 50 generations on setA-01 ===
+
+Run result:
+  best_obj        : 51.0126807372
+  valid           : true
+  generations_run : 50
+  wall_clock_ms   : 4345
+
+Component breakdown (totals across 50 generations):
+
+  Component                             Total (ms)   % wall    Mean/gen      Stddev
+  --------------------------------------------------------------------------------
+  Wall-clock (total)                        4345.0   100.0%        86.9         0.0
+    Eval (Phase B parallel)                  983.8    22.6%        19.7        12.6
+    Non-eval overhead                       3252.5    74.9%        65.1         9.6
+      L1 cache lookup                          1.9     0.0%         0.0         0.0
+      L1 cache materialize                     0.3     0.0%         0.0         0.0
+      L1 cache insert                          8.1     0.2%         0.2         0.2
+      L1 cache total                          10.3     0.2%         0.2         0.2
+      Unattributed overhead                 3242.3    74.6%        64.8         9.6
+  --------------------------------------------------------------------------------
+  Phase 8 operator breakdown (subset of unattributed):
+      Crossover                                5.1     0.1%         0.1         0.0
+      Mutation                                 0.2     0.0%         0.0         0.0
+      Repair (process_offspring)             507.7    11.7%        10.2         9.5
+      Improve (process_offspring)           2723.2    62.7%        54.5         9.8
+      Sort                                     0.2     0.0%         0.0         0.0
+      Selection                                0.9     0.0%         0.0         0.1
+      Feasibility check                        0.0     0.0%         0.0         0.0
+      Staging overhead                         1.3     0.0%         0.0         0.0
+      Attributed total                      3238.7    74.5%        64.8         9.6
+      Rayon residual                           3.6     0.1%         0.1         0.0
+
+Phase 8 attribution gate: attributed_ms / unattributed_ms = 99.9%
+  GATE PASS: >= 80% attribution achieved.
+
+Note: 'Rayon residual' = unattributed_ms - attributed_ms.
+      This is an accounting residual, NOT proof of Rayon causality.
+      It includes Rayon spawn/join + any other unmeasured overhead.
+
+Phase 7 baseline invariants:
+  best_obj       : 51.0126807372
+  n_actual_evals : 1802
+  generations    : 50
+  valid          : true
+  cache_hits     : 250

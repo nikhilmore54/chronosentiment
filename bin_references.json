@@ -1,0 +1,208 @@
+{
+  "csp006_search_diagnosis": [
+    "docs/CS-P-006-C.1_SEARCH_DIAGNOSIS.md",
+    "adapters/chronosentiment/tests/policy_search_diagnosis_tests.rs",
+    "adapters/chronosentiment/tests/adapter_discipline_invariants.rs"
+  ],
+  "csp012_portfolio_v041": [
+    "historical_runs/portfolio_v04_1_capital_allocation_experiment/COMPARISON_REPORT.md"
+  ],
+  "time004_ledger": [
+    "docs/INDEX.md",
+    "scripts/time007_cohort_runner.sh"
+  ],
+  "csp006_p_historical_pe2": [
+    "docs/CORALYS_DECISION_INTELLIGENCE_MVP_V01_DELETION_LIST.md"
+  ],
+  "deferred_live_yahoo": [],
+  "live003_recommend": [
+    "docs/INDEX.md",
+    "scripts/p4_recalculate_predictions.py",
+    "scripts/pre_open_job.sh",
+    "scripts/run_chronological_oos_cohort.py",
+    "scripts/backfill_missing_cohorts.py",
+    "scripts/start_backend.sh"
+  ],
+  "csp006_decision_value_harness": [
+    "docs/CS-P-006-B.1_NAMING_DISCIPLINE_AUDIT.md",
+    "docs/CS-P-006-N_DECISION_VALUE_RESEARCH_HARNESS.md",
+    "adapters/chronosentiment/tests/csp006n_decision_value_harness_tests.rs"
+  ],
+  "csp006_policy_discovery": [
+    "docs/CS-P-006-B.1_NAMING_DISCIPLINE_AUDIT.md",
+    "docs/CS-P-006-C_POLICY_DISCOVERY.md",
+    "adapters/chronosentiment/tests/policy_discovery_tests.rs",
+    "adapters/chronosentiment/tests/adapter_discipline_invariants.rs"
+  ],
+  "live004_certify": [
+    "docs/INDEX.md",
+    "scripts/p4_recalculate_predictions.py",
+    "scripts/pre_open_job.sh",
+    "scripts/run_chronological_oos_cohort.py",
+    "scripts/backfill_missing_cohorts.py",
+    "scripts/start_backend.sh"
+  ],
+  "csp003_forward_session": [
+    "docs/CS-P-AUDIT-001_ADAPTER_DISCIPLINE.md",
+    "docs/CS-P-003_FORWARD_PAPER_VALIDATION.md",
+    "adapters/chronosentiment/tests/adapter_discipline_invariants.rs"
+  ],
+  "csp011_portfolio_v04": [],
+  "csp006_recommendation_outcome": [
+    "docs/CS-P-006-C.2-R_RECOMMENDATION_OUTCOME.md",
+    "docs/CS-P-006-B.1_NAMING_DISCIPLINE_AUDIT.md",
+    "adapters/chronosentiment/tests/csp006c2r_recommendation_outcome_tests.rs"
+  ],
+  "time003_replay": [
+    "docs/INDEX.md",
+    "scripts/time007_cohort_runner.sh"
+  ],
+  "csp006_p_live_execute": [
+    "docs/CORALYS_DECISION_INTELLIGENCE_MVP_V01_DELETION_LIST.md",
+    "docs/CS-P-006-B.1_NAMING_DISCIPLINE_AUDIT.md"
+  ],
+  "time009_observe": [
+    "docs/TIME009_PROTOCOL.md",
+    "scripts/p4_recalculate_predictions.py",
+    "scripts/admit_stale_backfill_cohorts.py",
+    "scripts/backfill_missing_cohorts.py",
+    "scripts/start_backend.sh",
+    "scripts/restore_orphaned_ledger_entries.py"
+  ],
+  "csp006_p_replay": [
+    "docs/CORALYS_DECISION_INTELLIGENCE_MVP_V01_DELETION_LIST.md",
+    "docs/CS-P-006-B.1_NAMING_DISCIPLINE_AUDIT.md"
+  ],
+  "live001_snapshot": [
+    "docs/INDEX.md",
+    "scripts/pre_open_job.sh",
+    "scripts/run_chronological_oos_cohort.py",
+    "scripts/backfill_missing_cohorts.py",
+    "scripts/start_backend.sh"
+  ],
+  "csp005_factor_ecology": [
+    "docs/CS-P-AUDIT-001_ADAPTER_DISCIPLINE.md",
+    "docs/CS-P-005_FACTOR_ECOLOGY_ANALYSIS.md"
+  ],
+  "csp006_c3_comparison": [
+    "docs/CS-P-006-B.1_NAMING_DISCIPLINE_AUDIT.md",
+    "adapters/chronosentiment/tests/csp006c3c_comparison_tests.rs"
+  ],
+  "csp006_c3_search": [
+    "docs/CS-P-006-B.1_NAMING_DISCIPLINE_AUDIT.md",
+    "adapters/chronosentiment/tests/csp006c3r_search_tests.rs"
+  ],
+  "csp006_p_execute": [
+    "docs/CORALYS_DECISION_INTELLIGENCE_MVP_V01_DELETION_LIST.md",
+    "docs/CS-P-006-B.1_NAMING_DISCIPLINE_AUDIT.md"
+  ],
+  "time005_observe": [
+    "docs/INDEX.md",
+    "scripts/time007_cohort_runner.sh"
+  ],
+  "time006_evidence_dataset": [
+    "docs/INDEX.md",
+    "scripts/time007_cohort_runner.sh"
+  ],
+  "csp008_portfolio_replay_v02": [],
+  "csp006_c3_implementation": [
+    "docs/CS-P-006-B.1_NAMING_DISCIPLINE_AUDIT.md",
+    "adapters/chronosentiment/tests/csp006c3i_implementation_tests.rs"
+  ],
+  "live005_ledger": [
+    "docs/P4_PENDING_PREDICTION_RECALCULATION.md",
+    "docs/INDEX.md",
+    "scripts/p4_recalculate_predictions.py",
+    "scripts/pre_open_job.sh",
+    "scripts/run_chronological_oos_cohort.py",
+    "scripts/backfill_missing_cohorts.py",
+    "scripts/start_backend.sh"
+  ],
+  "csp006_p_observatory": [
+    "docs/CORALYS_DECISION_INTELLIGENCE_MVP_V01_DELETION_LIST.md",
+    "docs/CS-P-006-B.1_NAMING_DISCIPLINE_AUDIT.md",
+    "adapters/chronosentiment/tests/csp006p_observatory_slice_tests.rs"
+  ],
+  "csp010_portfolio_v03": [
+    "scripts/fetch_v03_bar_cache.py"
+  ],
+  "intraday001_observe": [
+    "docs/INTRADAY001_PROTOCOL.md"
+  ],
+  "live002_evaluate": [
+    "docs/INDEX.md",
+    "scripts/pre_open_job.sh",
+    "scripts/run_chronological_oos_cohort.py",
+    "scripts/backfill_missing_cohorts.py",
+    "scripts/start_backend.sh"
+  ],
+  "csp006_c3_rule_persistence": [
+    "docs/CS-P-006-B.1_NAMING_DISCIPLINE_AUDIT.md",
+    "adapters/chronosentiment/tests/csp006c3e_rule_persistence_tests.rs"
+  ],
+  "csp006_selection_review": [
+    "docs/CS-P-006-B.1_NAMING_DISCIPLINE_AUDIT.md",
+    "docs/CS-P-006-C.2-S_SELECTION_DECISION_VALUE.md",
+    "adapters/chronosentiment/tests/csp006c2s_selection_review_tests.rs"
+  ],
+  "csp002_b4_historical_run": [
+    "docs/CS-P-006-B.1_NAMING_DISCIPLINE_AUDIT.md",
+    "adapters/chronosentiment/tests/adapter_discipline_invariants.rs"
+  ],
+  "csp006_research_snapshot": [
+    "docs/CS-P-006-B.1_NAMING_DISCIPLINE_AUDIT.md"
+  ],
+  "csp006_population_ecology": [
+    "docs/CS-P-006-B.1_NAMING_DISCIPLINE_AUDIT.md",
+    "docs/CS-P-006-C.2-P_POPULATION_ECOLOGY.md",
+    "adapters/chronosentiment/tests/csp006c2p_population_ecology_tests.rs"
+  ],
+  "deferred_live_decision_loop": [
+    "adapters/chronosentiment/src/product/deferred_live_asof_ic.rs",
+    "adapters/chronosentiment/src/product/mod.rs",
+    "scripts/run_chronological_oos_cohort.py",
+    "scripts/live_fetch_to_inbox.py"
+  ],
+  "rec001h_historical_reconstruction": [
+    "docs/P4_WALKFORWARD_RESULTS.md",
+    "docs/INDEX.md"
+  ],
+  "csp006_c3_state_landscape": [
+    "docs/CS-P-006-B.1_NAMING_DISCIPLINE_AUDIT.md",
+    "adapters/chronosentiment/tests/csp006c3f_state_landscape_tests.rs"
+  ],
+  "csp004_historical_lab": [
+    "docs/CS-P-004_HISTORICAL_RESEARCH_LABORATORY.md",
+    "adapters/chronosentiment/tests/adapter_discipline_invariants.rs"
+  ],
+  "csp007_portfolio_replay": [],
+  "csp006_p_enrich": [
+    "docs/INDEX.md",
+    "adapters/chronosentiment/src/bin/live005_ledger.rs",
+    "scripts/start_backend.sh",
+    "scripts/replay_ledger.py"
+  ],
+  "csp009_portfolio_continuous": [],
+  "csp004_enrichment_certify": [],
+  "csp006_p_observe": [
+    "docs/CORALYS_DECISION_INTELLIGENCE_MVP_V01_DELETION_LIST.md",
+    "docs/CS-P-006-B.1_NAMING_DISCIPLINE_AUDIT.md",
+    "adapters/chronosentiment/tests/csp006p_observatory_maturity_tests.rs"
+  ],
+  "csp006_c3_rule_ecology": [
+    "docs/CS-P-006-B.1_NAMING_DISCIPLINE_AUDIT.md",
+    "adapters/chronosentiment/tests/csp006c3d_rule_ecology_tests.rs"
+  ],
+  "csp006_p_replay_pe3": [
+    "docs/CORALYS_DECISION_INTELLIGENCE_MVP_V01_DELETION_LIST.md"
+  ],
+  "time002_reconstruct": [
+    "docs/INDEX.md",
+    "scripts/time007_cohort_runner.sh"
+  ],
+  "csp006_decision_value": [
+    "docs/CS-P-006-B.1_NAMING_DISCIPLINE_AUDIT.md",
+    "docs/CS-P-006-C.2-D_DECISION_VALUE_LANDSCAPE.md",
+    "adapters/chronosentiment/tests/csp006c2d_decision_value_tests.rs"
+  ]
+}

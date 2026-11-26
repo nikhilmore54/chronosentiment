@@ -1,0 +1,83 @@
+# Provenance Registry — Uchoa X-family
+# M18.1 — Provenance Registry v1.0
+# Generated: 2026-07-09
+
+[family]
+id                  = "X"
+full_name           = "Uchoa et al. (2017) — X-family"
+instance_count      = 100
+customer_range      = "16–1000"
+in_campaign_scope   = true
+campaign_instance_count = 28
+campaign_customer_range = "16–199"
+
+[source]
+primary             = "CVRPLIB (galgos.inf.puc-rio.br)"
+url                 = "https://galgos.inf.puc-rio.br/cvrplib/index.php/en/instances/1"
+notes               = "100 instances total. 28 instances with ≤200 customers are in the current campaign scope. Vehicle count encoded in instance name as '-kN' suffix (e.g. X-n101-k25 has 25 vehicles)."
+
+[publication]
+authors             = "Uchoa, E., Pecin, D., Pessoa, A., Poggi, M., Vidal, T., Subramanian, A."
+title               = "New Benchmark Instances for the Capacitated Vehicle Routing Problem"
+year                = 2017
+journal             = "European Journal of Operational Research"
+volume              = "257"
+number              = "3"
+pages               = "845–858"
+doi                 = "10.1016/j.ejor.2016.08.012"
+notes               = "Designed as a modern, diverse benchmark set to replace older families. Instances generated with controlled structural properties (depot centrality, customer distribution, demand distribution). BKS values are from the CVRPLIB catalog and are updated as new algorithms improve on them."
+
+[objective]
+function            = "Minimize total route distance"
+multi_objective     = false
+fleet_cost          = false
+notes               = "Pure distance minimization. No fleet-size penalty in objective."
+
+[coordinate_type]
+type                = "EUC_2D"
+description         = "2D Euclidean coordinates in TSPLIB format"
+coordinate_source   = "NODE_COORD_SECTION in .vrp file"
+
+[rounding]
+rule                = "TSPLIB integer rounding"
+formula             = "nint(sqrt((x1-x2)^2 + (y1-y2)^2))"
+description         = "Distances rounded to nearest integer per TSPLIB convention"
+verified            = true
+
+[bks]
+source              = "CVRPLIB catalog (current) / COMMENT field"
+url                 = "https://galgos.inf.puc-rio.br/cvrplib/index.php/en/instances/1"
+extraction_method   = "COMMENT field in .vrp file"
+value_type          = "Integer (best known — actively updated as algorithms improve)"
+notes               = "BKS values extracted from COMMENT field of each instance file. X-family BKS values are actively maintained and updated on CVRPLIB as new algorithms improve on them. No published BKS exists for instances where no solution has been proven optimal — these are treated as 'no BKS' in the campaign (28 X-family instances have no BKS in the current registry)."
+
+[vehicle_count_encoding]
+method              = "Instance name suffix"
+pattern             = "X-n{customers+1}-k{vehicles}"
+example             = "X-n101-k25 → 100 customers, 25 vehicles"
+notes               = "Vehicle count is encoded in the instance name. The 'n' value includes the depot, so customer count = n - 1. This is a reliable extraction method — no registry lookup required for vehicle count."
+
+[verification]
+status              = "Verified"
+method              = "Vehicle count from instance name; BKS from COMMENT field; cross-checked against CVRPLIB catalog"
+date                = "2026-07"
+campaign_reference  = "Campaign v1.5 (EVIDENCE-v1.5.md)"
+qualification_level = "Provisionally Qualified"
+open_items          = [
+    "P5 — fleet semantics: confirm ATMOST vs EXACT from Uchoa et al. 2017",
+    "Stage B — collect route-count certificates for 28 in-scope X-family instances",
+    "28 X-family instances have no published BKS — gap analysis not applicable for these instances"
+]
+notes               = """
+X-family is the most modern benchmark set in the Coralys registry.
+Campaign v1.5 ran 28 X-family instances (≤200 customers).
+No negative gaps were observed — X-family MedGap ≈ 1.5%, AvgGap ≈ 2.0%.
+These are harder instances than A/B/E families, consistent with their design intent.
+
+28 instances have no published BKS in the current registry — gap analysis is not
+applicable for these instances. They are included in FCF, FCS, and FUC-001 evaluation
+but excluded from gap qualification.
+
+Fleet semantics hypothesis: ATMOST(K) — consistent with Uchoa et al. 2017 design intent
+(instances designed to allow fewer vehicles if capacity permits).
+"""

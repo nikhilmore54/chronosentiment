@@ -1,9 +1,0 @@
-{
-  "substrate": "AAPL",
-  "capture_start": 1778765400000,
-  "capture_end": 1779479940000,
-  "total_ticks": 2730,
-  "chronology_hash": "74475e1aa8b8d71305d906e0ab29b9b6e2fd28f307f1b7db92d7345c5ea0317c",
-  "gaps": [],
-  "provenance": "Python Yahoo API (7-day rolling)"
-}

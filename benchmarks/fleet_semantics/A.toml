@@ -1,0 +1,45 @@
+# Fleet Semantics Registry — Augerat A-family
+# M18.2 — Fleet Semantics Registry v1.0
+# Generated: 2026-07-09
+
+[family]
+id          = "A"
+full_name   = "Augerat A-family"
+
+[constraint]
+type        = "ATMOST"
+description = "At most K vehicles may be used. The optimizer may use fewer vehicles if capacity permits."
+formal      = "routes_used ≤ K"
+
+[source]
+primary     = "CVRPLIB catalog (galgos.inf.puc-rio.br)"
+url         = "https://galgos.inf.puc-rio.br/cvrplib/index.php/en/instances/1"
+
+[publication]
+authors     = "Augerat, P., Belenguer, J.M., Benavent, E., Corbéran, A., Naddef, D., Rinaldi, G."
+title       = "Computational Results with a Branch and Cut Code for the Capacitated Vehicle Routing Problem"
+year        = 1995
+institution = "IMAG, Grenoble, France"
+report_number = "RR949-M"
+
+[notes]
+derivation  = """
+The Augerat A-family instances encode vehicle count in the COMMENT field as
+'No of trucks: N'. This is universally interpreted in the CVRP literature as
+an upper bound (ATMOST), not an exact requirement. The standard CVRP formulation
+minimizes distance subject to at most K vehicles — using fewer is permitted and
+does not invalidate the solution.
+
+This interpretation is consistent with the CVRPLIB catalog presentation and with
+the branch-and-cut methodology of the original paper, which does not impose an
+exact vehicle count constraint.
+"""
+campaign_observation = "Campaign v1.5: no instances with routes_used < K were flagged as problematic. MedGap=0.00%, consistent with ATMOST semantics."
+
+[verification]
+status      = "Hypothesis"
+confidence  = "High"
+method      = "Literature consensus; CVRPLIB catalog interpretation; campaign observation"
+date        = "2026-07"
+open_items  = ["P5 — confirm ATMOST interpretation from Augerat et al. 1995 original paper"]
+notes       = "ATMOST is the standard CVRP interpretation for Augerat families. Hypothesis confidence is high based on literature consensus, but formal confirmation from the original paper has not been performed."

@@ -1,6 +1,6 @@
-use std::collections::HashMap;
-use serde::{Serialize, Deserialize};
 use crate::domain::Strategy as Candidate;
+use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AssetEvoState {

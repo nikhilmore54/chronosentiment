@@ -1,0 +1,393 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 440" width="960" height="440">
+
+    <style>
+      .main-title { font-family: 'Helvetica Neue', Helvetica, Arial, 'DejaVu Sans', sans-serif; font-size: 13pt; font-weight: bold; fill: #111827; }
+      .sub-title { font-family: 'Helvetica Neue', Helvetica, Arial, 'DejaVu Sans', sans-serif; font-size: 9.5pt; font-style: italic; fill: #4B5563; }
+      .panel-hdr { font-family: 'Helvetica Neue', Helvetica, Arial, 'DejaVu Sans', sans-serif; font-size: 10.5pt; font-weight: bold; fill: #111827; }
+      .panel-sub { font-family: 'Helvetica Neue', Helvetica, Arial, 'DejaVu Sans', sans-serif; font-size: 8.5pt; font-style: italic; fill: #4B5563; }
+      .axis-lbl { font-family: 'Helvetica Neue', Helvetica, Arial, 'DejaVu Sans', sans-serif; font-size: 8.5pt; fill: #1F2937; }
+      .axis-bold { font-family: 'Helvetica Neue', Helvetica, Arial, 'DejaVu Sans', sans-serif; font-size: 8.5pt; font-weight: bold; fill: #111827; }
+      .cell-txt { font-family: 'Helvetica Neue', Helvetica, Arial, 'DejaVu Sans', sans-serif; font-size: 7.5pt; font-weight: bold; text-anchor: middle; }
+      .bar-lbl { font-family: 'Helvetica Neue', Helvetica, Arial, 'DejaVu Sans', sans-serif; font-size: 8pt; font-weight: bold; fill: #FFFFFF; text-anchor: middle; }
+      .legend-lbl { font-family: 'Helvetica Neue', Helvetica, Arial, 'DejaVu Sans', sans-serif; font-size: 8.5pt; fill: #1F2937; }
+      .caption-note { font-family: 'Helvetica Neue', Helvetica, Arial, 'DejaVu Sans', sans-serif; font-size: 8pt; font-style: italic; fill: #374151; }
+    </style>
+    
+<rect width="960" height="440" fill="#FFFFFF"/>
+<text x="40" y="26" class="main-title">Fig. 2. Autonomous domain-agnostic wake-vortex segregation emergence.</text>
+<text x="40" y="44" class="sub-title">Pairwise separation affinity matrix deduces aircraft aerodynamic wake classes directly from raw separation costs S_ij.</text>
+<rect x="40" y="62" width="420" height="345" fill="#FFFFFF" stroke="#D1D5DB" stroke-width="1.0"/>
+<text x="54" y="84" class="panel-hdr">(a) Pairwise Separation Affinity Matrix A_ij</text>
+<text x="54" y="98" class="panel-sub">Raw mutual separation S_ij + S_ji (seconds) after spectral ordering</text>
+<rect x="95.0" y="118.0" width="18.0" height="18.0" fill="#1E3A8A" stroke="#E5E7EB" stroke-width="0.5"/>
+<text x="104.0" y="129.5" class="cell-txt" fill="#FFFFFF">192</text>
+<rect x="113.0" y="118.0" width="18.0" height="18.0" fill="#1E3A8A" stroke="#E5E7EB" stroke-width="0.5"/>
+<text x="122.0" y="129.5" class="cell-txt" fill="#FFFFFF">192</text>
+<rect x="131.0" y="118.0" width="18.0" height="18.0" fill="#1E3A8A" stroke="#E5E7EB" stroke-width="0.5"/>
+<text x="140.0" y="129.5" class="cell-txt" fill="#FFFFFF">192</text>
+<rect x="149.0" y="118.0" width="18.0" height="18.0" fill="#1E3A8A" stroke="#E5E7EB" stroke-width="0.5"/>
+<text x="158.0" y="129.5" class="cell-txt" fill="#FFFFFF">192</text>
+<rect x="167.0" y="118.0" width="18.0" height="18.0" fill="#BFDBFE" stroke="#E5E7EB" stroke-width="0.5"/>
+<text x="176.0" y="129.5" class="cell-txt" fill="#1E293B">194</text>
+<rect x="185.0" y="118.0" width="18.0" height="18.0" fill="#BFDBFE" stroke="#E5E7EB" stroke-width="0.5"/>
+<text x="194.0" y="129.5" class="cell-txt" fill="#1E293B">194</text>
+<rect x="203.0" y="118.0" width="18.0" height="18.0" fill="#BFDBFE" stroke="#E5E7EB" stroke-width="0.5"/>
+<text x="212.0" y="129.5" class="cell-txt" fill="#1E293B">194</text>
+<rect x="221.0" y="118.0" width="18.0" height="18.0" fill="#BFDBFE" stroke="#E5E7EB" stroke-width="0.5"/>
+<text x="230.0" y="129.5" class="cell-txt" fill="#1E293B">194</text>
+<rect x="239.0" y="118.0" width="18.0" height="18.0" fill="#BFDBFE" stroke="#E5E7EB" stroke-width="0.5"/>
+<text x="248.0" y="129.5" class="cell-txt" fill="#1E293B">194</text>
+<rect x="257.0" y="118.0" width="18.0" height="18.0" fill="#FEE2E2" stroke="#E5E7EB" stroke-width="0.5"/>
+<text x="266.0" y="129.5" class="cell-txt" fill="#991B1B">216</text>
+<rect x="275.0" y="118.0" width="18.0" height="18.0" fill="#FEE2E2" stroke="#E5E7EB" stroke-width="0.5"/>
+<text x="284.0" y="129.5" class="cell-txt" fill="#991B1B">216</text>
+<rect x="293.0" y="118.0" width="18.0" height="18.0" fill="#FEE2E2" stroke="#E5E7EB" stroke-width="0.5"/>
+<text x="302.0" y="129.5" class="cell-txt" fill="#991B1B">216</text>
+<rect x="95.0" y="136.0" width="18.0" height="18.0" fill="#1E3A8A" stroke="#E5E7EB" stroke-width="0.5"/>
+<text x="104.0" y="147.5" class="cell-txt" fill="#FFFFFF">192</text>
+<rect x="113.0" y="136.0" width="18.0" height="18.0" fill="#1E3A8A" stroke="#E5E7EB" stroke-width="0.5"/>
+<text x="122.0" y="147.5" class="cell-txt" fill="#FFFFFF">192</text>
+<rect x="131.0" y="136.0" width="18.0" height="18.0" fill="#1E3A8A" stroke="#E5E7EB" stroke-width="0.5"/>
+<text x="140.0" y="147.5" class="cell-txt" fill="#FFFFFF">192</text>
+<rect x="149.0" y="136.0" width="18.0" height="18.0" fill="#1E3A8A" stroke="#E5E7EB" stroke-width="0.5"/>
+<text x="158.0" y="147.5" class="cell-txt" fill="#FFFFFF">192</text>
+<rect x="167.0" y="136.0" width="18.0" height="18.0" fill="#BFDBFE" stroke="#E5E7EB" stroke-width="0.5"/>
+<text x="176.0" y="147.5" class="cell-txt" fill="#1E293B">194</text>
+<rect x="185.0" y="136.0" width="18.0" height="18.0" fill="#BFDBFE" stroke="#E5E7EB" stroke-width="0.5"/>
+<text x="194.0" y="147.5" class="cell-txt" fill="#1E293B">194</text>
+<rect x="203.0" y="136.0" width="18.0" height="18.0" fill="#BFDBFE" stroke="#E5E7EB" stroke-width="0.5"/>
+<text x="212.0" y="147.5" class="cell-txt" fill="#1E293B">194</text>
+<rect x="221.0" y="136.0" width="18.0" height="18.0" fill="#BFDBFE" stroke="#E5E7EB" stroke-width="0.5"/>
+<text x="230.0" y="147.5" class="cell-txt" fill="#1E293B">194</text>
+<rect x="239.0" y="136.0" width="18.0" height="18.0" fill="#BFDBFE" stroke="#E5E7EB" stroke-width="0.5"/>
+<text x="248.0" y="147.5" class="cell-txt" fill="#1E293B">194</text>
+<rect x="257.0" y="136.0" width="18.0" height="18.0" fill="#FEE2E2" stroke="#E5E7EB" stroke-width="0.5"/>
+<text x="266.0" y="147.5" class="cell-txt" fill="#991B1B">216</text>
+<rect x="275.0" y="136.0" width="18.0" height="18.0" fill="#FEE2E2" stroke="#E5E7EB" stroke-width="0.5"/>
+<text x="284.0" y="147.5" class="cell-txt" fill="#991B1B">216</text>
+<rect x="293.0" y="136.0" width="18.0" height="18.0" fill="#FEE2E2" stroke="#E5E7EB" stroke-width="0.5"/>
+<text x="302.0" y="147.5" class="cell-txt" fill="#991B1B">216</text>
+<rect x="95.0" y="154.0" width="18.0" height="18.0" fill="#1E3A8A" stroke="#E5E7EB" stroke-width="0.5"/>
+<text x="104.0" y="165.5" class="cell-txt" fill="#FFFFFF">192</text>
+<rect x="113.0" y="154.0" width="18.0" height="18.0" fill="#1E3A8A" stroke="#E5E7EB" stroke-width="0.5"/>
+<text x="122.0" y="165.5" class="cell-txt" fill="#FFFFFF">192</text>
+<rect x="131.0" y="154.0" width="18.0" height="18.0" fill="#1E3A8A" stroke="#E5E7EB" stroke-width="0.5"/>
+<text x="140.0" y="165.5" class="cell-txt" fill="#FFFFFF">192</text>
+<rect x="149.0" y="154.0" width="18.0" height="18.0" fill="#1E3A8A" stroke="#E5E7EB" stroke-width="0.5"/>
+<text x="158.0" y="165.5" class="cell-txt" fill="#FFFFFF">192</text>
+<rect x="167.0" y="154.0" width="18.0" height="18.0" fill="#BFDBFE" stroke="#E5E7EB" stroke-width="0.5"/>
+<text x="176.0" y="165.5" class="cell-txt" fill="#1E293B">194</text>
+<rect x="185.0" y="154.0" width="18.0" height="18.0" fill="#BFDBFE" stroke="#E5E7EB" stroke-width="0.5"/>
+<text x="194.0" y="165.5" class="cell-txt" fill="#1E293B">194</text>
+<rect x="203.0" y="154.0" width="18.0" height="18.0" fill="#BFDBFE" stroke="#E5E7EB" stroke-width="0.5"/>
+<text x="212.0" y="165.5" class="cell-txt" fill="#1E293B">194</text>
+<rect x="221.0" y="154.0" width="18.0" height="18.0" fill="#BFDBFE" stroke="#E5E7EB" stroke-width="0.5"/>
+<text x="230.0" y="165.5" class="cell-txt" fill="#1E293B">194</text>
+<rect x="239.0" y="154.0" width="18.0" height="18.0" fill="#BFDBFE" stroke="#E5E7EB" stroke-width="0.5"/>
+<text x="248.0" y="165.5" class="cell-txt" fill="#1E293B">194</text>
+<rect x="257.0" y="154.0" width="18.0" height="18.0" fill="#FEE2E2" stroke="#E5E7EB" stroke-width="0.5"/>
+<text x="266.0" y="165.5" class="cell-txt" fill="#991B1B">216</text>
+<rect x="275.0" y="154.0" width="18.0" height="18.0" fill="#FEE2E2" stroke="#E5E7EB" stroke-width="0.5"/>
+<text x="284.0" y="165.5" class="cell-txt" fill="#991B1B">216</text>
+<rect x="293.0" y="154.0" width="18.0" height="18.0" fill="#FEE2E2" stroke="#E5E7EB" stroke-width="0.5"/>
+<text x="302.0" y="165.5" class="cell-txt" fill="#991B1B">216</text>
+<rect x="95.0" y="172.0" width="18.0" height="18.0" fill="#1E3A8A" stroke="#E5E7EB" stroke-width="0.5"/>
+<text x="104.0" y="183.5" class="cell-txt" fill="#FFFFFF">192</text>
+<rect x="113.0" y="172.0" width="18.0" height="18.0" fill="#1E3A8A" stroke="#E5E7EB" stroke-width="0.5"/>
+<text x="122.0" y="183.5" class="cell-txt" fill="#FFFFFF">192</text>
+<rect x="131.0" y="172.0" width="18.0" height="18.0" fill="#1E3A8A" stroke="#E5E7EB" stroke-width="0.5"/>
+<text x="140.0" y="183.5" class="cell-txt" fill="#FFFFFF">192</text>
+<rect x="149.0" y="172.0" width="18.0" height="18.0" fill="#1E3A8A" stroke="#E5E7EB" stroke-width="0.5"/>
+<text x="158.0" y="183.5" class="cell-txt" fill="#FFFFFF">192</text>
+<rect x="167.0" y="172.0" width="18.0" height="18.0" fill="#BFDBFE" stroke="#E5E7EB" stroke-width="0.5"/>
+<text x="176.0" y="183.5" class="cell-txt" fill="#1E293B">194</text>
+<rect x="185.0" y="172.0" width="18.0" height="18.0" fill="#BFDBFE" stroke="#E5E7EB" stroke-width="0.5"/>
+<text x="194.0" y="183.5" class="cell-txt" fill="#1E293B">194</text>
+<rect x="203.0" y="172.0" width="18.0" height="18.0" fill="#BFDBFE" stroke="#E5E7EB" stroke-width="0.5"/>
+<text x="212.0" y="183.5" class="cell-txt" fill="#1E293B">194</text>
+<rect x="221.0" y="172.0" width="18.0" height="18.0" fill="#BFDBFE" stroke="#E5E7EB" stroke-width="0.5"/>
+<text x="230.0" y="183.5" class="cell-txt" fill="#1E293B">194</text>
+<rect x="239.0" y="172.0" width="18.0" height="18.0" fill="#BFDBFE" stroke="#E5E7EB" stroke-width="0.5"/>
+<text x="248.0" y="183.5" class="cell-txt" fill="#1E293B">194</text>
+<rect x="257.0" y="172.0" width="18.0" height="18.0" fill="#FEE2E2" stroke="#E5E7EB" stroke-width="0.5"/>
+<text x="266.0" y="183.5" class="cell-txt" fill="#991B1B">216</text>
+<rect x="275.0" y="172.0" width="18.0" height="18.0" fill="#FEE2E2" stroke="#E5E7EB" stroke-width="0.5"/>
+<text x="284.0" y="183.5" class="cell-txt" fill="#991B1B">216</text>
+<rect x="293.0" y="172.0" width="18.0" height="18.0" fill="#FEE2E2" stroke="#E5E7EB" stroke-width="0.5"/>
+<text x="302.0" y="183.5" class="cell-txt" fill="#991B1B">216</text>
+<rect x="95.0" y="190.0" width="18.0" height="18.0" fill="#BFDBFE" stroke="#E5E7EB" stroke-width="0.5"/>
+<text x="104.0" y="201.5" class="cell-txt" fill="#1E293B">194</text>
+<rect x="113.0" y="190.0" width="18.0" height="18.0" fill="#BFDBFE" stroke="#E5E7EB" stroke-width="0.5"/>
+<text x="122.0" y="201.5" class="cell-txt" fill="#1E293B">194</text>
+<rect x="131.0" y="190.0" width="18.0" height="18.0" fill="#BFDBFE" stroke="#E5E7EB" stroke-width="0.5"/>
+<text x="140.0" y="201.5" class="cell-txt" fill="#1E293B">194</text>
+<rect x="149.0" y="190.0" width="18.0" height="18.0" fill="#BFDBFE" stroke="#E5E7EB" stroke-width="0.5"/>
+<text x="158.0" y="201.5" class="cell-txt" fill="#1E293B">194</text>
+<rect x="167.0" y="190.0" width="18.0" height="18.0" fill="#1E3A8A" stroke="#E5E7EB" stroke-width="0.5"/>
+<text x="176.0" y="201.5" class="cell-txt" fill="#FFFFFF">144</text>
+<rect x="185.0" y="190.0" width="18.0" height="18.0" fill="#1E3A8A" stroke="#E5E7EB" stroke-width="0.5"/>
+<text x="194.0" y="201.5" class="cell-txt" fill="#FFFFFF">144</text>
+<rect x="203.0" y="190.0" width="18.0" height="18.0" fill="#1E3A8A" stroke="#E5E7EB" stroke-width="0.5"/>
+<text x="212.0" y="201.5" class="cell-txt" fill="#FFFFFF">144</text>
+<rect x="221.0" y="190.0" width="18.0" height="18.0" fill="#1E3A8A" stroke="#E5E7EB" stroke-width="0.5"/>
+<text x="230.0" y="201.5" class="cell-txt" fill="#FFFFFF">144</text>
+<rect x="239.0" y="190.0" width="18.0" height="18.0" fill="#1E3A8A" stroke="#E5E7EB" stroke-width="0.5"/>
+<text x="248.0" y="201.5" class="cell-txt" fill="#FFFFFF">144</text>
+<rect x="257.0" y="190.0" width="18.0" height="18.0" fill="#BFDBFE" stroke="#E5E7EB" stroke-width="0.5"/>
+<text x="266.0" y="201.5" class="cell-txt" fill="#1E293B">180</text>
+<rect x="275.0" y="190.0" width="18.0" height="18.0" fill="#BFDBFE" stroke="#E5E7EB" stroke-width="0.5"/>
+<text x="284.0" y="201.5" class="cell-txt" fill="#1E293B">180</text>
+<rect x="293.0" y="190.0" width="18.0" height="18.0" fill="#BFDBFE" stroke="#E5E7EB" stroke-width="0.5"/>
+<text x="302.0" y="201.5" class="cell-txt" fill="#1E293B">180</text>
+<rect x="95.0" y="208.0" width="18.0" height="18.0" fill="#BFDBFE" stroke="#E5E7EB" stroke-width="0.5"/>
+<text x="104.0" y="219.5" class="cell-txt" fill="#1E293B">194</text>
+<rect x="113.0" y="208.0" width="18.0" height="18.0" fill="#BFDBFE" stroke="#E5E7EB" stroke-width="0.5"/>
+<text x="122.0" y="219.5" class="cell-txt" fill="#1E293B">194</text>
+<rect x="131.0" y="208.0" width="18.0" height="18.0" fill="#BFDBFE" stroke="#E5E7EB" stroke-width="0.5"/>
+<text x="140.0" y="219.5" class="cell-txt" fill="#1E293B">194</text>
+<rect x="149.0" y="208.0" width="18.0" height="18.0" fill="#BFDBFE" stroke="#E5E7EB" stroke-width="0.5"/>
+<text x="158.0" y="219.5" class="cell-txt" fill="#1E293B">194</text>
+<rect x="167.0" y="208.0" width="18.0" height="18.0" fill="#1E3A8A" stroke="#E5E7EB" stroke-width="0.5"/>
+<text x="176.0" y="219.5" class="cell-txt" fill="#FFFFFF">144</text>
+<rect x="185.0" y="208.0" width="18.0" height="18.0" fill="#1E3A8A" stroke="#E5E7EB" stroke-width="0.5"/>
+<text x="194.0" y="219.5" class="cell-txt" fill="#FFFFFF">144</text>
+<rect x="203.0" y="208.0" width="18.0" height="18.0" fill="#1E3A8A" stroke="#E5E7EB" stroke-width="0.5"/>
+<text x="212.0" y="219.5" class="cell-txt" fill="#FFFFFF">144</text>
+<rect x="221.0" y="208.0" width="18.0" height="18.0" fill="#1E3A8A" stroke="#E5E7EB" stroke-width="0.5"/>
+<text x="230.0" y="219.5" class="cell-txt" fill="#FFFFFF">144</text>
+<rect x="239.0" y="208.0" width="18.0" height="18.0" fill="#1E3A8A" stroke="#E5E7EB" stroke-width="0.5"/>
+<text x="248.0" y="219.5" class="cell-txt" fill="#FFFFFF">144</text>
+<rect x="257.0" y="208.0" width="18.0" height="18.0" fill="#BFDBFE" stroke="#E5E7EB" stroke-width="0.5"/>
+<text x="266.0" y="219.5" class="cell-txt" fill="#1E293B">180</text>
+<rect x="275.0" y="208.0" width="18.0" height="18.0" fill="#BFDBFE" stroke="#E5E7EB" stroke-width="0.5"/>
+<text x="284.0" y="219.5" class="cell-txt" fill="#1E293B">180</text>
+<rect x="293.0" y="208.0" width="18.0" height="18.0" fill="#BFDBFE" stroke="#E5E7EB" stroke-width="0.5"/>
+<text x="302.0" y="219.5" class="cell-txt" fill="#1E293B">180</text>
+<rect x="95.0" y="226.0" width="18.0" height="18.0" fill="#BFDBFE" stroke="#E5E7EB" stroke-width="0.5"/>
+<text x="104.0" y="237.5" class="cell-txt" fill="#1E293B">194</text>
+<rect x="113.0" y="226.0" width="18.0" height="18.0" fill="#BFDBFE" stroke="#E5E7EB" stroke-width="0.5"/>
+<text x="122.0" y="237.5" class="cell-txt" fill="#1E293B">194</text>
+<rect x="131.0" y="226.0" width="18.0" height="18.0" fill="#BFDBFE" stroke="#E5E7EB" stroke-width="0.5"/>
+<text x="140.0" y="237.5" class="cell-txt" fill="#1E293B">194</text>
+<rect x="149.0" y="226.0" width="18.0" height="18.0" fill="#BFDBFE" stroke="#E5E7EB" stroke-width="0.5"/>
+<text x="158.0" y="237.5" class="cell-txt" fill="#1E293B">194</text>
+<rect x="167.0" y="226.0" width="18.0" height="18.0" fill="#1E3A8A" stroke="#E5E7EB" stroke-width="0.5"/>
+<text x="176.0" y="237.5" class="cell-txt" fill="#FFFFFF">144</text>
+<rect x="185.0" y="226.0" width="18.0" height="18.0" fill="#1E3A8A" stroke="#E5E7EB" stroke-width="0.5"/>
+<text x="194.0" y="237.5" class="cell-txt" fill="#FFFFFF">144</text>
+<rect x="203.0" y="226.0" width="18.0" height="18.0" fill="#1E3A8A" stroke="#E5E7EB" stroke-width="0.5"/>
+<text x="212.0" y="237.5" class="cell-txt" fill="#FFFFFF">144</text>
+<rect x="221.0" y="226.0" width="18.0" height="18.0" fill="#1E3A8A" stroke="#E5E7EB" stroke-width="0.5"/>
+<text x="230.0" y="237.5" class="cell-txt" fill="#FFFFFF">144</text>
+<rect x="239.0" y="226.0" width="18.0" height="18.0" fill="#1E3A8A" stroke="#E5E7EB" stroke-width="0.5"/>
+<text x="248.0" y="237.5" class="cell-txt" fill="#FFFFFF">144</text>
+<rect x="257.0" y="226.0" width="18.0" height="18.0" fill="#BFDBFE" stroke="#E5E7EB" stroke-width="0.5"/>
+<text x="266.0" y="237.5" class="cell-txt" fill="#1E293B">180</text>
+<rect x="275.0" y="226.0" width="18.0" height="18.0" fill="#BFDBFE" stroke="#E5E7EB" stroke-width="0.5"/>
+<text x="284.0" y="237.5" class="cell-txt" fill="#1E293B">180</text>
+<rect x="293.0" y="226.0" width="18.0" height="18.0" fill="#BFDBFE" stroke="#E5E7EB" stroke-width="0.5"/>
+<text x="302.0" y="237.5" class="cell-txt" fill="#1E293B">180</text>
+<rect x="95.0" y="244.0" width="18.0" height="18.0" fill="#BFDBFE" stroke="#E5E7EB" stroke-width="0.5"/>
+<text x="104.0" y="255.5" class="cell-txt" fill="#1E293B">194</text>
+<rect x="113.0" y="244.0" width="18.0" height="18.0" fill="#BFDBFE" stroke="#E5E7EB" stroke-width="0.5"/>
+<text x="122.0" y="255.5" class="cell-txt" fill="#1E293B">194</text>
+<rect x="131.0" y="244.0" width="18.0" height="18.0" fill="#BFDBFE" stroke="#E5E7EB" stroke-width="0.5"/>
+<text x="140.0" y="255.5" class="cell-txt" fill="#1E293B">194</text>
+<rect x="149.0" y="244.0" width="18.0" height="18.0" fill="#BFDBFE" stroke="#E5E7EB" stroke-width="0.5"/>
+<text x="158.0" y="255.5" class="cell-txt" fill="#1E293B">194</text>
+<rect x="167.0" y="244.0" width="18.0" height="18.0" fill="#1E3A8A" stroke="#E5E7EB" stroke-width="0.5"/>
+<text x="176.0" y="255.5" class="cell-txt" fill="#FFFFFF">144</text>
+<rect x="185.0" y="244.0" width="18.0" height="18.0" fill="#1E3A8A" stroke="#E5E7EB" stroke-width="0.5"/>
+<text x="194.0" y="255.5" class="cell-txt" fill="#FFFFFF">144</text>
+<rect x="203.0" y="244.0" width="18.0" height="18.0" fill="#1E3A8A" stroke="#E5E7EB" stroke-width="0.5"/>
+<text x="212.0" y="255.5" class="cell-txt" fill="#FFFFFF">144</text>
+<rect x="221.0" y="244.0" width="18.0" height="18.0" fill="#1E3A8A" stroke="#E5E7EB" stroke-width="0.5"/>
+<text x="230.0" y="255.5" class="cell-txt" fill="#FFFFFF">144</text>
+<rect x="239.0" y="244.0" width="18.0" height="18.0" fill="#1E3A8A" stroke="#E5E7EB" stroke-width="0.5"/>
+<text x="248.0" y="255.5" class="cell-txt" fill="#FFFFFF">144</text>
+<rect x="257.0" y="244.0" width="18.0" height="18.0" fill="#BFDBFE" stroke="#E5E7EB" stroke-width="0.5"/>
+<text x="266.0" y="255.5" class="cell-txt" fill="#1E293B">180</text>
+<rect x="275.0" y="244.0" width="18.0" height="18.0" fill="#BFDBFE" stroke="#E5E7EB" stroke-width="0.5"/>
+<text x="284.0" y="255.5" class="cell-txt" fill="#1E293B">180</text>
+<rect x="293.0" y="244.0" width="18.0" height="18.0" fill="#BFDBFE" stroke="#E5E7EB" stroke-width="0.5"/>
+<text x="302.0" y="255.5" class="cell-txt" fill="#1E293B">180</text>
+<rect x="95.0" y="262.0" width="18.0" height="18.0" fill="#BFDBFE" stroke="#E5E7EB" stroke-width="0.5"/>
+<text x="104.0" y="273.5" class="cell-txt" fill="#1E293B">194</text>
+<rect x="113.0" y="262.0" width="18.0" height="18.0" fill="#BFDBFE" stroke="#E5E7EB" stroke-width="0.5"/>
+<text x="122.0" y="273.5" class="cell-txt" fill="#1E293B">194</text>
+<rect x="131.0" y="262.0" width="18.0" height="18.0" fill="#BFDBFE" stroke="#E5E7EB" stroke-width="0.5"/>
+<text x="140.0" y="273.5" class="cell-txt" fill="#1E293B">194</text>
+<rect x="149.0" y="262.0" width="18.0" height="18.0" fill="#BFDBFE" stroke="#E5E7EB" stroke-width="0.5"/>
+<text x="158.0" y="273.5" class="cell-txt" fill="#1E293B">194</text>
+<rect x="167.0" y="262.0" width="18.0" height="18.0" fill="#1E3A8A" stroke="#E5E7EB" stroke-width="0.5"/>
+<text x="176.0" y="273.5" class="cell-txt" fill="#FFFFFF">144</text>
+<rect x="185.0" y="262.0" width="18.0" height="18.0" fill="#1E3A8A" stroke="#E5E7EB" stroke-width="0.5"/>
+<text x="194.0" y="273.5" class="cell-txt" fill="#FFFFFF">144</text>
+<rect x="203.0" y="262.0" width="18.0" height="18.0" fill="#1E3A8A" stroke="#E5E7EB" stroke-width="0.5"/>
+<text x="212.0" y="273.5" class="cell-txt" fill="#FFFFFF">144</text>
+<rect x="221.0" y="262.0" width="18.0" height="18.0" fill="#1E3A8A" stroke="#E5E7EB" stroke-width="0.5"/>
+<text x="230.0" y="273.5" class="cell-txt" fill="#FFFFFF">144</text>
+<rect x="239.0" y="262.0" width="18.0" height="18.0" fill="#1E3A8A" stroke="#E5E7EB" stroke-width="0.5"/>
+<text x="248.0" y="273.5" class="cell-txt" fill="#FFFFFF">144</text>
+<rect x="257.0" y="262.0" width="18.0" height="18.0" fill="#BFDBFE" stroke="#E5E7EB" stroke-width="0.5"/>
+<text x="266.0" y="273.5" class="cell-txt" fill="#1E293B">180</text>
+<rect x="275.0" y="262.0" width="18.0" height="18.0" fill="#BFDBFE" stroke="#E5E7EB" stroke-width="0.5"/>
+<text x="284.0" y="273.5" class="cell-txt" fill="#1E293B">180</text>
+<rect x="293.0" y="262.0" width="18.0" height="18.0" fill="#BFDBFE" stroke="#E5E7EB" stroke-width="0.5"/>
+<text x="302.0" y="273.5" class="cell-txt" fill="#1E293B">180</text>
+<rect x="95.0" y="280.0" width="18.0" height="18.0" fill="#FEE2E2" stroke="#E5E7EB" stroke-width="0.5"/>
+<text x="104.0" y="291.5" class="cell-txt" fill="#991B1B">216</text>
+<rect x="113.0" y="280.0" width="18.0" height="18.0" fill="#FEE2E2" stroke="#E5E7EB" stroke-width="0.5"/>
+<text x="122.0" y="291.5" class="cell-txt" fill="#991B1B">216</text>
+<rect x="131.0" y="280.0" width="18.0" height="18.0" fill="#FEE2E2" stroke="#E5E7EB" stroke-width="0.5"/>
+<text x="140.0" y="291.5" class="cell-txt" fill="#991B1B">216</text>
+<rect x="149.0" y="280.0" width="18.0" height="18.0" fill="#FEE2E2" stroke="#E5E7EB" stroke-width="0.5"/>
+<text x="158.0" y="291.5" class="cell-txt" fill="#991B1B">216</text>
+<rect x="167.0" y="280.0" width="18.0" height="18.0" fill="#BFDBFE" stroke="#E5E7EB" stroke-width="0.5"/>
+<text x="176.0" y="291.5" class="cell-txt" fill="#1E293B">180</text>
+<rect x="185.0" y="280.0" width="18.0" height="18.0" fill="#BFDBFE" stroke="#E5E7EB" stroke-width="0.5"/>
+<text x="194.0" y="291.5" class="cell-txt" fill="#1E293B">180</text>
+<rect x="203.0" y="280.0" width="18.0" height="18.0" fill="#BFDBFE" stroke="#E5E7EB" stroke-width="0.5"/>
+<text x="212.0" y="291.5" class="cell-txt" fill="#1E293B">180</text>
+<rect x="221.0" y="280.0" width="18.0" height="18.0" fill="#BFDBFE" stroke="#E5E7EB" stroke-width="0.5"/>
+<text x="230.0" y="291.5" class="cell-txt" fill="#1E293B">180</text>
+<rect x="239.0" y="280.0" width="18.0" height="18.0" fill="#BFDBFE" stroke="#E5E7EB" stroke-width="0.5"/>
+<text x="248.0" y="291.5" class="cell-txt" fill="#1E293B">180</text>
+<rect x="257.0" y="280.0" width="18.0" height="18.0" fill="#1E3A8A" stroke="#E5E7EB" stroke-width="0.5"/>
+<text x="266.0" y="291.5" class="cell-txt" fill="#FFFFFF">144</text>
+<rect x="275.0" y="280.0" width="18.0" height="18.0" fill="#1E3A8A" stroke="#E5E7EB" stroke-width="0.5"/>
+<text x="284.0" y="291.5" class="cell-txt" fill="#FFFFFF">144</text>
+<rect x="293.0" y="280.0" width="18.0" height="18.0" fill="#1E3A8A" stroke="#E5E7EB" stroke-width="0.5"/>
+<text x="302.0" y="291.5" class="cell-txt" fill="#FFFFFF">144</text>
+<rect x="95.0" y="298.0" width="18.0" height="18.0" fill="#FEE2E2" stroke="#E5E7EB" stroke-width="0.5"/>
+<text x="104.0" y="309.5" class="cell-txt" fill="#991B1B">216</text>
+<rect x="113.0" y="298.0" width="18.0" height="18.0" fill="#FEE2E2" stroke="#E5E7EB" stroke-width="0.5"/>
+<text x="122.0" y="309.5" class="cell-txt" fill="#991B1B">216</text>
+<rect x="131.0" y="298.0" width="18.0" height="18.0" fill="#FEE2E2" stroke="#E5E7EB" stroke-width="0.5"/>
+<text x="140.0" y="309.5" class="cell-txt" fill="#991B1B">216</text>
+<rect x="149.0" y="298.0" width="18.0" height="18.0" fill="#FEE2E2" stroke="#E5E7EB" stroke-width="0.5"/>
+<text x="158.0" y="309.5" class="cell-txt" fill="#991B1B">216</text>
+<rect x="167.0" y="298.0" width="18.0" height="18.0" fill="#BFDBFE" stroke="#E5E7EB" stroke-width="0.5"/>
+<text x="176.0" y="309.5" class="cell-txt" fill="#1E293B">180</text>
+<rect x="185.0" y="298.0" width="18.0" height="18.0" fill="#BFDBFE" stroke="#E5E7EB" stroke-width="0.5"/>
+<text x="194.0" y="309.5" class="cell-txt" fill="#1E293B">180</text>
+<rect x="203.0" y="298.0" width="18.0" height="18.0" fill="#BFDBFE" stroke="#E5E7EB" stroke-width="0.5"/>
+<text x="212.0" y="309.5" class="cell-txt" fill="#1E293B">180</text>
+<rect x="221.0" y="298.0" width="18.0" height="18.0" fill="#BFDBFE" stroke="#E5E7EB" stroke-width="0.5"/>
+<text x="230.0" y="309.5" class="cell-txt" fill="#1E293B">180</text>
+<rect x="239.0" y="298.0" width="18.0" height="18.0" fill="#BFDBFE" stroke="#E5E7EB" stroke-width="0.5"/>
+<text x="248.0" y="309.5" class="cell-txt" fill="#1E293B">180</text>
+<rect x="257.0" y="298.0" width="18.0" height="18.0" fill="#1E3A8A" stroke="#E5E7EB" stroke-width="0.5"/>
+<text x="266.0" y="309.5" class="cell-txt" fill="#FFFFFF">144</text>
+<rect x="275.0" y="298.0" width="18.0" height="18.0" fill="#1E3A8A" stroke="#E5E7EB" stroke-width="0.5"/>
+<text x="284.0" y="309.5" class="cell-txt" fill="#FFFFFF">144</text>
+<rect x="293.0" y="298.0" width="18.0" height="18.0" fill="#1E3A8A" stroke="#E5E7EB" stroke-width="0.5"/>
+<text x="302.0" y="309.5" class="cell-txt" fill="#FFFFFF">144</text>
+<rect x="95.0" y="316.0" width="18.0" height="18.0" fill="#FEE2E2" stroke="#E5E7EB" stroke-width="0.5"/>
+<text x="104.0" y="327.5" class="cell-txt" fill="#991B1B">216</text>
+<rect x="113.0" y="316.0" width="18.0" height="18.0" fill="#FEE2E2" stroke="#E5E7EB" stroke-width="0.5"/>
+<text x="122.0" y="327.5" class="cell-txt" fill="#991B1B">216</text>
+<rect x="131.0" y="316.0" width="18.0" height="18.0" fill="#FEE2E2" stroke="#E5E7EB" stroke-width="0.5"/>
+<text x="140.0" y="327.5" class="cell-txt" fill="#991B1B">216</text>
+<rect x="149.0" y="316.0" width="18.0" height="18.0" fill="#FEE2E2" stroke="#E5E7EB" stroke-width="0.5"/>
+<text x="158.0" y="327.5" class="cell-txt" fill="#991B1B">216</text>
+<rect x="167.0" y="316.0" width="18.0" height="18.0" fill="#BFDBFE" stroke="#E5E7EB" stroke-width="0.5"/>
+<text x="176.0" y="327.5" class="cell-txt" fill="#1E293B">180</text>
+<rect x="185.0" y="316.0" width="18.0" height="18.0" fill="#BFDBFE" stroke="#E5E7EB" stroke-width="0.5"/>
+<text x="194.0" y="327.5" class="cell-txt" fill="#1E293B">180</text>
+<rect x="203.0" y="316.0" width="18.0" height="18.0" fill="#BFDBFE" stroke="#E5E7EB" stroke-width="0.5"/>
+<text x="212.0" y="327.5" class="cell-txt" fill="#1E293B">180</text>
+<rect x="221.0" y="316.0" width="18.0" height="18.0" fill="#BFDBFE" stroke="#E5E7EB" stroke-width="0.5"/>
+<text x="230.0" y="327.5" class="cell-txt" fill="#1E293B">180</text>
+<rect x="239.0" y="316.0" width="18.0" height="18.0" fill="#BFDBFE" stroke="#E5E7EB" stroke-width="0.5"/>
+<text x="248.0" y="327.5" class="cell-txt" fill="#1E293B">180</text>
+<rect x="257.0" y="316.0" width="18.0" height="18.0" fill="#1E3A8A" stroke="#E5E7EB" stroke-width="0.5"/>
+<text x="266.0" y="327.5" class="cell-txt" fill="#FFFFFF">144</text>
+<rect x="275.0" y="316.0" width="18.0" height="18.0" fill="#1E3A8A" stroke="#E5E7EB" stroke-width="0.5"/>
+<text x="284.0" y="327.5" class="cell-txt" fill="#FFFFFF">144</text>
+<rect x="293.0" y="316.0" width="18.0" height="18.0" fill="#1E3A8A" stroke="#E5E7EB" stroke-width="0.5"/>
+<text x="302.0" y="327.5" class="cell-txt" fill="#FFFFFF">144</text>
+<text x="89" y="130.0" text-anchor="end" class="axis-bold" fill="#1E3A8A">f1</text>
+<text x="89" y="148.0" text-anchor="end" class="axis-bold" fill="#1E3A8A">f2</text>
+<text x="89" y="166.0" text-anchor="end" class="axis-bold" fill="#1E3A8A">f3</text>
+<text x="89" y="184.0" text-anchor="end" class="axis-bold" fill="#1E3A8A">f4</text>
+<text x="89" y="202.0" text-anchor="end" class="axis-bold" fill="#0284C7">f5</text>
+<text x="89" y="220.0" text-anchor="end" class="axis-bold" fill="#0284C7">f6</text>
+<text x="89" y="238.0" text-anchor="end" class="axis-bold" fill="#0284C7">f7</text>
+<text x="89" y="256.0" text-anchor="end" class="axis-bold" fill="#0284C7">f8</text>
+<text x="89" y="274.0" text-anchor="end" class="axis-bold" fill="#0284C7">f9</text>
+<text x="89" y="292.0" text-anchor="end" class="axis-bold" fill="#047857">f10</text>
+<text x="89" y="310.0" text-anchor="end" class="axis-bold" fill="#047857">f11</text>
+<text x="89" y="328.0" text-anchor="end" class="axis-bold" fill="#047857">f12</text>
+<text x="104.0" y="112" text-anchor="middle" class="axis-bold" fill="#1E3A8A">H</text>
+<text x="122.0" y="112" text-anchor="middle" class="axis-bold" fill="#1E3A8A">H</text>
+<text x="140.0" y="112" text-anchor="middle" class="axis-bold" fill="#1E3A8A">H</text>
+<text x="158.0" y="112" text-anchor="middle" class="axis-bold" fill="#1E3A8A">H</text>
+<text x="176.0" y="112" text-anchor="middle" class="axis-bold" fill="#0284C7">M</text>
+<text x="194.0" y="112" text-anchor="middle" class="axis-bold" fill="#0284C7">M</text>
+<text x="212.0" y="112" text-anchor="middle" class="axis-bold" fill="#0284C7">M</text>
+<text x="230.0" y="112" text-anchor="middle" class="axis-bold" fill="#0284C7">M</text>
+<text x="248.0" y="112" text-anchor="middle" class="axis-bold" fill="#0284C7">M</text>
+<text x="266.0" y="112" text-anchor="middle" class="axis-bold" fill="#047857">L</text>
+<text x="284.0" y="112" text-anchor="middle" class="axis-bold" fill="#047857">L</text>
+<text x="302.0" y="112" text-anchor="middle" class="axis-bold" fill="#047857">L</text>
+<path d="M 319 118 L 324 118 L 324 154.0 L 329 154.0 L 324 154.0 L 324 190.0 L 319 190.0" fill="none" stroke="#1E3A8A" stroke-width="1.2"/>
+<text x="333" y="157.0" class="axis-bold" fill="#1E3A8A">Heavy (33%)</text>
+<path d="M 319 190.0 L 324 190.0 L 324 235.0 L 329 235.0 L 324 235.0 L 324 280.0 L 319 280.0" fill="none" stroke="#0284C7" stroke-width="1.2"/>
+<text x="333" y="238.0" class="axis-bold" fill="#0284C7">Medium (42%)</text>
+<path d="M 319 280.0 L 324 280.0 L 324 307.0 L 329 307.0 L 324 307.0 L 324 334.0 L 319 334.0" fill="none" stroke="#047857" stroke-width="1.2"/>
+<text x="333" y="310.0" class="axis-bold" fill="#047857">Light (25%)</text>
+<text x="54" y="387" class="caption-note">High affinity (dark blue, 144&#8211;192 s) minimizes cross-class separation buffer void (216 s).</text>
+<text x="54" y="399" class="caption-note">Spectral permutation discovers wake categories without categorical size labels.</text>
+<rect x="490" y="62" width="430" height="345" fill="#FFFFFF" stroke="#D1D5DB" stroke-width="1.0"/>
+<text x="504" y="84" class="panel-hdr">(b) Emergent Parallel Runway Allocation</text>
+<text x="504" y="98" class="panel-sub">airland13 (N = 500 operations across R = 4 parallel runways)</text>
+<rect x="504" y="112" width="14" height="9" fill="#1E3A8A" stroke="#0F172A" stroke-width="0.8"/>
+<text x="522" y="120" class="legend-lbl">Heavy (H)</text>
+<rect x="599" y="112" width="14" height="9" fill="#0284C7" stroke="#0F172A" stroke-width="0.8"/>
+<text x="617" y="120" class="legend-lbl">Medium (M)</text>
+<rect x="699" y="112" width="14" height="9" fill="#047857" stroke="#0F172A" stroke-width="0.8"/>
+<text x="717" y="120" class="legend-lbl">Light (L)</text>
+<text x="600" y="156" text-anchor="end" class="axis-bold">Runway 0</text>
+<text x="600" y="168" text-anchor="end" class="panel-sub" style="font-size:7.5pt;">Heavy Trunk</text>
+<rect x="610" y="140" width="204.05" height="36" fill="#1E3A8A" stroke="#0F172A" stroke-width="0.8"/>
+<text x="712.025" y="162" class="bar-lbl">74%</text>
+<rect x="814.05" y="140" width="59.95" height="36" fill="#0284C7" stroke="#0F172A" stroke-width="0.8"/>
+<text x="844.025" y="162" class="bar-lbl">22%</text>
+<rect x="874.0" y="140" width="11.0" height="36" fill="#047857" stroke="#0F172A" stroke-width="0.8"/>
+<text x="600" y="204" text-anchor="end" class="axis-bold">Runway 1</text>
+<text x="600" y="216" text-anchor="end" class="panel-sub" style="font-size:7.5pt;">Heavy/Medium</text>
+<rect x="610" y="188" width="133.65" height="36" fill="#1E3A8A" stroke="#0F172A" stroke-width="0.8"/>
+<text x="676.825" y="210" class="bar-lbl">49%</text>
+<rect x="743.65" y="188" width="121.0" height="36" fill="#0284C7" stroke="#0F172A" stroke-width="0.8"/>
+<text x="804.15" y="210" class="bar-lbl">44%</text>
+<rect x="864.65" y="188" width="20.35" height="36" fill="#047857" stroke="#0F172A" stroke-width="0.8"/>
+<text x="600" y="252" text-anchor="end" class="axis-bold">Runway 2</text>
+<text x="600" y="264" text-anchor="end" class="panel-sub" style="font-size:7.5pt;">Medium Mainstream</text>
+<rect x="610" y="236" width="33.0" height="36" fill="#1E3A8A" stroke="#0F172A" stroke-width="0.8"/>
+<rect x="643.0" y="236" width="199.375" height="36" fill="#0284C7" stroke="#0F172A" stroke-width="0.8"/>
+<text x="742.6875" y="258" class="bar-lbl">72%</text>
+<rect x="842.375" y="236" width="42.625" height="36" fill="#047857" stroke="#0F172A" stroke-width="0.8"/>
+<text x="863.6875" y="258" class="bar-lbl">16%</text>
+<text x="600" y="300" text-anchor="end" class="axis-bold">Runway 3</text>
+<text x="600" y="312" text-anchor="end" class="panel-sub" style="font-size:7.5pt;">Light/Regional</text>
+<rect x="610" y="284" width="6.6000000000000005" height="36" fill="#1E3A8A" stroke="#0F172A" stroke-width="0.8"/>
+<rect x="616.6" y="284" width="106.15" height="36" fill="#0284C7" stroke="#0F172A" stroke-width="0.8"/>
+<text x="669.6750000000001" y="306" class="bar-lbl">39%</text>
+<rect x="722.75" y="284" width="162.25" height="36" fill="#047857" stroke="#0F172A" stroke-width="0.8"/>
+<text x="803.875" y="306" class="bar-lbl">59%</text>
+<line x1="610" y1="332" x2="885" y2="332" stroke="#475569" stroke-width="1.0"/>
+<line x1="610.0" y1="332" x2="610.0" y2="336" stroke="#475569" stroke-width="1.0"/>
+<text x="610.0" y="346" text-anchor="middle" class="axis-lbl" style="font-size:7.5pt;">0%</text>
+<line x1="678.75" y1="332" x2="678.75" y2="336" stroke="#475569" stroke-width="1.0"/>
+<text x="678.75" y="346" text-anchor="middle" class="axis-lbl" style="font-size:7.5pt;">25%</text>
+<line x1="747.5" y1="332" x2="747.5" y2="336" stroke="#475569" stroke-width="1.0"/>
+<text x="747.5" y="346" text-anchor="middle" class="axis-lbl" style="font-size:7.5pt;">50%</text>
+<line x1="816.25" y1="332" x2="816.25" y2="336" stroke="#475569" stroke-width="1.0"/>
+<text x="816.25" y="346" text-anchor="middle" class="axis-lbl" style="font-size:7.5pt;">75%</text>
+<line x1="885.0" y1="332" x2="885.0" y2="336" stroke="#475569" stroke-width="1.0"/>
+<text x="885.0" y="346" text-anchor="middle" class="axis-lbl" style="font-size:7.5pt;">100%</text>
+<text x="747.5" y="358" text-anchor="middle" class="axis-bold" style="font-size:8pt;">Runway Traffic Share (%)</text>
+<text x="504" y="387" class="caption-note">74.2% of Heavy traffic concentrates on Runway 0; 59.0% Light routes to Runway 3.</text>
+<text x="504" y="399" class="caption-note">Emergent segregation cuts suite wake-buffer loss by 78.4% without fixed runway rules.</text>
+</svg>

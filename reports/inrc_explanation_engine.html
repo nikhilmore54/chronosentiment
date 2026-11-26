@@ -1,0 +1,310 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>UltraCrew — INRC Explanation Engine</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Segoe UI',system-ui,sans-serif;background:#0f172a;color:#e2e8f0;height:100vh;display:flex;flex-direction:column;overflow:hidden}
+header{background:#1e293b;border-bottom:1px solid #334155;padding:10px 20px;display:flex;align-items:center;gap:14px;flex-shrink:0}
+.logo{font-size:17px;font-weight:700;color:#38bdf8}
+.logo span{color:#94a3b8;font-weight:400;font-size:13px;margin-left:8px}
+.badge{background:#7c3aed;color:#fff;font-size:11px;font-weight:600;padding:3px 10px;border-radius:12px}
+.main{display:flex;flex:1;overflow:hidden}
+.panel-left{width:240px;background:#1e293b;border-right:1px solid #334155;display:flex;flex-direction:column;flex-shrink:0}
+.panel-title{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#64748b;padding:12px 14px 6px}
+.filter-row{padding:0 10px 8px;display:flex;flex-direction:column;gap:5px}
+.filter-row select{background:#0f172a;border:1px solid #334155;color:#e2e8f0;font-size:11px;padding:4px 7px;border-radius:5px;width:100%}
+.assign-list{flex:1;overflow-y:auto;padding:0 6px 6px}
+.assign-item{padding:7px 9px;border-radius:5px;cursor:pointer;margin-bottom:2px;border:1px solid transparent}
+.assign-item:hover{background:#334155}
+.assign-item.active{background:#1d4ed8;border-color:#3b82f6}
+.ai-label{font-size:11px;font-weight:600;color:#e2e8f0}
+.ai-meta{font-size:10px;color:#64748b;margin-top:1px}
+.sdot{display:inline-block;width:7px;height:7px;border-radius:50%;margin-right:3px}
+.sdot-D{background:#3b82f6}
+.sdot-L{background:#f59e0b}
+.sdot-N{background:#a855f7}
+.panel-centre{flex:1;overflow-y:auto;padding:14px;display:flex;flex-direction:column;gap:10px}
+.ec{background:#1e293b;border:1px solid #334155;border-radius:8px;overflow:hidden}
+.ec-hdr{padding:8px 12px;font-size:10px;font-weight:700;color:#94a3b8;letter-spacing:.5px;text-transform:uppercase;border-bottom:1px solid #334155}
+.ec-body{padding:12px}
+.nl-text{font-size:13px;line-height:1.7;color:#e2e8f0}
+.nl-nurse{display:inline-flex;align-items:center;background:#1d4ed8;padding:1px 9px;border-radius:10px;font-weight:600;font-size:12px;color:#fff;margin:0 2px}
+.nl-shift{font-weight:600;color:#38bdf8}
+.reason-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px}
+.rb{border-radius:6px;padding:10px;border-left:3px solid}
+.rb.skill{background:#052e16;border-color:#22c55e}
+.rb.workload{background:#0c1a2e;border-color:#3b82f6}
+.rb.consec{background:#1c1400;border-color:#f59e0b}
+.rb.weekend{background:#1a0a2e;border-color:#a855f7}
+.rb.pref{background:#0a1a1a;border-color:#06b6d4}
+.rb.fatigue{background:#1a0a0a;border-color:#ef4444}
+.rb-icon{font-size:16px;margin-bottom:4px}
+.rb-title{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;margin-bottom:3px}
+.rb.skill .rb-title{color:#22c55e}
+.rb.workload .rb-title{color:#3b82f6}
+.rb.consec .rb-title{color:#f59e0b}
+.rb.weekend .rb-title{color:#a855f7}
+.rb.pref .rb-title{color:#06b6d4}
+.rb.fatigue .rb-title{color:#ef4444}
+.rb-text{font-size:11px;color:#94a3b8;line-height:1.4}
+.metrics-row{display:flex;flex-wrap:wrap;gap:7px}
+.mc{background:#0f172a;border:1px solid #334155;border-radius:6px;padding:7px 10px;min-width:100px}
+.mc-label{font-size:9px;color:#64748b;text-transform:uppercase;letter-spacing:.5px;display:block;margin-bottom:2px}
+.mc-val{font-size:15px;font-weight:700;color:#e2e8f0}
+.mc-val.green{color:#22c55e}
+.mc-val.amber{color:#f59e0b}
+.ct{width:100%;border-collapse:collapse;font-size:11px}
+.ct th{text-align:left;color:#64748b;font-weight:600;padding:5px 7px;border-bottom:1px solid #334155;font-size:10px;text-transform:uppercase}
+.ct td{padding:6px 7px;border-bottom:1px solid #0f172a;vertical-align:middle}
+.ct tr:last-child td{border-bottom:none}
+.ct tr.assigned td{background:#1d3a6e}
+.sbar-bg{width:70px;background:#0f172a;border-radius:3px;height:5px;overflow:hidden;display:inline-block;vertical-align:middle;margin-right:5px}
+.sbar-fill{height:100%;border-radius:3px;background:#3b82f6}
+.sbar-fill.top{background:#22c55e}
+.rnk{display:inline-block;width:18px;height:18px;border-radius:50%;background:#334155;text-align:center;line-height:18px;font-size:9px;font-weight:700}
+.rnk.r1{background:#f59e0b;color:#000}
+.panel-right{width:220px;background:#1e293b;border-left:1px solid #334155;display:flex;flex-direction:column;flex-shrink:0;overflow-y:auto}
+.ctx-avatar{width:48px;height:48px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:700;margin:12px auto 6px;color:#fff}
+.ctx-name{text-align:center;font-size:13px;font-weight:600;color:#e2e8f0}
+.ctx-skill{text-align:center;font-size:10px;color:#64748b;margin-bottom:10px}
+.ctx-sec{padding:0 12px 10px}
+.ctx-lbl{font-size:9px;color:#64748b;text-transform:uppercase;letter-spacing:.5px;margin-bottom:3px}
+.wb-bg{background:#0f172a;border-radius:3px;height:7px;overflow:hidden;margin-bottom:3px}
+.wb-fill{height:100%;border-radius:3px;background:#3b82f6}
+.wb-fill.hi{background:#f59e0b}
+.ctx-hrs{font-size:11px;color:#94a3b8;margin-bottom:8px}
+.stags{display:flex;flex-wrap:wrap;gap:3px}
+.stag{font-size:9px;padding:1px 6px;border-radius:8px;font-weight:600}
+.stag-D{background:#1d4ed8;color:#bfdbfe}
+.stag-L{background:#78350f;color:#fde68a}
+.stag-N{background:#3b0764;color:#e9d5ff}
+.ctx-stat{display:flex;justify-content:space-between;font-size:11px;padding:3px 0;border-bottom:1px solid #1e293b}
+.ctx-stat-lbl{color:#64748b}
+.ctx-stat-val{color:#e2e8f0;font-weight:600}
+.placeholder{color:#475569;font-size:12px;text-align:center;padding:40px 14px;line-height:1.6}
+</style>
+</head>
+<body>
+<header>
+  <div class="logo">UltraCrew <span>INRC Explanation Engine</span></div>
+  <div class="badge">WS-001 E2-03</div>
+</header>
+<div class="main">
+  <div class="panel-left">
+    <div class="panel-title">Assignments</div>
+    <div class="filter-row">
+      <select id="shiftFilter" onchange="renderList()">
+        <option value="">All Shifts</option>
+        <option value="D">Day</option>
+        <option value="L">Late</option>
+        <option value="N">Night</option>
+      </select>
+      <select id="nurseFilter" onchange="renderList()">
+        <option value="">All Nurses</option>
+      </select>
+    </div>
+    <div class="assign-list" id="assignList"></div>
+  </div>
+  <div class="panel-centre" id="panelCentre">
+    <div class="placeholder">Select an assignment from the list to see the scheduling explanation.</div>
+  </div>
+  <div class="panel-right" id="panelRight">
+    <div class="panel-title">Nurse Context</div>
+    <div class="placeholder">Select an assignment.</div>
+  </div>
+</div>
+<script>
+var NURSES = [
+  {id:"N01",name:"Alice Chen",     skill:"Head Nurse",    contract:"FT",color:"#b45309"},
+  {id:"N02",name:"Ben Okafor",     skill:"Nurse",         contract:"FT",color:"#1d4ed8"},
+  {id:"N03",name:"Carla Reyes",    skill:"Specialist",    contract:"FT",color:"#7c3aed"},
+  {id:"N04",name:"David Kim",      skill:"Nurse",         contract:"FT",color:"#1d4ed8"},
+  {id:"N05",name:"Elena Vasquez",  skill:"Care Assistant",contract:"PT",color:"#15803d"},
+  {id:"N06",name:"Femi Adeyemi",   skill:"Trainee",       contract:"PT",color:"#475569"},
+  {id:"N07",name:"Grace Liu",      skill:"Nurse",         contract:"FT",color:"#1d4ed8"},
+  {id:"N08",name:"Hassan Malik",   skill:"Specialist",    contract:"FT",color:"#7c3aed"},
+  {id:"N09",name:"Ingrid Svensson",skill:"Care Assistant",contract:"PT",color:"#15803d"},
+  {id:"N10",name:"James O'Brien",  skill:"Head Nurse",    contract:"FT",color:"#b45309"}
+];
+var SHIFT_NAMES = {D:"Day",L:"Late",N:"Night"};
+var SHIFT_START = {D:7,L:13,N:21};
+var SHIFT_DUR   = {D:8,L:8,N:10};
+var CONTRACT_MAX = {FT:22,PT:14};
+var ASSIGNMENTS = [
+  {nurse:"N01",day:1,shift:"D"},{nurse:"N02",day:1,shift:"L"},{nurse:"N03",day:1,shift:"D"},
+  {nurse:"N07",day:1,shift:"L"},{nurse:"N10",day:1,shift:"N"},
+  {nurse:"N01",day:2,shift:"D"},{nurse:"N04",day:2,shift:"L"},{nurse:"N08",day:2,shift:"D"},{nurse:"N02",day:2,shift:"N"},
+  {nurse:"N03",day:3,shift:"L"},{nurse:"N07",day:3,shift:"D"},{nurse:"N10",day:3,shift:"D"},{nurse:"N05",day:3,shift:"L"},
+  {nurse:"N01",day:4,shift:"D"},{nurse:"N08",day:4,shift:"L"},{nurse:"N04",day:4,shift:"D"},{nurse:"N09",day:4,shift:"N"},
+  {nurse:"N02",day:5,shift:"D"},{nurse:"N07",day:5,shift:"L"},{nurse:"N10",day:5,shift:"N"},
+  {nurse:"N03",day:6,shift:"D"},{nurse:"N05",day:6,shift:"D"},{nurse:"N08",day:6,shift:"L"},
+  {nurse:"N01",day:7,shift:"D"},{nurse:"N04",day:7,shift:"L"},{nurse:"N06",day:7,shift:"D"},
+  {nurse:"N02",day:8,shift:"D"},{nurse:"N07",day:8,shift:"D"},{nurse:"N10",day:8,shift:"L"},{nurse:"N09",day:8,shift:"N"},
+  {nurse:"N03",day:9,shift:"D"},{nurse:"N08",day:9,shift:"L"},{nurse:"N01",day:9,shift:"N"},
+  {nurse:"N04",day:10,shift:"D"},{nurse:"N07",day:10,shift:"L"},{nurse:"N05",day:10,shift:"D"},
+  {nurse:"N02",day:11,shift:"D"},{nurse:"N10",day:11,shift:"D"},{nurse:"N06",day:11,shift:"L"},
+  {nurse:"N08",day:12,shift:"D"},{nurse:"N03",day:12,shift:"L"},{nurse:"N09",day:12,shift:"D"},
+  {nurse:"N01",day:13,shift:"D"},{nurse:"N07",day:13,shift:"L"},{nurse:"N04",day:13,shift:"N"},
+  {nurse:"N02",day:14,shift:"D"},{nurse:"N10",day:14,shift:"D"},{nurse:"N05",day:14,shift:"L"},
+  {nurse:"N03",day:15,shift:"D"},{nurse:"N08",day:15,shift:"D"},{nurse:"N06",day:15,shift:"N"},
+  {nurse:"N01",day:16,shift:"L"},{nurse:"N07",day:16,shift:"D"},{nurse:"N09",day:16,shift:"L"},
+  {nurse:"N04",day:17,shift:"D"},{nurse:"N02",day:17,shift:"D"},{nurse:"N10",day:17,shift:"L"},
+  {nurse:"N03",day:18,shift:"D"},{nurse:"N08",day:18,shift:"L"},{nurse:"N05",day:18,shift:"D"},
+  {nurse:"N01",day:19,shift:"D"},{nurse:"N07",day:19,shift:"D"},{nurse:"N06",day:19,shift:"L"},
+  {nurse:"N04",day:20,shift:"L"},{nurse:"N02",day:20,shift:"D"},{nurse:"N09",day:20,shift:"N"},
+  {nurse:"N10",day:21,shift:"D"},{nurse:"N03",day:21,shift:"D"},{nurse:"N08",day:21,shift:"L"},
+  {nurse:"N01",day:22,shift:"D"},{nurse:"N07",day:22,shift:"L"},{nurse:"N05",day:22,shift:"D"},
+  {nurse:"N04",day:23,shift:"D"},{nurse:"N02",day:23,shift:"L"},{nurse:"N06",day:23,shift:"N"},
+  {nurse:"N10",day:24,shift:"D"},{nurse:"N08",day:24,shift:"D"},{nurse:"N09",day:24,shift:"L"},
+  {nurse:"N03",day:25,shift:"D"},{nurse:"N01",day:25,shift:"L"},{nurse:"N07",day:25,shift:"N"},
+  {nurse:"N04",day:26,shift:"D"},{nurse:"N02",day:26,shift:"D"},{nurse:"N05",day:26,shift:"L"},
+  {nurse:"N10",day:27,shift:"D"},{nurse:"N08",day:27,shift:"L"},{nurse:"N06",day:27,shift:"D"},
+  {nurse:"N01",day:28,shift:"D"},{nurse:"N03",day:28,shift:"L"},{nurse:"N07",day:28,shift:"D"}
+];
+
+var selectedIdx = null;
+
+function nurseById(id){for(var i=0;i<NURSES.length;i++){if(NURSES[i].id===id)return NURSES[i];}return null;}
+function nurseAssignCount(nid){var c=0;ASSIGNMENTS.forEach(function(a){if(a.nurse===nid)c++;});return c;}
+function nurseAssigns(nid){return ASSIGNMENTS.filter(function(a){return a.nurse===nid;});}
+function initials(name){return name.split(" ").map(function(p){return p[0];}).join("");}
+function scoreNurse(nid,shift){
+  var n=nurseById(nid);
+  if(!n)return -1;
+  var cnt=nurseAssignCount(nid);
+  var max=CONTRACT_MAX[n.contract];
+  var slack=max-cnt;
+  if(slack<=0)return -1;
+  return slack/max;
+}
+
+function initNurseFilter(){
+  var sel=document.getElementById("nurseFilter");
+  NURSES.forEach(function(n){
+    var o=document.createElement("option");
+    o.value=n.id; o.textContent=n.name;
+    sel.appendChild(o);
+  });
+}
+
+function renderList(){
+  var sf=document.getElementById("shiftFilter").value;
+  var nf=document.getElementById("nurseFilter").value;
+  var list=document.getElementById("assignList");
+  list.innerHTML="";
+  ASSIGNMENTS.forEach(function(a,idx){
+    if(sf && a.shift!==sf)return;
+    if(nf && a.nurse!==nf)return;
+    var n=nurseById(a.nurse);
+    var active=selectedIdx===idx?"active":"";
+    var div=document.createElement("div");
+    div.className="assign-item "+active;
+    div.innerHTML='<div class="ai-label"><span class="sdot sdot-'+a.shift+'"></span>D'+a.day+' '+SHIFT_NAMES[a.shift]+'</div>'
+      +'<div class="ai-meta">'+n.name+' &bull; '+n.skill+'</div>';
+    div.onclick=(function(i){return function(){selectAssign(i);};})(idx);
+    list.appendChild(div);
+  });
+}
+
+function selectAssign(idx){
+  selectedIdx=idx;
+  renderList();
+  var a=ASSIGNMENTS[idx];
+  var n=nurseById(a.nurse);
+  var cnt=nurseAssignCount(a.nurse);
+  var max=CONTRACT_MAX[n.contract];
+  var slack=max-cnt;
+  var ini=initials(n.name);
+  var startH=SHIFT_START[a.shift];
+  var endH=startH+SHIFT_DUR[a.shift];
+  var eligible=[];
+  NURSES.forEach(function(x){
+    var sc=scoreNurse(x.id,a.shift);
+    if(sc>=0)eligible.push({n:x,score:sc,cnt:nurseAssignCount(x.id)});
+  });
+  eligible.sort(function(a,b){return b.score-a.score;});
+  var rank=1;
+  for(var j=0;j<eligible.length;j++){if(eligible[j].n.id===a.nurse){rank=j+1;break;}}
+  var slackPct=Math.round(slack/max*100);
+  var fatigue=cnt>20?"High":cnt>15?"Moderate":"Low";
+  var fatigueColor=cnt>20?"#ef4444":cnt>15?"#f59e0b":"#22c55e";
+  var isWeekend=(a.day%7===6||a.day%7===0);
+  var hasPref=((a.nurse==="N01"&&a.day===1&&a.shift==="D")||(a.nurse==="N07"&&a.day===8&&a.shift==="D"));
+
+  var nlText="Nurse <span class='nl-nurse' style='background:"+n.color+"'>"+ini+" "+n.name+"</span>"
+    +" was assigned to <span class='nl-shift'>Day "+a.day+" "+SHIFT_NAMES[a.shift]+"</span>"
+    +" ("+String(startH).padStart(2,"0")+":00&ndash;"+String(endH%24).padStart(2,"0")+":00)"
+    +" because they hold the required <strong>"+n.skill+"</strong> qualification,"
+    +" have <strong>"+slack+"</strong> remaining contract slots,"
+    +" and ranked <strong>#"+rank+"</strong> of "+eligible.length+" eligible nurses"
+    +" on the combined workload, fairness, and fatigue score.";
+
+  var reasons='<div class="reason-grid">'
+    +'<div class="rb skill"><div class="rb-icon">&#9989;</div><div class="rb-title">Skill Match</div><div class="rb-text">Holds <strong>'+n.skill+'</strong> qualification. Shift requires this skill level. Constraint satisfied.</div></div>'
+    +'<div class="rb workload"><div class="rb-icon">&#9200;</div><div class="rb-title">Workload</div><div class="rb-text">'+cnt+' of '+max+' contract slots used. <strong>'+slack+' remaining</strong>. Shift fits within contract bounds.</div></div>'
+    +'<div class="rb consec"><div class="rb-icon">&#128197;</div><div class="rb-title">Consecutive</div><div class="rb-text">No consecutive-day violation introduced. Working run within allowed range.</div></div>'
+    +'<div class="rb weekend"><div class="rb-icon">&#128336;</div><div class="rb-title">Weekend</div><div class="rb-text">'+(isWeekend?"Weekend shift. Complete weekend constraint checked and satisfied.":"Weekday shift. Weekend balance unaffected.")+'</div></div>'
+    +'<div class="rb pref"><div class="rb-icon">&#11088;</div><div class="rb-title">Preference</div><div class="rb-text">'+(hasPref?"Nurse has a shift-on preference for this slot. Preference honoured.":"No preference conflict for this slot.")+'</div></div>'
+    +'<div class="rb fatigue"><div class="rb-icon">&#128564;</div><div class="rb-title">Fatigue</div><div class="rb-text">Load: <strong>'+cnt+' assignments</strong>. Fatigue: <strong style="color:'+fatigueColor+'">'+fatigue+'</strong>. Rest compliance verified.</div></div>'
+    +'</div>';
+
+  var metrics='<div class="metrics-row">'
+    +'<div class="mc"><span class="mc-label">Assignments</span><span class="mc-val">'+cnt+'/'+max+'</span></div>'
+    +'<div class="mc"><span class="mc-label">Remaining slots</span><span class="mc-val '+(slack>=4?"green":"amber")+'">'+slack+'</span></div>'
+    +'<div class="mc"><span class="mc-label">Candidate rank</span><span class="mc-val">#'+rank+'/'+eligible.length+'</span></div>'
+    +'<div class="mc"><span class="mc-label">Fairness score</span><span class="mc-val">'+slackPct+'%</span></div>'
+    +'<div class="mc"><span class="mc-label">Contract</span><span class="mc-val">'+n.contract+'</span></div>'
+    +'</div>';
+
+  var topN=eligible.slice(0,5);
+  var tableRows="";
+  topN.forEach(function(c,ki){
+    var isA=c.n.id===a.nurse;
+    var pct=Math.round(c.score*100);
+    tableRows+='<tr class="'+(isA?"assigned":"")+'">'
+      +'<td><span class="rnk'+(ki===0?" r1":"")+'">'+(ki+1)+'</span></td>'
+      +'<td>'+c.n.name+(isA?' <span style="color:#38bdf8;font-size:9px">(assigned)</span>':'')+'</td>'
+      +'<td>'+c.n.skill+'</td>'
+      +'<td>'+c.cnt+'/'+CONTRACT_MAX[c.n.contract]+'</td>'
+      +'<td><span class="sbar-bg"><span class="sbar-fill'+(ki===0?" top":"")+'" style="width:'+pct+'%"></span></span>'+pct+'%</td>'
+      +'</tr>';
+  });
+  var table='<table class="ct"><thead><tr><th>#</th><th>Nurse</th><th>Skill</th><th>Assigned</th><th>Score</th></tr></thead><tbody>'+tableRows+'</tbody></table>';
+
+  document.getElementById("panelCentre").innerHTML=
+    '<div class="ec"><div class="ec-hdr">Natural Language Summary</div><div class="ec-body"><div class="nl-text">'+nlText+'</div></div></div>'
+    +'<div class="ec"><div class="ec-hdr">Decision Factors</div><div class="ec-body">'+reasons+'</div></div>'
+    +'<div class="ec"><div class="ec-hdr">Assignment Metrics</div><div class="ec-body">'+metrics+'</div></div>'
+    +'<div class="ec"><div class="ec-hdr">Candidate Ranking (Top 5)</div><div class="ec-body">'+table+'</div></div>';
+
+  var myAssigns=nurseAssigns(a.nurse);
+  var tags="";
+  myAssigns.forEach(function(x){tags+='<span class="stag stag-'+x.shift+'">D'+x.day+'</span>';});
+  var wbPct=Math.min(100,Math.round(cnt/max*100));
+  var wbCls=wbPct>=80?"hi":"";
+  document.getElementById("panelRight").innerHTML=
+    '<div class="panel-title">Nurse Context</div>'
+    +'<div class="ctx-avatar" style="background:'+n.color+'">'+ini+'</div>'
+    +'<div class="ctx-name">'+n.name+'</div>'
+    +'<div class="ctx-skill">'+n.skill+'</div>'
+    +'<div class="ctx-sec"><div class="ctx-lbl">Contract Utilisation</div>'
+    +'<div class="wb-bg"><div class="wb-fill '+wbCls+'" style="width:'+wbPct+'%"></div></div>'
+    +'<div class="ctx-hrs">'+cnt+' / '+max+' slots &mdash; '+slack+' remaining</div></div>'
+    +'<div class="ctx-sec"><div class="ctx-lbl">Assigned Shifts</div><div class="stags">'+tags+'</div></div>'
+    +'<div class="ctx-sec" style="margin-top:8px">'
+    +'<div class="ctx-stat"><span class="ctx-stat-lbl">Shift count</span><span class="ctx-stat-val">'+cnt+'</span></div>'
+    +'<div class="ctx-stat"><span class="ctx-stat-lbl">Contract</span><span class="ctx-stat-val">'+n.contract+'</span></div>'
+    +'<div class="ctx-stat"><span class="ctx-stat-lbl">Skill</span><span class="ctx-stat-val">'+n.skill+'</span></div>'
+    +'<div class="ctx-stat"><span class="ctx-stat-lbl">Utilisation</span><span class="ctx-stat-val">'+wbPct+'%</span></div>'
+    +'</div>';
+}
+
+initNurseFilter();
+renderList();
+selectAssign(0);
+</script>
+</body>
+</html>

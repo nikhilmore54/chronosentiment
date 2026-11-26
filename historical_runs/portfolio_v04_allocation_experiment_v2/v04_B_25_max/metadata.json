@@ -1,0 +1,68 @@
+{
+  "allocation_model": {
+    "max_per_lot_inr": 20000.0,
+    "model": "MaxPerLot",
+    "semantics": "per-lot cap (not aggregate per symbol); position upgrades allowed"
+  },
+  "c3_002_artifact_hash": "5a43b9df97daa76d85edd7f7ef1c12c3a230ef292f7ecfa98ef9587647392121",
+  "certified_t": "2026-07-15T03:45:00+00:00",
+  "config_label": "v04_B_25_max",
+  "coralys_artifact_hash": "3876ffa232f75068636aa058c6775671ac2f935ad2751c1253edd49e0770883f",
+  "experiment": "Portfolio Replay v0.4 — Allocation Model Experiment",
+  "initial_capital_inr": 1000000.0,
+  "n_sessions_simulated": 23,
+  "path_kind": "portfolio_replay_v0_2_1",
+  "start_clock": "2026-07-15T03:45:00+00:00",
+  "stop_summary": {
+    "n_genuine_adverse": 32,
+    "n_premature": 13,
+    "n_stops": 257,
+    "n_temporary_excursion": 92,
+    "net_stop_benefit_inr": -47632.248756590554
+  },
+  "universe": [
+    "RELIANCE.NS",
+    "TCS.NS",
+    "HDFCBANK.NS",
+    "INFY.NS",
+    "ICICIBANK.NS",
+    "HINDUNILVR.NS",
+    "ITC.NS",
+    "SBIN.NS",
+    "BHARTIARTL.NS",
+    "KOTAKBANK.NS",
+    "LT.NS",
+    "AXISBANK.NS",
+    "ASIANPAINT.NS",
+    "MARUTI.NS",
+    "TITAN.NS",
+    "SUNPHARMA.NS",
+    "WIPRO.NS",
+    "ULTRACEMCO.NS",
+    "BAJFINANCE.NS",
+    "NESTLEIND.NS",
+    "POWERGRID.NS",
+    "NTPC.NS",
+    "TECHM.NS",
+    "HCLTECH.NS",
+    "ONGC.NS",
+    "MAHABANK.NS",
+    "IDEA.NS"
+  ],
+  "universe_available": 27,
+  "universe_requested": 27,
+  "v04_contract": {
+    "changes_vs_v03": [
+      "initial_capital_inr",
+      "allocation_model"
+    ],
+    "engine": "run_continuous_portfolio_replay_with_config",
+    "frozen": [
+      "C3-002",
+      "Coralys-v0",
+      "stop-loss",
+      "lifecycle",
+      "historical-period"
+    ]
+  }
+}

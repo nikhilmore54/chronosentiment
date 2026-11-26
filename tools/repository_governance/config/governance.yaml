@@ -1,0 +1,55 @@
+excluded_directories:
+  - target
+  - node_modules
+  - .venv
+  - .venv-e2e
+  - .venv_kite
+  - .venv_test
+  - venv
+  - .pytest_cache
+  - .lyzo
+  - .cursor
+  - .pw-e2e
+  - __pycache__
+  - .git
+  - archive
+  - vendor
+  - third_party
+  - dist
+  - build
+  - coverage
+  - reports
+  - logs
+  - my-chrono-sentiment-ui
+
+research_roots:
+  - docs/research
+  - research
+
+product_roots:
+  - coralys-moga
+  - adapters
+  - apps
+
+tool_roots:
+  - tools
+
+infrastructure_roots:
+  - infra
+  - .github
+
+invariants:
+  - description: "coralys-moga must not depend on domain adapters"
+    rule: "no_import"
+    source: "coralys-moga"
+    target: "adapters"
+    
+  - description: "No application should import experimental modules directly"
+    rule: "no_import"
+    source: "apps"
+    target: "research"
+
+  - description: "Product code must not depend on archive content"
+    rule: "no_import"
+    source_categories: ["product"]
+    target_categories: ["archive"]

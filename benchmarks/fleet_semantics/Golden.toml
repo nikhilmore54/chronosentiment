@@ -1,0 +1,39 @@
+# Fleet Semantics Registry — Golden family
+# M18.2 — Fleet Semantics Registry v1.0
+# Generated: 2026-07-09
+
+[family]
+id          = "Golden"
+full_name   = "Golden et al. (1998)"
+
+[constraint]
+type        = "ATMOST"
+description = "At most K vehicles may be used. The optimizer may use fewer vehicles if capacity permits."
+formal      = "routes_used ≤ K"
+
+[source]
+primary     = "CVRPLIB catalog (galgos.inf.puc-rio.br)"
+url         = "https://galgos.inf.puc-rio.br/cvrplib/index.php/en/instances/1"
+
+[publication]
+authors     = "Golden, B., Wasil, E., Kelly, J., Chao, I-M."
+title       = "The Impact of Metaheuristics on Solving the Vehicle Routing Problem: Algorithms, Problem Sets, and Computational Results"
+year        = 1998
+book        = "Fleet Management and Logistics"
+publisher   = "Kluwer, Boston"
+
+[notes]
+derivation  = """
+Golden et al. (1998) uses standard CVRP formulation with at most K vehicles.
+All 20 instances exceed MAX_CUSTOMERS=200 and are excluded from the current campaign scope.
+Fleet semantics are recorded for completeness and future scope expansion.
+"""
+campaign_observation = "Not applicable — all Golden instances excluded from campaign scope (>200 customers)."
+
+[verification]
+status      = "Hypothesis"
+confidence  = "Medium"
+method      = "Literature consensus; not verified from original paper (out of scope)"
+date        = "2026-07"
+open_items  = ["Fleet semantics not investigated — all instances out of campaign scope"]
+notes       = "Golden family is excluded from current campaign scope. Fleet semantics recorded as ATMOST hypothesis based on standard CVRP convention. No verification performed."

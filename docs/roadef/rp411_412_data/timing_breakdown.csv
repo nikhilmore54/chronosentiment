@@ -1,0 +1,16 @@
+metric,value
+total_generations,285
+total_eval_time_ms,3463372.1944619995
+total_crossover_time_ms,218.69677399999998
+total_mutation_time_ms,16.626835999999994
+total_selection_time_ms,80.13900999999994
+total_telemetry_time_ms,0.0
+total_other_time_ms,184.12088099998613
+total_total_gen_time_ms,3463871.7779629994
+eval_time_ms_frac,0.9998557730964008
+crossover_time_ms_frac,6.313650966855623e-05
+mutation_time_ms_frac,4.800072596733862e-06
+selection_time_ms_frac,2.3135674510194292e-05
+telemetry_time_ms_frac,0.0
+other_time_ms_frac,5.3154646823636806e-05
+total_gen_time_ms_frac,1.0

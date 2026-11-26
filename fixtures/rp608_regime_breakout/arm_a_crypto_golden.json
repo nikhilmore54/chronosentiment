@@ -1,0 +1,131 @@
+{
+  "protocol": "RP-608-REGIME-BREAKOUT-001",
+  "market": "CRYPTO_BTCUSDT",
+  "arm": "A",
+  "arm_a_frozen": true,
+  "live_order_authority": 0.0,
+  "generated_utc": "2026-10-28T06:11:17.715833+00:00",
+  "cases": [
+    {
+      "case_id": "crypto_policy_b_no_trade",
+      "decision": {
+        "decision": "NO_TRADE",
+        "decision_code": "POLICY_B_NO_TRADE",
+        "policy_b_action": "NO_TRADE",
+        "signal_entry": false
+      },
+      "trade": null
+    },
+    {
+      "case_id": "crypto_unexecutable_drop",
+      "decision": {
+        "decision": "NO_TRADE",
+        "decision_code": "UNEXECUTABLE_MICROSTRUCTURE_DROP",
+        "policy_b_action": "LONG",
+        "signal_entry": true,
+        "taken": false
+      },
+      "trade": null
+    },
+    {
+      "case_id": "crypto_long_take_profit",
+      "decision": {
+        "decision": "ENTER_LONG",
+        "decision_code": "POLICY_B_QUALIFIED",
+        "policy_b_action": "LONG",
+        "signal_entry": true,
+        "taken": true,
+        "side": "LONG"
+      },
+      "trade": {
+        "market": "CRYPTO_BTCUSDT",
+        "side": "LONG",
+        "entry_price": 100025.0,
+        "exit_price": 101499.9937,
+        "exit_reason": "TAKE_PROFIT",
+        "holding_bars": 7,
+        "gross_pnl_usdt": 1474.625,
+        "net_pnl_usdt": 1354.625,
+        "gross_return_bps": 147.4625,
+        "net_return_bps": 135.4625,
+        "mfe_frac": 0.015346,
+        "mae_frac": 0.0,
+        "friction": {
+          "taker_fees_usdt": 100.0,
+          "slippage_usdt": 20.0,
+          "half_spread_bps": 2.5,
+          "total_friction_usdt": 120.0
+        },
+        "arm_a_frozen": true,
+        "live_order_authority": 0.0
+      }
+    },
+    {
+      "case_id": "crypto_short_path",
+      "decision": {
+        "decision": "ENTER_SHORT",
+        "decision_code": "POLICY_B_QUALIFIED",
+        "policy_b_action": "SHORT",
+        "signal_entry": true,
+        "taken": true,
+        "side": "SHORT"
+      },
+      "trade": {
+        "market": "CRYPTO_BTCUSDT",
+        "side": "SHORT",
+        "entry_price": 99975.0,
+        "exit_price": 98624.65,
+        "exit_reason": "MAX_HOLD_HORIZON",
+        "holding_bars": 8,
+        "gross_pnl_usdt": 1350.6877,
+        "net_pnl_usdt": 1230.6877,
+        "gross_return_bps": 135.0688,
+        "net_return_bps": 123.0688,
+        "mfe_frac": 0.013753,
+        "mae_frac": 0.0,
+        "friction": {
+          "taker_fees_usdt": 100.0,
+          "slippage_usdt": 20.0,
+          "half_spread_bps": 2.5,
+          "total_friction_usdt": 120.0
+        },
+        "arm_a_frozen": true,
+        "live_order_authority": 0.0
+      }
+    },
+    {
+      "case_id": "crypto_long_stop",
+      "decision": {
+        "decision": "ENTER_LONG",
+        "decision_code": "POLICY_B_QUALIFIED",
+        "policy_b_action": "LONG",
+        "signal_entry": true,
+        "taken": true,
+        "side": "LONG"
+      },
+      "trade": {
+        "market": "CRYPTO_BTCUSDT",
+        "side": "LONG",
+        "entry_price": 100025.0,
+        "exit_price": 99555.105,
+        "exit_reason": "MAX_HOLD_HORIZON",
+        "holding_bars": 8,
+        "gross_pnl_usdt": -469.7776,
+        "net_pnl_usdt": -589.7776,
+        "gross_return_bps": -46.9778,
+        "net_return_bps": -58.9778,
+        "mfe_frac": 0.0,
+        "mae_frac": -0.004449,
+        "friction": {
+          "taker_fees_usdt": 100.0,
+          "slippage_usdt": 20.0,
+          "half_spread_bps": 2.5,
+          "total_friction_usdt": 120.0
+        },
+        "arm_a_frozen": true,
+        "live_order_authority": 0.0
+      }
+    }
+  ],
+  "fingerprint_sha256": "2aa7d1218a6bad2d68086904bc0151dc0b05898289179c5070f35bcbf73df5b2"
+}

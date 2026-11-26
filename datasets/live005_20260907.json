@@ -1,0 +1,1582 @@
+[
+  {
+    "decision_id": "LIVE-005-20260907-1000-OFSS_NS",
+    "date": "2026-09-07",
+    "cohort_date": "2026-09-07",
+    "ticker": "OFSS_NS",
+    "direction": "SHORT",
+    "action": "NoTrade",
+    "opportunity_dimensions": {
+      "opportunity_quality_score": 0
+    },
+    "path_5m": {
+      "h60_classification": "AVOID",
+      "entry_price": 11847.0
+    },
+    "reference_price": 11847.0,
+    "snap_unix": 1788775200,
+    "adaptive_target": 11261.842466227226,
+    "adaptive_risk": 12339.434421096485,
+    "adaptive_horizon_sessions": 4.0
+  },
+  {
+    "decision_id": "LIVE-005-20260907-1000-GODREJCP_NS",
+    "date": "2026-09-07",
+    "cohort_date": "2026-09-07",
+    "ticker": "GODREJCP_NS",
+    "direction": "LONG",
+    "action": "Watch",
+    "opportunity_dimensions": {
+      "opportunity_quality_score": 0
+    },
+    "path_5m": {
+      "h60_classification": "AVOID",
+      "entry_price": 861.9000244140625
+    },
+    "reference_price": 861.9000244140625,
+    "snap_unix": 1788775200,
+    "adaptive_target": 894.1157777041727,
+    "adaptive_risk": 830.6565417232954,
+    "adaptive_horizon_sessions": 3.0
+  },
+  {
+    "decision_id": "LIVE-005-20260907-1000-TRENT_NS",
+    "date": "2026-09-07",
+    "cohort_date": "2026-09-07",
+    "ticker": "TRENT_NS",
+    "direction": "LONG",
+    "action": "Watch",
+    "opportunity_dimensions": {
+      "opportunity_quality_score": 0
+    },
+    "path_5m": {
+      "h60_classification": "AVOID",
+      "entry_price": 2814.5
+    },
+    "reference_price": 2814.5,
+    "snap_unix": 1788775200,
+    "adaptive_target": 2964.1708177339224,
+    "adaptive_risk": 2685.786178339334,
+    "adaptive_horizon_sessions": 4.0
+  },
+  {
+    "decision_id": "LIVE-005-20260907-1000-PERSISTENT_NS",
+    "date": "2026-09-07",
+    "cohort_date": "2026-09-07",
+    "ticker": "PERSISTENT_NS",
+    "direction": "SHORT",
+    "action": "NoTrade",
+    "opportunity_dimensions": {
+      "opportunity_quality_score": 0
+    },
+    "path_5m": {
+      "h60_classification": "AVOID",
+      "entry_price": 5540.0
+    },
+    "reference_price": 5540.0,
+    "snap_unix": 1788775200,
+    "adaptive_target": 5264.830366375234,
+    "adaptive_risk": 5766.584265586076,
+    "adaptive_horizon_sessions": 4.0
+  },
+  {
+    "decision_id": "LIVE-005-20260907-1000-RECLTD_NS",
+    "date": "2026-09-07",
+    "cohort_date": "2026-09-07",
+    "ticker": "RECLTD_NS",
+    "direction": "LONG",
+    "action": "Watch",
+    "opportunity_dimensions": {
+      "opportunity_quality_score": 0
+    },
+    "path_5m": {
+      "h60_classification": "AVOID",
+      "entry_price": 316.3999938964844
+    },
+    "reference_price": 316.3999938964844,
+    "snap_unix": 1788775200,
+    "adaptive_target": 328.1971603206843,
+    "adaptive_risk": 302.1303047600379,
+    "adaptive_horizon_sessions": 4.0
+  },
+  {
+    "decision_id": "LIVE-005-20260907-1000-BANDHANBNK_NS",
+    "date": "2026-09-07",
+    "cohort_date": "2026-09-07",
+    "ticker": "BANDHANBNK_NS",
+    "direction": "LONG",
+    "action": "Watch",
+    "opportunity_dimensions": {
+      "opportunity_quality_score": 0
+    },
+    "path_5m": {
+      "h60_classification": "AVOID",
+      "entry_price": 164.6999969482422
+    },
+    "reference_price": 164.6999969482422,
+    "snap_unix": 1788775200,
+    "adaptive_target": 173.70464354748847,
+    "adaptive_risk": 155.53986839911113,
+    "adaptive_horizon_sessions": 3.0
+  },
+  {
+    "decision_id": "LIVE-005-20260907-1000-BAJFINANCE_NS",
+    "date": "2026-09-07",
+    "cohort_date": "2026-09-07",
+    "ticker": "BAJFINANCE_NS",
+    "direction": "LONG",
+    "action": "Watch",
+    "opportunity_dimensions": {
+      "opportunity_quality_score": 0
+    },
+    "path_5m": {
+      "h60_classification": "AVOID",
+      "entry_price": 1060.0
+    },
+    "reference_price": 1060.0,
+    "snap_unix": 1788775200,
+    "adaptive_target": 1100.2212191021235,
+    "adaptive_risk": 1024.1407221683519,
+    "adaptive_horizon_sessions": 3.5
+  },
+  {
+    "decision_id": "LIVE-005-20260907-1000-COALINDIA_NS",
+    "date": "2026-09-07",
+    "cohort_date": "2026-09-07",
+    "ticker": "COALINDIA_NS",
+    "direction": "LONG",
+    "action": "Watch",
+    "opportunity_dimensions": {
+      "opportunity_quality_score": 0
+    },
+    "path_5m": {
+      "h60_classification": "AVOID",
+      "entry_price": 418.8500061035156
+    },
+    "reference_price": 418.8500061035156,
+    "snap_unix": 1788775200,
+    "adaptive_target": 433.5565438321408,
+    "adaptive_risk": 405.443122516045,
+    "adaptive_horizon_sessions": 4.0
+  },
+  {
+    "decision_id": "LIVE-005-20260907-1000-HDFCLIFE_NS",
+    "date": "2026-09-07",
+    "cohort_date": "2026-09-07",
+    "ticker": "HDFCLIFE_NS",
+    "direction": "LONG",
+    "action": "Watch",
+    "opportunity_dimensions": {
+      "opportunity_quality_score": 0
+    },
+    "path_5m": {
+      "h60_classification": "AVOID",
+      "entry_price": 533.2000122070312
+    },
+    "reference_price": 533.2000122070312,
+    "snap_unix": 1788775200,
+    "adaptive_target": 549.298518778307,
+    "adaptive_risk": 514.4626686316992,
+    "adaptive_horizon_sessions": 3.0
+  },
+  {
+    "decision_id": "LIVE-005-20260907-1000-VBL_NS",
+    "date": "2026-09-07",
+    "cohort_date": "2026-09-07",
+    "ticker": "VBL_NS",
+    "direction": "LONG",
+    "action": "Watch",
+    "opportunity_dimensions": {
+      "opportunity_quality_score": 0
+    },
+    "path_5m": {
+      "h60_classification": "AVOID",
+      "entry_price": 405.9500122070313
+    },
+    "reference_price": 405.9500122070313,
+    "snap_unix": 1788775200,
+    "adaptive_target": 421.9276534829226,
+    "adaptive_risk": 391.3340716441879,
+    "adaptive_horizon_sessions": 4.0
+  },
+  {
+    "decision_id": "LIVE-005-20260907-1000-ONGC_NS",
+    "date": "2026-09-07",
+    "cohort_date": "2026-09-07",
+    "ticker": "ONGC_NS",
+    "direction": "LONG",
+    "action": "NoTrade",
+    "opportunity_dimensions": {
+      "opportunity_quality_score": 0
+    },
+    "path_5m": {
+      "h60_classification": "AVOID",
+      "entry_price": 233.6999969482422
+    },
+    "reference_price": 233.6999969482422,
+    "snap_unix": 1788775200,
+    "adaptive_target": 240.9628355130162,
+    "adaptive_risk": 224.95250182872215,
+    "adaptive_horizon_sessions": 3.0
+  },
+  {
+    "decision_id": "LIVE-005-20260907-1000-HCLTECH_NS",
+    "date": "2026-09-07",
+    "cohort_date": "2026-09-07",
+    "ticker": "HCLTECH_NS",
+    "direction": "SHORT",
+    "action": "Watch",
+    "opportunity_dimensions": {
+      "opportunity_quality_score": 0
+    },
+    "path_5m": {
+      "h60_classification": "AVOID",
+      "entry_price": 1282.800048828125
+    },
+    "reference_price": 1282.800048828125,
+    "snap_unix": 1788775200,
+    "adaptive_target": 1219.0277870123355,
+    "adaptive_risk": 1323.2929709946272,
+    "adaptive_horizon_sessions": 3.0
+  },
+  {
+    "decision_id": "LIVE-005-20260907-1000-SBIN_NS",
+    "date": "2026-09-07",
+    "cohort_date": "2026-09-07",
+    "ticker": "SBIN_NS",
+    "direction": "LONG",
+    "action": "Watch",
+    "opportunity_dimensions": {
+      "opportunity_quality_score": 0
+    },
+    "path_5m": {
+      "h60_classification": "AVOID",
+      "entry_price": 1005.9000244140624
+    },
+    "reference_price": 1005.9000244140624,
+    "snap_unix": 1788775200,
+    "adaptive_target": 1035.4306298130105,
+    "adaptive_risk": 971.7195174683964,
+    "adaptive_horizon_sessions": 5.0
+  },
+  {
+    "decision_id": "LIVE-005-20260907-1000-DRREDDY_NS",
+    "date": "2026-09-07",
+    "cohort_date": "2026-09-07",
+    "ticker": "DRREDDY_NS",
+    "direction": "LONG",
+    "action": "Watch",
+    "opportunity_dimensions": {
+      "opportunity_quality_score": 0
+    },
+    "path_5m": {
+      "h60_classification": "AVOID",
+      "entry_price": 1144.199951171875
+    },
+    "reference_price": 1144.199951171875,
+    "snap_unix": 1788775200,
+    "adaptive_target": 1182.0105958997528,
+    "adaptive_risk": 1105.9814103281585,
+    "adaptive_horizon_sessions": 3.0
+  },
+  {
+    "decision_id": "LIVE-005-20260907-1000-COLPAL_NS",
+    "date": "2026-09-07",
+    "cohort_date": "2026-09-07",
+    "ticker": "COLPAL_NS",
+    "direction": "LONG",
+    "action": "NoTrade",
+    "opportunity_dimensions": {
+      "opportunity_quality_score": 0
+    },
+    "path_5m": {
+      "h60_classification": "AVOID",
+      "entry_price": 1813.5
+    },
+    "reference_price": 1813.5,
+    "snap_unix": 1788775200,
+    "adaptive_target": 1891.4488419547263,
+    "adaptive_risk": 1758.8381941864945,
+    "adaptive_horizon_sessions": 4.0
+  },
+  {
+    "decision_id": "LIVE-005-20260907-1000-M&M_NS",
+    "date": "2026-09-07",
+    "cohort_date": "2026-09-07",
+    "ticker": "M&M_NS",
+    "direction": "SHORT",
+    "action": "NoTrade",
+    "opportunity_dimensions": {
+      "opportunity_quality_score": 0
+    },
+    "path_5m": {
+      "h60_classification": "AVOID",
+      "entry_price": 3160.0
+    },
+    "reference_price": 3160.0,
+    "snap_unix": 1788775200,
+    "adaptive_target": 3031.1097795755136,
+    "adaptive_risk": 3289.526688809788,
+    "adaptive_horizon_sessions": 3.0
+  },
+  {
+    "decision_id": "LIVE-005-20260907-1000-LICI_NS",
+    "date": "2026-09-07",
+    "cohort_date": "2026-09-07",
+    "ticker": "LICI_NS",
+    "direction": "LONG",
+    "action": "Buy",
+    "opportunity_dimensions": {
+      "opportunity_quality_score": 100
+    },
+    "path_5m": {
+      "h60_classification": "ENTER",
+      "entry_price": 411.5
+    },
+    "reference_price": 411.5,
+    "snap_unix": 1788775200,
+    "adaptive_target": 423.12614073727855,
+    "adaptive_risk": 398.7011920198067,
+    "adaptive_horizon_sessions": 4.0
+  },
+  {
+    "decision_id": "LIVE-005-20260907-1000-JUBLFOOD_NS",
+    "date": "2026-09-07",
+    "cohort_date": "2026-09-07",
+    "ticker": "JUBLFOOD_NS",
+    "direction": "SHORT",
+    "action": "Watch",
+    "opportunity_dimensions": {
+      "opportunity_quality_score": 0
+    },
+    "path_5m": {
+      "h60_classification": "AVOID",
+      "entry_price": 475.3999938964844
+    },
+    "reference_price": 475.3999938964844,
+    "snap_unix": 1788775200,
+    "adaptive_target": 458.4810432521669,
+    "adaptive_risk": 491.4629786960118,
+    "adaptive_horizon_sessions": 3.5
+  },
+  {
+    "decision_id": "LIVE-005-20260907-1000-TECHM_NS",
+    "date": "2026-09-07",
+    "cohort_date": "2026-09-07",
+    "ticker": "TECHM_NS",
+    "direction": "LONG",
+    "action": "NoTrade",
+    "opportunity_dimensions": {
+      "opportunity_quality_score": 0
+    },
+    "path_5m": {
+      "h60_classification": "AVOID",
+      "entry_price": 1564.0
+    },
+    "reference_price": 1564.0,
+    "snap_unix": 1788775200,
+    "adaptive_target": 1634.1690663255383,
+    "adaptive_risk": 1499.077413887473,
+    "adaptive_horizon_sessions": 3.0
+  },
+  {
+    "decision_id": "LIVE-005-20260907-1000-SHREECEM_NS",
+    "date": "2026-09-07",
+    "cohort_date": "2026-09-07",
+    "ticker": "SHREECEM_NS",
+    "direction": "LONG",
+    "action": "NoTrade",
+    "opportunity_dimensions": {
+      "opportunity_quality_score": 0
+    },
+    "path_5m": {
+      "h60_classification": "AVOID",
+      "entry_price": 23365.0
+    },
+    "reference_price": 23365.0,
+    "snap_unix": 1788775200,
+    "adaptive_target": 24178.677655223695,
+    "adaptive_risk": 22595.375844594597,
+    "adaptive_horizon_sessions": 4.0
+  },
+  {
+    "decision_id": "LIVE-005-20260907-1000-BAJAJFINSV_NS",
+    "date": "2026-09-07",
+    "cohort_date": "2026-09-07",
+    "ticker": "BAJAJFINSV_NS",
+    "direction": "SHORT",
+    "action": "Watch",
+    "opportunity_dimensions": {
+      "opportunity_quality_score": 0
+    },
+    "path_5m": {
+      "h60_classification": "AVOID",
+      "entry_price": 1938.5999755859375
+    },
+    "reference_price": 1938.5999755859375,
+    "snap_unix": 1788775200,
+    "adaptive_target": 1861.7713174076523,
+    "adaptive_risk": 2002.5603128430928,
+    "adaptive_horizon_sessions": 3.0
+  },
+  {
+    "decision_id": "LIVE-005-20260907-1000-HDFCBANK_NS",
+    "date": "2026-09-07",
+    "cohort_date": "2026-09-07",
+    "ticker": "HDFCBANK_NS",
+    "direction": "LONG",
+    "action": "Watch",
+    "opportunity_dimensions": {
+      "opportunity_quality_score": 0
+    },
+    "path_5m": {
+      "h60_classification": "AVOID",
+      "entry_price": 710.5
+    },
+    "reference_price": 710.5,
+    "snap_unix": 1788775200,
+    "adaptive_target": 725.8825132475397,
+    "adaptive_risk": 693.2387729372415,
+    "adaptive_horizon_sessions": 4.0
+  },
+  {
+    "decision_id": "LIVE-005-20260907-1000-INFY_NS",
+    "date": "2026-09-07",
+    "cohort_date": "2026-09-07",
+    "ticker": "INFY_NS",
+    "direction": "SHORT",
+    "action": "Sell",
+    "opportunity_dimensions": {
+      "opportunity_quality_score": 100
+    },
+    "path_5m": {
+      "h60_classification": "ENTER",
+      "entry_price": 1087.5
+    },
+    "reference_price": 1087.5,
+    "snap_unix": 1788775200,
+    "adaptive_target": 1057.2376276934042,
+    "adaptive_risk": 1130.8207618485717,
+    "adaptive_horizon_sessions": 3.0
+  },
+  {
+    "decision_id": "LIVE-005-20260907-1000-LUPIN_NS",
+    "date": "2026-09-07",
+    "cohort_date": "2026-09-07",
+    "ticker": "LUPIN_NS",
+    "direction": "LONG",
+    "action": "NoTrade",
+    "opportunity_dimensions": {
+      "opportunity_quality_score": 0
+    },
+    "path_5m": {
+      "h60_classification": "AVOID",
+      "entry_price": 2105.0
+    },
+    "reference_price": 2105.0,
+    "snap_unix": 1788775200,
+    "adaptive_target": 2188.548309070889,
+    "adaptive_risk": 2038.5417415810625,
+    "adaptive_horizon_sessions": 4.0
+  },
+  {
+    "decision_id": "LIVE-005-20260907-1000-MRF_NS",
+    "date": "2026-09-07",
+    "cohort_date": "2026-09-07",
+    "ticker": "MRF_NS",
+    "direction": "LONG",
+    "action": "Watch",
+    "opportunity_dimensions": {
+      "opportunity_quality_score": 0
+    },
+    "path_5m": {
+      "h60_classification": "AVOID",
+      "entry_price": 128890.0
+    },
+    "reference_price": 128890.0,
+    "snap_unix": 1788775200,
+    "adaptive_target": 132160.17041293308,
+    "adaptive_risk": 124723.67655381338,
+    "adaptive_horizon_sessions": 4.0
+  },
+  {
+    "decision_id": "LIVE-005-20260907-1000-IDEA_NS",
+    "date": "2026-09-07",
+    "cohort_date": "2026-09-07",
+    "ticker": "IDEA_NS",
+    "direction": "SHORT",
+    "action": "Watch",
+    "opportunity_dimensions": {
+      "opportunity_quality_score": 0
+    },
+    "path_5m": {
+      "h60_classification": "AVOID",
+      "entry_price": 15.600000381469728
+    },
+    "reference_price": 15.600000381469728,
+    "snap_unix": 1788775200,
+    "adaptive_target": 14.629333955552852,
+    "adaptive_risk": 16.87346961447617,
+    "adaptive_horizon_sessions": 4.0
+  },
+  {
+    "decision_id": "LIVE-005-20260907-1000-INDUSINDBK_NS",
+    "date": "2026-09-07",
+    "cohort_date": "2026-09-07",
+    "ticker": "INDUSINDBK_NS",
+    "direction": "LONG",
+    "action": "NoTrade",
+    "opportunity_dimensions": {
+      "opportunity_quality_score": 0
+    },
+    "path_5m": {
+      "h60_classification": "AVOID",
+      "entry_price": 998.0
+    },
+    "reference_price": 998.0,
+    "snap_unix": 1788775200,
+    "adaptive_target": 1045.546549649357,
+    "adaptive_risk": 959.020108906506,
+    "adaptive_horizon_sessions": 4.0
+  },
+  {
+    "decision_id": "LIVE-005-20260907-1000-DIVISLAB_NS",
+    "date": "2026-09-07",
+    "cohort_date": "2026-09-07",
+    "ticker": "DIVISLAB_NS",
+    "direction": "SHORT",
+    "action": "NoTrade",
+    "opportunity_dimensions": {
+      "opportunity_quality_score": 0
+    },
+    "path_5m": {
+      "h60_classification": "AVOID",
+      "entry_price": 9315.0
+    },
+    "reference_price": 9315.0,
+    "snap_unix": 1788775200,
+    "adaptive_target": 8981.453650578562,
+    "adaptive_risk": 9608.623208856587,
+    "adaptive_horizon_sessions": 3.0
+  },
+  {
+    "decision_id": "LIVE-005-20260907-1000-WIPRO_NS",
+    "date": "2026-09-07",
+    "cohort_date": "2026-09-07",
+    "ticker": "WIPRO_NS",
+    "direction": "LONG",
+    "action": "Watch",
+    "opportunity_dimensions": {
+      "opportunity_quality_score": 0
+    },
+    "path_5m": {
+      "h60_classification": "AVOID",
+      "entry_price": 172.8000030517578
+    },
+    "reference_price": 172.8000030517578,
+    "snap_unix": 1788775200,
+    "adaptive_target": 177.71290060553213,
+    "adaptive_risk": 166.19823603021135,
+    "adaptive_horizon_sessions": 3.0
+  },
+  {
+    "decision_id": "LIVE-005-20260907-1000-MARUTI_NS",
+    "date": "2026-09-07",
+    "cohort_date": "2026-09-07",
+    "ticker": "MARUTI_NS",
+    "direction": "LONG",
+    "action": "Buy",
+    "opportunity_dimensions": {
+      "opportunity_quality_score": 100
+    },
+    "path_5m": {
+      "h60_classification": "ENTER",
+      "entry_price": 12760.0
+    },
+    "reference_price": 12760.0,
+    "snap_unix": 1788775200,
+    "adaptive_target": 13100.264723358627,
+    "adaptive_risk": 12364.539566698155,
+    "adaptive_horizon_sessions": 4.5
+  },
+  {
+    "decision_id": "LIVE-005-20260907-1000-BAJAJ-AUTO_NS",
+    "date": "2026-09-07",
+    "cohort_date": "2026-09-07",
+    "ticker": "BAJAJ-AUTO_NS",
+    "direction": "SHORT",
+    "action": "NoTrade",
+    "opportunity_dimensions": {
+      "opportunity_quality_score": 0
+    },
+    "path_5m": {
+      "h60_classification": "AVOID",
+      "entry_price": 11800.0
+    },
+    "reference_price": 11800.0,
+    "snap_unix": 1788775200,
+    "adaptive_target": 11340.617151058486,
+    "adaptive_risk": 12209.466176483831,
+    "adaptive_horizon_sessions": 3.0
+  },
+  {
+    "decision_id": "LIVE-005-20260907-1000-VEDL_NS",
+    "date": "2026-09-07",
+    "cohort_date": "2026-09-07",
+    "ticker": "VEDL_NS",
+    "direction": "SHORT",
+    "action": "NoTrade",
+    "opportunity_dimensions": {
+      "opportunity_quality_score": 0
+    },
+    "path_5m": {
+      "h60_classification": "AVOID",
+      "entry_price": 268.0
+    },
+    "reference_price": 268.0,
+    "snap_unix": 1788775200,
+    "adaptive_target": 254.91336860745844,
+    "adaptive_risk": 280.06183125450906,
+    "adaptive_horizon_sessions": 2.5
+  },
+  {
+    "decision_id": "LIVE-005-20260907-1000-MUTHOOTFIN_NS",
+    "date": "2026-09-07",
+    "cohort_date": "2026-09-07",
+    "ticker": "MUTHOOTFIN_NS",
+    "direction": "SHORT",
+    "action": "NoTrade",
+    "opportunity_dimensions": {
+      "opportunity_quality_score": 0
+    },
+    "path_5m": {
+      "h60_classification": "AVOID",
+      "entry_price": 2880.0
+    },
+    "reference_price": 2880.0,
+    "snap_unix": 1788775200,
+    "adaptive_target": 2740.9175018178253,
+    "adaptive_risk": 3016.0693158168037,
+    "adaptive_horizon_sessions": 4.0
+  },
+  {
+    "decision_id": "LIVE-005-20260907-1000-BPCL_NS",
+    "date": "2026-09-07",
+    "cohort_date": "2026-09-07",
+    "ticker": "BPCL_NS",
+    "direction": "LONG",
+    "action": "NoTrade",
+    "opportunity_dimensions": {
+      "opportunity_quality_score": 0
+    },
+    "path_5m": {
+      "h60_classification": "AVOID",
+      "entry_price": 312.8999938964844
+    },
+    "reference_price": 312.8999938964844,
+    "snap_unix": 1788775200,
+    "adaptive_target": 325.38598636020913,
+    "adaptive_risk": 298.94442012090656,
+    "adaptive_horizon_sessions": 3.0
+  },
+  {
+    "decision_id": "LIVE-005-20260907-1000-LT_NS",
+    "date": "2026-09-07",
+    "cohort_date": "2026-09-07",
+    "ticker": "LT_NS",
+    "direction": "LONG",
+    "action": "Buy",
+    "opportunity_dimensions": {
+      "opportunity_quality_score": 100
+    },
+    "path_5m": {
+      "h60_classification": "ENTER",
+      "entry_price": 3999.0
+    },
+    "reference_price": 3999.0,
+    "snap_unix": 1788775200,
+    "adaptive_target": 4176.4361204013385,
+    "adaptive_risk": 3837.6984891500633,
+    "adaptive_horizon_sessions": 3.0
+  },
+  {
+    "decision_id": "LIVE-005-20260907-1000-ITC_NS",
+    "date": "2026-09-07",
+    "cohort_date": "2026-09-07",
+    "ticker": "ITC_NS",
+    "direction": "LONG",
+    "action": "Watch",
+    "opportunity_dimensions": {
+      "opportunity_quality_score": 0
+    },
+    "path_5m": {
+      "h60_classification": "AVOID",
+      "entry_price": 263.5
+    },
+    "reference_price": 263.5,
+    "snap_unix": 1788775200,
+    "adaptive_target": 268.8522864288945,
+    "adaptive_risk": 256.8216774135895,
+    "adaptive_horizon_sessions": 3.0
+  },
+  {
+    "decision_id": "LIVE-005-20260907-1000-DABUR_NS",
+    "date": "2026-09-07",
+    "cohort_date": "2026-09-07",
+    "ticker": "DABUR_NS",
+    "direction": "LONG",
+    "action": "Watch",
+    "opportunity_dimensions": {
+      "opportunity_quality_score": 0
+    },
+    "path_5m": {
+      "h60_classification": "AVOID",
+      "entry_price": 375.5
+    },
+    "reference_price": 375.5,
+    "snap_unix": 1788775200,
+    "adaptive_target": 386.421489492982,
+    "adaptive_risk": 364.963521951507,
+    "adaptive_horizon_sessions": 4.0
+  },
+  {
+    "decision_id": "LIVE-005-20260907-1000-TORNTPHARM_NS",
+    "date": "2026-09-07",
+    "cohort_date": "2026-09-07",
+    "ticker": "TORNTPHARM_NS",
+    "direction": "LONG",
+    "action": "Buy",
+    "opportunity_dimensions": {
+      "opportunity_quality_score": 100
+    },
+    "path_5m": {
+      "h60_classification": "ENTER",
+      "entry_price": 4914.0
+    },
+    "reference_price": 4914.0,
+    "snap_unix": 1788775200,
+    "adaptive_target": 5085.041729219952,
+    "adaptive_risk": 4737.884840502554,
+    "adaptive_horizon_sessions": 3.0
+  },
+  {
+    "decision_id": "LIVE-005-20260907-1000-ULTRACEMCO_NS",
+    "date": "2026-09-07",
+    "cohort_date": "2026-09-07",
+    "ticker": "ULTRACEMCO_NS",
+    "direction": "LONG",
+    "action": "Buy",
+    "opportunity_dimensions": {
+      "opportunity_quality_score": 100
+    },
+    "path_5m": {
+      "h60_classification": "ENTER",
+      "entry_price": 11175.0
+    },
+    "reference_price": 11175.0,
+    "snap_unix": 1788775200,
+    "adaptive_target": 11488.000780437043,
+    "adaptive_risk": 10859.977513048996,
+    "adaptive_horizon_sessions": 4.0
+  },
+  {
+    "decision_id": "LIVE-005-20260907-1000-JSWSTEEL_NS",
+    "date": "2026-09-07",
+    "cohort_date": "2026-09-07",
+    "ticker": "JSWSTEEL_NS",
+    "direction": "SHORT",
+    "action": "Watch",
+    "opportunity_dimensions": {
+      "opportunity_quality_score": 0
+    },
+    "path_5m": {
+      "h60_classification": "AVOID",
+      "entry_price": 1302.0
+    },
+    "reference_price": 1302.0,
+    "snap_unix": 1788775200,
+    "adaptive_target": 1247.5586384243554,
+    "adaptive_risk": 1360.182865790552,
+    "adaptive_horizon_sessions": 3.0
+  },
+  {
+    "decision_id": "LIVE-005-20260907-1000-AMBUJACEM_NS",
+    "date": "2026-09-07",
+    "cohort_date": "2026-09-07",
+    "ticker": "AMBUJACEM_NS",
+    "direction": "LONG",
+    "action": "Watch",
+    "opportunity_dimensions": {
+      "opportunity_quality_score": 0
+    },
+    "path_5m": {
+      "h60_classification": "AVOID",
+      "entry_price": 398.6000061035156
+    },
+    "reference_price": 398.6000061035156,
+    "snap_unix": 1788775200,
+    "adaptive_target": 415.0614493457882,
+    "adaptive_risk": 382.1810533420308,
+    "adaptive_horizon_sessions": 3.0
+  },
+  {
+    "decision_id": "LIVE-005-20260907-1000-SUNPHARMA_NS",
+    "date": "2026-09-07",
+    "cohort_date": "2026-09-07",
+    "ticker": "SUNPHARMA_NS",
+    "direction": "LONG",
+    "action": "Buy",
+    "opportunity_dimensions": {
+      "opportunity_quality_score": 100
+    },
+    "path_5m": {
+      "h60_classification": "ENTER",
+      "entry_price": 1895.0
+    },
+    "reference_price": 1895.0,
+    "snap_unix": 1788775200,
+    "adaptive_target": 1939.379095762494,
+    "adaptive_risk": 1846.130429551625,
+    "adaptive_horizon_sessions": 5.0
+  },
+  {
+    "decision_id": "LIVE-005-20260907-1000-SAIL_NS",
+    "date": "2026-09-07",
+    "cohort_date": "2026-09-07",
+    "ticker": "SAIL_NS",
+    "direction": "SHORT",
+    "action": "Watch",
+    "opportunity_dimensions": {
+      "opportunity_quality_score": 0
+    },
+    "path_5m": {
+      "h60_classification": "AVOID",
+      "entry_price": 187.8999938964844
+    },
+    "reference_price": 187.8999938964844,
+    "snap_unix": 1788775200,
+    "adaptive_target": 181.26001019207607,
+    "adaptive_risk": 197.6716934857508,
+    "adaptive_horizon_sessions": 4.0
+  },
+  {
+    "decision_id": "LIVE-005-20260907-1000-HEROMOTOCO_NS",
+    "date": "2026-09-07",
+    "cohort_date": "2026-09-07",
+    "ticker": "HEROMOTOCO_NS",
+    "direction": "SHORT",
+    "action": "Watch",
+    "opportunity_dimensions": {
+      "opportunity_quality_score": 0
+    },
+    "path_5m": {
+      "h60_classification": "AVOID",
+      "entry_price": 5270.0
+    },
+    "reference_price": 5270.0,
+    "snap_unix": 1788775200,
+    "adaptive_target": 4994.586556644319,
+    "adaptive_risk": 5501.600368756715,
+    "adaptive_horizon_sessions": 3.0
+  },
+  {
+    "decision_id": "LIVE-005-20260907-1000-GODREJPROP_NS",
+    "date": "2026-09-07",
+    "cohort_date": "2026-09-07",
+    "ticker": "GODREJPROP_NS",
+    "direction": "LONG",
+    "action": "Watch",
+    "opportunity_dimensions": {
+      "opportunity_quality_score": 0
+    },
+    "path_5m": {
+      "h60_classification": "AVOID",
+      "entry_price": 1922.199951171875
+    },
+    "reference_price": 1922.199951171875,
+    "snap_unix": 1788775200,
+    "adaptive_target": 2027.1618954577352,
+    "adaptive_risk": 1816.885858610089,
+    "adaptive_horizon_sessions": 3.0
+  },
+  {
+    "decision_id": "LIVE-005-20260907-1000-NTPC_NS",
+    "date": "2026-09-07",
+    "cohort_date": "2026-09-07",
+    "ticker": "NTPC_NS",
+    "direction": "LONG",
+    "action": "NoTrade",
+    "opportunity_dimensions": {
+      "opportunity_quality_score": 0
+    },
+    "path_5m": {
+      "h60_classification": "AVOID",
+      "entry_price": 332.0
+    },
+    "reference_price": 332.0,
+    "snap_unix": 1788775200,
+    "adaptive_target": 340.6939570074242,
+    "adaptive_risk": 323.0725797816715,
+    "adaptive_horizon_sessions": 4.0
+  },
+  {
+    "decision_id": "LIVE-005-20260907-1000-BOSCHLTD_NS",
+    "date": "2026-09-07",
+    "cohort_date": "2026-09-07",
+    "ticker": "BOSCHLTD_NS",
+    "direction": "SHORT",
+    "action": "NoTrade",
+    "opportunity_dimensions": {
+      "opportunity_quality_score": 0
+    },
+    "path_5m": {
+      "h60_classification": "AVOID",
+      "entry_price": 48025.0
+    },
+    "reference_price": 48025.0,
+    "snap_unix": 1788775200,
+    "adaptive_target": 46260.35367054541,
+    "adaptive_risk": 50022.83607739847,
+    "adaptive_horizon_sessions": 3.0
+  },
+  {
+    "decision_id": "LIVE-005-20260907-1000-INDUSTOWER_NS",
+    "date": "2026-09-07",
+    "cohort_date": "2026-09-07",
+    "ticker": "INDUSTOWER_NS",
+    "direction": "LONG",
+    "action": "NoTrade",
+    "opportunity_dimensions": {
+      "opportunity_quality_score": 0
+    },
+    "path_5m": {
+      "h60_classification": "AVOID",
+      "entry_price": 376.4500122070313
+    },
+    "reference_price": 376.4500122070313,
+    "snap_unix": 1788775200,
+    "adaptive_target": 396.31605831671465,
+    "adaptive_risk": 360.6752389936908,
+    "adaptive_horizon_sessions": 4.0
+  },
+  {
+    "decision_id": "LIVE-005-20260907-1000-RELIANCE_NS",
+    "date": "2026-09-07",
+    "cohort_date": "2026-09-07",
+    "ticker": "RELIANCE_NS",
+    "direction": "SHORT",
+    "action": "Watch",
+    "opportunity_dimensions": {
+      "opportunity_quality_score": 0
+    },
+    "path_5m": {
+      "h60_classification": "AVOID",
+      "entry_price": 1309.5
+    },
+    "reference_price": 1309.5,
+    "snap_unix": 1788775200,
+    "adaptive_target": 1274.9308510638298,
+    "adaptive_risk": 1348.4828530226189,
+    "adaptive_horizon_sessions": 3.5
+  },
+  {
+    "decision_id": "LIVE-005-20260907-1000-TVSMOTOR_NS",
+    "date": "2026-09-07",
+    "cohort_date": "2026-09-07",
+    "ticker": "TVSMOTOR_NS",
+    "direction": "SHORT",
+    "action": "NoTrade",
+    "opportunity_dimensions": {
+      "opportunity_quality_score": 0
+    },
+    "path_5m": {
+      "h60_classification": "AVOID",
+      "entry_price": 4132.0
+    },
+    "reference_price": 4132.0,
+    "snap_unix": 1788775200,
+    "adaptive_target": 3865.437648660039,
+    "adaptive_risk": 4303.251530178088,
+    "adaptive_horizon_sessions": 3.0
+  },
+  {
+    "decision_id": "LIVE-005-20260907-1000-IOC_NS",
+    "date": "2026-09-07",
+    "cohort_date": "2026-09-07",
+    "ticker": "IOC_NS",
+    "direction": "LONG",
+    "action": "NoTrade",
+    "opportunity_dimensions": {
+      "opportunity_quality_score": 0
+    },
+    "path_5m": {
+      "h60_classification": "AVOID",
+      "entry_price": 135.14999389648438
+    },
+    "reference_price": 135.14999389648438,
+    "snap_unix": 1788775200,
+    "adaptive_target": 139.90153394996452,
+    "adaptive_risk": 130.34919280792482,
+    "adaptive_horizon_sessions": 3.0
+  },
+  {
+    "decision_id": "LIVE-005-20260907-1000-SIEMENS_NS",
+    "date": "2026-09-07",
+    "cohort_date": "2026-09-07",
+    "ticker": "SIEMENS_NS",
+    "direction": "SHORT",
+    "action": "Watch",
+    "opportunity_dimensions": {
+      "opportunity_quality_score": 0
+    },
+    "path_5m": {
+      "h60_classification": "AVOID",
+      "entry_price": 3927.0
+    },
+    "reference_price": 3927.0,
+    "snap_unix": 1788775200,
+    "adaptive_target": 3730.185992700194,
+    "adaptive_risk": 4106.6467322021135,
+    "adaptive_horizon_sessions": 3.0
+  },
+  {
+    "decision_id": "LIVE-005-20260907-1000-UPL_NS",
+    "date": "2026-09-07",
+    "cohort_date": "2026-09-07",
+    "ticker": "UPL_NS",
+    "direction": "LONG",
+    "action": "Watch",
+    "opportunity_dimensions": {
+      "opportunity_quality_score": 0
+    },
+    "path_5m": {
+      "h60_classification": "AVOID",
+      "entry_price": 573.0
+    },
+    "reference_price": 573.0,
+    "snap_unix": 1788775200,
+    "adaptive_target": 593.9085901315416,
+    "adaptive_risk": 554.1339397637195,
+    "adaptive_horizon_sessions": 4.0
+  },
+  {
+    "decision_id": "LIVE-005-20260907-1000-CANBK_NS",
+    "date": "2026-09-07",
+    "cohort_date": "2026-09-07",
+    "ticker": "CANBK_NS",
+    "direction": "SHORT",
+    "action": "NoTrade",
+    "opportunity_dimensions": {
+      "opportunity_quality_score": 0
+    },
+    "path_5m": {
+      "h60_classification": "AVOID",
+      "entry_price": 124.0
+    },
+    "reference_price": 124.0,
+    "snap_unix": 1788775200,
+    "adaptive_target": 120.04483084843075,
+    "adaptive_risk": 129.42162608013453,
+    "adaptive_horizon_sessions": 4.0
+  },
+  {
+    "decision_id": "LIVE-005-20260907-1000-NAUKRI_NS",
+    "date": "2026-09-07",
+    "cohort_date": "2026-09-07",
+    "ticker": "NAUKRI_NS",
+    "direction": "SHORT",
+    "action": "NoTrade",
+    "opportunity_dimensions": {
+      "opportunity_quality_score": 0
+    },
+    "path_5m": {
+      "h60_classification": "AVOID",
+      "entry_price": 1302.5
+    },
+    "reference_price": 1302.5,
+    "snap_unix": 1788775200,
+    "adaptive_target": 1220.7165511048615,
+    "adaptive_risk": 1356.0738842541452,
+    "adaptive_horizon_sessions": 3.0
+  },
+  {
+    "decision_id": "LIVE-005-20260907-1000-ADANIENT_NS",
+    "date": "2026-09-07",
+    "cohort_date": "2026-09-07",
+    "ticker": "ADANIENT_NS",
+    "direction": "LONG",
+    "action": "NoTrade",
+    "opportunity_dimensions": {
+      "opportunity_quality_score": 0
+    },
+    "path_5m": {
+      "h60_classification": "AVOID",
+      "entry_price": 2950.0
+    },
+    "reference_price": 2950.0,
+    "snap_unix": 1788775200,
+    "adaptive_target": 3103.8376426331943,
+    "adaptive_risk": 2818.5888571307823,
+    "adaptive_horizon_sessions": 3.0
+  },
+  {
+    "decision_id": "LIVE-005-20260907-1000-IDFCFIRSTB_NS",
+    "date": "2026-09-07",
+    "cohort_date": "2026-09-07",
+    "ticker": "IDFCFIRSTB_NS",
+    "direction": "SHORT",
+    "action": "NoTrade",
+    "opportunity_dimensions": {
+      "opportunity_quality_score": 0
+    },
+    "path_5m": {
+      "h60_classification": "AVOID",
+      "entry_price": 86.44000244140625
+    },
+    "reference_price": 86.44000244140625,
+    "snap_unix": 1788775200,
+    "adaptive_target": 82.72513537766527,
+    "adaptive_risk": 89.84283738609965,
+    "adaptive_horizon_sessions": 3.0
+  },
+  {
+    "decision_id": "LIVE-005-20260907-1000-MAHABANK_NS",
+    "date": "2026-09-07",
+    "cohort_date": "2026-09-07",
+    "ticker": "MAHABANK_NS",
+    "direction": "SHORT",
+    "action": "NoTrade",
+    "opportunity_dimensions": {
+      "opportunity_quality_score": 0
+    },
+    "path_5m": {
+      "h60_classification": "AVOID",
+      "entry_price": 85.0
+    },
+    "reference_price": 85.0,
+    "snap_unix": 1788775200,
+    "adaptive_target": 80.06313276052505,
+    "adaptive_risk": 90.2196865972717,
+    "adaptive_horizon_sessions": 3.0
+  },
+  {
+    "decision_id": "LIVE-005-20260907-1000-UNITDSPR_NS",
+    "date": "2026-09-07",
+    "cohort_date": "2026-09-07",
+    "ticker": "UNITDSPR_NS",
+    "direction": "LONG",
+    "action": "Watch",
+    "opportunity_dimensions": {
+      "opportunity_quality_score": 0
+    },
+    "path_5m": {
+      "h60_classification": "AVOID",
+      "entry_price": 1440.0
+    },
+    "reference_price": 1440.0,
+    "snap_unix": 1788775200,
+    "adaptive_target": 1489.204387787682,
+    "adaptive_risk": 1385.5124524236903,
+    "adaptive_horizon_sessions": 4.0
+  },
+  {
+    "decision_id": "LIVE-005-20260907-1000-SBILIFE_NS",
+    "date": "2026-09-07",
+    "cohort_date": "2026-09-07",
+    "ticker": "SBILIFE_NS",
+    "direction": "LONG",
+    "action": "Watch",
+    "opportunity_dimensions": {
+      "opportunity_quality_score": 0
+    },
+    "path_5m": {
+      "h60_classification": "AVOID",
+      "entry_price": 1732.0
+    },
+    "reference_price": 1732.0,
+    "snap_unix": 1788775200,
+    "adaptive_target": 1798.9238493570783,
+    "adaptive_risk": 1677.6928898696726,
+    "adaptive_horizon_sessions": 4.0
+  },
+  {
+    "decision_id": "LIVE-005-20260907-1000-BHARTIARTL_NS",
+    "date": "2026-09-07",
+    "cohort_date": "2026-09-07",
+    "ticker": "BHARTIARTL_NS",
+    "direction": "LONG",
+    "action": "Watch",
+    "opportunity_dimensions": {
+      "opportunity_quality_score": 0
+    },
+    "path_5m": {
+      "h60_classification": "AVOID",
+      "entry_price": 1854.0
+    },
+    "reference_price": 1854.0,
+    "snap_unix": 1788775200,
+    "adaptive_target": 1928.2638330195919,
+    "adaptive_risk": 1803.4821116413498,
+    "adaptive_horizon_sessions": 4.0
+  },
+  {
+    "decision_id": "LIVE-005-20260907-1000-PIDILITIND_NS",
+    "date": "2026-09-07",
+    "cohort_date": "2026-09-07",
+    "ticker": "PIDILITIND_NS",
+    "direction": "SHORT",
+    "action": "Watch",
+    "opportunity_dimensions": {
+      "opportunity_quality_score": 0
+    },
+    "path_5m": {
+      "h60_classification": "AVOID",
+      "entry_price": 1575.0
+    },
+    "reference_price": 1575.0,
+    "snap_unix": 1788775200,
+    "adaptive_target": 1521.0094857036993,
+    "adaptive_risk": 1627.5069246718867,
+    "adaptive_horizon_sessions": 3.0
+  },
+  {
+    "decision_id": "LIVE-005-20260907-1000-TATASTEEL_NS",
+    "date": "2026-09-07",
+    "cohort_date": "2026-09-07",
+    "ticker": "TATASTEEL_NS",
+    "direction": "LONG",
+    "action": "Watch",
+    "opportunity_dimensions": {
+      "opportunity_quality_score": 0
+    },
+    "path_5m": {
+      "h60_classification": "AVOID",
+      "entry_price": 185.61000061035156
+    },
+    "reference_price": 185.61000061035156,
+    "snap_unix": 1788775200,
+    "adaptive_target": 191.8182278408126,
+    "adaptive_risk": 178.111293420216,
+    "adaptive_horizon_sessions": 4.0
+  },
+  {
+    "decision_id": "LIVE-005-20260907-1000-INDHOTEL_NS",
+    "date": "2026-09-07",
+    "cohort_date": "2026-09-07",
+    "ticker": "INDHOTEL_NS",
+    "direction": "LONG",
+    "action": "Buy",
+    "opportunity_dimensions": {
+      "opportunity_quality_score": 100
+    },
+    "path_5m": {
+      "h60_classification": "ENTER",
+      "entry_price": 716.2000122070312
+    },
+    "reference_price": 716.2000122070312,
+    "snap_unix": 1788775200,
+    "adaptive_target": 739.396773736004,
+    "adaptive_risk": 680.6816858443906,
+    "adaptive_horizon_sessions": 5.0
+  },
+  {
+    "decision_id": "LIVE-005-20260907-1000-BRITANNIA_NS",
+    "date": "2026-09-07",
+    "cohort_date": "2026-09-07",
+    "ticker": "BRITANNIA_NS",
+    "direction": "LONG",
+    "action": "Watch",
+    "opportunity_dimensions": {
+      "opportunity_quality_score": 0
+    },
+    "path_5m": {
+      "h60_classification": "AVOID",
+      "entry_price": 5042.5
+    },
+    "reference_price": 5042.5,
+    "snap_unix": 1788775200,
+    "adaptive_target": 5217.8487793637805,
+    "adaptive_risk": 4922.998692846302,
+    "adaptive_horizon_sessions": 4.0
+  },
+  {
+    "decision_id": "LIVE-005-20260907-1000-PAGEIND_NS",
+    "date": "2026-09-07",
+    "cohort_date": "2026-09-07",
+    "ticker": "PAGEIND_NS",
+    "direction": "LONG",
+    "action": "NoTrade",
+    "opportunity_dimensions": {
+      "opportunity_quality_score": 0
+    },
+    "path_5m": {
+      "h60_classification": "AVOID",
+      "entry_price": 35825.0
+    },
+    "reference_price": 35825.0,
+    "snap_unix": 1788775200,
+    "adaptive_target": 37293.50307348234,
+    "adaptive_risk": 34629.112632084536,
+    "adaptive_horizon_sessions": 3.0
+  },
+  {
+    "decision_id": "LIVE-005-20260907-1000-GAIL_NS",
+    "date": "2026-09-07",
+    "cohort_date": "2026-09-07",
+    "ticker": "GAIL_NS",
+    "direction": "LONG",
+    "action": "Watch",
+    "opportunity_dimensions": {
+      "opportunity_quality_score": 0
+    },
+    "path_5m": {
+      "h60_classification": "AVOID",
+      "entry_price": 176.0
+    },
+    "reference_price": 176.0,
+    "snap_unix": 1788775200,
+    "adaptive_target": 182.89217725517238,
+    "adaptive_risk": 168.4079082980836,
+    "adaptive_horizon_sessions": 3.0
+  },
+  {
+    "decision_id": "LIVE-005-20260907-1000-ASIANPAINT_NS",
+    "date": "2026-09-07",
+    "cohort_date": "2026-09-07",
+    "ticker": "ASIANPAINT_NS",
+    "direction": "LONG",
+    "action": "NoTrade",
+    "opportunity_dimensions": {
+      "opportunity_quality_score": 0
+    },
+    "path_5m": {
+      "h60_classification": "AVOID",
+      "entry_price": 2500.89990234375
+    },
+    "reference_price": 2500.89990234375,
+    "snap_unix": 1788775200,
+    "adaptive_target": 2581.0997313530947,
+    "adaptive_risk": 2422.9986049513536,
+    "adaptive_horizon_sessions": 3.0
+  },
+  {
+    "decision_id": "LIVE-005-20260907-1000-TATACONSUM_NS",
+    "date": "2026-09-07",
+    "cohort_date": "2026-09-07",
+    "ticker": "TATACONSUM_NS",
+    "direction": "LONG",
+    "action": "NoTrade",
+    "opportunity_dimensions": {
+      "opportunity_quality_score": 0
+    },
+    "path_5m": {
+      "h60_classification": "AVOID",
+      "entry_price": 1015.0
+    },
+    "reference_price": 1015.0,
+    "snap_unix": 1788775200,
+    "adaptive_target": 1059.2509882867673,
+    "adaptive_risk": 985.6741528406609,
+    "adaptive_horizon_sessions": 4.0
+  },
+  {
+    "decision_id": "LIVE-005-20260907-1000-ICICIBANK_NS",
+    "date": "2026-09-07",
+    "cohort_date": "2026-09-07",
+    "ticker": "ICICIBANK_NS",
+    "direction": "SHORT",
+    "action": "NoTrade",
+    "opportunity_dimensions": {
+      "opportunity_quality_score": 0
+    },
+    "path_5m": {
+      "h60_classification": "AVOID",
+      "entry_price": 1427.5
+    },
+    "reference_price": 1427.5,
+    "snap_unix": 1788775200,
+    "adaptive_target": 1385.0956519607591,
+    "adaptive_risk": 1468.1611733604834,
+    "adaptive_horizon_sessions": 3.0
+  },
+  {
+    "decision_id": "LIVE-005-20260907-1000-KOTAKBANK_NS",
+    "date": "2026-09-07",
+    "cohort_date": "2026-09-07",
+    "ticker": "KOTAKBANK_NS",
+    "direction": "SHORT",
+    "action": "NoTrade",
+    "opportunity_dimensions": {
+      "opportunity_quality_score": 0
+    },
+    "path_5m": {
+      "h60_classification": "AVOID",
+      "entry_price": 422.1000061035156
+    },
+    "reference_price": 422.1000061035156,
+    "snap_unix": 1788775200,
+    "adaptive_target": 409.82119754300066,
+    "adaptive_risk": 434.57233122048405,
+    "adaptive_horizon_sessions": 3.0
+  },
+  {
+    "decision_id": "LIVE-005-20260907-1000-POLYCAB_NS",
+    "date": "2026-09-07",
+    "cohort_date": "2026-09-07",
+    "ticker": "POLYCAB_NS",
+    "direction": "LONG",
+    "action": "Buy",
+    "opportunity_dimensions": {
+      "opportunity_quality_score": 100
+    },
+    "path_5m": {
+      "h60_classification": "ENTER",
+      "entry_price": 8261.0
+    },
+    "reference_price": 8261.0,
+    "snap_unix": 1788775200,
+    "adaptive_target": 8744.43169424964,
+    "adaptive_risk": 7881.329663869344,
+    "adaptive_horizon_sessions": 4.0
+  },
+  {
+    "decision_id": "LIVE-005-20260907-1000-TCS_NS",
+    "date": "2026-09-07",
+    "cohort_date": "2026-09-07",
+    "ticker": "TCS_NS",
+    "direction": "SHORT",
+    "action": "Watch",
+    "opportunity_dimensions": {
+      "opportunity_quality_score": 0
+    },
+    "path_5m": {
+      "h60_classification": "AVOID",
+      "entry_price": 2270.0
+    },
+    "reference_price": 2270.0,
+    "snap_unix": 1788775200,
+    "adaptive_target": 2193.4607429884377,
+    "adaptive_risk": 2328.2324001405646,
+    "adaptive_horizon_sessions": 3.5
+  },
+  {
+    "decision_id": "LIVE-005-20260907-1000-ADANIGREEN_NS",
+    "date": "2026-09-07",
+    "cohort_date": "2026-09-07",
+    "ticker": "ADANIGREEN_NS",
+    "direction": "LONG",
+    "action": "NoTrade",
+    "opportunity_dimensions": {
+      "opportunity_quality_score": 0
+    },
+    "path_5m": {
+      "h60_classification": "AVOID",
+      "entry_price": 1288.0
+    },
+    "reference_price": 1288.0,
+    "snap_unix": 1788775200,
+    "adaptive_target": 1372.1126523030762,
+    "adaptive_risk": 1207.3007675056115,
+    "adaptive_horizon_sessions": 4.0
+  },
+  {
+    "decision_id": "LIVE-005-20260907-1000-NESTLEIND_NS",
+    "date": "2026-09-07",
+    "cohort_date": "2026-09-07",
+    "ticker": "NESTLEIND_NS",
+    "direction": "LONG",
+    "action": "Watch",
+    "opportunity_dimensions": {
+      "opportunity_quality_score": 0
+    },
+    "path_5m": {
+      "h60_classification": "AVOID",
+      "entry_price": 1398.0
+    },
+    "reference_price": 1398.0,
+    "snap_unix": 1788775200,
+    "adaptive_target": 1440.05687883941,
+    "adaptive_risk": 1364.206035664064,
+    "adaptive_horizon_sessions": 4.0
+  },
+  {
+    "decision_id": "LIVE-005-20260907-1000-BANKBARODA_NS",
+    "date": "2026-09-07",
+    "cohort_date": "2026-09-07",
+    "ticker": "BANKBARODA_NS",
+    "direction": "LONG",
+    "action": "Buy",
+    "opportunity_dimensions": {
+      "opportunity_quality_score": 100
+    },
+    "path_5m": {
+      "h60_classification": "ENTER",
+      "entry_price": 237.0
+    },
+    "reference_price": 237.0,
+    "snap_unix": 1788775200,
+    "adaptive_target": 247.58830595713317,
+    "adaptive_risk": 225.3881843969553,
+    "adaptive_horizon_sessions": 3.5
+  },
+  {
+    "decision_id": "LIVE-005-20260907-1000-PNB_NS",
+    "date": "2026-09-07",
+    "cohort_date": "2026-09-07",
+    "ticker": "PNB_NS",
+    "direction": "SHORT",
+    "action": "NoTrade",
+    "opportunity_dimensions": {
+      "opportunity_quality_score": 0
+    },
+    "path_5m": {
+      "h60_classification": "AVOID",
+      "entry_price": 115.5999984741211
+    },
+    "reference_price": 115.5999984741211,
+    "snap_unix": 1788775200,
+    "adaptive_target": 109.45265960599669,
+    "adaptive_risk": 120.25017226769032,
+    "adaptive_horizon_sessions": 4.0
+  },
+  {
+    "decision_id": "LIVE-005-20260907-1000-TITAN_NS",
+    "date": "2026-09-07",
+    "cohort_date": "2026-09-07",
+    "ticker": "TITAN_NS",
+    "direction": "SHORT",
+    "action": "NoTrade",
+    "opportunity_dimensions": {
+      "opportunity_quality_score": 0
+    },
+    "path_5m": {
+      "h60_classification": "AVOID",
+      "entry_price": 4995.0
+    },
+    "reference_price": 4995.0,
+    "snap_unix": 1788775200,
+    "adaptive_target": 4826.663766233516,
+    "adaptive_risk": 5140.532777996363,
+    "adaptive_horizon_sessions": 4.0
+  },
+  {
+    "decision_id": "LIVE-005-20260907-1000-NMDC_NS",
+    "date": "2026-09-07",
+    "cohort_date": "2026-09-07",
+    "ticker": "NMDC_NS",
+    "direction": "SHORT",
+    "action": "NoTrade",
+    "opportunity_dimensions": {
+      "opportunity_quality_score": 0
+    },
+    "path_5m": {
+      "h60_classification": "AVOID",
+      "entry_price": 83.8499984741211
+    },
+    "reference_price": 83.8499984741211,
+    "snap_unix": 1788775200,
+    "adaptive_target": 79.43301862385425,
+    "adaptive_risk": 87.91859164455119,
+    "adaptive_horizon_sessions": 3.0
+  }
+]

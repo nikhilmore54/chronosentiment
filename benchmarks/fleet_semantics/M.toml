@@ -1,0 +1,68 @@
+# Fleet Semantics Registry — M-family (Christofides large instances)
+# M18.2 — Fleet Semantics Registry v1.0
+# Generated: 2026-07-09
+
+[family]
+id          = "M"
+full_name   = "Christofides M-family (large instances)"
+
+[constraint]
+type        = "Unspecified"
+description = "Fleet semantics for M-family are not definitively established. Same publication as CMT — same uncertainty applies."
+formal      = "Unknown — requires verification against Christofides et al. 1979"
+
+[source]
+primary     = "CVRPLIB catalog (galgos.inf.puc-rio.br)"
+url         = "https://galgos.inf.puc-rio.br/cvrplib/index.php/en/instances/1"
+
+[publication]
+authors     = "Christofides, N., Mingozzi, A., Toth, P."
+title       = "The Vehicle Routing Problem"
+year        = 1979
+book        = "Combinatorial Optimization"
+editors     = "Christofides, N., Mingozzi, A., Toth, P., Sandi, C."
+publisher   = "Wiley, Chichester"
+pages       = "315–338"
+
+[notes]
+derivation  = """
+M-family shares the same 1979 publication as CMT. The same fleet semantics uncertainty
+applies: the original paper may have used EXACT(K) semantics rather than the modern
+ATMOST(K) convention.
+
+Two instances:
+  M-n151-k12: 150 customers, 12 vehicles
+  M-n200-k17: 199 customers, 17 vehicles
+
+Vehicle counts are NOT embedded in the .vrp files — sourced from CVRPLIB catalog.
+"""
+campaign_observation = """
+Campaign v1.5 observed negative gaps for both M-family instances:
+  M-n151-k12: -2.09% (best=1031, BKS=1053.00)
+  M-n200-k17: -2.99% (best=1332, BKS=1373.00)
+
+The FCS module assigned ATMOST(K) as a hypothesis for M-family.
+Both instances produced FCS outcome=VALID (routes_used ≤ K).
+
+If the actual semantics are EXACT(K) and routes_used ≠ K, the gap is NOT COMPARABLE.
+Stage B certificates required to determine routes_used for both instances.
+"""
+
+[verification]
+status      = "Unspecified"
+confidence  = "Low"
+method      = "Pending — requires review of Christofides et al. 1979 original paper"
+date        = "2026-07"
+open_items  = [
+    "P5 — confirm ATMOST vs EXACT from Christofides et al. 1979 (same investigation as CMT)",
+    "Stage B — collect routes_used for M-n151-k12 and M-n200-k17",
+    "If routes_used > K for either instance: reclassify gap as NOT COMPARABLE",
+    "If routes_used ≤ K for both instances: escalate BKS provenance investigation (P4)"
+]
+notes       = """
+M-family fleet semantics investigation is coupled with CMT — both derive from the same
+1979 paper. Resolution of CMT fleet semantics will directly inform M-family.
+
+The negative gaps (-2.09%, -2.99%) are smaller in magnitude than CMT but still require
+Stage B verification before any interpretation is possible.
+"""

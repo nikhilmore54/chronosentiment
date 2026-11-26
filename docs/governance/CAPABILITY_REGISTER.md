@@ -1,0 +1,136 @@
+# Coralys Platform Capability Register
+
+**Document:** GOV-CR-001
+**Status:** Active
+**Version:** 1.3
+**Date:** 2026-08-03
+**Owner:** Platform Engineering
+
+---
+
+## Purpose
+
+This register is the authoritative record of every platform capability in the Coralys system, its current maturity level, its owner, and the evidence that supports its current classification.
+
+It is a **platform-wide governance artefact**. Every research programme — CVRP, UltraCrew, ROADEF, or any future domain — updates this register as capabilities advance. It is not specific to any single programme or domain.
+
+---
+
+## Capability Maturity Scale
+
+| Level | Name | Exit Criteria |
+|-------|------|---------------|
+| C0 | Concept proven | Mathematical formulation documented; theoretical basis established |
+| C1 | Unit tested | Implementation exists; unit tests pass; no benchmark validation yet |
+| C2 | Benchmark validated | Measurable improvement demonstrated on a recognised benchmark instance set with reproducible evidence |
+| C3 | Cross-domain validated | Same capability succeeds in ≥ 2 independent problem domains with separate evidence records |
+| C4 | Production validated | Deployed in a production or near-production context; performance documented |
+| C5 | Industry-proven | Externally validated through competition result, peer-reviewed publication, or customer deployment |
+
+Promotion between levels is evidence-driven. A capability cannot advance without a filed evidence record that satisfies the exit criteria for the target level. Promotion decisions are recorded in the Amendment Log at the end of this document.
+
+---
+
+## Capability Register
+
+### Core Optimisation Engine
+
+| Capability | Owner | Current | Target | Evidence | Next Milestone |
+|------------|-------|---------|--------|---------|----------------|
+| Evolution Engine | `coralys-moga` | C4 | C5 | CVRP benchmark, UltraCrew production pilot, ROADEF baseline | ROADEF competition result |
+| Multi-objective optimisation (MOGA) | `coralys-moga` | C4 | C5 | CVRP, UltraCrew | ROADEF RP-406 |
+| Observability / telemetry | `coralys-infrastructure` | C4 | C4 | Production deployment | — |
+| Ecology / adaptive search | `coralys-ecology` | C3 | C4 | CVRP, UltraCrew | Production deployment |
+
+### Planning and Search
+
+| Capability | Owner | Current | Target | Evidence | Next Milestone |
+|------------|-------|---------|--------|---------|----------------|
+| Large neighbourhood search (LNS) | `coralys-planning` | C0 | C3 | — | RP-404 (ROADEF) |
+| Multi-path candidate generation | `coralys-planning` | C0 | C3 | — | RP-403 (ROADEF) |
+| **Budget-aware transition planning** | `coralys-planning` | **C2** | C3 | RP-402 — 15/20 improved, 18/20 finite, 3/5 target instances recovered (BASELINE_HISTORY v1.4, RP402_FINAL_REPORT v1.0 §6.1) | RP-402 cross-domain validation |
+| Hyper-heuristic operator selection | `coralys-ecology` | C1 | C4 | CVRP operator ablation | RP-405 (ROADEF cross-domain) |
+
+### Routing and Network Optimisation
+
+| Capability | Owner | Current | Target | Evidence | Next Milestone |
+|------------|-------|---------|--------|---------|----------------|
+| Network routing (SR paths) | `adapters/roadef` | C2 | C3 | ROADEF Baseline v1.0 — Dataset A, 20 instances, commit `ec4d3821` | RP-402 |
+| ECMP-aware incremental load estimation | `coralys-core` | **C2** | C3 | RP-401C — 13/20 improved, 0 regressed, total improvement 2,512,099.84 (BASELINE_HISTORY v1.2, RP401_FINAL_REPORT v1.3 §7.2) | RP-401 cross-domain |
+| Oracle-guided constructive routing | `coralys-core` | **C2** | C3 | RP-401C — same evidence; construction strategy benchmark-validated (RP401_FINAL_REPORT v1.3 §7.3) | RP-402 cross-domain |
+| Oracle-guided candidate selection | `coralys-core` | C1 | C2 | RP-401D — exploratory; mixed results, timeout regressions (RP401_FINAL_REPORT v1.3 §7.4) | RP-402/403 controlled experiment |
+| Budget-constrained re-routing | `coralys-planning` | **C2** | C3 | RP-402 — subsumed by budget-aware transition planning evidence (BASELINE_HISTORY v1.4) | RP-402 cross-domain validation |
+
+### Domain Adapters
+
+| Capability | Owner | Current | Target | Evidence | Next Milestone |
+|------------|-------|---------|--------|---------|----------------|
+| Vehicle routing (CVRP) | `adapters/cvrp` | C3 | C4 | CVRP benchmark series, 64 experiment binaries | Production deployment |
+| Workforce scheduling (INRC) | `adapters/ultracrew` | C3 | C4 | UltraCrew INRC benchmark, production pilot | Production deployment |
+| Segment routing (ROADEF) | `adapters/roadef` | C2 | C5 | ROADEF Baseline v1.0 | RP-401 through RP-407, competition submission |
+
+---
+
+## Promotion Protocol
+
+When a capability is ready for promotion:
+
+1. File an evidence record (using the standard RP evidence schema or equivalent).
+2. Confirm exit criteria for the target level are satisfied.
+3. Update this register with the new level, evidence reference, and date.
+4. Record the promotion in the Amendment Log below.
+
+Promotion decisions require sign-off from the Platform Owner.
+
+---
+
+## Capability Dependency Map
+
+Some capabilities depend on others reaching a minimum maturity level before they can advance:
+
+```
+Evolution Engine (C4)
+        │
+        ├── Multi-objective optimisation (C4)
+        │
+        └── Ecology / adaptive search (C3)
+                │
+                └── Hyper-heuristic operator selection (C1)
+                        │
+                        └── RP-405 → C3 (cross-domain: CVRP + ROADEF)
+
+Budget-aware transition planning (C2) ← promoted 2026-08-03 via RP-402
+        │
+        └── RP-402 cross-domain validation → C3
+                │
+                └── RP-402 + CVRP/UltraCrew validation → C3
+
+ECMP-aware incremental load estimation (C2) ← promoted 2026-08-02 via RP-401C
+        │
+        └── RP-401 cross-domain validation → C3
+
+Oracle-guided constructive routing (C2) ← promoted 2026-08-02 via RP-401C
+        │
+        └── RP-402 cross-domain validation → C3
+
+Oracle-guided candidate selection (C1) ← exploratory evidence RP-401D
+        │
+        └── RP-402/403 controlled experiment → C2
+
+LNS for routing (C0)
+        │
+        └── RP-404 → C2 (ROADEF benchmark)
+                │
+                └── RP-404 + CVRP validation → C3
+```
+
+---
+
+## Amendment Log
+
+| Version | Date | Change | Authorised By |
+|---------|------|--------|---------------|
+| 1.0 | 2026-08-02 | Initial register. Baseline established from RR1–RR4 governance work and ROADEF Baseline v1.0 (commit `ec4d3821`). Network routing promoted to C2 on strength of Dataset A results. Budget-aware transition planning promoted to C1 on strength of RP-000 finding. | Programme Owner |
+| 1.1 | 2026-08-02 | ECMP-aware routing promoted C1→C2. Evidence: RP-401C — 13/20 Dataset A instances improved, 0 regressions, total improvement 2,512,099.84. Full evidence in BASELINE_HISTORY.md v1.2 and RP401_FINAL_REPORT.md v1.1. | RP-401 |
+| 1.2 | 2026-08-02 | Reviewer-directed capability split. "ECMP-aware routing" renamed to "ECMP-aware incremental load estimation" (C2, unchanged). Added "Oracle-guided constructive routing" (C2, promoted from C1 — same RP-401C evidence, distinct reusable capability). Added "Oracle-guided candidate selection" (C1, exploratory evidence from RP-401D only). Dependency map updated. Evidence references updated to RP401_FINAL_REPORT.md v1.3. | RP-401 |
+| 1.3 | 2026-08-03 | Budget-aware transition planning promoted C1→C2. Evidence: RP-402 — 15/20 Dataset A instances improved (best across all RP-401/402 variants), 18/20 finite (best), 3/5 target infeasible instances recovered. Full evidence in BASELINE_HISTORY.md v1.4 and RP402_FINAL_REPORT.md v1.0. Budget-constrained re-routing also promoted C1→C2 (subsumed by same evidence). Dependency map updated. | RP-402 |

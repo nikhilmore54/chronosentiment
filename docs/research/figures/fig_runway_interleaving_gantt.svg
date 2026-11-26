@@ -1,0 +1,158 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 430" width="960" height="430">
+
+    <defs>
+      <pattern id="wakeHatch" width="8" height="8" patternTransform="rotate(45 0 0)" patternUnits="userSpaceOnUse">
+        <line x1="0" y1="0" x2="0" y2="8" stroke="#D97706" stroke-width="1.2" stroke-opacity="0.45"/>
+      </pattern>
+    </defs>
+    <style>
+      .main-title { font-family: 'Helvetica Neue', Helvetica, Arial, 'DejaVu Sans', sans-serif; font-size: 13pt; font-weight: bold; fill: #111827; }
+      .sub-title { font-family: 'Helvetica Neue', Helvetica, Arial, 'DejaVu Sans', sans-serif; font-size: 9.5pt; font-style: italic; fill: #4B5563; }
+      .axis-title { font-family: 'Helvetica Neue', Helvetica, Arial, 'DejaVu Sans', sans-serif; font-size: 10pt; font-weight: bold; fill: #111827; }
+      .axis-tick { font-family: 'Helvetica Neue', Helvetica, Arial, 'DejaVu Sans', sans-serif; font-size: 8.5pt; fill: #374151; }
+      .track-hdr { font-family: 'Helvetica Neue', Helvetica, Arial, 'DejaVu Sans', sans-serif; font-size: 10pt; font-weight: bold; fill: #111827; text-anchor: end; }
+      .track-sub { font-family: 'Helvetica Neue', Helvetica, Arial, 'DejaVu Sans', sans-serif; font-size: 8pt; fill: #4B5563; text-anchor: end; }
+      .op-txt { font-family: 'Helvetica Neue', Helvetica, Arial, 'DejaVu Sans', sans-serif; font-size: 8pt; font-weight: bold; fill: #FFFFFF; text-anchor: middle; }
+      .op-sub { font-family: 'Helvetica Neue', Helvetica, Arial, 'DejaVu Sans', sans-serif; font-size: 7pt; fill: #F3F4F6; text-anchor: middle; }
+      .legend-txt { font-family: 'Helvetica Neue', Helvetica, Arial, 'DejaVu Sans', sans-serif; font-size: 8.5pt; fill: #1F2937; }
+      .callout-txt { font-family: 'Helvetica Neue', Helvetica, Arial, 'DejaVu Sans', sans-serif; font-size: 8.5pt; font-weight: bold; fill: #065F46; }
+    </style>
+    
+<rect width="960" height="430" fill="#FFFFFF"/>
+<text x="150" y="28" class="main-title">Fig. 1. Mixed-mode runway interleaving schedule and wake-vortex gap utilization.</text>
+<text x="150" y="46" class="sub-title">Paris CDG Peak Hub Bank (LFPG) &#8212; Exact wake separation envelopes with taxiway FIFO precedence</text>
+<rect x="150" y="62" width="775" height="30" fill="#F9FAFB" stroke="#E5E7EB" stroke-width="1.0"/>
+<rect x="165" y="71" width="16" height="12" fill="#1E3A8A" stroke="#0F172A" stroke-width="0.8"/>
+<text x="186" y="81" class="legend-txt">Arrival (Landing)</text>
+<rect x="310" y="71" width="16" height="12" fill="#C2410C" stroke="#7C2D12" stroke-width="0.8"/>
+<text x="331" y="81" class="legend-txt">Departure (Takeoff)</text>
+<rect x="470" y="71" width="16" height="12" fill="url(#wakeHatch)" stroke="#D97706" stroke-width="0.8"/>
+<text x="491" y="81" class="legend-txt">Wake Decay Void (Interleaving Opportunity)</text>
+<line x1="745" y1="77" x2="765" y2="77" stroke="#475569" stroke-width="1.2" stroke-dasharray="3 2"/>
+<text x="772" y="81" class="legend-txt">Taxiway Release Precedence</text>
+<rect x="150" y="140" width="775" height="110" fill="#F8FAFC" stroke="#94A3B8" stroke-width="1.0"/>
+<line x1="150" y1="195.0" x2="925" y2="195.0" stroke="#CBD5E1" stroke-width="1.2" stroke-dasharray="12 8"/>
+<text x="138" y="188" class="track-hdr">Runway 09R/27L</text>
+<text x="138" y="204" class="track-sub">Mixed-Mode Active</text>
+<text x="138" y="218" class="track-sub">S_LT = S_TL = 60 s</text>
+<rect x="150" y="280" width="775" height="75" fill="#F1F5F9" stroke="#94A3B8" stroke-width="1.0"/>
+<text x="138" y="316" class="track-hdr">Taxiway Holding Pad</text>
+<text x="138" y="332" class="track-sub">Queue Precedence (FIFO)</text>
+<line x1="150.0" y1="140" x2="150.0" y2="355" stroke="#CBD5E1" stroke-width="1.0" stroke-dasharray=""/>
+<line x1="150.0" y1="355" x2="150.0" y2="360" stroke="#475569" stroke-width="1.0"/>
+<text x="150.0" y="373" text-anchor="middle" class="axis-tick">00:00</text>
+<text x="150.0" y="384" text-anchor="middle" class="axis-tick" fill="#6B7280" style="font-size:7pt;">+0s</text>
+<line x1="193.05555555555554" y1="140" x2="193.05555555555554" y2="355" stroke="#E2E8F0" stroke-width="0.6" stroke-dasharray="2 2"/>
+<line x1="236.1111111111111" y1="140" x2="236.1111111111111" y2="355" stroke="#CBD5E1" stroke-width="1.0" stroke-dasharray=""/>
+<line x1="236.1111111111111" y1="355" x2="236.1111111111111" y2="360" stroke="#475569" stroke-width="1.0"/>
+<text x="236.1111111111111" y="373" text-anchor="middle" class="axis-tick">02:00</text>
+<text x="236.1111111111111" y="384" text-anchor="middle" class="axis-tick" fill="#6B7280" style="font-size:7pt;">+120s</text>
+<line x1="279.16666666666663" y1="140" x2="279.16666666666663" y2="355" stroke="#E2E8F0" stroke-width="0.6" stroke-dasharray="2 2"/>
+<line x1="322.2222222222222" y1="140" x2="322.2222222222222" y2="355" stroke="#CBD5E1" stroke-width="1.0" stroke-dasharray=""/>
+<line x1="322.2222222222222" y1="355" x2="322.2222222222222" y2="360" stroke="#475569" stroke-width="1.0"/>
+<text x="322.2222222222222" y="373" text-anchor="middle" class="axis-tick">04:00</text>
+<text x="322.2222222222222" y="384" text-anchor="middle" class="axis-tick" fill="#6B7280" style="font-size:7pt;">+240s</text>
+<line x1="365.2777777777778" y1="140" x2="365.2777777777778" y2="355" stroke="#E2E8F0" stroke-width="0.6" stroke-dasharray="2 2"/>
+<line x1="408.3333333333333" y1="140" x2="408.3333333333333" y2="355" stroke="#CBD5E1" stroke-width="1.0" stroke-dasharray=""/>
+<line x1="408.3333333333333" y1="355" x2="408.3333333333333" y2="360" stroke="#475569" stroke-width="1.0"/>
+<text x="408.3333333333333" y="373" text-anchor="middle" class="axis-tick">06:00</text>
+<text x="408.3333333333333" y="384" text-anchor="middle" class="axis-tick" fill="#6B7280" style="font-size:7pt;">+360s</text>
+<line x1="451.3888888888889" y1="140" x2="451.3888888888889" y2="355" stroke="#E2E8F0" stroke-width="0.6" stroke-dasharray="2 2"/>
+<line x1="494.4444444444444" y1="140" x2="494.4444444444444" y2="355" stroke="#CBD5E1" stroke-width="1.0" stroke-dasharray=""/>
+<line x1="494.4444444444444" y1="355" x2="494.4444444444444" y2="360" stroke="#475569" stroke-width="1.0"/>
+<text x="494.4444444444444" y="373" text-anchor="middle" class="axis-tick">08:00</text>
+<text x="494.4444444444444" y="384" text-anchor="middle" class="axis-tick" fill="#6B7280" style="font-size:7pt;">+480s</text>
+<line x1="537.5" y1="140" x2="537.5" y2="355" stroke="#E2E8F0" stroke-width="0.6" stroke-dasharray="2 2"/>
+<line x1="580.5555555555557" y1="140" x2="580.5555555555557" y2="355" stroke="#CBD5E1" stroke-width="1.0" stroke-dasharray=""/>
+<line x1="580.5555555555557" y1="355" x2="580.5555555555557" y2="360" stroke="#475569" stroke-width="1.0"/>
+<text x="580.5555555555557" y="373" text-anchor="middle" class="axis-tick">10:00</text>
+<text x="580.5555555555557" y="384" text-anchor="middle" class="axis-tick" fill="#6B7280" style="font-size:7pt;">+600s</text>
+<line x1="623.6111111111111" y1="140" x2="623.6111111111111" y2="355" stroke="#E2E8F0" stroke-width="0.6" stroke-dasharray="2 2"/>
+<line x1="666.6666666666666" y1="140" x2="666.6666666666666" y2="355" stroke="#CBD5E1" stroke-width="1.0" stroke-dasharray=""/>
+<line x1="666.6666666666666" y1="355" x2="666.6666666666666" y2="360" stroke="#475569" stroke-width="1.0"/>
+<text x="666.6666666666666" y="373" text-anchor="middle" class="axis-tick">12:00</text>
+<text x="666.6666666666666" y="384" text-anchor="middle" class="axis-tick" fill="#6B7280" style="font-size:7pt;">+720s</text>
+<line x1="709.7222222222222" y1="140" x2="709.7222222222222" y2="355" stroke="#E2E8F0" stroke-width="0.6" stroke-dasharray="2 2"/>
+<line x1="752.7777777777778" y1="140" x2="752.7777777777778" y2="355" stroke="#CBD5E1" stroke-width="1.0" stroke-dasharray=""/>
+<line x1="752.7777777777778" y1="355" x2="752.7777777777778" y2="360" stroke="#475569" stroke-width="1.0"/>
+<text x="752.7777777777778" y="373" text-anchor="middle" class="axis-tick">14:00</text>
+<text x="752.7777777777778" y="384" text-anchor="middle" class="axis-tick" fill="#6B7280" style="font-size:7pt;">+840s</text>
+<line x1="795.8333333333334" y1="140" x2="795.8333333333334" y2="355" stroke="#E2E8F0" stroke-width="0.6" stroke-dasharray="2 2"/>
+<line x1="838.8888888888888" y1="140" x2="838.8888888888888" y2="355" stroke="#CBD5E1" stroke-width="1.0" stroke-dasharray=""/>
+<line x1="838.8888888888888" y1="355" x2="838.8888888888888" y2="360" stroke="#475569" stroke-width="1.0"/>
+<text x="838.8888888888888" y="373" text-anchor="middle" class="axis-tick">16:00</text>
+<text x="838.8888888888888" y="384" text-anchor="middle" class="axis-tick" fill="#6B7280" style="font-size:7pt;">+960s</text>
+<line x1="881.9444444444445" y1="140" x2="881.9444444444445" y2="355" stroke="#E2E8F0" stroke-width="0.6" stroke-dasharray="2 2"/>
+<line x1="925.0" y1="140" x2="925.0" y2="355" stroke="#CBD5E1" stroke-width="1.0" stroke-dasharray=""/>
+<line x1="925.0" y1="355" x2="925.0" y2="360" stroke="#475569" stroke-width="1.0"/>
+<text x="925.0" y="373" text-anchor="middle" class="axis-tick">18:00</text>
+<text x="925.0" y="384" text-anchor="middle" class="axis-tick" fill="#6B7280" style="font-size:7pt;">+1080s</text>
+<rect x="193.05555555555554" y="144" width="96.875" height="102" fill="url(#wakeHatch)" stroke="#D97706" stroke-width="1.0" stroke-dasharray="4 2"/>
+<rect x="193.05555555555554" y="115" width="275" height="20" fill="#ECFDF5" stroke="#059669" stroke-width="1.0"/>
+<text x="330.55555555555554" y="129" text-anchor="middle" class="callout-txt">&#916;t Void Dividend: D01 interleaved (2 ops / 135 s)</text>
+<line x1="241.49305555555554" y1="135" x2="241.49305555555554" y2="144" stroke="#059669" stroke-width="1.2" stroke-dasharray="2 2"/>
+<rect x="193.05555555555554" y="186" width="32.291666666666686" height="54" fill="#1E3A8A" stroke="#0F172A" stroke-width="0.8"/>
+<text x="209.20138888888889" y="208" class="op-txt">A01 (H)</text>
+<text x="209.20138888888889" y="224" class="op-sub">B77W</text>
+<rect x="239.69907407407408" y="190" width="32" height="54" fill="#D97706" stroke="#0F172A" stroke-width="0.8"/>
+<text x="255.69907407407408" y="212" class="op-txt">D01 (M)</text>
+<text x="255.69907407407408" y="228" class="op-sub">A320</text>
+<rect x="175.11574074074073" y="298" width="64.58333333333334" height="39" fill="#CBD5E1" stroke="#475569" stroke-width="0.8" stroke-dasharray="2 2"/>
+<text x="207.4074074074074" y="318" class="op-sub" fill="#1E293B" font-weight="bold">D01</text>
+<line x1="239.69907407407408" y1="317.5" x2="239.69907407407408" y2="244" stroke="#475569" stroke-width="1.0" stroke-dasharray="3 2"/>
+<rect x="289.93055555555554" y="186" width="32" height="54" fill="#2563EB" stroke="#0F172A" stroke-width="0.8"/>
+<text x="305.93055555555554" y="208" class="op-txt">A02 (M)</text>
+<text x="305.93055555555554" y="224" class="op-sub">A321</text>
+<rect x="336.5740740740741" y="190" width="32" height="54" fill="#D97706" stroke="#0F172A" stroke-width="0.8"/>
+<text x="352.5740740740741" y="212" class="op-txt">D02 (M)</text>
+<text x="352.5740740740741" y="228" class="op-sub">A320</text>
+<rect x="271.99074074074076" y="298" width="64.58333333333331" height="39" fill="#CBD5E1" stroke="#475569" stroke-width="0.8" stroke-dasharray="2 2"/>
+<text x="304.2824074074074" y="318" class="op-sub" fill="#1E293B" font-weight="bold">D02</text>
+<line x1="336.5740740740741" y1="317.5" x2="336.5740740740741" y2="244" stroke="#475569" stroke-width="1.0" stroke-dasharray="3 2"/>
+<rect x="386.80555555555554" y="186" width="32.291666666666686" height="54" fill="#1E3A8A" stroke="#0F172A" stroke-width="0.8"/>
+<text x="402.9513888888889" y="208" class="op-txt">A03 (H)</text>
+<text x="402.9513888888889" y="224" class="op-sub">A388</text>
+<rect x="440.625" y="190" width="32" height="54" fill="#C2410C" stroke="#0F172A" stroke-width="0.8"/>
+<text x="456.625" y="212" class="op-txt">D03 (H)</text>
+<text x="456.625" y="228" class="op-sub">A359</text>
+<rect x="376.0416666666667" y="298" width="64.58333333333331" height="39" fill="#CBD5E1" stroke="#475569" stroke-width="0.8" stroke-dasharray="2 2"/>
+<text x="408.33333333333337" y="318" class="op-sub" fill="#1E293B" font-weight="bold">D03</text>
+<line x1="440.625" y1="317.5" x2="440.625" y2="244" stroke="#475569" stroke-width="1.0" stroke-dasharray="3 2"/>
+<rect x="501.6203703703704" y="186" width="32" height="54" fill="#2563EB" stroke="#0F172A" stroke-width="0.8"/>
+<text x="517.6203703703704" y="208" class="op-txt">A04 (M)</text>
+<text x="517.6203703703704" y="224" class="op-sub">E190</text>
+<rect x="548.2638888888889" y="190" width="32" height="54" fill="#EA580C" stroke="#0F172A" stroke-width="0.8"/>
+<text x="564.2638888888889" y="212" class="op-txt">D04 (L)</text>
+<text x="564.2638888888889" y="228" class="op-sub">CRJ9</text>
+<rect x="483.6805555555556" y="298" width="64.58333333333331" height="39" fill="#CBD5E1" stroke="#475569" stroke-width="0.8" stroke-dasharray="2 2"/>
+<text x="515.9722222222223" y="318" class="op-sub" fill="#1E293B" font-weight="bold">D04</text>
+<line x1="548.2638888888889" y1="317.5" x2="548.2638888888889" y2="244" stroke="#475569" stroke-width="1.0" stroke-dasharray="3 2"/>
+<rect x="612.8472222222222" y="186" width="32.29166666666674" height="54" fill="#1E3A8A" stroke="#0F172A" stroke-width="0.8"/>
+<text x="628.9930555555555" y="208" class="op-txt">A05 (H)</text>
+<text x="628.9930555555555" y="224" class="op-sub">B789</text>
+<rect x="659.4907407407408" y="190" width="32" height="54" fill="#D97706" stroke="#0F172A" stroke-width="0.8"/>
+<text x="675.4907407407408" y="212" class="op-txt">D05 (M)</text>
+<text x="675.4907407407408" y="228" class="op-sub">A320</text>
+<rect x="594.9074074074074" y="298" width="64.58333333333337" height="39" fill="#CBD5E1" stroke="#475569" stroke-width="0.8" stroke-dasharray="2 2"/>
+<text x="627.1990740740741" y="318" class="op-sub" fill="#1E293B" font-weight="bold">D05</text>
+<line x1="659.4907407407408" y1="317.5" x2="659.4907407407408" y2="244" stroke="#475569" stroke-width="1.0" stroke-dasharray="3 2"/>
+<rect x="709.7222222222222" y="186" width="32" height="54" fill="#2563EB" stroke="#0F172A" stroke-width="0.8"/>
+<text x="725.7222222222222" y="208" class="op-txt">A06 (M)</text>
+<text x="725.7222222222222" y="224" class="op-sub">BCS3</text>
+<rect x="756.3657407407408" y="190" width="32" height="54" fill="#D97706" stroke="#0F172A" stroke-width="0.8"/>
+<text x="772.3657407407408" y="212" class="op-txt">D06 (M)</text>
+<text x="772.3657407407408" y="228" class="op-sub">A321</text>
+<rect x="691.7824074074074" y="298" width="64.58333333333337" height="39" fill="#CBD5E1" stroke="#475569" stroke-width="0.8" stroke-dasharray="2 2"/>
+<text x="724.0740740740741" y="318" class="op-sub" fill="#1E293B" font-weight="bold">D06</text>
+<line x1="756.3657407407408" y1="317.5" x2="756.3657407407408" y2="244" stroke="#475569" stroke-width="1.0" stroke-dasharray="3 2"/>
+<rect x="810.1851851851852" y="186" width="32" height="54" fill="#2563EB" stroke="#0F172A" stroke-width="0.8"/>
+<text x="826.1851851851852" y="208" class="op-txt">A07 (M)</text>
+<text x="826.1851851851852" y="224" class="op-sub">A320</text>
+<rect x="856.8287037037037" y="190" width="32" height="54" fill="#D97706" stroke="#0F172A" stroke-width="0.8"/>
+<text x="872.8287037037037" y="212" class="op-txt">D07 (M)</text>
+<text x="872.8287037037037" y="228" class="op-sub">A320</text>
+<rect x="792.2453703703704" y="298" width="64.58333333333326" height="39" fill="#CBD5E1" stroke="#475569" stroke-width="0.8" stroke-dasharray="2 2"/>
+<text x="824.5370370370371" y="318" class="op-sub" fill="#1E293B" font-weight="bold">D07</text>
+<line x1="856.8287037037037" y1="317.5" x2="856.8287037037037" y2="244" stroke="#475569" stroke-width="1.0" stroke-dasharray="3 2"/>
+<text x="537.5" y="418" text-anchor="middle" class="axis-title">Elapsed Timeline t (minutes : seconds from planning horizon start)</text>
+</svg>

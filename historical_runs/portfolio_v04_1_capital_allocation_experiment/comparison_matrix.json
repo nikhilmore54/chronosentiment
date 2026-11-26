@@ -1,0 +1,155 @@
+{
+  "c3_002_artifact_hash": "5a43b9df97daa76d85edd7f7ef1c12c3a230ef292f7ecfa98ef9587647392121",
+  "causal_comparisons": {
+    "allocation_effect": "Config B (Rs.1M EqualWeight) vs Config C (Rs.1M MaxPerLot Rs.20K)",
+    "capital_effect": "Config A (Rs.5K EqualWeight) vs Config B (Rs.1M EqualWeight)"
+  },
+  "configs": [
+    {
+      "allocation_desc": "EqualWeight",
+      "allocation_model": {
+        "model": "EqualWeight"
+      },
+      "coralys": {
+        "avg_holding_sessions": null,
+        "capital_velocity": -0.0,
+        "final_portfolio_value_inr": 5000.0,
+        "genuine_adverse_rate_pct": 0.0,
+        "horizon": 0,
+        "lots": 0,
+        "max_drawdown_pct": 0.0,
+        "open_at_end": 0,
+        "premature_stop_rate_pct": 0.0,
+        "return_pct": 0.0,
+        "stop": 0,
+        "stop_rate_pct": 0.0,
+        "stop_too_tight_rate_pct": 0.0,
+        "target": 0,
+        "temporary_excursion_rate_pct": 0.0,
+        "total_realized_pnl_inr": 0.0
+      },
+      "decision_realization": {
+        "eligible_decisions": 1144,
+        "not_realized_due_to_capital": 1144,
+        "realization_rate_pct": 0.0,
+        "realized": 0
+      },
+      "initial_capital_inr": 5000.0,
+      "label": "v04_1_A_50_5k_equal",
+      "n_sessions_simulated": 23,
+      "pe2": {
+        "avg_holding_sessions": null,
+        "capital_velocity": -0.0,
+        "final_portfolio_value_inr": 5000.0,
+        "horizon": 0,
+        "lots": 0,
+        "max_drawdown_pct": 0.0,
+        "open_at_end": 0,
+        "return_pct": 0.0,
+        "stop": 0,
+        "target": 0,
+        "total_realized_pnl_inr": 0.0
+      },
+      "universe_available": 52
+    },
+    {
+      "allocation_desc": "EqualWeight",
+      "allocation_model": {
+        "model": "EqualWeight"
+      },
+      "coralys": {
+        "avg_holding_sessions": 3.2035010940919038,
+        "capital_velocity": 12.93,
+        "final_portfolio_value_inr": 1080881.24,
+        "genuine_adverse_rate_pct": 20.73,
+        "horizon": 3,
+        "lots": 1144,
+        "max_drawdown_pct": 1.84,
+        "open_at_end": 230,
+        "premature_stop_rate_pct": 4.18,
+        "return_pct": 8.09,
+        "stop": 574,
+        "stop_rate_pct": 50.17,
+        "stop_too_tight_rate_pct": 5.57,
+        "target": 329,
+        "temporary_excursion_rate_pct": 32.4,
+        "total_realized_pnl_inr": 77333.01
+      },
+      "decision_realization": {
+        "eligible_decisions": 1144,
+        "not_realized_due_to_capital": 0,
+        "realization_rate_pct": 100.0,
+        "realized": 1144
+      },
+      "initial_capital_inr": 1000000.0,
+      "label": "v04_1_B_50_1m_equal",
+      "n_sessions_simulated": 23,
+      "pe2": {
+        "avg_holding_sessions": 9.874285714285714,
+        "capital_velocity": 5.12,
+        "final_portfolio_value_inr": 1043905.45,
+        "horizon": 80,
+        "lots": 572,
+        "max_drawdown_pct": 2.39,
+        "open_at_end": 222,
+        "return_pct": 4.39,
+        "stop": 0,
+        "target": 270,
+        "total_realized_pnl_inr": 74411.09
+      },
+      "universe_available": 52
+    },
+    {
+      "allocation_desc": "MaxPerLot Rs.20000",
+      "allocation_model": {
+        "max_per_lot_inr": 20000.0,
+        "model": "MaxPerLot"
+      },
+      "coralys": {
+        "avg_holding_sessions": 3.599105812220566,
+        "capital_velocity": 14.56,
+        "final_portfolio_value_inr": 1097896.91,
+        "genuine_adverse_rate_pct": 4.84,
+        "horizon": 3,
+        "lots": 728,
+        "max_drawdown_pct": 2.12,
+        "open_at_end": 57,
+        "premature_stop_rate_pct": 4.57,
+        "return_pct": 9.79,
+        "stop": 372,
+        "stop_rate_pct": 51.1,
+        "stop_too_tight_rate_pct": 5.38,
+        "target": 288,
+        "temporary_excursion_rate_pct": 37.9,
+        "total_realized_pnl_inr": 94017.7
+      },
+      "decision_realization": {
+        "eligible_decisions": 1144,
+        "not_realized_due_to_capital": 416,
+        "realization_rate_pct": 63.64,
+        "realized": 728
+      },
+      "initial_capital_inr": 1000000.0,
+      "label": "v04_1_C_50_1m_maxlot",
+      "n_sessions_simulated": 23,
+      "pe2": {
+        "avg_holding_sessions": 12.076595744680851,
+        "capital_velocity": 6.24,
+        "final_portfolio_value_inr": 1061530.98,
+        "horizon": 80,
+        "lots": 312,
+        "max_drawdown_pct": 3.15,
+        "open_at_end": 77,
+        "return_pct": 6.15,
+        "stop": 0,
+        "target": 155,
+        "total_realized_pnl_inr": 104012.74
+      },
+      "universe_available": 52
+    }
+  ],
+  "coralys_artifact_hash": "3876ffa232f75068636aa058c6775671ac2f935ad2751c1253edd49e0770883f",
+  "experiment": "Portfolio Replay v0.4.1 — Capital x Allocation",
+  "universe": "UNIVERSE_50 (52 instruments, identical across all configs)",
+  "universe_size": 52
+}

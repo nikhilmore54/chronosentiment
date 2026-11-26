@@ -1,0 +1,819 @@
+// UltraCrew core optimizer improvements
+use crate::ecology::WorkforceEcology;
+use crate::models::{Shift, Worker};
+use coralys_moga::traits::{
+    CrossoverOperator, Evaluated, FitnessEvaluator, Genome, GenomeFactory, MutationOperator,
+};
+use rand::rngs::StdRng;
+use rand::{Rng, SeedableRng};
+use serde::{Deserialize, Serialize};
+use std::collections::{HashMap, HashSet};
+use std::sync::Arc;
+use crate::partitioning::{Partitioner, Reconciler};
+use rayon::prelude::*;
+
+/// **Compatibility Implementation / Legacy Operational Model**
+///
+/// Architecturally, `ScheduleGenome` is no longer the primary structural
+/// representation of the domain. It serves as a compatibility implementation
+/// of the Coralys `OperationalModel` during the migration to the Native
+/// Operational Model (OEN).
+#[derive(Debug, Clone)]
+pub struct ScheduleGenome {
+    // Maps shift_id to worker_id
+    pub assignments: HashMap<u64, u64>,
+}
+
+impl Genome for ScheduleGenome {}
+
+impl coralys_moga::runtime::model::network::OperationalModel for ScheduleGenome {}
+
+#[derive(Debug, Clone)]
+pub struct ScheduleEvaluation {
+    pub schedule: ScheduleGenome,
+    pub fitness: f64,
+    pub is_valid: bool,
+    // Observability metrics for proof
+    pub hc1_violations: usize,
+    pub hc2_violations: usize,
+    pub hc3_violations: usize,
+    pub rest_violations: usize,
+    pub fairness_penalty: f64,
+    pub fatigue_penalty: f64,
+}
+
+impl Evaluated for ScheduleEvaluation {
+    type Genome = ScheduleGenome;
+    fn fitness(&self) -> f64 {
+        self.fitness
+    }
+    fn is_valid(&self) -> bool {
+        self.is_valid
+    }
+    fn genome(&self) -> &Self::Genome {
+        &self.schedule
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct GenerationTelemetry {
+    pub generation: usize,
+    pub best_fitness: f64,
+    pub average_fitness: f64,
+    pub hard_violations: usize,
+    pub hc1_violations: usize,
+    pub hc2_violations: usize,
+    pub hc3_violations: usize,
+    pub average_hc3_violations: f64,
+    pub hc4_violations: usize,
+    pub rest_violations: usize,
+    pub population_valid_count: usize,
+    pub soft_violations: usize,
+    pub fairness_penalty: f64,
+    pub workload_penalty: f64,
+    pub elapsed_time_ms: u128,
+    /// H3a diversity probe: number of distinct genomes in this generation's population.
+    /// A value < population_size indicates duplicate genomes (premature convergence).
+    pub unique_genomes: usize,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct OptimizationReport {
+    pub generations: Vec<GenerationTelemetry>,
+}
+
+#[derive(Debug, Clone)]
+pub struct Observatory {
+    pub start_time: std::time::Instant,
+    pub current_generation_evals: Vec<ScheduleEvaluation>,
+    pub reports: Vec<GenerationTelemetry>,
+    pub current_generation_index: usize,
+    pub population_size: usize,
+}
+
+impl Observatory {
+    pub fn new() -> Self {
+        Self {
+            start_time: std::time::Instant::now(),
+            current_generation_evals: Vec::new(),
+            reports: Vec::new(),
+            current_generation_index: 0,
+            // Must match EvolutionConfig::default().population_size (100).
+            // The server overrides this via start_run() when population_size is known.
+            population_size: 100,
+        }
+    }
+
+    pub fn start_run(&mut self, population_size: usize) {
+        self.start_time = std::time::Instant::now();
+        self.current_generation_evals.clear();
+        self.reports.clear();
+        self.current_generation_index = 0;
+        self.population_size = population_size;
+    }
+
+    pub fn record_evaluation(&mut self, eval: &ScheduleEvaluation) {
+        self.current_generation_evals.push(eval.clone());
+        if self.current_generation_evals.len() >= self.population_size {
+            let gen = self.current_generation_index;
+            self.current_generation_index += 1;
+
+            let mut best_eval = &self.current_generation_evals[0];
+            let mut sum_fitness = 0.0;
+            let mut sum_hc3 = 0.0;
+            let mut valid_count = 0;
+            for e in &self.current_generation_evals {
+                sum_fitness += e.fitness;
+                sum_hc3 += e.hc3_violations as f64;
+                if e.is_valid {
+                    valid_count += 1;
+                }
+                if e.fitness > best_eval.fitness {
+                    best_eval = e;
+                }
+            }
+            let avg_fitness = sum_fitness / self.current_generation_evals.len() as f64;
+            let avg_hc3 = sum_hc3 / self.current_generation_evals.len() as f64;
+            let elapsed = self.start_time.elapsed().as_millis();
+
+            // H3a diversity probe: count distinct genomes by canonical assignment fingerprint.
+            // Each genome is represented as a sorted Vec<(shift_id, worker_id)> so the hash
+            // is order-independent and stable across HashMap iteration order.
+            let unique_genomes = {
+                let mut seen: HashSet<Vec<(u64, u64)>> = HashSet::new();
+                for e in &self.current_generation_evals {
+                    let mut key: Vec<(u64, u64)> = e
+                        .schedule
+                        .assignments
+                        .iter()
+                        .map(|(&sid, &wid)| (sid, wid))
+                        .collect();
+                    key.sort_unstable();
+                    seen.insert(key);
+                }
+                seen.len()
+            };
+
+            self.reports.push(GenerationTelemetry {
+                generation: gen,
+                best_fitness: best_eval.fitness,
+                average_fitness: avg_fitness,
+                hard_violations: best_eval.hc1_violations + best_eval.hc2_violations + best_eval.hc3_violations + best_eval.rest_violations,
+                hc1_violations: best_eval.hc1_violations,
+                hc2_violations: best_eval.hc2_violations,
+                hc3_violations: best_eval.hc3_violations,
+                average_hc3_violations: avg_hc3,
+                hc4_violations: 0,
+                rest_violations: best_eval.rest_violations,
+                population_valid_count: valid_count,
+                soft_violations: if best_eval.fairness_penalty > 0.0 { 1 } else { 0 } + if best_eval.fatigue_penalty > 0.0 { 1 } else { 0 },
+                fairness_penalty: best_eval.fairness_penalty,
+                workload_penalty: best_eval.fatigue_penalty,
+                elapsed_time_ms: elapsed,
+                unique_genomes,
+            });
+
+            self.current_generation_evals.clear();
+        }
+    }
+}
+
+#[derive(Clone)]
+pub struct ScheduleContext {
+    pub workers: Arc<Vec<Worker>>,
+    pub shifts: Arc<Vec<Shift>>,
+    pub ecology: WorkforceEcology,
+    // Deterministic seed for reproducibility (same seed yields same schedule)
+    pub rng_seed: u64,
+    pub observatory: Arc<std::sync::Mutex<Observatory>>,
+    pub locked_assignments: Option<HashMap<u64, u64>>,
+    /// Optional domain-independent scenario contract from the adapter.
+    /// When present, the constraint engine uses scenario fields to contextualise
+    /// constraints (e.g. HC3 threshold from scenario.max_hours_per_worker).
+    /// When absent, engine defaults apply (backward-compatible).
+    pub scenario: Option<crate::public_contracts::InrcScenario>,
+    // Fatigue M2 Integration
+    pub enable_fatigue: bool,
+    pub fatigue_weight: f64,
+    pub hc3_aware_initialization: bool,
+    pub temporal_scarcity_construction: bool,
+    pub disable_global_constructor: bool,
+    pub constructor_budget_ms: Option<u128>,
+    pub precomputed_seeds: Option<Arc<std::sync::Mutex<Vec<ScheduleGenome>>>>,
+}
+
+#[derive(Clone)]
+pub struct ScheduleOptimizer {
+    pub context: Arc<ScheduleContext>,
+    // Internal deterministic RNG used for mutation/crossover
+    #[allow(dead_code)]
+    deterministic_rng: StdRng,
+}
+
+#[derive(Clone)]
+pub struct SeededScheduleFactory {
+    pub seeds: std::cell::RefCell<Vec<ScheduleGenome>>,
+    pub base_optimizer: ScheduleOptimizer,
+}
+
+impl GenomeFactory<ScheduleGenome> for SeededScheduleFactory {
+    fn create(&self, rng: &mut StdRng) -> ScheduleGenome {
+        if let Some(mut seed) = self.seeds.borrow_mut().pop() {
+            // AT-36.4: same lock re-stamp as ScheduleOptimizer::create precomputed seeds
+            if let Some(ref locked) = self.base_optimizer.context.locked_assignments {
+                for (&shift_id, &worker_id) in locked {
+                    seed.assignments.insert(shift_id, worker_id);
+                }
+            }
+            seed
+        } else {
+            self.base_optimizer.create(rng)
+        }
+    }
+}
+
+impl ScheduleOptimizer {
+    pub fn new(context: Arc<ScheduleContext>) -> Self {
+        let deterministic_rng = StdRng::seed_from_u64(context.rng_seed);
+        Self {
+            context,
+            deterministic_rng,
+        }
+    }
+
+    pub fn mutate_random_reassignment(
+        &self,
+        genome: &mut ScheduleGenome,
+        mutable_shifts: &[&Shift],
+        rng: &mut StdRng,
+    ) {
+        let shift = mutable_shifts[rng.gen_range(0..mutable_shifts.len())];
+        // Use skill-aware pick so mutations don't reintroduce HC1 violations
+        let worker_id = self.skill_aware_pick(shift, rng);
+        genome.assignments.insert(shift.id, worker_id);
+    }
+
+    pub fn mutate_swap(
+        &self,
+        genome: &mut ScheduleGenome,
+        mutable_shifts: &[&Shift],
+        rng: &mut StdRng,
+    ) {
+        if mutable_shifts.len() < 2 {
+            return;
+        }
+        let idx1 = rng.gen_range(0..mutable_shifts.len());
+        let mut idx2 = rng.gen_range(0..mutable_shifts.len());
+        while idx2 == idx1 {
+            idx2 = rng.gen_range(0..mutable_shifts.len());
+        }
+        let shift1 = mutable_shifts[idx1];
+        let shift2 = mutable_shifts[idx2];
+
+        let w1 = genome
+            .assignments
+            .get(&shift1.id)
+            .copied()
+            .unwrap_or(self.context.workers[0].id);
+        let w2 = genome
+            .assignments
+            .get(&shift2.id)
+            .copied()
+            .unwrap_or(self.context.workers[0].id);
+        genome.assignments.insert(shift1.id, w2);
+        genome.assignments.insert(shift2.id, w1);
+    }
+
+    /// H3c-1: Workload-balanced swap — neighborhood operator targeting SC1 (fairness variance).
+    ///
+    /// Identifies the most overloaded and most underloaded workers in the current genome,
+    /// then attempts to move one shift from the overloaded worker to the underloaded worker.
+    /// The move is accepted only if the underloaded worker has the required skill (HC1 safe)
+    /// and the shift is not locked. Falls back to mutate_random_reassignment if no valid
+    /// move exists (e.g. skill mismatch, all shifts locked).
+    ///
+    /// Mechanism: directly reduces variance(worker_hours), which is the SC1 penalty
+    /// (fitness -= variance * 10.0). The plateau at 9918.4 has residual SC1+SC2 ≈ 81.6;
+    /// this operator targets that gap.
+    pub fn mutate_workload_balanced_swap(
+        &self,
+        genome: &mut ScheduleGenome,
+        mutable_shifts: &[&Shift],
+        rng: &mut StdRng,
+    ) {
+        // Compute hours per worker from current genome
+        let mut worker_hours: HashMap<u64, u64> = HashMap::new();
+        for worker in self.context.workers.iter() {
+            worker_hours.insert(worker.id, 0);
+        }
+        for shift in self.context.shifts.iter() {
+            if let Some(&wid) = genome.assignments.get(&shift.id) {
+                *worker_hours.entry(wid).or_insert(0) += shift.duration_hours;
+            }
+        }
+
+        // Find most overloaded and most underloaded workers deterministically
+        let max_worker = self
+            .context
+            .workers
+            .iter()
+            .map(|w| (w.id, worker_hours[&w.id]))
+            .max_by_key(|&(id, h)| (h, id)) // Break ties using id
+            .map(|(id, _)| id);
+        let min_worker = self
+            .context
+            .workers
+            .iter()
+            .map(|w| (w.id, worker_hours[&w.id]))
+            .min_by_key(|&(id, h)| (h, id)) // Break ties using id
+            .map(|(id, _)| id);
+
+        let (overloaded, underloaded) = match (max_worker, min_worker) {
+            (Some(o), Some(u)) if o != u => (o, u),
+            _ => {
+                // All workers have equal hours — fall back
+                self.mutate_random_reassignment(genome, mutable_shifts, rng);
+                return;
+            }
+        };
+
+        // Collect mutable shifts currently assigned to the overloaded worker
+        let overloaded_shifts: Vec<&Shift> = mutable_shifts
+            .iter()
+            .copied()
+            .filter(|s| genome.assignments.get(&s.id).copied() == Some(overloaded))
+            .collect();
+
+        if overloaded_shifts.is_empty() {
+            self.mutate_random_reassignment(genome, mutable_shifts, rng);
+            return;
+        }
+
+        // Pick a random shift from the overloaded worker and try to give it to the underloaded worker
+        let candidate = overloaded_shifts[rng.gen_range(0..overloaded_shifts.len())];
+        let underloaded_worker = self.context.workers.iter().find(|w| w.id == underloaded);
+
+        if let Some(uw) = underloaded_worker {
+            if uw.skills.contains(&candidate.required_skill) {
+                // Valid move: skill-compatible, reduces variance
+                genome.assignments.insert(candidate.id, underloaded);
+                return;
+            }
+        }
+
+        // Skill mismatch — fall back to random reassignment
+        self.mutate_random_reassignment(genome, mutable_shifts, rng);
+    }
+}
+
+impl GenomeFactory<ScheduleGenome> for ScheduleOptimizer {
+    fn create(&self, rng: &mut StdRng) -> ScheduleGenome {
+        if let Some(ref seeds_mutex) = self.context.precomputed_seeds {
+            let mut seeds = seeds_mutex.lock().unwrap();
+            if let Some(mut seed) = seeds.pop() {
+                // Ensure locked assignments invariant is strictly enforced on precomputed seeds
+                if let Some(ref locked) = self.context.locked_assignments {
+                    for (&shift_id, &worker_id) in locked {
+                        seed.assignments.insert(shift_id, worker_id);
+                    }
+                }
+                return seed;
+            }
+        }
+        
+        let mut assignments = HashMap::new();
+        // H2: track per-worker assigned shifts during init so constraint_aware_pick()
+        // can enforce HC2 (no overlap) and HC3/rest (≥8h gap) before the GA starts.
+        let mut worker_assigned: HashMap<u64, Vec<Shift>> = HashMap::new();
+
+        // Sort shifts by start_hour so earlier shifts are visible to constraint_aware_pick()
+        // when later shifts are being assigned — gives a stable, deterministic view.
+        let mut sorted_shifts: Vec<&Shift> = self.context.shifts.iter().collect();
+        sorted_shifts.sort_by_key(|s| s.start_hour);
+
+        for (shift_idx, &shift) in sorted_shifts.iter().enumerate() {
+            let worker_id = if let Some(ref locked) = self.context.locked_assignments {
+                if let Some(&w_id) = locked.get(&(shift.id as u64)) {
+                    // Locked assignment — honour it regardless of constraints
+                    w_id
+                } else {
+                    self.constraint_aware_pick(shift, shift_idx, &sorted_shifts, &worker_assigned, rng)
+                }
+            } else {
+                self.constraint_aware_pick(shift, shift_idx, &sorted_shifts, &worker_assigned, rng)
+            };
+            // Record this assignment so subsequent shifts see it
+            worker_assigned
+                .entry(worker_id)
+                .or_default()
+                .push(shift.clone());
+            assignments.insert(shift.id, worker_id);
+        }
+        ScheduleGenome { assignments }
+    }
+}
+
+impl ScheduleOptimizer {
+    /// H2: Constraint-aware worker selection during population initialisation.
+    ///
+    /// Filters the skill-qualified pool down to workers who:
+    ///   - are not already assigned to an overlapping shift (HC2)
+    ///   - have at least 8 hours of rest before AND after `shift` relative to every
+    ///     already-assigned shift (HC3 / rest-gap rule)
+    ///
+    /// Falls back to `skill_aware_pick()` when no constraint-clean candidate exists,
+    /// preserving HC1=0 while accepting residual HC2/HC3 only when the schedule is
+    /// genuinely over-constrained (more shifts than can be cleanly covered).
+    fn constraint_aware_pick(
+        &self,
+        shift: &Shift,
+        shift_idx: usize,
+        sorted_shifts: &[&Shift],
+        worker_assigned: &HashMap<u64, Vec<Shift>>,
+        rng: &mut StdRng,
+    ) -> u64 {
+        let shift_end = shift.start_hour + shift.duration_hours;
+
+        let min_rest = self
+            .context
+            .scenario
+            .as_ref()
+            .and_then(|s| s.minimum_rest_hours)
+            .unwrap_or(10);
+            
+        let hc3_limit = self.context.scenario
+            .as_ref()
+            .and_then(|s| s.max_hours_per_worker)
+            .map(|h| h as u64)
+            .unwrap_or(40);
+
+        let clean: Vec<u64> = self
+            .context
+            .workers
+            .iter()
+            .filter(|w| w.skills.contains(&shift.required_skill))
+            .filter(|w| {
+                match worker_assigned.get(&w.id) {
+                    // Worker has no assignments yet — always constraint-clean
+                    None => true,
+                    Some(assigned) => {
+                        let mut no_overlap = true;
+                        let mut rest_ok = true;
+                        let mut current_hours = 0;
+                        
+                        for a in assigned {
+                            let a_end = a.start_hour + a.duration_hours;
+                            current_hours += a.duration_hours;
+                            if shift.start_hour < a_end && a.start_hour < shift_end {
+                                no_overlap = false;
+                            }
+                            if shift.start_hour < a_end + min_rest && a.start_hour < shift_end + min_rest {
+                                rest_ok = false;
+                            }
+                        }
+                        
+                        let hc3_ok = if self.context.hc3_aware_initialization {
+                            current_hours + shift.duration_hours <= hc3_limit
+                        } else {
+                            true
+                        };
+                        
+                        no_overlap && rest_ok && hc3_ok
+                    }
+                }
+            })
+            .map(|w| w.id)
+            .collect();
+
+        if !clean.is_empty() {
+            if self.context.temporal_scarcity_construction {
+                let lookahead_n = 10;
+                let scarcity_threshold = 15;
+                let end_idx = std::cmp::min(shift_idx + 1 + lookahead_n, sorted_shifts.len());
+                
+                let mut best_id = clean[0];
+                let mut min_scarcity_criticality = usize::MAX;
+                
+                for &wid in &clean {
+                    let mut future_scarce_count = 0;
+                    for future_idx in (shift_idx + 1)..end_idx {
+                        let future_shift = sorted_shifts[future_idx];
+                        
+                        // Check if future_shift is scarce
+                        let mut future_legal_count = 0;
+                        let mut worker_is_legal_for_future = false;
+                        
+                        for w in self.context.workers.iter() {
+                            let w_assigned = worker_assigned.get(&w.id);
+                            
+                            let mut no_overlap = true;
+                            let mut rest_ok = true;
+                            let mut current_hours = 0;
+                            if let Some(a_list) = w_assigned {
+                                for a in a_list {
+                                    current_hours += a.duration_hours;
+                                    if future_shift.start_hour < a.start_hour + a.duration_hours && a.start_hour < future_shift.start_hour + future_shift.duration_hours {
+                                        no_overlap = false;
+                                    }
+                                    if future_shift.start_hour < a.start_hour + a.duration_hours + min_rest && a.start_hour < future_shift.start_hour + future_shift.duration_hours + min_rest {
+                                        rest_ok = false;
+                                    }
+                                }
+                            }
+                            let hc3_ok = if self.context.hc3_aware_initialization {
+                                current_hours + future_shift.duration_hours <= hc3_limit
+                            } else { true };
+                            
+                            let is_leg = w.skills.contains(&future_shift.required_skill) && no_overlap && rest_ok && hc3_ok;
+                            if is_leg {
+                                future_legal_count += 1;
+                                if w.id == wid { worker_is_legal_for_future = true; }
+                            }
+                        }
+                        
+                        if future_legal_count <= scarcity_threshold && worker_is_legal_for_future {
+                            future_scarce_count += 1;
+                        }
+                    }
+                    
+                    if future_scarce_count < min_scarcity_criticality {
+                        min_scarcity_criticality = future_scarce_count;
+                        best_id = wid;
+                    } else if future_scarce_count == min_scarcity_criticality {
+                        if rng.gen_bool(0.5) {
+                            best_id = wid;
+                        }
+                    }
+                }
+                best_id
+            } else {
+                clean[rng.gen_range(0..clean.len())]
+            }
+        } else {
+            // Fallback: skill-only (preserves HC1=0, may introduce HC2/HC3 when
+            // the schedule is over-constrained for the available workforce)
+            self.skill_aware_pick(shift, rng)
+        }
+    }
+
+    /// Pick a worker who possesses the required skill for this shift.
+    /// Falls back to a random worker only if no qualified worker exists (prevents panic).
+    fn skill_aware_pick(&self, shift: &Shift, rng: &mut StdRng) -> u64 {
+        let qualified: Vec<u64> = self
+            .context
+            .workers
+            .iter()
+            .filter(|w| w.skills.contains(&shift.required_skill))
+            .map(|w| w.id)
+            .collect();
+        if qualified.is_empty() {
+            // No qualified worker — fall back to random (HC1 violation will be penalised)
+            self.context.workers[rng.gen_range(0..self.context.workers.len())].id
+        } else {
+            qualified[rng.gen_range(0..qualified.len())]
+        }
+    }
+}
+
+impl MutationOperator<ScheduleGenome> for ScheduleOptimizer {
+    fn mutate(&self, genome: &mut ScheduleGenome, rng: &mut StdRng) {
+        if self.context.shifts.is_empty() {
+            return;
+        }
+
+        let mutable_shifts: Vec<&Shift> = self
+            .context
+            .shifts
+            .iter()
+            .filter(|s| {
+                if let Some(ref locked) = self.context.locked_assignments {
+                    !locked.contains_key(&s.id)
+                } else {
+                    true
+                }
+            })
+            .collect();
+        if mutable_shifts.is_empty() {
+            return;
+        }
+
+        let strategies: &[fn(&ScheduleOptimizer, &mut ScheduleGenome, &[&Shift], &mut StdRng)] = &[
+            ScheduleOptimizer::mutate_random_reassignment,
+            ScheduleOptimizer::mutate_swap,
+            // H3c-1: workload-balanced swap — targets SC1 fairness variance directly
+            ScheduleOptimizer::mutate_workload_balanced_swap,
+        ];
+
+        let strategy_fn = strategies[rng.gen_range(0..strategies.len())];
+        strategy_fn(self, genome, &mutable_shifts, rng);
+    }
+}
+
+impl CrossoverOperator<ScheduleGenome> for ScheduleOptimizer {
+    fn crossover(
+        &self,
+        parent_a: &ScheduleGenome,
+        parent_b: &ScheduleGenome,
+        rng: &mut StdRng,
+    ) -> (ScheduleGenome, ScheduleGenome) {
+        let mut child1_assignments = HashMap::new();
+        let mut child2_assignments = HashMap::new();
+        for shift in self.context.shifts.iter() {
+            // Strictly enforce locked assignments invariant: never alter locked shifts across generations
+            if let Some(ref locked) = self.context.locked_assignments {
+                if let Some(&w_id) = locked.get(&shift.id) {
+                    child1_assignments.insert(shift.id, w_id);
+                    child2_assignments.insert(shift.id, w_id);
+                    continue;
+                }
+            }
+            let w_a = parent_a
+                .assignments
+                .get(&shift.id)
+                .copied()
+                .or_else(|| parent_b.assignments.get(&shift.id).copied())
+                .unwrap_or_else(|| self.skill_aware_pick(shift, rng));
+            let w_b = parent_b
+                .assignments
+                .get(&shift.id)
+                .copied()
+                .or_else(|| parent_a.assignments.get(&shift.id).copied())
+                .unwrap_or_else(|| self.skill_aware_pick(shift, rng));
+
+            if rng.gen_bool(0.5) {
+                child1_assignments.insert(shift.id, w_a);
+                child2_assignments.insert(shift.id, w_b);
+            } else {
+                child1_assignments.insert(shift.id, w_b);
+                child2_assignments.insert(shift.id, w_a);
+            }
+        }
+        (
+            ScheduleGenome {
+                assignments: child1_assignments,
+            },
+            ScheduleGenome {
+                assignments: child2_assignments,
+            },
+        )
+    }
+}
+
+impl FitnessEvaluator<ScheduleGenome> for ScheduleOptimizer {
+    type Evaluation = ScheduleEvaluation;
+
+    fn evaluate(
+        &self,
+        genome: &ScheduleGenome,
+        _metrics: &coralys_moga::runtime::optimization::metric::MetricReport,
+    ) -> Self::Evaluation {
+        use crate::constraint_engine::{DomainConstraintEvaluator, InrcConstraintEvaluator};
+
+        let evaluator: Box<dyn DomainConstraintEvaluator> =
+            Box::new(InrcConstraintEvaluator::new(self.context.clone()));
+
+        let report = evaluator.evaluate(genome);
+
+        let eval = ScheduleEvaluation {
+            schedule: genome.clone(),
+            fitness: report.fitness,
+            is_valid: report.is_valid && report.hard_violations == 0,
+            hc1_violations: report.hc1_violations,
+            hc2_violations: report.hc2_violations,
+            hc3_violations: report.hc3_violations,
+            rest_violations: report.rest_violations,
+            fairness_penalty: report.fairness_penalty,
+            fatigue_penalty: report.fatigue_penalty,
+        };
+
+        self.context
+            .observatory
+            .lock()
+            .unwrap()
+            .record_evaluation(&eval);
+
+        eval
+    }
+}
+
+/// Generates a human‑readable explanation for a schedule evaluation.
+/// Returns a multiline string where each line describes a shift assignment and any relevant penalties.
+pub fn generate_explanation(eval: &ScheduleEvaluation, context: &ScheduleContext) -> String {
+    let mut lines = Vec::new();
+    for shift in context.shifts.iter() {
+        if let Some(worker_id) = eval.schedule.assignments.get(&shift.id) {
+            if let Some(worker) = context.workers.iter().find(|w| w.id == *worker_id) {
+                let skill_ok = if worker.skills.contains(&shift.required_skill) {
+                    "✔"
+                } else {
+                    "✖"
+                };
+                lines.push(format!(
+                    "Shift {} assigned to Worker {} (Skill match: {}), Duration: {}h",
+                    shift.id, worker.id, skill_ok, shift.duration_hours
+                ));
+            }
+        }
+    }
+    if eval.fatigue_penalty > 0.0 {
+        lines.push(format!("Fatigue penalty: {:.2}", eval.fatigue_penalty));
+    }
+    if eval.fairness_penalty > 0.0 {
+        lines.push(format!(
+            "Fairness penalty (variance): {:.2}",
+            eval.fairness_penalty
+        ));
+    }
+    if eval.rest_violations > 0 {
+        lines.push(format!("Rest violations: {}", eval.rest_violations));
+    }
+    lines.join("\n")
+}
+
+pub struct PartitionedEvolutionResult {
+    pub local_feasible_count: usize,
+    pub total_partitions: usize,
+    pub local_failures: Vec<usize>,
+    pub local_total_hard_violations: usize,
+    pub reconciled_hard_violations: usize,
+    pub boundary_conflicts: usize,
+    pub reconciled_feasible: bool,
+    pub global_result: coralys_moga::engine::GaResult<ScheduleEvaluation>,
+    pub local_genomes: Vec<ScheduleGenome>,
+}
+
+pub fn run_partitioned_evolution(
+    context: Arc<ScheduleContext>,
+    partitioner: &dyn Partitioner,
+    reconciler: &dyn Reconciler,
+    local_config: coralys_moga::config::EvolutionConfig,
+    global_config: coralys_moga::config::EvolutionConfig,
+) -> PartitionedEvolutionResult {
+    // 1. Partition
+    let partitions = partitioner.partition(&context.shifts, &context.workers);
+    let total_partitions = partitions.len();
+    
+    // 2. Local Evolution
+    let local_res: Vec<(ScheduleGenome, ScheduleEvaluation)> = partitions.par_iter().map(|p| {
+        let mut local_context_struct = (*context).clone();
+        local_context_struct.shifts = Arc::new(p.all_shifts());
+        local_context_struct.workers = Arc::new(p.eligible_workers.clone());
+        local_context_struct.observatory = Arc::new(std::sync::Mutex::new(Observatory::new())); 
+        let local_context = Arc::new(local_context_struct);
+        
+        let local_run = crate::helpers::run_optimization(local_context, local_config.clone());
+        (local_run.global_best.schedule.clone(), local_run.global_best.clone())
+    }).collect();
+    
+    let local_genomes: Vec<ScheduleGenome> = local_res.iter().map(|(g, _)| g.clone()).collect();
+    
+    let mut local_feasible_count = 0;
+    let mut local_total_hard_violations = 0;
+    let mut local_failures = Vec::new();
+    
+    for (i, (_, eval)) in local_res.iter().enumerate() {
+        let hard_violations = eval.hc1_violations + eval.hc2_violations + eval.hc3_violations + eval.rest_violations;
+        local_total_hard_violations += hard_violations;
+        if hard_violations == 0 {
+            local_feasible_count += 1;
+        } else {
+            local_failures.push(i);
+        }
+    }
+    
+    // 3. Boundary Reconciliation
+    let reconciled_genome = reconciler.reconcile(&partitions, &local_genomes);
+    
+    // Evaluate reconciled genome explicitly using global constraints
+    let global_optimizer = ScheduleOptimizer::new(context.clone());
+    use coralys_moga::traits::FitnessEvaluator;
+    let dummy_metrics = coralys_moga::runtime::optimization::metric::MetricReport {
+        metrics: std::collections::HashMap::new(),
+    };
+    let reconciled_eval = global_optimizer.evaluate(&reconciled_genome, &dummy_metrics);
+    
+    let reconciled_hard_violations = reconciled_eval.hc1_violations + reconciled_eval.hc2_violations + reconciled_eval.hc3_violations + reconciled_eval.rest_violations;
+    let boundary_conflicts = reconciled_hard_violations.saturating_sub(local_total_hard_violations);
+    let reconciled_feasible = reconciled_hard_violations == 0;
+    
+    // 4. Global Refinement
+    let mut global_context_struct = (*context).clone();
+    global_context_struct.precomputed_seeds = Some(Arc::new(std::sync::Mutex::new(vec![reconciled_genome])));
+    // Ensure we don't double-run global constructor which could overwrite our seed if it succeeds (though it times out on C2/C3)
+    global_context_struct.disable_global_constructor = true; 
+    let global_context = Arc::new(global_context_struct);
+    
+    let global_result = crate::helpers::run_optimization(global_context, global_config);
+    
+    PartitionedEvolutionResult {
+        local_feasible_count,
+        total_partitions,
+        local_failures,
+        local_total_hard_violations,
+        reconciled_hard_violations,
+        boundary_conflicts,
+        reconciled_feasible,
+        global_result,
+        local_genomes,
+    }
+}

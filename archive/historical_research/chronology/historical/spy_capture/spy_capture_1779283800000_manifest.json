@@ -1,0 +1,9 @@
+{
+  "substrate": "SPY",
+  "capture_start": 1779283800000,
+  "capture_end": 1780084740000,
+  "total_ticks": 2730,
+  "chronology_hash": "d8566522996a1192b0580fadd2e5b6dca3d9a3eed21ab14340af9543d98dc415",
+  "gaps": [],
+  "provenance": "Yahoo Finance via yfinance"
+}

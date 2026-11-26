@@ -138,12 +138,12 @@ pub fn run_replay_with_evaluator(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use chronosentiment_optimization::Candidate as Strategy;
     use crate::strategy_ranking::{
         LiveMarketState, LiveRegime, RankingWeights, StrategyProfile, StrategyRegistry,
     };
-    use chronosentiment_financial_core::runtime::tick_replay::{ReplayConfig, ReplayMode};
     use chronosentiment_core::NormalizedMarketEvent;
+    use chronosentiment_financial_core::runtime::tick_replay::{ReplayConfig, ReplayMode};
+    use chronosentiment_optimization::Candidate as Strategy;
 
     #[test]
     fn replay_metrics_populate() {
@@ -199,8 +199,10 @@ mod tests {
                 mom_floor: 20,
                 edge_ratio: 150,
                 participation_threshold: 30,
-            exec_aggression: 50, latency_bias: 10, fill_threshold: 50,
-                                entry_offset: 0, // TODO: replace with latency-derived offset
+                exec_aggression: 50,
+                latency_bias: 10,
+                fill_threshold: 50,
+                entry_offset: 0, // TODO: replace with latency-derived offset
             },
             preferred_regimes: vec![LiveRegime::TrendingUp, LiveRegime::Mixed],
             confidence_weight: 1.0,

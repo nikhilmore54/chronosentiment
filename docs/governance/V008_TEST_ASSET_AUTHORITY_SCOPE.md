@@ -72,7 +72,7 @@ across multiple compiled call sites. Fixture **content** drives simulation input
 | Developer absolute | `/Users/nikhil/ChronoSentiment_MEGA_FINAL/test_assets` | **fails off-machine** |
 | Repo-relative string | `"test_assets"` | cwd-dependent |
 | Manifest-relative (good precedent) | `format!("{}/../test_assets", env!("CARGO_MANIFEST_DIR"))` in `core/src/ga.rs` tests | **portable within repo checkout** |
-| Shell env override | `DATA_FOLDER=...` in `run_edge_debug.sh` | script-local |
+| Shell env override | `DATA_FOLDER=...` in `scripts/run_edge_debug.sh` | script-local |
 
 **Fracture class:** duplicated absolute authority — not competing semantic loaders.
 
@@ -149,7 +149,7 @@ No graceful repo-root discovery exists in the four fracture sites.
 | `core/examples/reproduce_parity.rs:16` | absolute CSV file | example / non-operational |
 | `core/examples/live_diagnostic.rs:17` | `"test_assets"` relative | example |
 | `core/examples/run_pipeline.rs:5` | relative csv paths | example |
-| `run_edge_debug.sh:20` | absolute `DATA_FOLDER` | dev script |
+| `scripts/run_edge_debug.sh:20` | absolute `DATA_FOLDER` | dev script |
 | `scripts/research/run_structured_audit_automation.py` | absolute unrelated path | research |
 | `observatory/verification_*.json` | absolute `state_archive` roots | archive tooling — **not test_assets** |
 

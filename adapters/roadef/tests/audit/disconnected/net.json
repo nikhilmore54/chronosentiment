@@ -1,0 +1,1 @@
+{"directed": true, "multigraph": false, "nodes": [{"id": 0}, {"id": 1}, {"id": 2}, {"id": 3}], "links": [{"id": 0, "from": 0, "to": 1, "metric": 10, "capacity": 100}, {"id": 1, "from": 1, "to": 0, "metric": 10, "capacity": 100}, {"id": 2, "from": 0, "to": 2, "metric": 10, "capacity": 100}, {"id": 3, "from": 2, "to": 0, "metric": 10, "capacity": 100}]}

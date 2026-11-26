@@ -36,11 +36,11 @@ impl TelemetryProcessor {
         // Calculate synthetic execution properties (simplified mathematical truth)
         let entropy = (1.0 - den.abs()).max(0.0) * (if comp > 1.0 { 1.5 } else { 1.0 });
         let corridor = margin > 1.0 && entropy < 0.3;
-        
+
         // Define instability mathematically
         let precursor_entropy_expansion = if comp > 1.5 { comp - 1.5 } else { 0.0 };
         let precursor_curvature_destabilization = (bias.abs() * 20.0) + (range * 100.0);
-        
+
         let instability_type = if entropy > 0.8 {
             "ENTROPIC_COLLAPSE"
         } else if precursor_entropy_expansion > 0.5 {

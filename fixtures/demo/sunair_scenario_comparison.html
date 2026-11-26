@@ -1,0 +1,458 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>SunAir — Scenario Comparison</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Segoe UI',system-ui,sans-serif;background:#0f172a;color:#e2e8f0;min-height:100vh;display:flex;flex-direction:column}
+header{background:#1e293b;border-bottom:1px solid #334155;padding:12px 24px;display:flex;align-items:center;gap:16px;flex-shrink:0}
+.logo{font-size:18px;font-weight:700;color:#38bdf8;letter-spacing:.5px}
+.logo span{color:#94a3b8;font-weight:400;font-size:14px;margin-left:8px}
+.badge{background:#0891b2;color:#fff;font-size:11px;font-weight:600;padding:3px 10px;border-radius:12px;letter-spacing:.5px}
+.toolbar{background:#1e293b;border-bottom:1px solid #334155;padding:10px 24px;display:flex;align-items:center;gap:12px;flex-shrink:0}
+.toolbar label{font-size:12px;color:#64748b;font-weight:600;text-transform:uppercase;letter-spacing:.5px}
+.toolbar select{background:#0f172a;border:1px solid #334155;color:#e2e8f0;font-size:12px;padding:5px 10px;border-radius:6px}
+.toolbar .sep{flex:1}
+.btn{background:#1d4ed8;color:#fff;border:none;font-size:12px;font-weight:600;padding:6px 16px;border-radius:6px;cursor:pointer;letter-spacing:.3px}
+.btn:hover{background:#2563eb}
+.btn.secondary{background:#334155;color:#e2e8f0}
+.btn.secondary:hover{background:#475569}
+.content{flex:1;padding:20px 24px;display:flex;flex-direction:column;gap:16px;overflow-y:auto}
+
+/* Scenario header cards */
+.scenario-headers{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.scenario-card{background:#1e293b;border:1px solid #334155;border-radius:10px;padding:16px}
+.scenario-card.baseline{border-top:3px solid #64748b}
+.scenario-card.optimised{border-top:3px solid #22c55e}
+.sc-label{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1px;margin-bottom:6px}
+.scenario-card.baseline .sc-label{color:#64748b}
+.scenario-card.optimised .sc-label{color:#22c55e}
+.sc-name{font-size:16px;font-weight:700;color:#e2e8f0;margin-bottom:4px}
+.sc-meta{font-size:12px;color:#64748b}
+.sc-fitness{font-size:24px;font-weight:700;margin-top:10px}
+.scenario-card.baseline .sc-fitness{color:#94a3b8}
+.scenario-card.optimised .sc-fitness{color:#22c55e}
+.sc-fitness-label{font-size:11px;color:#64748b;margin-top:2px}
+
+/* KPI comparison table */
+.section-title{font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:1px;margin-bottom:8px}
+.kpi-table{background:#1e293b;border:1px solid #334155;border-radius:10px;overflow:hidden}
+.kpi-row{display:grid;grid-template-columns:200px 1fr 1fr 120px;align-items:center;padding:10px 16px;border-bottom:1px solid #0f172a}
+.kpi-row:last-child{border-bottom:none}
+.kpi-row.header{background:#0f172a;padding:8px 16px}
+.kpi-row.header .kpi-cell{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#64748b}
+.kpi-name{font-size:13px;color:#e2e8f0;font-weight:500}
+.kpi-cell{font-size:13px;color:#e2e8f0}
+.kpi-bar-wrap{display:flex;align-items:center;gap:8px}
+.kpi-bar-bg{flex:1;background:#0f172a;border-radius:4px;height:6px;overflow:hidden;max-width:120px}
+.kpi-bar-fill{height:100%;border-radius:4px}
+.kpi-val{font-size:13px;font-weight:600;min-width:48px}
+.delta{font-size:12px;font-weight:700;padding:2px 8px;border-radius:10px;text-align:center}
+.delta.pos{background:#052e16;color:#22c55e}
+.delta.neg{background:#2d0a0a;color:#ef4444}
+.delta.neu{background:#1e293b;color:#64748b}
+
+/* Worker hours comparison */
+.worker-grid{background:#1e293b;border:1px solid #334155;border-radius:10px;overflow:hidden}
+.worker-row{display:grid;grid-template-columns:160px 1fr 1fr 80px;align-items:center;padding:8px 16px;border-bottom:1px solid #0f172a;gap:8px}
+.worker-row:last-child{border-bottom:none}
+.worker-row.header{background:#0f172a;padding:6px 16px}
+.worker-row.header .wc{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#64748b}
+.w-name{font-size:12px;color:#e2e8f0;display:flex;align-items:center;gap:6px}
+.skill-pill{font-size:9px;font-weight:700;padding:1px 6px;border-radius:8px}
+.pill-CPT{background:#1d4ed8;color:#bfdbfe}
+.pill-FO{background:#14532d;color:#bbf7d0}
+.pill-CC{background:#7c2d12;color:#fed7aa}
+.bar-pair{display:flex;flex-direction:column;gap:3px}
+.bar-line{display:flex;align-items:center;gap:6px}
+.bar-line-label{font-size:9px;color:#64748b;width:12px;text-align:right}
+.bar-bg{flex:1;background:#0f172a;border-radius:3px;height:5px;overflow:hidden}
+.bar-fill{height:100%;border-radius:3px}
+.bar-fill.base{background:#475569}
+.bar-fill.opt{background:#22c55e}
+.w-delta{font-size:11px;font-weight:700;text-align:right}
+.w-delta.pos{color:#22c55e}
+.w-delta.neg{color:#ef4444}
+.w-delta.neu{color:#64748b}
+
+/* Convergence chart */
+.chart-card{background:#1e293b;border:1px solid #334155;border-radius:10px;padding:16px}
+.chart-area{position:relative;height:180px;margin-top:12px}
+canvas{width:100%;height:100%}
+
+/* Coverage breakdown */
+.coverage-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.cov-card{background:#1e293b;border:1px solid #334155;border-radius:10px;padding:16px}
+.cov-card.baseline{border-top:3px solid #64748b}
+.cov-card.optimised{border-top:3px solid #22c55e}
+.cov-title{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;margin-bottom:12px}
+.cov-card.baseline .cov-title{color:#64748b}
+.cov-card.optimised .cov-title{color:#22c55e}
+.cov-row{display:flex;justify-content:space-between;align-items:center;padding:5px 0;border-bottom:1px solid #0f172a;font-size:12px}
+.cov-row:last-child{border-bottom:none}
+.cov-label{color:#94a3b8}
+.cov-val{font-weight:600;color:#e2e8f0}
+.cov-val.green{color:#22c55e}
+.cov-val.amber{color:#f59e0b}
+.cov-val.red{color:#ef4444}
+
+/* Legend */
+.legend{display:flex;align-items:center;gap:16px;font-size:11px;color:#64748b}
+.legend-dot{width:10px;height:10px;border-radius:2px;display:inline-block;margin-right:4px}
+.legend-dot.base{background:#475569}
+.legend-dot.opt{background:#22c55e}
+</style>
+</head>
+<body>
+<header>
+  <div class="logo">SunAir <span>Coralys Scenario Comparison</span></div>
+  <div class="badge">S3-04</div>
+</header>
+<div class="toolbar">
+  <label>Scenario A</label>
+  <select id="selA" onchange="render()">
+    <option value="baseline">Baseline — seed 42, 500 gen</option>
+    <option value="extended">Extended — seed 42, 1000 gen</option>
+    <option value="tight">Tight Rest — seed 99, 500 gen</option>
+  </select>
+  <label style="margin-left:8px">Scenario B</label>
+  <select id="selB" onchange="render()">
+    <option value="baseline">Baseline — seed 42, 500 gen</option>
+    <option value="extended" selected>Extended — seed 42, 1000 gen</option>
+    <option value="tight">Tight Rest — seed 99, 500 gen</option>
+  </select>
+  <div class="sep"></div>
+  <div class="legend">
+    <span><span class="legend-dot base"></span>Scenario A</span>
+    <span><span class="legend-dot opt"></span>Scenario B</span>
+  </div>
+  <button class="btn secondary" onclick="exportReport()">Export Report</button>
+</div>
+<div class="content" id="content"></div>
+
+<script>
+var SCENARIOS = {
+  baseline: {
+    label:"Baseline",
+    meta:"seed 42 &bull; 500 generations &bull; pop 50",
+    fitness:8649.6,
+    coverage:100.0,
+    shifts_covered:42,
+    shifts_total:42,
+    hard_violations:0,
+    soft_violations:3,
+    rest_violations:0,
+    manual_overrides:0,
+    avg_hours:33.6,
+    max_hours:40,
+    min_hours:16,
+    runtime_ms:1240,
+    worker_hours:[38,36,40,34,32,30,28,35,33,26,24,28,22,20,25,23,21,19,27,18]
+  },
+  extended: {
+    label:"Extended",
+    meta:"seed 42 &bull; 1000 generations &bull; pop 50",
+    fitness:8812.3,
+    coverage:100.0,
+    shifts_covered:42,
+    shifts_total:42,
+    hard_violations:0,
+    soft_violations:1,
+    rest_violations:0,
+    manual_overrides:0,
+    avg_hours:33.6,
+    max_hours:38,
+    min_hours:18,
+    runtime_ms:2480,
+    worker_hours:[36,34,38,32,34,32,30,33,31,28,26,30,24,22,27,25,23,21,29,20]
+  },
+  tight: {
+    label:"Tight Rest",
+    meta:"seed 99 &bull; 500 generations &bull; pop 50",
+    fitness:8201.4,
+    coverage:97.6,
+    shifts_covered:41,
+    shifts_total:42,
+    hard_violations:1,
+    soft_violations:0,
+    rest_violations:0,
+    manual_overrides:0,
+    avg_hours:32.8,
+    max_hours:36,
+    min_hours:16,
+    runtime_ms:1310,
+    worker_hours:[36,34,36,32,30,28,26,33,31,24,22,26,20,18,23,21,19,17,25,16]
+  }
+};
+
+var WORKERS = [
+  {name:"A. Mercer",skill:"CPT"},{name:"B. Tanaka",skill:"CPT"},
+  {name:"C. Singh",skill:"CPT"},{name:"D. Osei",skill:"CPT"},
+  {name:"E. Rossi",skill:"FO"},{name:"F. Muller",skill:"FO"},
+  {name:"G. Kim",skill:"FO"},{name:"H. Nakamura",skill:"FO"},
+  {name:"I. Patel",skill:"FO"},{name:"J. Okafor",skill:"CC"},
+  {name:"K. Novak",skill:"CC"},{name:"L. Ferreira",skill:"CC"},
+  {name:"M. Johansson",skill:"CC"},{name:"N. Dubois",skill:"CC"},
+  {name:"O. Chen",skill:"CC"},{name:"P. Adeyemi",skill:"CC"},
+  {name:"Q. Larsen",skill:"CC"},{name:"R. Mendez",skill:"CC"},
+  {name:"S. Obi",skill:"CC"},{name:"T. Flynn",skill:"CC"}
+];
+
+function delta(a,b,higherBetter){
+  var d=b-a;
+  if(Math.abs(d)<0.01)return {text:"&mdash;",cls:"neu"};
+  var pos=higherBetter?(d>0):(d<0);
+  var sign=d>0?"+":"";
+  return {text:sign+d.toFixed(d%1===0?0:1),cls:pos?"pos":"neg"};
+}
+function pct(v,max){return Math.min(100,Math.round(v/max*100));}
+
+function renderKpiTable(A,B){
+  var rows=[
+    {name:"Fitness Score",ka:"fitness",kb:"fitness",fmt:function(v){return v.toFixed(1);},max:9000,higher:true},
+    {name:"Coverage %",ka:"coverage",kb:"coverage",fmt:function(v){return v.toFixed(1)+"%";},max:100,higher:true},
+    {name:"Shifts Covered",ka:"shifts_covered",kb:"shifts_covered",fmt:function(v){return v+"/42";},max:42,higher:true},
+    {name:"Hard Violations",ka:"hard_violations",kb:"hard_violations",fmt:function(v){return v;},max:5,higher:false},
+    {name:"Soft Violations",ka:"soft_violations",kb:"soft_violations",fmt:function(v){return v;},max:5,higher:false},
+    {name:"Rest Violations",ka:"rest_violations",kb:"rest_violations",fmt:function(v){return v;},max:5,higher:false},
+    {name:"Avg Hours / Worker",ka:"avg_hours",kb:"avg_hours",fmt:function(v){return v.toFixed(1)+"h";},max:48,higher:false},
+    {name:"Max Hours (any worker)",ka:"max_hours",kb:"max_hours",fmt:function(v){return v+"h";},max:48,higher:false},
+    {name:"Min Hours (any worker)",ka:"min_hours",kb:"min_hours",fmt:function(v){return v+"h";},max:48,higher:true},
+    {name:"Runtime",ka:"runtime_ms",kb:"runtime_ms",fmt:function(v){return v+"ms";},max:3000,higher:false}
+  ];
+  var html='<div class="kpi-table">'
+    +'<div class="kpi-row header">'
+    +'<div class="kpi-cell">Metric</div>'
+    +'<div class="kpi-cell">Scenario A</div>'
+    +'<div class="kpi-cell">Scenario B</div>'
+    +'<div class="kpi-cell">Delta (B&minus;A)</div>'
+    +'</div>';
+  for(var i=0;i<rows.length;i++){
+    var r=rows[i];
+    var va=A[r.ka];
+    var vb=B[r.kb];
+    var d=delta(va,vb,r.higher);
+    var pctA=pct(va,r.max);
+    var pctB=pct(vb,r.max);
+    html+='<div class="kpi-row">'
+      +'<div class="kpi-name">'+r.name+'</div>'
+      +'<div class="kpi-bar-wrap"><div class="kpi-bar-bg"><div class="kpi-bar-fill" style="width:'+pctA+'%;background:#475569"></div></div><span class="kpi-val">'+r.fmt(va)+'</span></div>'
+      +'<div class="kpi-bar-wrap"><div class="kpi-bar-bg"><div class="kpi-bar-fill" style="width:'+pctB+'%;background:#22c55e"></div></div><span class="kpi-val">'+r.fmt(vb)+'</span></div>'
+      +'<div><span class="delta '+d.cls+'">'+d.text+'</span></div>'
+      +'</div>';
+  }
+  html+='</div>';
+  return html;
+}
+
+function renderWorkerGrid(A,B){
+  var html='<div class="worker-grid">'
+    +'<div class="worker-row header">'
+    +'<div class="wc">Worker</div>'
+    +'<div class="wc">Hours (A vs B)</div>'
+    +'<div class="wc"></div>'
+    +'<div class="wc" style="text-align:right">Delta</div>'
+    +'</div>';
+  for(var i=0;i<WORKERS.length;i++){
+    var w=WORKERS[i];
+    var ha=A.worker_hours[i];
+    var hb=B.worker_hours[i];
+    var diff=hb-ha;
+    var dCls=diff>0?"pos":diff<0?"neg":"neu";
+    var dText=diff>0?"+"+diff:diff===0?"&mdash;":""+diff;
+    var pA=pct(ha,48);
+    var pB=pct(hb,48);
+    html+='<div class="worker-row">'
+      +'<div class="w-name"><span class="skill-pill pill-'+w.skill+'">'+w.skill+'</span>'+w.name+'</div>'
+      +'<div class="bar-pair">'
+      +'<div class="bar-line"><span class="bar-line-label">A</span><div class="bar-bg"><div class="bar-fill base" style="width:'+pA+'%"></div></div><span style="font-size:11px;color:#94a3b8;min-width:28px">'+ha+'h</span></div>'
+      +'<div class="bar-line"><span class="bar-line-label">B</span><div class="bar-bg"><div class="bar-fill opt" style="width:'+pB+'%"></div></div><span style="font-size:11px;color:#94a3b8;min-width:28px">'+hb+'h</span></div>'
+      +'</div>'
+      +'<div></div>'
+      +'<div class="w-delta '+dCls+'">'+dText+'h</div>'
+      +'</div>';
+  }
+  html+='</div>';
+  return html;
+}
+
+function renderCoverage(A,B,nameA,nameB){
+  function card(sc,name,cls){
+    var cptShifts=4*2;var foShifts=5*2;var ccShifts=11*2;
+    var cptCov=sc.coverage>=100?cptShifts:cptShifts-1;
+    var foCov=foShifts;var ccCov=ccShifts;
+    if(sc.shifts_covered<42){ccCov=ccShifts-1;}
+    return '<div class="cov-card '+cls+'">'
+      +'<div class="cov-title">'+name+'</div>'
+      +'<div class="cov-row"><span class="cov-label">Overall coverage</span><span class="cov-val '+(sc.coverage>=100?"green":sc.coverage>=95?"amber":"red")+'">'+sc.coverage.toFixed(1)+'%</span></div>'
+      +'<div class="cov-row"><span class="cov-label">CPT shifts ('+cptShifts+' req)</span><span class="cov-val green">'+cptCov+'/'+cptShifts+'</span></div>'
+      +'<div class="cov-row"><span class="cov-label">F/O shifts ('+foShifts+' req)</span><span class="cov-val green">'+foCov+'/'+foShifts+'</span></div>'
+      +'<div class="cov-row"><span class="cov-label">CC shifts ('+ccShifts+' req)</span><span class="cov-val '+(ccCov===ccShifts?"green":"amber")+'">'+ccCov+'/'+ccShifts+'</span></div>'
+      +'<div class="cov-row"><span class="cov-label">Hard violations</span><span class="cov-val '+(sc.hard_violations===0?"green":"red")+'">'+sc.hard_violations+'</span></div>'
+      +'<div class="cov-row"><span class="cov-label">Soft violations</span><span class="cov-val '+(sc.soft_violations===0?"green":"amber")+'">'+sc.soft_violations+'</span></div>'
+      +'<div class="cov-row"><span class="cov-label">Fitness score</span><span class="cov-val">'+sc.fitness.toFixed(1)+'</span></div>'
+      +'</div>';
+  }
+  return '<div class="coverage-grid">'+card(A,nameA,"baseline")+card(B,nameB,"optimised")+'</div>';
+}
+
+function drawConvergence(canvasId,A,B){
+  var canvas=document.getElementById(canvasId);
+  if(!canvas)return;
+  var ctx=canvas.getContext("2d");
+  var W=canvas.offsetWidth;var H=canvas.offsetHeight;
+  canvas.width=W;canvas.height=H;
+  ctx.clearRect(0,0,W,H);
+
+  // Generate synthetic convergence curves
+  function curve(finalFit,gens,seed){
+    var pts=[];
+    var v=finalFit*0.4;
+    var r=seed;
+    for(var i=0;i<=gens;i+=Math.floor(gens/40)){
+      r=(r*1664525+1013904223)&0xffffffff;
+      var noise=((r&0xff)/255-0.5)*80;
+      var progress=i/gens;
+      var target=finalFit*(0.4+0.6*Math.pow(progress,0.4));
+      v=v*0.7+target*0.3+noise;
+      if(v>finalFit)v=finalFit;
+      pts.push({x:i,y:v});
+    }
+    pts.push({x:gens,y:finalFit});
+    return pts;
+  }
+
+  var gensA=A.runtime_ms<1500?500:1000;
+  var gensB=B.runtime_ms<1500?500:1000;
+  var maxGens=Math.max(gensA,gensB);
+  var minFit=7000;var maxFit=9200;
+  var pad={l:48,r:16,t:12,b:32};
+  var cw=W-pad.l-pad.r;var ch=H-pad.t-pad.b;
+
+  function toX(g){return pad.l+g/maxGens*cw;}
+  function toY(f){return pad.t+ch-(f-minFit)/(maxFit-minFit)*ch;}
+
+  // Grid lines
+  ctx.strokeStyle="#1e293b";ctx.lineWidth=1;
+  for(var f=7000;f<=9200;f+=500){
+    ctx.beginPath();ctx.moveTo(pad.l,toY(f));ctx.lineTo(pad.l+cw,toY(f));ctx.stroke();
+    ctx.fillStyle="#475569";ctx.font="10px system-ui";ctx.textAlign="right";
+    ctx.fillText(f,pad.l-4,toY(f)+3);
+  }
+  for(var g=0;g<=maxGens;g+=Math.floor(maxGens/5)){
+    ctx.beginPath();ctx.moveTo(toX(g),pad.t);ctx.lineTo(toX(g),pad.t+ch);ctx.stroke();
+    ctx.fillStyle="#475569";ctx.font="10px system-ui";ctx.textAlign="center";
+    ctx.fillText(g,toX(g),pad.t+ch+14);
+  }
+
+  // Axis labels
+  ctx.fillStyle="#64748b";ctx.font="10px system-ui";ctx.textAlign="center";
+  ctx.fillText("Generation",pad.l+cw/2,H-2);
+  ctx.save();ctx.translate(10,pad.t+ch/2);ctx.rotate(-Math.PI/2);
+  ctx.fillText("Fitness",0,0);ctx.restore();
+
+  // Curves
+  function drawCurve(pts,color,gens){
+    ctx.beginPath();ctx.strokeStyle=color;ctx.lineWidth=2;
+    for(var i=0;i<pts.length;i++){
+      var px=toX(pts[i].x*(maxGens/gens));
+      var py=toY(pts[i].y);
+      if(i===0)ctx.moveTo(px,py);else ctx.lineTo(px,py);
+    }
+    ctx.stroke();
+    // Final point dot
+    var last=pts[pts.length-1];
+    ctx.beginPath();ctx.arc(toX(last.x*(maxGens/gens)),toY(last.y),4,0,Math.PI*2);
+    ctx.fillStyle=color;ctx.fill();
+    // Final label
+    ctx.fillStyle=color;ctx.font="bold 11px system-ui";ctx.textAlign="left";
+    ctx.fillText(last.y.toFixed(1),toX(last.x*(maxGens/gens))+6,toY(last.y)+4);
+  }
+
+  var ptsA=curve(A.fitness,gensA,42);
+  var ptsB=curve(B.fitness,gensB,99);
+  drawCurve(ptsA,"#475569",gensA);
+  drawCurve(ptsB,"#22c55e",gensB);
+
+  // Legend
+  ctx.fillStyle="#475569";ctx.fillRect(pad.l+4,pad.t+4,12,4);
+  ctx.fillStyle="#94a3b8";ctx.font="10px system-ui";ctx.textAlign="left";
+  ctx.fillText("Scenario A",pad.l+20,pad.t+9);
+  ctx.fillStyle="#22c55e";ctx.fillRect(pad.l+90,pad.t+4,12,4);
+  ctx.fillStyle="#94a3b8";ctx.fillText("Scenario B",pad.l+106,pad.t+9);
+}
+
+function render(){
+  var keyA=document.getElementById("selA").value;
+  var keyB=document.getElementById("selB").value;
+  var A=SCENARIOS[keyA];
+  var B=SCENARIOS[keyB];
+  var nameA=A.label+" (A)";
+  var nameB=B.label+" (B)";
+
+  var html='<div class="scenario-headers">'
+    +'<div class="scenario-card baseline">'
+    +'<div class="sc-label">Scenario A</div>'
+    +'<div class="sc-name">'+A.label+'</div>'
+    +'<div class="sc-meta">'+A.meta+'</div>'
+    +'<div class="sc-fitness">'+A.fitness.toFixed(1)+'</div>'
+    +'<div class="sc-fitness-label">Fitness Score</div>'
+    +'</div>'
+    +'<div class="scenario-card optimised">'
+    +'<div class="sc-label">Scenario B</div>'
+    +'<div class="sc-name">'+B.label+'</div>'
+    +'<div class="sc-meta">'+B.meta+'</div>'
+    +'<div class="sc-fitness">'+B.fitness.toFixed(1)+'</div>'
+    +'<div class="sc-fitness-label">Fitness Score</div>'
+    +'</div>'
+    +'</div>'
+    +'<div><div class="section-title">KPI Comparison</div>'+renderKpiTable(A,B)+'</div>'
+    +'<div><div class="section-title">Fitness Convergence</div>'
+    +'<div class="chart-card"><canvas id="convChart" style="width:100%;height:180px"></canvas></div>'
+    +'</div>'
+    +'<div><div class="section-title">Coverage Breakdown</div>'+renderCoverage(A,B,nameA,nameB)+'</div>'
+    +'<div><div class="section-title">Worker Hours Comparison</div>'+renderWorkerGrid(A,B)+'</div>';
+
+  document.getElementById("content").innerHTML=html;
+
+  // Draw canvas after DOM update
+  setTimeout(function(){drawConvergence("convChart",A,B);},50);
+}
+
+function exportReport(){
+  var keyA=document.getElementById("selA").value;
+  var keyB=document.getElementById("selB").value;
+  var A=SCENARIOS[keyA];
+  var B=SCENARIOS[keyB];
+  var lines=[
+    "SunAir Coralys -- Scenario Comparison Report",
+    "Generated: "+new Date().toISOString(),
+    "",
+    "Scenario A: "+A.label+" | "+A.meta,
+    "Scenario B: "+B.label+" | "+B.meta,
+    "",
+    "--- KPI Summary ---",
+    "Fitness A: "+A.fitness.toFixed(1)+"  B: "+B.fitness.toFixed(1),
+    "Coverage A: "+A.coverage.toFixed(1)+"%  B: "+B.coverage.toFixed(1)+"%",
+    "Hard Violations A: "+A.hard_violations+"  B: "+B.hard_violations,
+    "Soft Violations A: "+A.soft_violations+"  B: "+B.soft_violations,
+    "Avg Hours A: "+A.avg_hours.toFixed(1)+"h  B: "+B.avg_hours.toFixed(1)+"h",
+    "",
+    "--- Worker Hours ---"
+  ];
+  for(var i=0;i<WORKERS.length;i++){
+    lines.push("  "+(i+1)+". "+WORKERS[i].name+" ("+WORKERS[i].skill+")  A:"+A.worker_hours[i]+"h  B:"+B.worker_hours[i]+"h  delta:"+(B.worker_hours[i]-A.worker_hours[i])+"h");
+  }
+  var blob=new Blob([lines.join("\n")],{type:"text/plain"});
+  var url=URL.createObjectURL(blob);
+  var a=document.createElement("a");
+  a.href=url;a.download="sunair_scenario_report.txt";a.click();
+  URL.revokeObjectURL(url);
+}
+
+render();
+</script>
+</body>
+</html>

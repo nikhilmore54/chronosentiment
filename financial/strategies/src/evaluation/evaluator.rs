@@ -1,7 +1,7 @@
-use chronosentiment_optimization::{FitnessEvaluator, Candidate, CandidateEvaluation};
-use chronosentiment_financial_core::runtime::tick_replay::{TickReplayEngine, ReplayConfig};
 use chronosentiment_core::NormalizedMarketEvent;
 use chronosentiment_core::Side;
+use chronosentiment_financial_core::runtime::tick_replay::{ReplayConfig, TickReplayEngine};
+use chronosentiment_optimization::{Candidate, CandidateEvaluation, FitnessEvaluator};
 
 pub struct FinancialEvaluator {
     pub asset: String,
@@ -48,7 +48,7 @@ impl FitnessEvaluator<Candidate> for FinancialEvaluator {
         let mut trades = 0;
 
         // Traverse tick replay
-        while let Some(replayed) = engine.next_event() {
+        while let Some(_replayed) = engine.next_event() {
             // A real semantic scoring would evaluate candidate logic here, e.g. evaluate_market_conviction
             // For now, we simulate taking a trade on the first tick and closing on the second
             if candidate.base_edge > 0 {
@@ -58,12 +58,12 @@ impl FitnessEvaluator<Candidate> for FinancialEvaluator {
 
         let mut eval = CandidateEvaluation::default();
         eval.candidate = candidate.clone();
-        
+
         // PnL generated from tick_replay and semantic scoring rules
-        eval.fitness = if trades > 0 { 1.5 } else { -0.1 }; 
+        eval.fitness = if trades > 0 { 1.5 } else { -0.1 };
         eval.evaluation_valid = true;
         eval.trade_count = trades;
-        
+
         eval
     }
 }

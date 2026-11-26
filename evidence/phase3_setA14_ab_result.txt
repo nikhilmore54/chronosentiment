@@ -1,0 +1,41 @@
+=== Phase 3 Rayon A/B Harness ===
+Instance   : setA-14
+Generations: 50
+Seed       : 42
+Pop size   : 50
+Gen-0 IFR  : 1.0000
+
+--- Arm A: L1 Sequential (use_rayon=false) ---
+  best_obj         : 86.1250850504
+  valid            : true
+  generations_run  : 50
+  n_actual_evals   : 2006
+  cache_hits       : 181
+  eval_time_ms     : 1059040.39
+  wall_clock_ms    : 2639602
+
+--- Arm B: Rayon Parallel (use_rayon=true) ---
+  best_obj         : 86.1250850504
+  valid            : true
+  generations_run  : 50
+  n_actual_evals   : 2006
+  cache_hits       : 181
+  eval_time_ms     : 185159.13
+  wall_clock_ms    : 1739745
+
+=== Invariant Verification ===
+  [PASS] best_obj identical: A=86.1250850504  B=86.1250850504
+  [PASS] n_actual_evals identical: A=2006  B=2006
+  [PASS] generations_run identical: A=50  B=50
+  [PASS] valid identical: A=true  B=true
+  [PASS] cache_hits identical: A=181  B=181
+
+=== Performance Summary ===
+  Wall-clock A (L1 seq) : 2639602ms
+  Wall-clock B (Rayon)  : 1739745ms
+  Wall-clock speedup    : 1.52x
+  Eval time A           : 1059040.39ms  (40.1% of wall)
+  Eval time B           : 185159.13ms  (10.6% of wall)
+  Eval speedup          : 5.72x
+
+=== Overall: ALL INVARIANTS PASS ===

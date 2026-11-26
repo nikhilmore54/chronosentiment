@@ -8,7 +8,7 @@ fn optimization_has_no_financial_dependencies() {
         .expect("Failed to execute cargo tree");
 
     let stdout = String::from_utf8_lossy(&output.stdout);
-    
+
     let forbidden_crates = [
         "chronosentiment_strategies",
         "chronosentiment_financial_core",

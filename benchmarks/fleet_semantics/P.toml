@@ -1,0 +1,50 @@
+# Fleet Semantics Registry — Augerat P-family
+# M18.2 — Fleet Semantics Registry v1.0
+# Generated: 2026-07-09
+
+[family]
+id          = "P"
+full_name   = "Augerat P-family"
+
+[constraint]
+type        = "ATMOST"
+description = "At most K vehicles may be used. The optimizer may use fewer vehicles if capacity permits."
+formal      = "routes_used ≤ K"
+
+[source]
+primary     = "CVRPLIB catalog (galgos.inf.puc-rio.br)"
+url         = "https://galgos.inf.puc-rio.br/cvrplib/index.php/en/instances/1"
+
+[publication]
+authors     = "Augerat, P., Belenguer, J.M., Benavent, E., Corbéran, A., Naddef, D., Rinaldi, G."
+title       = "Computational Results with a Branch and Cut Code for the Capacitated Vehicle Routing Problem"
+year        = 1995
+institution = "IMAG, Grenoble, France"
+report_number = "RR949-M"
+
+[notes]
+derivation  = """
+Same interpretation as A, B, and E families. Vehicle count in COMMENT field ('No of trucks: N')
+is an upper bound. Standard CVRP formulation: minimize distance subject to at most K vehicles.
+"""
+campaign_observation = """
+Campaign v1.5: P-family shows no systematic negative gaps. MedGap=0.00%, NearOpt%≈100%.
+One instance (P-n55-k8) produced a negative gap of -2.04% (best=576, BKS=588).
+This is an isolated anomaly — not a systematic pattern across the family.
+Fleet semantics hypothesis ATMOST(K) is consistent with the overall P-family results.
+The P-n55-k8 anomaly requires Stage B investigation (routes_used, capacity, customer coverage).
+"""
+
+[instance_exceptions]
+"P-n55-k8" = "Negative gap -2.04% observed. Stage B certificate required. Fleet semantics mismatch (routes_used > 8) is a working hypothesis for this instance."
+
+[verification]
+status      = "Hypothesis"
+confidence  = "High"
+method      = "Literature consensus; CVRPLIB catalog interpretation; campaign observation"
+date        = "2026-07"
+open_items  = [
+    "P5 — confirm ATMOST interpretation from Augerat et al. 1995 original paper",
+    "P-n55-k8 — Stage B certificate required (routes_used, capacity, customer coverage)"
+]
+notes       = "ATMOST is the standard CVRP interpretation for Augerat families. Same basis as A, B, E families. One suspect instance (P-n55-k8) does not change the family-level hypothesis."

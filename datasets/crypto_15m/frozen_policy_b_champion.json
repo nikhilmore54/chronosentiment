@@ -1,0 +1,117 @@
+{
+  "policy_id": "Policy_B_Champion",
+  "alphabet": "BaseOnly",
+  "seed": 66,
+  "population_size": 50,
+  "generation_limit": 30,
+  "champion_genome": {
+    "rules": [
+      {
+        "when": [
+          {
+            "concept": "Trend",
+            "present": true,
+            "direction": "Bullish"
+          },
+          {
+            "concept": "Volatility",
+            "present": true,
+            "direction": null
+          }
+        ],
+        "action": "LONG"
+      },
+      {
+        "when": [
+          {
+            "concept": "Momentum",
+            "present": true,
+            "direction": "Neutral"
+          }
+        ],
+        "action": "NO_TRADE"
+      },
+      {
+        "when": [
+          {
+            "concept": "Momentum",
+            "present": true,
+            "direction": "Positive"
+          },
+          {
+            "concept": "Trend",
+            "present": true,
+            "direction": "Bullish"
+          }
+        ],
+        "action": "LONG"
+      },
+      {
+        "when": [
+          {
+            "concept": "Trend",
+            "present": true,
+            "direction": "Neutral"
+          }
+        ],
+        "action": "NO_TRADE"
+      },
+      {
+        "when": [
+          {
+            "concept": "Momentum",
+            "present": true,
+            "direction": "Neutral"
+          }
+        ],
+        "action": "NO_TRADE"
+      },
+      {
+        "when": [
+          {
+            "concept": "Momentum",
+            "present": true,
+            "direction": "Positive"
+          }
+        ],
+        "action": "NO_TRADE"
+      },
+      {
+        "when": [
+          {
+            "concept": "Momentum",
+            "present": true,
+            "direction": "Positive"
+          },
+          {
+            "concept": "Trend",
+            "present": true,
+            "direction": "Neutral"
+          },
+          {
+            "concept": "Volatility",
+            "present": true,
+            "direction": null
+          }
+        ],
+        "action": "SHORT"
+      }
+    ],
+    "unmatched_action": "SHORT"
+  },
+  "genome_hash": "6a0e39600389ed489b95153498eaf244dbc75864b9259ee70d6e07211eb30ddf",
+  "fitness": 326.5206736569181,
+  "objectives": {
+    "net_return_usdt": 2285435.158599934,
+    "net_return_bps": 228543.51585999338,
+    "max_drawdown_pct": 0.3595624662069017,
+    "max_drawdown_usdt": 2939.284691705834,
+    "turnover_friction_usdt": 662848.9704973391,
+    "trade_count": 5509
+  },
+  "calmar_ratio": 777.5480765946378,
+  "win_rate": 0.9181339626066437,
+  "rejected_entries": 5128,
+  "dataset_sha256": "0fcc08c45f5871c77b6ee83227823224670f7f945e650fe2175cd3c8fb86be7d",
+  "frozen_timestamp_utc": "2026-10-24T10:02:00.324395+00:00"
+}

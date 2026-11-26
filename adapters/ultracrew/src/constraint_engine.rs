@@ -1,0 +1,374 @@
+// Constraint engine for UltraCrew scheduling
+// Provides validation of input data and constraints checking.
+
+use crate::models::Shift;
+use crate::optimization::{ScheduleContext, ScheduleGenome};
+use std::collections::{HashMap, HashSet};
+use std::error::Error;
+use std::sync::Arc;
+
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+pub struct ConstraintReport {
+    pub fitness: f64,
+    pub is_valid: bool,
+    pub hard_violations: usize,
+    pub soft_violations: usize,
+    pub warnings: Vec<String>,
+    pub constraint_scores: HashMap<String, f64>,
+    pub violated_constraints: Vec<String>,
+    pub satisfied_constraints: Vec<String>,
+
+    // Backward compatibility for existing public APIs
+    pub hc1_violations: usize,
+    pub hc2_violations: usize,
+    pub hc3_violations: usize,
+    pub hc4_violations: usize,
+    pub rest_violations: usize,
+    pub fairness_penalty: f64,
+    pub fatigue_penalty: f64,
+}
+
+pub trait DomainConstraintEvaluator: Send + Sync {
+    fn evaluate(&self, genome: &ScheduleGenome) -> ConstraintReport;
+}
+
+pub struct InrcConstraintEvaluator {
+    pub context: Arc<ScheduleContext>,
+}
+
+impl InrcConstraintEvaluator {
+    pub fn new(context: Arc<ScheduleContext>) -> Self {
+        Self { context }
+    }
+}
+
+impl DomainConstraintEvaluator for InrcConstraintEvaluator {
+    fn evaluate(&self, genome: &ScheduleGenome) -> ConstraintReport {
+        let mut fitness = 0.0;
+        let mut hc1_violations = 0;
+        let mut hc2_violations = 0;
+        let mut hc3_violations = 0;
+        let mut hc4_violations = 0;
+        let mut rest_violations = 0;
+        let mut fairness_penalty = 0.0;
+        let mut fatigue_penalty = 0.0;
+
+        let mut worker_hours: HashMap<u64, u64> = HashMap::new();
+        let mut worker_weekly_hours: HashMap<(u64, usize), u64> = HashMap::new();
+        let mut worker_shifts: HashMap<u64, Vec<&Shift>> = HashMap::new();
+        let mut unassigned_shifts = 0;
+        let mut invalid_worker_assignments = 0;
+
+        // Pass 1: Aggregate data and evaluate HC1 (Skills)
+        for shift in self.context.shifts.iter() {
+            let worker_id = match genome.assignments.get(&shift.id) {
+                Some(id) => id,
+                None => {
+                    fitness -= 100_000.0;
+                    unassigned_shifts += 1;
+                    continue;
+                }
+            };
+            let worker = match self.context.workers.iter().find(|w| w.id == *worker_id) {
+                Some(w) => w,
+                None => {
+                    fitness -= 100_000.0;
+                    invalid_worker_assignments += 1;
+                    continue;
+                }
+            };
+
+            // HC1: Skill match
+            if !worker.skills.contains(&shift.required_skill) {
+                fitness -= 100_000.0;
+                hc1_violations += 1;
+            }
+
+            // HC4: Leave Requests
+            if let Some(ref scenario) = self.context.scenario {
+                if let Some(ref leave_requests) = scenario.leave_requests {
+                    for leave in leave_requests {
+                        if leave.crew_id == *worker_id {
+                            // Check overlap
+                            if shift.start_hour < leave.end_hour
+                                && shift.end_hour() > leave.start_hour
+                            {
+                                fitness -= 100_000.0; // Severe penalty for working during leave
+                                hc4_violations += 1;
+                            }
+                        }
+                    }
+                }
+            }
+
+            let anchor_offset = self.context.scenario.as_ref()
+                .and_then(|s| s.weekly_anchor_offset_hours)
+                .unwrap_or(0.0);
+            let week_idx = (((shift.start_hour as f64 + anchor_offset) / 168.0).floor() as i64).max(0) as usize;
+            *worker_hours.entry(*worker_id).or_insert(0) += shift.duration_hours;
+            *worker_weekly_hours.entry((*worker_id, week_idx)).or_insert(0) += shift.duration_hours;
+            worker_shifts.entry(*worker_id).or_default().push(shift);
+        }
+
+        // Pass 2: Evaluate HC2 (double booking), HC3 (max hours), Rest periods, SC1 (fairness), SC2 (fatigue)
+        let mut hours_list = Vec::new();
+        const DEFAULT_WEEKLY_MAX_HOURS: u64 = 40;
+        let hc3_limit = self
+            .context
+            .scenario
+            .as_ref()
+            .and_then(|s| s.max_hours_per_worker)
+            .map(|h| h as u64)
+            .unwrap_or(DEFAULT_WEEKLY_MAX_HOURS);
+
+        let anchor_offset = self.context.scenario.as_ref()
+            .and_then(|s| s.weekly_anchor_offset_hours)
+            .unwrap_or(0.0);
+        let max_week = self
+            .context
+            .shifts
+            .iter()
+            .map(|s| (((s.start_hour as f64 + anchor_offset) / 168.0).floor() as i64).max(0) as usize)
+            .max()
+            .unwrap_or(0);
+
+        for worker in self.context.workers.iter() {
+            let hours = *worker_hours.get(&worker.id).unwrap_or(&0);
+            hours_list.push(hours as f64);
+
+            // HC3: Max Hours per 168-hour week
+            for w in 0..=max_week {
+                let week_hours = *worker_weekly_hours.get(&(worker.id, w)).unwrap_or(&0);
+                if week_hours > hc3_limit {
+                    fitness -= 100_000.0;
+                    hc3_violations += 1;
+                }
+            }
+
+            if let Some(shifts) = worker_shifts.get(&worker.id) {
+                let mut sorted_shifts = shifts.clone();
+                sorted_shifts.sort_by_key(|s| s.start_hour);
+
+                // HC2: Double Booking / Overlap
+                for i in 0..sorted_shifts.len().saturating_sub(1) {
+                    if sorted_shifts[i].end_hour() > sorted_shifts[i + 1].start_hour {
+                        fitness -= 100_000.0;
+                        hc2_violations += 1;
+                    }
+                }
+                let min_rest = self
+                    .context
+                    .scenario
+                    .as_ref()
+                    .and_then(|s| s.minimum_rest_hours)
+                    .unwrap_or(10);
+
+                // Rest
+                for i in 0..sorted_shifts.len().saturating_sub(1) {
+                    let s_i = sorted_shifts[i];
+                    let s_next = sorted_shifts[i + 1];
+                    let gap = if s_next.start_hour >= s_i.end_hour() {
+                        s_next.start_hour - s_i.end_hour()
+                    } else {
+                        0
+                    };
+                    if gap < min_rest {
+                        fitness -= 100_000.0;
+                        rest_violations += 1;
+                    }
+                }
+
+                // Resilience Objective
+                let mut base_reserve_blocks = 0;
+                for i in 0..sorted_shifts.len().saturating_sub(1) {
+                    let s_i = sorted_shifts[i];
+                    let s_next = sorted_shifts[i + 1];
+                    let gap = if s_next.start_hour >= s_i.end_hour() {
+                        s_next.start_hour - s_i.end_hour()
+                    } else {
+                        0
+                    };
+                    if gap >= 24 {
+                        base_reserve_blocks += 1;
+                    }
+                }
+                fitness += (base_reserve_blocks as f64) * 100.0;
+            }
+        }
+
+        // SC1: Fairness
+        if !hours_list.is_empty() {
+            let mean = hours_list.iter().sum::<f64>() / hours_list.len() as f64;
+            let variance = hours_list.iter().map(|h| (h - mean).powi(2)).sum::<f64>()
+                / hours_list.len() as f64;
+            let fairness_cost = variance * 10.0;
+            fitness -= fairness_cost;
+            fairness_penalty += fairness_cost;
+        }
+
+        // SC2: Fatigue
+        if self.context.enable_fatigue {
+            for (&w_id, &hours) in &worker_hours {
+                let hist_fatigue = self.context.ecology.get_historical_fatigue(w_id);
+                let w_penalty = hist_fatigue * (hours as f64) * self.context.fatigue_weight;
+                fatigue_penalty += w_penalty;
+            }
+            fitness -= fatigue_penalty;
+        }
+
+        // NO PASS 3 (INRC ADVANCED CHECKS)
+
+        // Base reward for completing the schedule
+        fitness += 10000.0;
+
+        let mut violated_constraints = Vec::new();
+        let mut satisfied_constraints = Vec::new();
+        let mut warnings = Vec::new();
+        let mut constraint_scores = HashMap::new();
+
+        constraint_scores.insert("HC1".to_string(), (hc1_violations as f64) * 1000.0);
+        if hc1_violations > 0 {
+            violated_constraints.push("HC1".to_string());
+        } else {
+            satisfied_constraints.push("HC1".to_string());
+        }
+        constraint_scores.insert("HC2".to_string(), (hc2_violations as f64) * 1000.0);
+        if hc2_violations > 0 {
+            violated_constraints.push("HC2".to_string());
+        } else {
+            satisfied_constraints.push("HC2".to_string());
+        }
+        constraint_scores.insert("HC3".to_string(), (hc3_violations as f64) * 500.0);
+        if hc3_violations > 0 {
+            violated_constraints.push("HC3".to_string());
+        } else {
+            satisfied_constraints.push("HC3".to_string());
+        }
+        constraint_scores.insert("HC4".to_string(), (hc4_violations as f64) * 5000.0);
+        if hc4_violations > 0 {
+            violated_constraints.push("HC4".to_string());
+        } else {
+            satisfied_constraints.push("HC4".to_string());
+        }
+        constraint_scores.insert("Rest".to_string(), (rest_violations as f64) * 200.0);
+        if rest_violations > 0 {
+            violated_constraints.push("Rest".to_string());
+        } else {
+            satisfied_constraints.push("Rest".to_string());
+        }
+        constraint_scores.insert("SC1".to_string(), fairness_penalty);
+        if fairness_penalty > 0.0 {
+            violated_constraints.push("SC1".to_string());
+        } else {
+            satisfied_constraints.push("SC1".to_string());
+        }
+        constraint_scores.insert("SC2".to_string(), fatigue_penalty);
+        if fatigue_penalty > 0.0 {
+            violated_constraints.push("SC2".to_string());
+        } else {
+            satisfied_constraints.push("SC2".to_string());
+        }
+
+        for ((w_id, week), &w_hours) in &worker_weekly_hours {
+            if w_hours > 35 && w_hours <= hc3_limit {
+                warnings.push(format!(
+                    "Worker {} is near weekly hours limit in week {}: {} hours",
+                    w_id,
+                    week + 1,
+                    w_hours
+                ));
+            }
+        }
+        if unassigned_shifts > 0 {
+            warnings.push(format!("Schedule has {} unassigned shifts", unassigned_shifts));
+            violated_constraints.push("UnassignedShifts".to_string());
+        }
+        if invalid_worker_assignments > 0 {
+            warnings.push(format!(
+                "Schedule has {} assignments to non-existent workers",
+                invalid_worker_assignments
+            ));
+            violated_constraints.push("InvalidWorkerAssignments".to_string());
+        }
+        if fatigue_penalty > 100.0 {
+            warnings.push(format!(
+                "High cumulative fatigue penalty: {:.2}",
+                fatigue_penalty
+            ));
+        }
+
+        let hard_violations =
+            hc1_violations + hc2_violations + hc3_violations + hc4_violations + rest_violations + unassigned_shifts + invalid_worker_assignments;
+        let soft_violations =
+            if fairness_penalty > 0.0 { 1 } else { 0 } + if fatigue_penalty > 0.0 { 1 } else { 0 };
+
+        ConstraintReport {
+            fitness,
+            is_valid: hard_violations == 0,
+            hard_violations,
+            soft_violations,
+            warnings,
+            constraint_scores,
+            violated_constraints,
+            satisfied_constraints,
+            hc1_violations,
+            hc2_violations,
+            hc3_violations,
+            hc4_violations,
+            rest_violations,
+            fairness_penalty,
+            fatigue_penalty,
+        }
+    }
+}
+
+pub fn validate_context(context: &ScheduleContext) -> Result<(), Box<dyn Error>> {
+    if context.workers.is_empty() {
+        return Err("No workers provided".into());
+    }
+    if context.shifts.is_empty() {
+        return Err("No shifts provided".into());
+    }
+
+    for shift in context.shifts.iter() {
+        let mut has_worker = false;
+        for worker in context.workers.iter() {
+            if worker.skills.contains(&shift.required_skill) {
+                has_worker = true;
+                break;
+            }
+        }
+        if !has_worker {
+            return Err(
+                format!("No worker possesses required skill for shift {}", shift.id).into(),
+            );
+        }
+    }
+    let mut ids = HashSet::new();
+    for w in context.workers.iter() {
+        if !ids.insert(w.id) {
+            return Err(format!("Duplicate worker id {}", w.id).into());
+        }
+    }
+    let horizon: u64 = context
+        .shifts
+        .iter()
+        .map(|s| s.start_hour)
+        .max()
+        .unwrap_or(0)
+        + 1;
+    let mut shift_ids = HashSet::new();
+    for s in context.shifts.iter() {
+        if !shift_ids.insert(s.id) {
+            return Err(format!("Duplicate shift id {}", s.id).into());
+        }
+        if s.start_hour >= horizon {
+            return Err(format!("Shift {} start hour out of range", s.id).into());
+        }
+    }
+    Ok(())
+}
+
+pub fn validate_schedule(solution: &crate::schedule_solution::ScheduleSolution) -> bool {
+    solution.hard_violations == 0
+}

@@ -1,0 +1,108 @@
+=== P10-C1 C1-A: Bottleneck Census ===
+Source: evidence/phase10_p10c0_repair_effectiveness.txt ([diag] lines)
+Method: Python re/collections extraction — no new instrumentation
+Date: 2026-08-26
+Governance: OBSERVATIONAL — no behavioral changes. P10-C1 strictly forensic.
+
+Note on diag coverage:
+  [diag] lines are emitted only for repair events that produce arc_overloaded output.
+  Not all failure events produce a [diag] line (see coverage table below).
+  The census is authoritative for instances with full or near-full coverage.
+  setA-04 and setA-14 have zero diag lines — their bottleneck structure is uncharacterized.
+
+=== Coverage Table ===
+
+  Instance  | failures | diag_lines | coverage
+  ----------|----------|------------|----------
+  setA-04   |        2 |          0 |    0/2  (0.0%)
+  setA-06   |       24 |          1 |    1/24 (4.2%)
+  setA-10   |       33 |          4 |    4/33 (12.1%)
+  setA-13   |      131 |         92 |   92/131 (70.2%)
+  setA-14   |        9 |          0 |    0/9  (0.0%)
+  setA-16   |      250 |        250 |  250/250 (100.0%)
+  setA-19   |      110 |         90 |   90/110 (81.8%)
+
+=== Per-Instance Arc Census ===
+
+setA-04:  no diag lines — bottleneck arc uncharacterized
+setA-14:  no diag lines — bottleneck arc uncharacterized
+
+setA-06:  total_diag_lines=1
+  arc= 353  count=   1 (100.0%)  mean_sat=1.0141  max_sat=1.0141
+  → Dominant arc: 353 (single observation, low confidence)
+
+setA-10:  total_diag_lines=4
+  arc= 963  count=   2 ( 50.0%)  mean_sat=1.0543  max_sat=1.1087
+  arc= 599  count=   1 ( 25.0%)  mean_sat=1.1522  max_sat=1.1522
+  arc= 962  count=   1 ( 25.0%)  mean_sat=1.1957  max_sat=1.1957
+  → No single dominant arc (4 observations, low confidence)
+
+setA-13:  total_diag_lines=92
+  arc= 658  count=  89 ( 96.7%)  mean_sat=1.1420  max_sat=1.2607
+  arc= 659  count=   3 (  3.3%)  mean_sat=1.0712  max_sat=1.1111
+  → DOMINANT ARC: 658 (96.7% of diag events, high confidence)
+  → arc 659 is a minor secondary (3.3%)
+
+setA-16:  total_diag_lines=250
+  arc= 606  count= 185 ( 74.0%)  mean_sat=1.2279  max_sat=1.3893
+  arc= 303  count=  46 ( 18.4%)  mean_sat=1.2243  max_sat=1.3074
+  arc= 302  count=  11 (  4.4%)  mean_sat=1.1990  max_sat=1.2213
+  arc= 414  count=   8 (  3.2%)  mean_sat=1.2418  max_sat=1.2418
+  → DOMINANT ARC: 606 (74.0% of diag events, high confidence)
+  → SECONDARY ARC: 303 (18.4%) — significant, may be structurally related to 606
+  → arc 302 and 414 are minor (4.4%, 3.2%)
+
+setA-19:  total_diag_lines=90
+  arc= 968  count=  82 ( 91.1%)  mean_sat=1.0958  max_sat=1.1733
+  arc= 969  count=   7 (  7.8%)  mean_sat=1.0833  max_sat=1.0843
+  arc=1374  count=   1 (  1.1%)  mean_sat=1.0539  max_sat=1.0539
+  → DOMINANT ARC: 968 (91.1% of diag events, high confidence)
+  → arc 969 is a minor secondary (7.8%) — may be structurally adjacent to 968
+  → arc 1374 is a single observation (1.1%)
+
+=== C1-A Summary: Confirmed Dominant Bottleneck Arcs ===
+
+  Instance | Dominant Arc | Dominance | mean_sat | max_sat | Confidence
+  ---------|-------------|-----------|----------|---------|----------
+  setA-13  | 658         | 96.7%     | 1.1420   | 1.2607  | HIGH (92 diag events)
+  setA-16  | 606         | 74.0%     | 1.2279   | 1.3893  | HIGH (250 diag events, full coverage)
+  setA-16  | 303         | 18.4%     | 1.2243   | 1.3074  | MEDIUM (secondary, may be related to 606)
+  setA-19  | 968         | 91.1%     | 1.0958   | 1.1733  | HIGH (90 diag events)
+
+  setA-04, setA-14: uncharacterized (0 diag lines)
+  setA-06, setA-10: low-confidence (1 and 4 diag lines respectively)
+
+=== C1-A Observations ===
+
+1. The bottleneck structure is highly concentrated. In each large instance, one arc
+   accounts for >74% of all capacity violation events. This is not diffuse overload.
+
+2. The secondary arcs (659, 303, 969) are structurally adjacent to the dominant arcs
+   in their respective instances. This suggests the dominant arc and its secondary may
+   share a common network segment or demand set.
+
+3. Saturation levels are moderate (mean 1.09–1.23, max 1.26–1.39). These are not
+   extreme overloads — they are in the range where rerouting might plausibly help,
+   if alternative paths exist.
+
+4. setA-16 has the highest saturation (max_sat=1.3893 on arc 606) and the most
+   complex secondary structure (606/303/302/414). This instance may have a more
+   constrained topology than setA-13 or setA-19.
+
+5. The [diag] coverage gap (setA-04/14 = 0, setA-06/10 = low) means C1-A cannot
+   characterize bottleneck arcs for those instances. This is a data limitation of
+   the existing P10-C0 instrumentation, not a new finding.
+
+=== C1-A → C1-B Handoff ===
+
+Target arcs for C1-B (first-appearance lineage):
+  - arc 968 (setA-19): first genome/generation in which arc 968 becomes overloaded
+  - arc 658 (setA-13): first genome/generation in which arc 658 becomes overloaded
+  - arc 606 (setA-16): first genome/generation in which arc 606 becomes overloaded
+  - arc 303 (setA-16): first genome/generation in which arc 303 becomes overloaded
+
+C1-B requires new instrumentation to capture generation number and genome state
+at the moment of first bottleneck appearance. This is not available in the existing
+P10-C0 evidence — the [diag] lines do not record generation number.
+
+Governance: C1-B instrumentation must be observational only. No behavioral changes.

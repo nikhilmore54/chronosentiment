@@ -4,11 +4,15 @@ use chronosentiment_core::ExecutionMode;
 
 fn main() {
     println!("=== ChronoSentiment MVP One-Command Certification ===\n");
-    
+
     // 1. Run the primary simulation
     let sim = run_simulation(ExecutionMode::Real);
-    println!("Primary Simulation: PnL={}, Events={}", sim.pnl, sim.events.len());
-    
+    println!(
+        "Primary Simulation: PnL={}, Events={}",
+        sim.pnl,
+        sim.events.len()
+    );
+
     // 2. Call the Certify API
     match handle_certify(&sim) {
         Ok(res) => {
@@ -23,7 +27,7 @@ fn main() {
                 println!("  Final Hash: {}", f.final_hash);
                 println!("  Config Hash: {}", f.config_hash);
             }
-            
+
             if res.status == "PASS" {
                 println!("\nSUCCESS: The system is 100% deterministic and certified.");
                 std::process::exit(0);
@@ -34,7 +38,7 @@ fn main() {
                 }
                 std::process::exit(1);
             }
-        },
+        }
         Err(e) => {
             println!("Certification Error: {:?}", e);
             std::process::exit(1);

@@ -35,3 +35,19 @@ ChronoSentiment is **not** a generalized debugging intelligence, nor is it a mas
 It is a specialized tool for **reproducible execution divergence isolation**.
 
 Any pull request or architectural proposal that violates this identity will be rejected.
+
+## Authority Surface Consistency
+
+- **Rule 1:** No script may define an authority surface that differs from `AUTHORITY_MAP.md`.
+- **Rule 2:** Authority paths must be sourced from a single canonical registry.
+- **Rule 3:** In any authority conflict, `AUTHORITY_MAP.md` is the final arbiter.
+## Authority Violations vs Historical References
+
+- **Authority Violations** – Active operational artifacts (code, parser registries, verification tools, generated reports) that diverge from the authority surfaces declared in `AUTHORITY_MAP.md`. These must be corrected to maintain constitutional compliance.
+
+- **Historical References** – Archived lineage artifacts (old audit reports, research notes, migration documents, legacy certification outputs) may contain superseded paths or outdated authority declarations. They are preserved unchanged to retain provenance and must not be rewritten for cosmetic conformity.
+
+## Evidence Governance
+
+- **Rule 4:** Governance claims may only reference **Class A Evidence** artifacts. Implementation plans, analysis artifacts, and exploratory outputs must not be cited as evidence for claim promotion.
+- **Rule 5:** Any artifact cited by `CLAIMS_REGISTRY.md` must reside in a Class A Evidence location and must not be modified after the freeze step.

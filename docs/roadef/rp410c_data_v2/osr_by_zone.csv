@@ -1,0 +1,5 @@
+zone,generated,tournament_winners,entered_population,entered_elite,became_global_best,pe_tournament_pct,pe_promotion_pct,pe_elite_pct,pe_globalbest_pct,osr_pct
+Peak,6811,2288,2288,103,44,33.5927,100.0,4.5017,42.7184,0.646
+Shoulder,14804,4972,4972,266,134,33.5855,100.0,5.35,50.3759,0.9052
+Transition,4785,1856,1856,168,94,38.7879,100.0,9.0517,55.9524,1.9645
+Tail,19795,7534,3949,963,147,38.0601,52.4157,24.3859,15.2648,0.7426

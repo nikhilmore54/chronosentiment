@@ -1,0 +1,6 @@
+decision_stage,reason,count
+Tournament,LostTournament,29545
+Population,EnteredPopulation,11565
+Evaluation,CapacityViolation,3585
+Elite,EnteredElite,1081
+GlobalBest,None,419

@@ -1,0 +1,112 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "coralys/roadef/baseline/v1.0",
+  "title": "ROADEF 2026 Coralys Baseline v1.0",
+  "description": "Machine-readable benchmark contract for M19.5. Frozen after campaign_engine_v1.0_verify run. All future ROADEF optimizer comparisons must reference this baseline.",
+  "type": "object",
+  "required": ["baseline_id", "frozen_at", "configuration", "invariants", "instances"],
+  "properties": {
+    "baseline_id": {
+      "type": "string",
+      "description": "Unique identifier for this baseline freeze",
+      "const": "ROADEF-BASELINE-v1.0"
+    },
+    "frozen_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO-8601 timestamp when this baseline was frozen"
+    },
+    "source_campaign": {
+      "type": "string",
+      "description": "campaign_id of the run that produced this baseline",
+      "const": "campaign_engine_v1.0_verify"
+    },
+    "configuration": {
+      "type": "object",
+      "description": "Frozen optimizer configuration. Any future comparison must use identical settings or document deviations.",
+      "required": ["population_size", "elite_count", "generation_limit", "mutation_rate", "crossover_rate", "no_improvement_limit", "tournament_size", "budget_policy"],
+      "properties": {
+        "population_size":       { "type": "integer", "const": 50 },
+        "elite_count":           { "type": "integer", "const": 5 },
+        "generation_limit":      { "type": "integer", "const": 500 },
+        "mutation_rate":         { "type": "number",  "const": 0.3 },
+        "crossover_rate":        { "type": "number",  "const": 0.7 },
+        "no_improvement_limit":  { "type": "integer", "const": 20 },
+        "tournament_size":       { "type": "integer", "const": 3 },
+        "seed_policy":           { "type": "string",  "const": "random (no fixed seed)" },
+        "budget_policy": {
+          "type": "object",
+          "description": "Adaptive wall-clock budget per instance. Campaign-layer policy, not an EA parameter.",
+          "properties": {
+            "formula":   { "type": "string", "const": "clamp(0.5ms * demands * links, min_secs, max_secs)" },
+            "min_secs":  { "type": "integer", "const": 30 },
+            "max_secs":  { "type": "integer", "const": 300 }
+          }
+        }
+      }
+    },
+    "invariants": {
+      "type": "object",
+      "description": "Architectural invariants that must hold in all future runs.",
+      "properties": {
+        "A-001": {
+          "type": "object",
+          "description": "valid == true implies obj.is_finite(). One-way implication enforced in RoadefFitnessEvaluator.",
+          "properties": {
+            "statement":  { "type": "string", "const": "valid == true => obj.is_finite()" },
+            "violations": { "type": "integer", "const": 0 }
+          }
+        }
+      }
+    },
+    "summary": {
+      "type": "object",
+      "properties": {
+        "total_instances":  { "type": "integer" },
+        "valid_count":      { "type": "integer" },
+        "invalid_count":    { "type": "integer" },
+        "parser_failures":  { "type": "integer" },
+        "engine_crashes":   { "type": "integer" },
+        "total_runtime_s":  { "type": "number" }
+      }
+    },
+    "observations": {
+      "type": "array",
+      "description": "Research observations recorded during the baseline campaign.",
+      "items": {
+        "type": "object",
+        "required": ["id", "title", "description"],
+        "properties": {
+          "id":          { "type": "string" },
+          "title":       { "type": "string" },
+          "description": { "type": "string" }
+        }
+      }
+    },
+    "instances": {
+      "type": "array",
+      "description": "Per-instance baseline results. One entry per setA instance.",
+      "items": {
+        "type": "object",
+        "required": ["instance_id", "name", "num_demands", "num_nodes", "num_links", "num_time_slots", "budget_secs", "runtime_ms", "generations", "best_obj", "avg_mlu", "valid", "quality_class", "termination_reason"],
+        "properties": {
+          "instance_id":        { "type": "integer" },
+          "name":               { "type": "string" },
+          "num_demands":        { "type": "integer" },
+          "num_nodes":          { "type": "integer" },
+          "num_links":          { "type": "integer" },
+          "num_time_slots":     { "type": "integer" },
+          "budget_secs":        { "type": "integer", "description": "Wall-clock budget allocated to this instance (seconds)" },
+          "runtime_ms":         { "type": "integer", "description": "Actual wall-clock runtime (milliseconds)" },
+          "generations":        { "type": "integer", "description": "Number of evolutionary generations completed" },
+          "best_obj":           { "type": ["number", "string"], "description": "Best objective value found; 'inf' if no feasible solution" },
+          "avg_mlu":            { "type": ["number", "string"], "description": "Average maximum link utilization of best solution" },
+          "valid":              { "type": "boolean", "description": "Whether the best solution satisfies all hard constraints" },
+          "quality_class":      { "type": "string", "enum": ["Excellent", "Good", "Competitive", "Weak", "Poor", "Invalid", "LoadError", "EvolutionError"] },
+          "ms_per_generation": { "type": "integer", "description": "Milliseconds per generation (runtime_ms / generations). 0 for feasibility-limited instances (generations == 0). Distinguishes evaluation-limited runs (high) from search-limited runs (low). Primary metric for RP-310 (incremental evaluation) comparisons." },
+          "termination_reason": { "type": "string", "enum": ["TimeBudget", "GenerationLimit", "NoImprovement", "LoadError", "EvolutionError"], "description": "Campaign-layer inference of why the run terminated" }
+        }
+      }
+    }
+  }
+}

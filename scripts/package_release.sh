@@ -110,7 +110,16 @@ cp "${REPO_ROOT}/OPERATIONAL_POSTURE.md" "${RELEASE_DIR}/docs/" 2>/dev/null || t
 cp "${REPO_ROOT}/README.md" "${RELEASE_DIR}/docs/" 2>/dev/null || true
 cp "${REPO_ROOT}/GETTING_STARTED.md" "${RELEASE_DIR}/docs/" 2>/dev/null || true
 cp "${REPO_ROOT}/QUICKSTART.md" "${RELEASE_DIR}/" 2>/dev/null || true
-cp "${REPO_ROOT}/chrono" "${RELEASE_DIR}/" 2>/dev/null || true
+# Operator facade required by validate_external_deployment.sh (./chrono …).
+if [ -f "${REPO_ROOT}/chrono" ]; then
+    cp "${REPO_ROOT}/chrono" "${RELEASE_DIR}/chrono"
+elif [ -f "${SCRIPT_DIR}/chrono.sh" ]; then
+    cp "${SCRIPT_DIR}/chrono.sh" "${RELEASE_DIR}/chrono"
+else
+    echo "[FAIL] chrono operator facade missing (repo root or scripts/chrono.sh)" >&2
+    exit 1
+fi
+chmod +x "${RELEASE_DIR}/chrono"
 
 # 5. Copy certified replay corpus subset
 echo "Copying replay corpus..."

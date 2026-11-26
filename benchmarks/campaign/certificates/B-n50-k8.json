@@ -1,0 +1,75 @@
+{
+  "identity": {
+    "certificate_id": "cert-B-n50-k8-748d5c08",
+    "certificate_version": "1.0.0",
+    "generated_at": "2026-08-05T12:09:56.832514+00:00",
+    "campaign_id": "campaign_v1.6",
+    "solver_version": "0.1.0"
+  },
+  "instance": {
+    "name": "B-n50-k8",
+    "family": "B",
+    "customers": 49,
+    "capacity": 100,
+    "benchmark_vehicles": 8,
+    "vehicle_source": "COMMENT",
+    "distance_metric": "TspLibEuc2D"
+  },
+  "objective": {
+    "best_distance": 1324.0,
+    "best_distance_float": 1330.7333410527633,
+    "bks": 1312.0,
+    "gap_pct": 0.9146341463414633,
+    "gap_fp_pct": null,
+    "quality_class": "🟢 Near-optimal",
+    "routes_used": 8,
+    "runtime_ms": 2250,
+    "generations": 46,
+    "termination_reason": "NoImprovement(30) at gen 15"
+  },
+  "fcf": {
+    "status": "FEASIBILITY_UNDETERMINED",
+    "confidence_level": 3,
+    "fc1_passed": true,
+    "fc1_reason": "n=49 customers, depot_id=1, capacity=100, metric=TspLibEuc2D",
+    "fc2_5_passed": true,
+    "fc2_5_reason": "No registry entry — BKS and vehicle count from file only",
+    "fc2_passed": true,
+    "fc2_reason": "FC2: D=735 KQ=800 K_min=8 K=8 NC1:PASS NC2:PASS NC5:PASS",
+    "fc3_passed": true,
+    "fc3_reason": "FC3-FFD PASS: packed 735 demand into 8/8 bins of Q=100"
+  },
+  "fcs": {
+    "constraint_type": "ATMOST",
+    "declared_k": 8,
+    "routes_used": 8,
+    "outcome": "Valid",
+    "comparison_valid": true
+  },
+  "fuc": {
+    "avg_utilization": 0.91875,
+    "median_utilization": 0.955,
+    "cv": 0.10114802173494618,
+    "rcr": 0.46153846153846156,
+    "packing_classification": "BALANCED",
+    "capacity_violations": 0,
+    "total_demand": 735,
+    "total_fleet_capacity": 800,
+    "fleet_capacity_used": 0.91875
+  },
+  "benchmark_context": {
+    "provenance_registry_version": "1.0",
+    "fleet_semantics_registry_version": "1.0",
+    "qualification_version": "1.0",
+    "bks_source": "FileComment",
+    "fleet_semantics_evidence": "Minimum"
+  },
+  "governance": {
+    "fcf_version": "1.0",
+    "fcs_version": "1.0",
+    "fuc_version": "1.0",
+    "status": "ProvisionallyQualified",
+    "status_reason": "FCF PASS, FCS VALID, gap computed — Stage B route-count certificate pending",
+    "content_hash": "fc8759087ec3c663"
+  }
+}

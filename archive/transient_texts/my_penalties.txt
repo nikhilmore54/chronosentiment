@@ -1,0 +1,311 @@
+
+running 1 test
+Nurse HN_0 Day 0: off
+Nurse HN_0 Day 1: off
+Nurse HN_0 Day 2: works Early
+Nurse HN_0 Day 3: works Day
+Nurse HN_0, S3 Min Early Ended Day 3: +15
+Nurse HN_0 Day 4: works Late
+Nurse HN_0, S3 Min Day Ended Day 4: +15
+Nurse HN_0 Day 5: works Late
+Nurse HN_0 Day 6: works Early
+Nurse HN_1 Day 0: works Late
+Nurse HN_1 Day 1: off
+Nurse HN_1, S3 Min Late Ended Day 1 (Off): +15
+Nurse HN_1, S2 Min Work Ended Day 1: +30
+Nurse HN_1 Day 2: off
+Nurse HN_1 Day 3: works Late
+Nurse HN_1 Day 4: off
+Nurse HN_1, S3 Min Late Ended Day 4 (Off): +15
+Nurse HN_1, S2 Min Work Ended Day 4: +30
+Nurse HN_1 Day 5: works Night
+Nurse HN_1 Day 6: works Night
+Nurse HN_2 Day 0: works Early
+Nurse HN_2 Day 1: off
+Nurse HN_2, S3 Min Early Ended Day 1 (Off): +15
+Nurse HN_2, S2 Min Work Ended Day 1: +30
+Nurse HN_2 Day 2: off
+Nurse HN_2 Day 3: works Early
+Nurse HN_2 Day 4: works Early
+Nurse HN_2 Day 5: works Early
+Nurse HN_2 Day 6: works Day
+Nurse HN_3 Day 0: works Night
+Nurse HN_3 Day 1: off
+Nurse HN_3, S3 Min Night Ended Day 1 (Off): +30
+Nurse HN_3 Day 2: off
+Nurse HN_3 Day 3: off
+Nurse HN_3 Day 4: off
+Nurse HN_3 Day 5: off
+Nurse HN_3 Day 6: works Day
+Nurse NU_4 Day 0: works Early
+Nurse NU_4 Day 1: works Early
+Nurse NU_4 Day 2: off
+Nurse NU_4 Day 3: off
+Nurse NU_4 Day 4: works Day
+Nurse NU_4 Day 5: off
+Nurse NU_4, S3 Min Day Ended Day 5 (Off): +15
+Nurse NU_4, S2 Min Work Ended Day 5: +30
+Nurse NU_4 Day 6: works Day
+Nurse NU_5 Day 0: off
+Nurse NU_5 Day 1: off
+Nurse NU_5 Day 2: works Early
+Nurse NU_5 Day 3: works Day
+Nurse NU_5, S3 Min Early Ended Day 3: +15
+Nurse NU_5 Day 4: works Day
+Nurse NU_5 Day 5: off
+Nurse NU_5 Day 6: off
+Nurse NU_6 Day 0: off
+Nurse NU_6 Day 1: works Early
+Nurse NU_6 Day 2: off
+Nurse NU_6, S3 Min Early Ended Day 2 (Off): +15
+Nurse NU_6, S2 Min Work Ended Day 2: +60
+Nurse NU_6 Day 3: works Night
+Nurse NU_6 Day 4: off
+Nurse NU_6, S3 Min Night Ended Day 4 (Off): +30
+Nurse NU_6, S2 Min Work Ended Day 4: +60
+Nurse NU_6 Day 5: off
+Nurse NU_6 Day 6: works Night
+Nurse NU_7 Day 0: works Day
+Nurse NU_7 Day 1: off
+Nurse NU_7, S3 Min Day Ended Day 1 (Off): +15
+Nurse NU_7 Day 2: works Day
+Nurse NU_7 Day 3: works Day
+Nurse NU_7 Day 4: works Late
+Nurse NU_7 Day 5: works Day
+Nurse NU_7, S3 Min Late Ended Day 5: +15
+Nurse NU_7 Day 6: works Late
+Nurse NU_7, S3 Min Day Ended Day 6: +15
+Nurse NU_8 Day 0: off
+Nurse NU_8, S3 Min Night Ended Day 0 (Off): +15
+Nurse NU_8 Day 1: works Night
+Nurse NU_8 Day 2: works Night
+Nurse NU_8 Day 3: works Early
+Nurse NU_8, S3 Min Night Ended Day 3: +15
+Nurse NU_8 Day 4: off
+Nurse NU_8, S3 Min Early Ended Day 4 (Off): +15
+Nurse NU_8 Day 5: off
+Nurse NU_8 Day 6: works Night
+Nurse NU_9 Day 0: off
+Nurse NU_9 Day 1: works Day
+Nurse NU_9 Day 2: off
+Nurse NU_9, S3 Min Day Ended Day 2 (Off): +15
+Nurse NU_9, S2 Min Work Ended Day 2: +30
+Nurse NU_9 Day 3: works Early
+Nurse NU_9 Day 4: works Night
+Nurse NU_9, S3 Min Early Ended Day 4: +15
+Nurse NU_9 Day 5: off
+Nurse NU_9, S3 Min Night Ended Day 5 (Off): +30
+Nurse NU_9 Day 6: works Night
+Nurse NU_10 Day 0: off
+Nurse NU_10, S3 Min Late Ended Day 0 (Off): +15
+Nurse NU_10 Day 1: works Early
+Nurse NU_10 Day 2: works Day
+Nurse NU_10, S3 Min Early Ended Day 2: +15
+Nurse NU_10 Day 3: works Late
+Nurse NU_10, S3 Min Day Ended Day 3: +15
+Nurse NU_10 Day 4: works Night
+Nurse NU_10, S3 Min Late Ended Day 4: +15
+Nurse NU_10 Day 5: off
+Nurse NU_10, S3 Min Night Ended Day 5 (Off): +30
+Nurse NU_10 Day 6: off
+Nurse NU_11 Day 0: works Day
+Nurse NU_11 Day 1: works Late
+Nurse NU_11, S3 Min Day Ended Day 1: +15
+Nurse NU_11 Day 2: off
+Nurse NU_11, S3 Min Late Ended Day 2 (Off): +15
+Nurse NU_11 Day 3: off
+Nurse NU_11 Day 4: off
+Nurse NU_11 Day 5: off
+Nurse NU_11 Day 6: off
+Nurse NU_12 Day 0: works Early
+Nurse NU_12 Day 1: off
+Nurse NU_12, S3 Min Early Ended Day 1 (Off): +15
+Nurse NU_12, S2 Min Work Ended Day 1: +60
+Nurse NU_12 Day 2: off
+Nurse NU_12 Day 3: works Day
+Nurse NU_12 Day 4: works Late
+Nurse NU_12, S3 Min Day Ended Day 4: +15
+Nurse NU_12 Day 5: off
+Nurse NU_12, S3 Min Late Ended Day 5 (Off): +15
+Nurse NU_12, S2 Min Work Ended Day 5: +30
+Nurse NU_12 Day 6: works Day
+Nurse NU_13 Day 0: works Early
+Nurse NU_13 Day 1: works Late
+Nurse NU_13, S3 Min Early Ended Day 1: +15
+Nurse NU_13 Day 2: off
+Nurse NU_13, S3 Min Late Ended Day 2 (Off): +15
+Nurse NU_13 Day 3: works Day
+Nurse NU_13 Day 4: works Late
+Nurse NU_13, S3 Min Day Ended Day 4: +15
+Nurse NU_13 Day 5: works Night
+Nurse NU_13, S3 Min Late Ended Day 5: +15
+Nurse NU_13 Day 6: off
+Nurse NU_13, S3 Min Night Ended Day 6 (Off): +30
+Nurse NU_14 Day 0: works Early
+Nurse NU_14 Day 1: works Late
+Nurse NU_14 Day 2: works Night
+Nurse NU_14, S3 Min Late Ended Day 2: +15
+Nurse NU_14 Day 3: off
+Nurse NU_14, S3 Min Night Ended Day 3 (Off): +30
+Nurse NU_14 Day 4: works Day
+Nurse NU_14 Day 5: off
+Nurse NU_14, S3 Min Day Ended Day 5 (Off): +15
+Nurse NU_14, S2 Min Work Ended Day 5: +60
+Nurse NU_14 Day 6: off
+Nurse NU_15 Day 0: works Late
+Nurse NU_15 Day 1: works Late
+Nurse NU_15 Day 2: works Night
+Nurse NU_15 Day 3: works Night
+Nurse NU_15 Day 4: off
+Nurse NU_15, S3 Min Night Ended Day 4 (Off): +15
+Nurse NU_15 Day 5: works Early
+Nurse NU_15 Day 6: works Early
+Nurse NU_16 Day 0: works Day
+Nurse NU_16 Day 1: off
+Nurse NU_16, S3 Min Day Ended Day 1 (Off): +15
+Nurse NU_16, S2 Min Work Ended Day 1: +30
+Nurse NU_16 Day 2: works Early
+Nurse NU_16 Day 3: works Early
+Nurse NU_16 Day 4: works Early
+Nurse NU_16 Day 5: works Early
+Nurse NU_16 Day 6: works Day
+Nurse NU_16, S2 Max Work Horizon: +30
+Nurse CT_17 Day 0: works Late
+Nurse CT_17 Day 1: works Late
+Nurse CT_17 Day 2: works Late
+Nurse CT_17 Day 3: works Night
+Nurse CT_17 Day 4: works Night
+Nurse CT_17 Day 5: works Day
+Nurse CT_17, S3 Min Night Ended Day 5: +15
+Nurse CT_17 Day 6: off
+Nurse CT_17, S3 Min Day Ended Day 6 (Off): +15
+Nurse CT_17, S2 Max Work Ended Day 6: +30
+Nurse CT_18 Day 0: works Day
+Nurse CT_18 Day 1: off
+Nurse CT_18, S3 Min Day Ended Day 1 (Off): +15
+Nurse CT_18, S2 Min Work Ended Day 1: +30
+Nurse CT_18 Day 2: works Early
+Nurse CT_18 Day 3: works Day
+Nurse CT_18, S3 Min Early Ended Day 3: +15
+Nurse CT_18 Day 4: off
+Nurse CT_18, S3 Min Day Ended Day 4 (Off): +15
+Nurse CT_18 Day 5: off
+Nurse CT_18 Day 6: off
+Nurse CT_19 Day 0: works Late
+Nurse CT_19, S3 Min Night Ended Day 0: +15
+Nurse CT_19 Day 1: works Late
+Nurse CT_19 Day 2: off
+Nurse CT_19 Day 3: works Late
+Nurse CT_19 Day 4: works Night
+Nurse CT_19, S3 Min Late Ended Day 4: +15
+Nurse CT_19 Day 5: off
+Nurse CT_19, S3 Min Night Ended Day 5 (Off): +30
+Nurse CT_19, S2 Min Work Ended Day 5: +30
+Nurse CT_19 Day 6: works Early
+Nurse CT_20 Day 0: works Early
+Nurse CT_20 Day 1: off
+Nurse CT_20, S3 Min Early Ended Day 1 (Off): +15
+Nurse CT_20, S2 Min Work Ended Day 1: +60
+Nurse CT_20 Day 2: works Late
+Nurse CT_20 Day 3: works Night
+Nurse CT_20, S3 Min Late Ended Day 3: +15
+Nurse CT_20 Day 4: off
+Nurse CT_20, S3 Min Night Ended Day 4 (Off): +30
+Nurse CT_20, S2 Min Work Ended Day 4: +30
+Nurse CT_20 Day 5: off
+Nurse CT_20 Day 6: works Day
+Nurse CT_21 Day 0: off
+Nurse CT_21 Day 1: works Day
+Nurse CT_21 Day 2: off
+Nurse CT_21, S3 Min Day Ended Day 2 (Off): +15
+Nurse CT_21, S2 Min Work Ended Day 2: +60
+Nurse CT_21 Day 3: off
+Nurse CT_21 Day 4: works Day
+Nurse CT_21 Day 5: works Late
+Nurse CT_21, S3 Min Day Ended Day 5: +15
+Nurse CT_21 Day 6: works Night
+Nurse CT_21, S3 Min Late Ended Day 6: +15
+Nurse CT_22 Day 0: works Late
+Nurse CT_22 Day 1: off
+Nurse CT_22 Day 2: off
+Nurse CT_22 Day 3: works Early
+Nurse CT_22 Day 4: works Early
+Nurse CT_22 Day 5: works Day
+Nurse CT_22 Day 6: works Late
+Nurse CT_22, S3 Min Day Ended Day 6: +15
+Nurse CT_23 Day 0: off
+Nurse CT_23 Day 1: works Day
+Nurse CT_23 Day 2: off
+Nurse CT_23, S3 Min Day Ended Day 2 (Off): +15
+Nurse CT_23, S2 Min Work Ended Day 2: +60
+Nurse CT_23 Day 3: works Day
+Nurse CT_23 Day 4: off
+Nurse CT_23, S3 Min Day Ended Day 4 (Off): +15
+Nurse CT_23, S2 Min Work Ended Day 4: +60
+Nurse CT_23 Day 5: off
+Nurse CT_23 Day 6: off
+Nurse CT_24 Day 0: off
+Nurse CT_24 Day 1: works Day
+Nurse CT_24 Day 2: works Day
+Nurse CT_24 Day 3: off
+Nurse CT_24, S2 Min Work Ended Day 3: +30
+Nurse CT_24 Day 4: works Early
+Nurse CT_24 Day 5: off
+Nurse CT_24, S3 Min Early Ended Day 5 (Off): +15
+Nurse CT_24, S2 Min Work Ended Day 5: +60
+Nurse CT_24 Day 6: off
+Nurse TR_25 Day 0: works Day
+Nurse TR_25 Day 1: works Late
+Nurse TR_25, S3 Min Day Ended Day 1: +15
+Nurse TR_25 Day 2: off
+Nurse TR_25, S3 Min Late Ended Day 2 (Off): +15
+Nurse TR_25, S2 Min Work Ended Day 2: +30
+Nurse TR_25 Day 3: off
+Nurse TR_25 Day 4: works Late
+Nurse TR_25 Day 5: works Late
+Nurse TR_25 Day 6: off
+Nurse TR_25, S2 Min Work Ended Day 6: +30
+Nurse TR_26 Day 0: off
+Nurse TR_26, S2 Min Work Ended Day 0: +30
+Nurse TR_26 Day 1: works Day
+Nurse TR_26 Day 2: off
+Nurse TR_26, S3 Min Day Ended Day 2 (Off): +15
+Nurse TR_26, S2 Min Work Ended Day 2: +60
+Nurse TR_26 Day 3: works Night
+Nurse TR_26 Day 4: off
+Nurse TR_26, S3 Min Night Ended Day 4 (Off): +30
+Nurse TR_26, S2 Min Work Ended Day 4: +60
+Nurse TR_26 Day 5: off
+Nurse TR_26 Day 6: off
+Nurse TR_27 Day 0: works Early
+Nurse TR_27 Day 1: works Early
+Nurse TR_27 Day 2: off
+Nurse TR_27 Day 3: off
+Nurse TR_27 Day 4: off
+Nurse TR_27 Day 5: off
+Nurse TR_27 Day 6: works Night
+Nurse TR_28 Day 0: off
+Nurse TR_28, S3 Min Late Ended Day 0 (Off): +15
+Nurse TR_28 Day 1: works Early
+Nurse TR_28 Day 2: works Day
+Nurse TR_28, S3 Min Early Ended Day 2: +15
+Nurse TR_28 Day 3: off
+Nurse TR_28, S3 Min Day Ended Day 3 (Off): +15
+Nurse TR_28, S2 Min Work Ended Day 3: +30
+Nurse TR_28 Day 4: off
+Nurse TR_28 Day 5: works Day
+Nurse TR_28 Day 6: works Day
+Nurse TR_29 Day 0: off
+Nurse TR_29, S3 Min Night Ended Day 0 (Off): +30
+Nurse TR_29 Day 1: works Night
+Nurse TR_29 Day 2: works Night
+Nurse TR_29 Day 3: off
+Nurse TR_29, S3 Min Night Ended Day 3 (Off): +15
+Nurse TR_29 Day 4: off
+Nurse TR_29 Day 5: works Early
+Nurse TR_29 Day 6: works Night
+Nurse TR_29, S3 Min Early Ended Day 6: +15
+test test_parity_snapshot ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+

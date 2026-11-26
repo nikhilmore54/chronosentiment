@@ -1,0 +1,210 @@
+{
+  "status": "PASS",
+  "fetched_at_local": "2026-11-01T08:37:31.877Z",
+  "snapshot_file": "pi_state_20261101T083725Z.json",
+  "server_time_ist": "2026-11-01 14:06:28 IST",
+  "server_time_utc": "2026-11-01T08:36:28Z",
+  "checklist": [
+    {
+      "id": "authority_zero",
+      "ok": true,
+      "expected": "0",
+      "actual": "0"
+    },
+    {
+      "id": "policy_b",
+      "ok": true,
+      "expected": "NO_TRADE",
+      "actual": "NO_TRADE"
+    },
+    {
+      "id": "policy_c",
+      "ok": true,
+      "expected": "NO_TRADE",
+      "actual": "NO_TRADE"
+    },
+    {
+      "id": "plan_id",
+      "ok": true,
+      "expected": "PLAN-016439-LONG-1793522083389",
+      "actual": "PLAN-016439-LONG-1793522083389"
+    },
+    {
+      "id": "plan_state",
+      "ok": true,
+      "expected": "OPEN",
+      "actual": "OPEN"
+    },
+    {
+      "id": "of_active",
+      "ok": true,
+      "expected": "false",
+      "actual": "false"
+    },
+    {
+      "id": "of_exit_present",
+      "ok": true,
+      "expected": "true",
+      "actual": "true"
+    },
+    {
+      "id": "of_entry_bar",
+      "ok": true,
+      "expected": "618",
+      "actual": "618"
+    },
+    {
+      "id": "next_session_n",
+      "ok": true,
+      "expected": "20",
+      "actual": "20"
+    },
+    {
+      "id": "next_session_of_n",
+      "ok": true,
+      "expected": "9",
+      "actual": "9"
+    },
+    {
+      "id": "census_119",
+      "ok": true,
+      "expected": "119",
+      "actual": "119"
+    },
+    {
+      "id": "classified_102",
+      "ok": true,
+      "expected": "102",
+      "actual": "102"
+    },
+    {
+      "id": "quarantined_17",
+      "ok": true,
+      "expected": "17",
+      "actual": "17"
+    },
+    {
+      "id": "watch_0_symbol",
+      "ok": true,
+      "expected": "TORNTPHARM",
+      "actual": "TORNTPHARM"
+    },
+    {
+      "id": "watch_0_of",
+      "ok": true,
+      "expected": "false",
+      "actual": "false"
+    },
+    {
+      "id": "watch_1_symbol",
+      "ok": true,
+      "expected": "GODREJPROP",
+      "actual": "GODREJPROP"
+    },
+    {
+      "id": "watch_1_of",
+      "ok": true,
+      "expected": "true",
+      "actual": "true"
+    },
+    {
+      "id": "watch_2_symbol",
+      "ok": true,
+      "expected": "COALINDIA",
+      "actual": "COALINDIA"
+    },
+    {
+      "id": "watch_2_of",
+      "ok": true,
+      "expected": "true",
+      "actual": "true"
+    },
+    {
+      "id": "watch_3_symbol",
+      "ok": true,
+      "expected": "ONGC",
+      "actual": "ONGC"
+    },
+    {
+      "id": "watch_3_of",
+      "ok": true,
+      "expected": "true",
+      "actual": "true"
+    },
+    {
+      "id": "watch_4_symbol",
+      "ok": true,
+      "expected": "GAIL",
+      "actual": "GAIL"
+    },
+    {
+      "id": "watch_4_of",
+      "ok": true,
+      "expected": "false",
+      "actual": "false"
+    }
+  ],
+  "fail_count": 0,
+  "fails": [],
+  "edge_cases": {
+    "no_trade_with_plan": true,
+    "of_exited_plan_present": true,
+    "plan_state": "OPEN",
+    "plan_is_active": true,
+    "of_active": false,
+    "authority_nse": 0,
+    "authority_mapped": 0
+  },
+  "mapped_summary": {
+    "policy_b": "NO_TRADE",
+    "policy_c": "NO_TRADE",
+    "plan_state": "OPEN",
+    "of_active": false,
+    "of_exit": true,
+    "next_n": 20,
+    "of_n": 9,
+    "census": [
+      119,
+      102,
+      17
+    ],
+    "authority": 0,
+    "top5": [
+      {
+        "s": "TORNTPHARM",
+        "side": "LONG",
+        "of": false,
+        "score": 0.447047
+      },
+      {
+        "s": "GODREJPROP",
+        "side": "LONG",
+        "of": true,
+        "score": 0.417958
+      },
+      {
+        "s": "COALINDIA",
+        "side": "LONG",
+        "of": true,
+        "score": 0.372709
+      },
+      {
+        "s": "ONGC",
+        "side": "LONG",
+        "of": true,
+        "score": 0.349843
+      },
+      {
+        "s": "GAIL",
+        "side": "LONG",
+        "of": false,
+        "score": 0.276694
+      }
+    ]
+  },
+  "notes": [
+    "Presentation mapping only — no behavioural recompute",
+    "Pi /api/state latency observed ~44s for 553KB payload — Gate5 5s poll will often show soft-stale until response returns",
+    "Cutover remains GATED until acceptance doc signed PASS without unresolved fails"
+  ]
+}

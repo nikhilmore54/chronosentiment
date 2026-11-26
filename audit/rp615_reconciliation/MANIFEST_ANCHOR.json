@@ -1,0 +1,59 @@
+{
+  "timestamp_utc": "2026-10-04T15:14:46.418312+00:00",
+  "manifest_version": "v2.1_formal_closure",
+  "canonical_nse_ledger_checksum": "46119e8dafc90338f132ca84ef606783c86d8d0ce0dfcc5e19e9b637c0b7a23c",
+  "artifacts": {
+    "capture_time_utc.txt": {
+      "sha256": "1ccd631ece884eef6609dede3858cd7bcc36dedbcafdbbb47e48447661467bc5",
+      "bytes": 21
+    },
+    "rp615_crypto_expansion_decision_cards.jsonl": {
+      "sha256": "d6269e0754366a2e18b203a58849c7ee5bb980e168ed602695ee4efc1be4539d",
+      "bytes": 739433
+    },
+    "rp615_crypto_expansion_trade_journal.jsonl": {
+      "sha256": "8e23af1a6d5854f2d141f9942861741c8cbdb9f429569f9bd793ea2ee1d9d875",
+      "bytes": 17788
+    },
+    "rp615_crypto_lifecycle_reconciliation_v2.md": {
+      "sha256": "e40104a2fae3c67b25689e7f1bf327d98e1bf5f4564b7002f81054681dc6834a",
+      "bytes": 15066
+    },
+    "rp615_crypto_quarantine_records.jsonl": {
+      "sha256": "adcb31a719a154c81d0b0d264a44c31f3bc53ce97060b530a3ed036c4058cabc",
+      "bytes": 7978
+    },
+    "rp615_crypto_reconciliation_report.md": {
+      "sha256": "03cef0297c2ffb1dc9605f0ea23381b414eb77574d611b71fabd83e1da9400ff",
+      "bytes": 5080
+    },
+    "rp615_crypto_reconciliation_results.json": {
+      "sha256": "05eb70484e95d89239f70a04e16a2c7f0f532aa0f087a7b573e65ae242e35bec",
+      "bytes": 34979
+    },
+    "rp615_crypto_shadow_daemon_state.json": {
+      "sha256": "b0c6590e42d6572a396f0cb38726f6b13b4f166b6e10fd8f997777864d792323",
+      "bytes": 5380
+    },
+    "rp615_crypto_shadow_decision_cards.jsonl": {
+      "sha256": "560973edb12c733bbc5ca6a06ebb97902b171c1c8551bf4d4c6badfbc9b99b9e",
+      "bytes": 779983
+    },
+    "rp615_crypto_shadow_telemetry.json": {
+      "sha256": "d23f65f9ce998988525a206c0e7db97a0c4f2bd00e78b446893850b9814ff6d8",
+      "bytes": 1814
+    },
+    "rp615_crypto_shadow_trade_journal.jsonl": {
+      "sha256": "75fe2c74c3cdb089b10629b8cee6647363bfa147f733a94254a4d65337f157c5",
+      "bytes": 13169
+    },
+    "rp615_crypto_shadow_trade_journal_cleaned.jsonl": {
+      "sha256": "75fe2c74c3cdb089b10629b8cee6647363bfa147f733a94254a4d65337f157c5",
+      "bytes": 13169
+    },
+    "rp615_crypto_shadow_trade_journal_original.jsonl": {
+      "sha256": "d4abfb4478b2f934889211f6520ccaf961d99ba20d129268d74625c67d80b457",
+      "bytes": 19681
+    }
+  }
+}

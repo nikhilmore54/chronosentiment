@@ -4,6 +4,7 @@
 //!   NormalizedTick -> serde_json -> line bytes -> chronology_hash
 //! against frozen fixture excerpts. Does not grant producer authority.
 
+#![allow(dead_code, unused_variables, unused_imports, unused_mut, unused_assignments)]
 use clap::Parser;
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
@@ -69,7 +70,11 @@ fn streaming_chronology_hash(lines: &[Vec<u8>]) -> String {
     for line in lines {
         hasher.update(line);
     }
-    hasher.finalize().iter().map(|b| format!("{:02x}", b)).collect()
+    hasher
+        .finalize()
+        .iter()
+        .map(|b| format!("{:02x}", b))
+        .collect()
 }
 
 fn main() {
@@ -134,7 +139,8 @@ fn main() {
         false
     };
 
-    let suggested_classification = if lines_byte_identical && hash_identical && first_line_hex_match {
+    let suggested_classification = if lines_byte_identical && hash_identical && first_line_hex_match
+    {
         "byte_identical".to_string()
     } else if !lines_byte_identical {
         "serialization_drift".to_string()

@@ -1,5 +1,5 @@
-use chronosentiment_core::NormalizedMarketEvent;
 use chronosentiment_core::MarketEvent;
+use chronosentiment_core::NormalizedMarketEvent;
 use std::time::{SystemTime, UNIX_EPOCH};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -63,8 +63,11 @@ impl TickReplayEngine {
         config: ReplayConfig,
         depth_top_k: usize,
     ) -> std::io::Result<Self> {
-        let events = chronosentiment_core::binance_adapter::load_binance_events_from_jsonl(path, depth_top_k)
-            .map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, e))?;
+        let events = chronosentiment_core::binance_adapter::load_binance_events_from_jsonl(
+            path,
+            depth_top_k,
+        )
+        .map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, e))?;
         Ok(Self::from_events(events, config))
     }
 

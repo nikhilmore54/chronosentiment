@@ -1,0 +1,602 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>UltraCrew — Disruption Console (SunAir Demo)</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      font-size: 14px;
+      background: #f0f2f5;
+      color: #1a1a2e;
+      min-height: 100vh;
+    }
+
+    /* Header */
+    header {
+      background: linear-gradient(135deg, #2d1b69 0%, #1a1a2e 100%);
+      color: #fff;
+      padding: 14px 24px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+    }
+    header h1 { font-size: 18px; font-weight: 600; }
+    header .subtitle { font-size: 12px; color: #b794f4; margin-top: 2px; }
+    .badge-alert { background: #e53e3e; color: #fff; font-size: 11px; font-weight: 700; padding: 3px 10px; border-radius: 12px; }
+
+    /* Status bar */
+    .status-bar {
+      background: #fff;
+      border-bottom: 1px solid #e2e8f0;
+      padding: 10px 24px;
+      display: flex;
+      gap: 32px;
+      flex-wrap: wrap;
+    }
+    .stat { display: flex; flex-direction: column; }
+    .stat-label { font-size: 10px; color: #718096; text-transform: uppercase; letter-spacing: 0.6px; }
+    .stat-value { font-size: 18px; font-weight: 700; }
+    .green { color: #38a169; }
+    .amber { color: #d69e2e; }
+    .red   { color: #e53e3e; }
+
+    /* Main layout */
+    .main { display: flex; height: calc(100vh - 110px); overflow: hidden; }
+
+    /* Left panel — crew roster */
+    .crew-panel {
+      width: 280px;
+      min-width: 280px;
+      background: #fff;
+      border-right: 1px solid #e2e8f0;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+    .panel-header {
+      padding: 12px 16px;
+      font-weight: 600;
+      font-size: 13px;
+      color: #2d3748;
+      background: #f7fafc;
+      border-bottom: 1px solid #e2e8f0;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .panel-header .count { font-size: 11px; color: #718096; font-weight: 400; }
+    .crew-list { flex: 1; overflow-y: auto; }
+    .crew-item {
+      display: flex;
+      align-items: center;
+      padding: 10px 16px;
+      border-bottom: 1px solid #f0f4f8;
+      cursor: pointer;
+      transition: background 0.1s;
+      gap: 10px;
+    }
+    .crew-item:hover { background: #f7fafc; }
+    .crew-item.unavailable { background: #fff5f5; }
+    .crew-item.unavailable .crew-name { color: #c53030; text-decoration: line-through; }
+    .crew-avatar {
+      width: 32px; height: 32px;
+      border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 11px; font-weight: 700; color: #fff;
+      flex-shrink: 0;
+    }
+    .av-cpt { background: #4299e1; }
+    .av-fo  { background: #48bb78; }
+    .av-cc  { background: #ed8936; }
+    .av-unavail { background: #fc8181; }
+    .crew-info { flex: 1; }
+    .crew-name { font-size: 13px; font-weight: 500; }
+    .crew-skill { font-size: 11px; color: #718096; }
+    .crew-shifts { font-size: 11px; color: #4a5568; }
+    .toggle-btn {
+      font-size: 11px;
+      padding: 3px 8px;
+      border-radius: 4px;
+      border: none;
+      cursor: pointer;
+      font-weight: 600;
+    }
+    .toggle-available   { background: #fed7d7; color: #c53030; }
+    .toggle-unavailable { background: #c6f6d5; color: #276749; }
+
+    /* Centre panel — disruption impact */
+    .impact-panel {
+      flex: 1;
+      overflow-y: auto;
+      padding: 16px 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+    .section-card {
+      background: #fff;
+      border-radius: 10px;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+      overflow: hidden;
+    }
+    .card-header {
+      padding: 12px 16px;
+      font-weight: 600;
+      font-size: 13px;
+      border-bottom: 1px solid #e2e8f0;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .card-header.red-header   { background: #fff5f5; color: #c53030; }
+    .card-header.amber-header { background: #fffbeb; color: #92400e; }
+    .card-header.green-header { background: #f0fff4; color: #276749; }
+    .card-header.blue-header  { background: #ebf8ff; color: #2b6cb0; }
+    .card-body { padding: 12px 16px; }
+
+    /* Disruption event list */
+    .event-row {
+      display: flex;
+      align-items: center;
+      padding: 8px 0;
+      border-bottom: 1px solid #f0f4f8;
+      gap: 12px;
+      font-size: 13px;
+    }
+    .event-row:last-child { border-bottom: none; }
+    .event-icon { font-size: 16px; }
+    .event-detail { flex: 1; }
+    .event-title { font-weight: 500; }
+    .event-sub { font-size: 11px; color: #718096; }
+
+    /* Uncovered shifts table */
+    .shift-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    .shift-table th {
+      text-align: left; padding: 8px 10px;
+      background: #f7fafc; font-size: 11px;
+      color: #718096; text-transform: uppercase; letter-spacing: 0.5px;
+      border-bottom: 2px solid #e2e8f0;
+    }
+    .shift-table td { padding: 8px 10px; border-bottom: 1px solid #f0f4f8; }
+    .shift-table tr:last-child td { border-bottom: none; }
+    .shift-table tr:hover td { background: #f7fafc; }
+
+    /* Candidate list */
+    .candidate-row {
+      display: flex;
+      align-items: center;
+      padding: 8px 0;
+      border-bottom: 1px solid #f0f4f8;
+      gap: 10px;
+      font-size: 13px;
+    }
+    .candidate-row:last-child { border-bottom: none; }
+    .candidate-score {
+      font-size: 11px; font-weight: 700;
+      padding: 2px 8px; border-radius: 10px;
+    }
+    .score-good { background: #c6f6d5; color: #276749; }
+    .score-ok   { background: #fefcbf; color: #744210; }
+    .assign-btn {
+      padding: 4px 12px; border-radius: 5px; border: none;
+      background: #4299e1; color: #fff; font-size: 12px;
+      font-weight: 600; cursor: pointer;
+    }
+    .assign-btn:hover { background: #3182ce; }
+    .assign-btn:disabled { background: #cbd5e0; cursor: default; }
+
+    /* Right panel — action log */
+    .log-panel {
+      width: 260px;
+      min-width: 260px;
+      background: #fff;
+      border-left: 1px solid #e2e8f0;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+    .log-list { flex: 1; overflow-y: auto; padding: 12px; }
+    .log-entry {
+      font-size: 12px;
+      padding: 8px 10px;
+      margin-bottom: 6px;
+      border-radius: 6px;
+      border-left: 3px solid #4299e1;
+      background: #ebf8ff;
+      color: #2b6cb0;
+    }
+    .log-entry.disruption { border-left-color: #e53e3e; background: #fff5f5; color: #c53030; }
+    .log-entry.restore    { border-left-color: #38a169; background: #f0fff4; color: #276749; }
+    .log-entry.reassign   { border-left-color: #d69e2e; background: #fffbeb; color: #92400e; }
+    .log-time { font-size: 10px; color: #a0aec0; margin-top: 2px; }
+    .empty-log { color: #a0aec0; font-size: 12px; font-style: italic; padding: 8px; }
+
+    /* Toast */
+    #toast {
+      position: fixed; bottom: 24px; right: 24px;
+      background: #2d3748; color: #fff;
+      padding: 10px 18px; border-radius: 8px;
+      font-size: 13px; box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+      opacity: 0; transition: opacity 0.3s;
+      pointer-events: none; z-index: 1000;
+    }
+    #toast.show { opacity: 1; }
+
+    .empty-state { color: #a0aec0; font-size: 13px; font-style: italic; padding: 8px 0; }
+    .pill {
+      display: inline-block; font-size: 10px; font-weight: 700;
+      padding: 2px 7px; border-radius: 8px;
+    }
+    .pill-cpt { background: #bee3f8; color: #2b6cb0; }
+    .pill-fo  { background: #c6f6d5; color: #276749; }
+    .pill-cc  { background: #fefcbf; color: #744210; }
+  </style>
+</head>
+<body>
+
+<header>
+  <div>
+    <h1>⚡ UltraCrew — Disruption Console</h1>
+    <div class="subtitle">SunAir Demo · Mark crew unavailable → view impact → reassign</div>
+  </div>
+  <span class="badge-alert" id="alertBadge" style="display:none">⚠ DISRUPTION ACTIVE</span>
+</header>
+
+<div class="status-bar" id="statusBar"><!-- JS --></div>
+
+<div class="main">
+
+  <!-- Left: crew roster -->
+  <div class="crew-panel">
+    <div class="panel-header">
+      Crew Roster
+      <span class="count" id="rosterCount">20 available</span>
+    </div>
+    <div class="crew-list" id="crewList"><!-- JS --></div>
+  </div>
+
+  <!-- Centre: impact analysis -->
+  <div class="impact-panel" id="impactPanel"><!-- JS --></div>
+
+  <!-- Right: action log -->
+  <div class="log-panel">
+    <div class="panel-header">Action Log</div>
+    <div class="log-list" id="logList">
+      <p class="empty-log">No events yet. Mark a crew member unavailable to begin.</p>
+    </div>
+  </div>
+
+</div>
+
+<div id="toast"></div>
+
+<script>
+// ── Canonical SunAir data ───────────────────────────────────────────────────
+const WORKERS = [
+  {id:1,  skills:["Captain"]},
+  {id:2,  skills:["Captain"]},
+  {id:3,  skills:["Captain"]},
+  {id:4,  skills:["Captain"]},
+  {id:5,  skills:["FirstOfficer"]},
+  {id:6,  skills:["FirstOfficer"]},
+  {id:7,  skills:["FirstOfficer"]},
+  {id:8,  skills:["FirstOfficer"]},
+  {id:9,  skills:["FirstOfficer"]},
+  {id:10, skills:["CabinCrew"]},
+  {id:11, skills:["CabinCrew"]},
+  {id:12, skills:["CabinCrew"]},
+  {id:13, skills:["CabinCrew"]},
+  {id:14, skills:["CabinCrew"]},
+  {id:15, skills:["CabinCrew"]},
+  {id:16, skills:["CabinCrew"]},
+  {id:17, skills:["CabinCrew"]},
+  {id:18, skills:["CabinCrew"]},
+  {id:19, skills:["CabinCrew"]},
+  {id:20, skills:["CabinCrew"]},
+];
+
+const SHIFTS = [];
+const SKILLS_ORDER = ["Captain","FirstOfficer","CabinCrew"];
+for (let i = 0; i < 21; i++) {
+  const skill = SKILLS_ORDER[Math.floor(i / 7)];
+  const offset = i % 7;
+  SHIFTS.push({ id: i+1, start_hour: 6 + offset*8, duration_hours: 8, required_skill: skill });
+}
+for (let i = 0; i < 21; i++) {
+  const skill = SKILLS_ORDER[Math.floor(i / 7)];
+  const offset = i % 7;
+  SHIFTS.push({ id: i+22, start_hour: 78 + offset*8, duration_hours: 8, required_skill: skill });
+}
+
+const CANONICAL = {
+  1:1,2:2,3:3,4:4,5:1,6:2,7:3,
+  8:5,9:6,10:7,11:8,12:9,13:5,14:6,
+  15:10,16:11,17:12,18:13,19:14,20:15,21:16,
+  22:4,23:1,24:2,25:3,26:4,27:1,28:2,
+  29:7,30:8,31:9,32:5,33:6,34:7,35:8,
+  36:17,37:18,38:19,39:20,40:10,41:11,42:12
+};
+
+// ── State ───────────────────────────────────────────────────────────────────
+let assignments = {...CANONICAL};
+let unavailable = new Set(); // worker IDs
+let actionLog = [];
+
+const workerMap = Object.fromEntries(WORKERS.map(w => [w.id, w]));
+const shiftMap  = Object.fromEntries(SHIFTS.map(s => [s.id, s]));
+
+// ── Helpers ─────────────────────────────────────────────────────────────────
+function workerLabel(id) { return `Worker ${id}`; }
+function skillLabel(s) {
+  return s === "Captain" ? "CPT" : s === "FirstOfficer" ? "F/O" : "CC";
+}
+function skillPillClass(s) {
+  return s === "Captain" ? "pill-cpt" : s === "FirstOfficer" ? "pill-fo" : "pill-cc";
+}
+function avatarClass(w) {
+  if (unavailable.has(w.id)) return "av-unavail";
+  const s = w.skills[0];
+  return s === "Captain" ? "av-cpt" : s === "FirstOfficer" ? "av-fo" : "av-cc";
+}
+
+function workerCurrentHours(wid) {
+  let h = 0;
+  for (const [sid, assignedWid] of Object.entries(assignments)) {
+    if (assignedWid === wid) h += shiftMap[parseInt(sid)].duration_hours;
+  }
+  return h;
+}
+
+function uncoveredShifts() {
+  // Shifts whose assigned worker is now unavailable
+  const result = [];
+  for (const [sid, wid] of Object.entries(assignments)) {
+    if (unavailable.has(wid)) result.push(parseInt(sid));
+  }
+  return result;
+}
+
+function candidatesForShift(shiftId) {
+  const shift = shiftMap[shiftId];
+  return WORKERS
+    .filter(w => !unavailable.has(w.id) && w.skills.includes(shift.required_skill))
+    .map(w => {
+      const hours = workerCurrentHours(w.id);
+      const slack = 48 - hours; // max 48h per week
+      return { worker: w, hours, slack };
+    })
+    .filter(c => c.slack >= shift.duration_hours)
+    .sort((a, b) => b.slack - a.slack); // most available first
+}
+
+// ── Status bar ───────────────────────────────────────────────────────────────
+function renderStatusBar() {
+  const uncovered = uncoveredShifts();
+  const total = SHIFTS.length;
+  const assigned = Object.keys(assignments).length - uncovered.length;
+  const coverage = ((assigned / total) * 100).toFixed(1);
+  const disrupted = unavailable.size;
+
+  document.getElementById("statusBar").innerHTML = `
+    <div class="stat">
+      <span class="stat-label">Coverage</span>
+      <span class="stat-value ${coverage === "100.0" ? "green" : uncovered.length > 0 ? "red" : "amber"}">${coverage}%</span>
+    </div>
+    <div class="stat">
+      <span class="stat-label">Shifts covered</span>
+      <span class="stat-value">${assigned}/${total}</span>
+    </div>
+    <div class="stat">
+      <span class="stat-label">Uncovered shifts</span>
+      <span class="stat-value ${uncovered.length > 0 ? "red" : "green"}">${uncovered.length}</span>
+    </div>
+    <div class="stat">
+      <span class="stat-label">Crew unavailable</span>
+      <span class="stat-value ${disrupted > 0 ? "amber" : "green"}">${disrupted}</span>
+    </div>
+    <div class="stat">
+      <span class="stat-label">Available crew</span>
+      <span class="stat-value">${WORKERS.length - disrupted}/${WORKERS.length}</span>
+    </div>
+  `;
+
+  const badge = document.getElementById("alertBadge");
+  badge.style.display = disrupted > 0 ? "inline-block" : "none";
+}
+
+// ── Crew roster ──────────────────────────────────────────────────────────────
+function renderCrewList() {
+  const avail = WORKERS.length - unavailable.size;
+  document.getElementById("rosterCount").textContent = `${avail} available`;
+
+  let html = "";
+  for (const w of WORKERS) {
+    const isUnavail = unavailable.has(w.id);
+    const skill = w.skills[0];
+    const hours = workerCurrentHours(w.id);
+    const myShifts = Object.entries(assignments).filter(([,wid]) => wid === w.id).length;
+    html += `
+      <div class="crew-item ${isUnavail ? "unavailable" : ""}">
+        <div class="crew-avatar ${avatarClass(w)}">${skillLabel(skill)}</div>
+        <div class="crew-info">
+          <div class="crew-name">${workerLabel(w.id)}</div>
+          <div class="crew-skill">${skill}</div>
+          <div class="crew-shifts">${myShifts} shifts · ${hours}h</div>
+        </div>
+        <button class="toggle-btn ${isUnavail ? "toggle-unavailable" : "toggle-available"}"
+          onclick="toggleWorker(${w.id})">
+          ${isUnavail ? "Restore" : "Mark out"}
+        </button>
+      </div>`;
+  }
+  document.getElementById("crewList").innerHTML = html;
+}
+
+// ── Impact panel ─────────────────────────────────────────────────────────────
+function renderImpactPanel() {
+  const uncovered = uncoveredShifts();
+  const panel = document.getElementById("impactPanel");
+
+  if (unavailable.size === 0) {
+    panel.innerHTML = `
+      <div class="section-card">
+        <div class="card-header green-header">✅ No Active Disruptions</div>
+        <div class="card-body">
+          <p class="empty-state">All crew members are available. Mark a crew member as unavailable using the roster on the left to simulate a disruption.</p>
+        </div>
+      </div>`;
+    return;
+  }
+
+  // Disruption summary
+  let disruptionRows = "";
+  for (const wid of unavailable) {
+    const w = workerMap[wid];
+    const affectedShifts = Object.entries(assignments)
+      .filter(([,assignedWid]) => assignedWid === wid)
+      .map(([sid]) => `S${sid}`)
+      .join(", ");
+    disruptionRows += `
+      <div class="event-row">
+        <span class="event-icon">🚫</span>
+        <div class="event-detail">
+          <div class="event-title">${workerLabel(wid)} — ${w.skills[0]}</div>
+          <div class="event-sub">Affected shifts: ${affectedShifts || "none"}</div>
+        </div>
+        <button class="toggle-btn toggle-unavailable" onclick="toggleWorker(${wid})">Restore</button>
+      </div>`;
+  }
+
+  // Uncovered shifts with candidates
+  let uncoveredHtml = "";
+  if (uncovered.length === 0) {
+    uncoveredHtml = `<p class="empty-state">All shifts remain covered despite the disruption.</p>`;
+  } else {
+    uncoveredHtml = `<table class="shift-table">
+      <thead><tr>
+        <th>Shift</th><th>Skill</th><th>Hours</th><th>Best candidate</th><th>Action</th>
+      </tr></thead><tbody>`;
+    for (const sid of uncovered) {
+      const shift = shiftMap[sid];
+      const candidates = candidatesForShift(sid);
+      const best = candidates[0];
+      const pillClass = skillPillClass(shift.required_skill);
+      uncoveredHtml += `<tr>
+        <td><strong>S${sid}</strong></td>
+        <td><span class="pill ${pillClass}">${skillLabel(shift.required_skill)}</span></td>
+        <td>h${shift.start_hour}–${shift.start_hour + shift.duration_hours}</td>
+        <td>${best ? `${workerLabel(best.worker.id)} (${best.slack}h slack)` : '<span style="color:#e53e3e">No eligible worker</span>'}</td>
+        <td>${best ? `<button class="assign-btn" onclick="quickAssign(${sid}, ${best.worker.id})">Assign</button>` : "—"}</td>
+      </tr>`;
+    }
+    uncoveredHtml += `</tbody></table>`;
+  }
+
+  // Candidate pool for first uncovered shift
+  let candidateHtml = "";
+  if (uncovered.length > 0) {
+    const firstSid = uncovered[0];
+    const shift = shiftMap[firstSid];
+    const candidates = candidatesForShift(firstSid);
+    if (candidates.length === 0) {
+      candidateHtml = `<p class="empty-state">No eligible workers available for Shift #${firstSid}.</p>`;
+    } else {
+      for (const c of candidates.slice(0, 6)) {
+        const scoreClass = c.slack >= 16 ? "score-good" : "score-ok";
+        candidateHtml += `
+          <div class="candidate-row">
+            <div class="crew-avatar ${avatarClass(c.worker)}" style="width:28px;height:28px;font-size:10px">${skillLabel(c.worker.skills[0])}</div>
+            <div style="flex:1">
+              <div style="font-weight:500">${workerLabel(c.worker.id)}</div>
+              <div style="font-size:11px;color:#718096">${c.hours}h assigned · ${c.slack}h remaining</div>
+            </div>
+            <span class="candidate-score ${scoreClass}">${c.slack}h free</span>
+            <button class="assign-btn" onclick="quickAssign(${firstSid}, ${c.worker.id})">Assign</button>
+          </div>`;
+      }
+    }
+  }
+
+  panel.innerHTML = `
+    <div class="section-card">
+      <div class="card-header red-header">🚫 Active Disruptions (${unavailable.size})</div>
+      <div class="card-body">${disruptionRows}</div>
+    </div>
+
+    <div class="section-card">
+      <div class="card-header ${uncovered.length > 0 ? "amber-header" : "green-header"}">
+        ${uncovered.length > 0 ? `⚠ Uncovered Shifts (${uncovered.length})` : "✅ All Shifts Covered"}
+      </div>
+      <div class="card-body">${uncoveredHtml}</div>
+    </div>
+
+    ${uncovered.length > 0 ? `
+    <div class="section-card">
+      <div class="card-header blue-header">👥 Candidates for Shift #${uncovered[0]} (${shiftMap[uncovered[0]].required_skill})</div>
+      <div class="card-body">${candidateHtml}</div>
+    </div>` : ""}
+  `;
+}
+
+// ── Actions ──────────────────────────────────────────────────────────────────
+function toggleWorker(wid) {
+  const isUnavail = unavailable.has(wid);
+  if (isUnavail) {
+    unavailable.delete(wid);
+    addLog("restore", `${workerLabel(wid)} restored to available`);
+    showToast(`${workerLabel(wid)} is now available.`);
+  } else {
+    unavailable.add(wid);
+    const affectedCount = Object.values(assignments).filter(w => w === wid).length;
+    addLog("disruption", `${workerLabel(wid)} marked unavailable — ${affectedCount} shift(s) affected`);
+    showToast(`${workerLabel(wid)} marked unavailable. ${affectedCount} shift(s) uncovered.`);
+  }
+  renderAll();
+}
+
+function quickAssign(shiftId, workerId) {
+  const oldWid = assignments[shiftId];
+  assignments[shiftId] = workerId;
+  addLog("reassign", `Shift #${shiftId} reassigned: ${workerLabel(oldWid)} → ${workerLabel(workerId)}`);
+  showToast(`Shift #${shiftId} assigned to ${workerLabel(workerId)}.`);
+  renderAll();
+}
+
+function addLog(type, msg) {
+  actionLog.unshift({ type, msg, time: new Date().toLocaleTimeString() });
+  const list = document.getElementById("logList");
+  let html = "";
+  for (const e of actionLog) {
+    html += `<div class="log-entry ${e.type}">
+      ${e.msg}
+      <div class="log-time">${e.time}</div>
+    </div>`;
+  }
+  list.innerHTML = html;
+}
+
+function renderAll() {
+  renderStatusBar();
+  renderCrewList();
+  renderImpactPanel();
+}
+
+// ── Toast ────────────────────────────────────────────────────────────────────
+let toastTimer = null;
+function showToast(msg) {
+  const t = document.getElementById("toast");
+  t.textContent = msg;
+  t.classList.add("show");
+  if (toastTimer) clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => t.classList.remove("show"), 2800);
+}
+
+// ── Init ─────────────────────────────────────────────────────────────────────
+renderAll();
+</script>
+</body>
+</html>

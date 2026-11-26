@@ -1,0 +1,324 @@
+{
+  "benchmark": "UB-002-v1.0",
+  "sprint": "S8",
+  "hypothesis": "H8",
+  "week": 1,
+  "seeds": [
+    42,
+    43,
+    44
+  ],
+  "generation_limit": 50,
+  "profiles_tested": [
+    "baseline",
+    "balanced",
+    "light",
+    "heavy",
+    "bimodal",
+    "uniform"
+  ],
+  "group_definitions": {
+    "HIGH": [
+      1,
+      2,
+      3,
+      5
+    ],
+    "MEDIUM": [
+      4,
+      6,
+      7,
+      8,
+      9,
+      10,
+      11,
+      12,
+      13,
+      14,
+      15,
+      18
+    ],
+    "LOW": [
+      16,
+      17,
+      19,
+      20
+    ]
+  },
+  "results": [
+    {
+      "profile": "baseline",
+      "seed": 42,
+      "fitness": 8881.2,
+      "sc1": 81.6,
+      "sc2": 1037.2,
+      "hc_total": 0,
+      "high_avg": 4.0,
+      "medium_avg": 4.083,
+      "low_avg": 4.5,
+      "runtime_s": 0.19
+    },
+    {
+      "profile": "baseline",
+      "seed": 43,
+      "fitness": 8820.1,
+      "sc1": 145.59999999999997,
+      "sc2": 1034.3,
+      "hc_total": 0,
+      "high_avg": 3.75,
+      "medium_avg": 4.167,
+      "low_avg": 4.5,
+      "runtime_s": 0.16
+    },
+    {
+      "profile": "baseline",
+      "seed": 44,
+      "fitness": 8886.1,
+      "sc1": 81.6,
+      "sc2": 1032.3000000000002,
+      "hc_total": 0,
+      "high_avg": 4.0,
+      "medium_avg": 4.0,
+      "low_avg": 4.75,
+      "runtime_s": 0.16
+    },
+    {
+      "profile": "balanced",
+      "seed": 42,
+      "fitness": 8922.4,
+      "sc1": 81.6,
+      "sc2": 996.0,
+      "hc_total": 0,
+      "high_avg": 4.25,
+      "medium_avg": 4.167,
+      "low_avg": 4.0,
+      "runtime_s": 0.16
+    },
+    {
+      "profile": "balanced",
+      "seed": 43,
+      "fitness": 8858.4,
+      "sc1": 145.6,
+      "sc2": 996.0,
+      "hc_total": 0,
+      "high_avg": 3.75,
+      "medium_avg": 4.25,
+      "low_avg": 4.25,
+      "runtime_s": 0.16
+    },
+    {
+      "profile": "balanced",
+      "seed": 44,
+      "fitness": 8922.4,
+      "sc1": 81.60000000000002,
+      "sc2": 996.0,
+      "hc_total": 0,
+      "high_avg": 4.0,
+      "medium_avg": 4.167,
+      "low_avg": 4.25,
+      "runtime_s": 0.16
+    },
+    {
+      "profile": "light",
+      "seed": 42,
+      "fitness": 9586.4,
+      "sc1": 81.60000000000002,
+      "sc2": 332.0,
+      "hc_total": 0,
+      "high_avg": 4.0,
+      "medium_avg": 4.167,
+      "low_avg": 4.25,
+      "runtime_s": 0.16
+    },
+    {
+      "profile": "light",
+      "seed": 43,
+      "fitness": 9586.4,
+      "sc1": 81.59999999999995,
+      "sc2": 332.0,
+      "hc_total": 0,
+      "high_avg": 4.5,
+      "medium_avg": 4.083,
+      "low_avg": 4.0,
+      "runtime_s": 0.16
+    },
+    {
+      "profile": "light",
+      "seed": 44,
+      "fitness": 9586.4,
+      "sc1": 81.59999999999995,
+      "sc2": 332.0,
+      "hc_total": 0,
+      "high_avg": 4.5,
+      "medium_avg": 4.083,
+      "low_avg": 4.0,
+      "runtime_s": 0.16
+    },
+    {
+      "profile": "heavy",
+      "seed": 42,
+      "fitness": 8656.800000000001,
+      "sc1": 81.6,
+      "sc2": 1261.5999999999995,
+      "hc_total": 0,
+      "high_avg": 4.0,
+      "medium_avg": 4.25,
+      "low_avg": 4.0,
+      "runtime_s": 0.16
+    },
+    {
+      "profile": "heavy",
+      "seed": 43,
+      "fitness": 8592.800000000001,
+      "sc1": 145.59999999999994,
+      "sc2": 1261.5999999999997,
+      "hc_total": 0,
+      "high_avg": 4.25,
+      "medium_avg": 4.083,
+      "low_avg": 4.25,
+      "runtime_s": 0.16
+    },
+    {
+      "profile": "heavy",
+      "seed": 44,
+      "fitness": 8656.800000000001,
+      "sc1": 81.59999999999994,
+      "sc2": 1261.5999999999995,
+      "hc_total": 0,
+      "high_avg": 4.25,
+      "medium_avg": 4.167,
+      "low_avg": 4.0,
+      "runtime_s": 0.17
+    },
+    {
+      "profile": "bimodal",
+      "seed": 42,
+      "fitness": 9260.8,
+      "sc1": 81.6,
+      "sc2": 657.6,
+      "hc_total": 0,
+      "high_avg": 4.0,
+      "medium_avg": 4.0,
+      "low_avg": 4.75,
+      "runtime_s": 0.16
+    },
+    {
+      "profile": "bimodal",
+      "seed": 43,
+      "fitness": 9260.8,
+      "sc1": 81.6,
+      "sc2": 657.6,
+      "hc_total": 0,
+      "high_avg": 4.0,
+      "medium_avg": 4.0,
+      "low_avg": 4.75,
+      "runtime_s": 0.16
+    },
+    {
+      "profile": "bimodal",
+      "seed": 44,
+      "fitness": 9254.4,
+      "sc1": 81.6,
+      "sc2": 664.0,
+      "hc_total": 0,
+      "high_avg": 4.0,
+      "medium_avg": 4.083,
+      "low_avg": 4.5,
+      "runtime_s": 0.28
+    },
+    {
+      "profile": "uniform",
+      "seed": 42,
+      "fitness": 9190.4,
+      "sc1": 145.59999999999994,
+      "sc2": 664.0,
+      "hc_total": 0,
+      "high_avg": 3.75,
+      "medium_avg": 4.25,
+      "low_avg": 4.25,
+      "runtime_s": 0.16
+    },
+    {
+      "profile": "uniform",
+      "seed": 43,
+      "fitness": 9254.4,
+      "sc1": 81.59999999999997,
+      "sc2": 664.0,
+      "hc_total": 0,
+      "high_avg": 4.0,
+      "medium_avg": 4.25,
+      "low_avg": 4.0,
+      "runtime_s": 0.16
+    },
+    {
+      "profile": "uniform",
+      "seed": 44,
+      "fitness": 9254.4,
+      "sc1": 81.59999999999995,
+      "sc2": 664.0,
+      "hc_total": 0,
+      "high_avg": 4.25,
+      "medium_avg": 4.167,
+      "low_avg": 4.0,
+      "runtime_s": 0.16
+    }
+  ],
+  "profile_summaries": {
+    "baseline": {
+      "n_valid": 3,
+      "fitness_mean": 8862.47,
+      "sc1_mean": 102.93,
+      "sc2_mean": 1034.6,
+      "high_avg_mean": 3.917,
+      "medium_avg_mean": 4.083,
+      "low_avg_mean": 4.583
+    },
+    "balanced": {
+      "n_valid": 3,
+      "fitness_mean": 8901.07,
+      "sc1_mean": 102.93,
+      "sc2_mean": 996.0,
+      "high_avg_mean": 4.0,
+      "medium_avg_mean": 4.195,
+      "low_avg_mean": 4.167
+    },
+    "light": {
+      "n_valid": 3,
+      "fitness_mean": 9586.4,
+      "sc1_mean": 81.6,
+      "sc2_mean": 332.0,
+      "high_avg_mean": 4.333,
+      "medium_avg_mean": 4.111,
+      "low_avg_mean": 4.083
+    },
+    "heavy": {
+      "n_valid": 3,
+      "fitness_mean": 8635.47,
+      "sc1_mean": 102.93,
+      "sc2_mean": 1261.6,
+      "high_avg_mean": 4.167,
+      "medium_avg_mean": 4.167,
+      "low_avg_mean": 4.083
+    },
+    "bimodal": {
+      "n_valid": 3,
+      "fitness_mean": 9258.67,
+      "sc1_mean": 81.6,
+      "sc2_mean": 659.73,
+      "high_avg_mean": 4.0,
+      "medium_avg_mean": 4.028,
+      "low_avg_mean": 4.667
+    },
+    "uniform": {
+      "n_valid": 3,
+      "fitness_mean": 9233.07,
+      "sc1_mean": 102.93,
+      "sc2_mean": 664.0,
+      "high_avg_mean": 4.0,
+      "medium_avg_mean": 4.222,
+      "low_avg_mean": 4.083
+    }
+  },
+  "h8_verdict": "SENSITIVE",
+  "h8_interpretation": "SC2 varies by 929.6 across profiles. Assignment distribution is sensitive to workload profile."
+}

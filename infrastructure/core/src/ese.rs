@@ -90,14 +90,14 @@ impl ExecutionEngine {
             if i > entry_idx {
                 let diff = current_price as f64 - execution_events[i - 1].price as f64;
                 sum_absolute_moves += diff.abs();
-                
+
                 let is_buy = side == crate::Side::Buy;
                 if is_buy && diff < 0.0 {
                     sum_adverse_moves += diff.abs();
                 } else if !is_buy && diff > 0.0 {
                     sum_adverse_moves += diff.abs();
                 }
-                
+
                 if last_diff * diff < 0.0 {
                     reversals_count += 1;
                 }
@@ -113,7 +113,7 @@ impl ExecutionEngine {
                 // --- 1. CONTINUOUS PROPAGATION TRACKING ---
                 let normalized_reversals = reversals_count as f64;
                 let coherence = 20.0 / (normalized_reversals + 1.0);
-                
+
                 let drift_toxicity = if sum_absolute_moves > 1e-9 {
                     sum_adverse_moves / sum_absolute_moves
                 } else {
@@ -133,7 +133,9 @@ impl ExecutionEngine {
                     dynamic_tp = if is_buy {
                         (entry_price as f64 + base_distance_tp * widen_factor).round() as u64
                     } else {
-                        (entry_price as f64 - base_distance_tp * widen_factor).round().max(1.0) as u64
+                        (entry_price as f64 - base_distance_tp * widen_factor)
+                            .round()
+                            .max(1.0) as u64
                     };
                 } else if drift_toxicity >= 0.55 || coherence < 1.8 {
                     // Deteriorating propagation -> contract TP dynamically closer to harvest profits early
@@ -141,7 +143,9 @@ impl ExecutionEngine {
                     dynamic_tp = if is_buy {
                         (entry_price as f64 + base_distance_tp * contract_factor).round() as u64
                     } else {
-                        (entry_price as f64 - base_distance_tp * contract_factor).round().max(1.0) as u64
+                        (entry_price as f64 - base_distance_tp * contract_factor)
+                            .round()
+                            .max(1.0) as u64
                     };
                 }
 
@@ -152,7 +156,11 @@ impl ExecutionEngine {
                 let is_stalled = bars_held > (max_hold * 3 / 10) && price_dev < stall_threshold;
 
                 let c_decay = if coherence < 1.2 { 0.3 } else { 0.0 };
-                let d_toxicity = if bars_held > 10 && drift_toxicity >= 0.75 { 0.3 } else { 0.0 };
+                let d_toxicity = if bars_held > 10 && drift_toxicity >= 0.75 {
+                    0.3
+                } else {
+                    0.0
+                };
                 let p_stall = if is_stalled { 0.2 } else { 0.0 };
                 let hostile_rev = if current_return < -0.0015 { 0.3 } else { 0.0 }; // reverse move > 15 bps
 
@@ -238,8 +246,8 @@ impl ExecutionEngine {
     /// 2. Queue Pressure (Sum of volume during latency period)
     /// 3. Arrival Liquidity (Volume at the activation event)
     pub fn execute(
-        &mut self, 
-        intent: crate::OrderIntent, 
+        &mut self,
+        intent: crate::OrderIntent,
         market: &[crate::MarketEvent],
         current_index: usize,
     ) -> ExecutionResult {
@@ -253,10 +261,7 @@ impl ExecutionEngine {
         // --- STEP 1: QUEUE PRESSURE (volume ahead during latency window [current, activation)) ---
         let start = current_index.min(market.len().saturating_sub(1));
         let end = activation_idx.min(market.len());
-        let queue_pressure: f64 = market[start..end]
-            .iter()
-            .map(|e| e.quantity as f64)
-            .sum();
+        let queue_pressure: f64 = market[start..end].iter().map(|e| e.quantity as f64).sum();
 
         // --- STEP 2: ARRIVAL LIQUIDITY at activation event ---
         let arrival_event = &market[activation_idx];
@@ -309,7 +314,6 @@ impl ExecutionEngine {
         }
     }
 }
-
 
 pub enum InternalEvent {
     Market(MarketEvent),

@@ -1,0 +1,71 @@
+[
+  {
+    "config_label": "v03_A_25",
+    "coralys": {
+      "capital_velocity": 9.436528438692802,
+      "max_drawdown_pct": 2.6863368564315038,
+      "n_lots": 75,
+      "net_stop_benefit_inr": -576.0348747140308,
+      "pct_direction_failure": 11.11111111111111,
+      "pct_genuine_adverse": 2.7777777777777777,
+      "pct_premature": 22.22222222222222,
+      "pct_stop_too_tight": 5.555555555555555,
+      "pct_temporary_excursion": 58.333333333333336,
+      "stop_rate_pct": 48.0,
+      "total_return_pct": 4.872503461167016
+    },
+    "pe2": {
+      "capital_velocity": 5.3502424569121105,
+      "max_drawdown_pct": 1.6794863118887104,
+      "n_lots": 40,
+      "total_return_pct": 7.128922491095964
+    },
+    "universe_size": 5
+  },
+  {
+    "config_label": "v03_B_50",
+    "coralys": {
+      "capital_velocity": 9.436528438692802,
+      "max_drawdown_pct": 2.6863368564315038,
+      "n_lots": 75,
+      "net_stop_benefit_inr": -576.0348747140308,
+      "pct_direction_failure": 11.11111111111111,
+      "pct_genuine_adverse": 2.7777777777777777,
+      "pct_premature": 22.22222222222222,
+      "pct_stop_too_tight": 5.555555555555555,
+      "pct_temporary_excursion": 58.333333333333336,
+      "stop_rate_pct": 48.0,
+      "total_return_pct": 4.872503461167016
+    },
+    "pe2": {
+      "capital_velocity": 5.3502424569121105,
+      "max_drawdown_pct": 1.6794863118887104,
+      "n_lots": 40,
+      "total_return_pct": 7.128922491095964
+    },
+    "universe_size": 5
+  },
+  {
+    "config_label": "v03_C_100",
+    "coralys": {
+      "capital_velocity": 9.436528438692802,
+      "max_drawdown_pct": 2.6863368564315038,
+      "n_lots": 75,
+      "net_stop_benefit_inr": -576.0348747140308,
+      "pct_direction_failure": 11.11111111111111,
+      "pct_genuine_adverse": 2.7777777777777777,
+      "pct_premature": 22.22222222222222,
+      "pct_stop_too_tight": 5.555555555555555,
+      "pct_temporary_excursion": 58.333333333333336,
+      "stop_rate_pct": 48.0,
+      "total_return_pct": 4.872503461167016
+    },
+    "pe2": {
+      "capital_velocity": 5.3502424569121105,
+      "max_drawdown_pct": 1.6794863118887104,
+      "n_lots": 40,
+      "total_return_pct": 7.128922491095964
+    },
+    "universe_size": 5
+  }
+]

@@ -1,0 +1,57 @@
+      |M|T|W|T|F|S|S|
+-----------------------
+HN_0  |-|-|-|-|-|-|-|
+HN_1  |-|-|-|-|-|-|-|
+HN_2  |E|-|-|-|-|-|-|
+HN_3  |-|D|-|-|-|-|-|
+NU_4  |-|N|-|D|-|-|-|
+NU_5  |-|-|-|-|-|-|-|
+NU_6  |-|-|-|-|-|-|-|
+NU_7  |-|-|-|-|-|-|-|
+NU_8  |-|-|-|-|-|-|-|
+NU_9  |-|-|-|E|-|-|-|
+NU_10 |-|-|-|-|-|-|E|
+NU_11 |-|-|-|-|-|N|-|
+NU_12 |-|-|-|-|L|-|-|
+NU_13 |-|-|-|-|-|-|-|
+NU_14 |-|-|N|-|-|-|-|
+NU_15 |-|-|-|-|-|-|-|
+NU_16 |-|-|E|D|-|-|-|
+CT_17 |-|-|-|-|-|-|-|
+CT_18 |-|-|-|L|-|-|-|
+CT_19 |-|-|-|-|-|-|-|
+CT_20 |-|-|-|-|-|-|N|
+CT_21 |-|-|-|-|-|-|-|
+CT_22 |L|-|-|-|L|-|-|
+CT_23 |-|-|-|-|-|-|E|
+CT_24 |-|-|-|-|-|-|-|
+TR_25 |-|-|-|-|-|-|-|
+TR_26 |-|-|-|-|-|-|-|
+TR_27 |-|-|-|-|-|-|-|
+TR_28 |-|-|-|-|-|-|-|
+TR_29 |-|-|-|-|N|-|-|
+
+
+Hard constraint violations
+--------------------------
+
+Minimal coverage constraints: 59
+Required skill constraints: 0
+Illegal shift type succession constraints: 0
+Single assignment per day: 0
+
+
+Cost per constraint type
+------------------------
+
+Total assignment constraints: 5380
+Consecutive constraints: 975
+Non working days constraints: 3060
+Preferences: 10
+Max working weekend: 0
+Complete weekends: 120
+Optimal coverage constraints: 360
+
+------------------------
+
+Total cost: 9905

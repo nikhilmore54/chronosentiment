@@ -1,0 +1,53 @@
+# Fleet Semantics Registry — Uchoa X-family
+# M18.2 — Fleet Semantics Registry v1.0
+# Generated: 2026-07-09
+
+[family]
+id          = "X"
+full_name   = "Uchoa et al. (2017) — X-family"
+
+[constraint]
+type        = "ATMOST"
+description = "At most K vehicles may be used. The optimizer may use fewer vehicles if capacity permits."
+formal      = "routes_used ≤ K"
+
+[source]
+primary     = "CVRPLIB catalog (galgos.inf.puc-rio.br)"
+url         = "https://galgos.inf.puc-rio.br/cvrplib/index.php/en/instances/1"
+
+[publication]
+authors     = "Uchoa, E., Pecin, D., Pessoa, A., Poggi, M., Vidal, T., Subramanian, A."
+title       = "New Benchmark Instances for the Capacitated Vehicle Routing Problem"
+year        = 2017
+journal     = "European Journal of Operational Research"
+volume      = "257"
+number      = "3"
+pages       = "845–858"
+doi         = "10.1016/j.ejor.2016.08.012"
+
+[notes]
+derivation  = """
+Uchoa et al. (2017) explicitly defines the X-family instances as standard CVRP instances
+with at most K vehicles. The paper uses the modern CVRP formulation where K is an upper
+bound on the number of routes. Vehicle count is encoded in the instance name as '-kN'
+(e.g. X-n101-k25 → at most 25 vehicles).
+
+This is the most modern benchmark family in the Coralys registry and uses the clearest
+fleet semantics specification. ATMOST(K) confidence is higher than for older families.
+"""
+campaign_observation = """
+Campaign v1.5: 28 X-family instances run. No negative gaps observed.
+MedGap ≈ 1.5%, AvgGap ≈ 2.0% — harder instances than A/B/E families, consistent
+with the design intent of Uchoa et al. 2017.
+
+28 instances have no published BKS — gap analysis not applicable.
+All instances with BKS produced FCS outcome=VALID (routes_used ≤ K).
+"""
+
+[verification]
+status      = "Hypothesis"
+confidence  = "High"
+method      = "Uchoa et al. 2017 paper formulation; CVRPLIB catalog; campaign observation"
+date        = "2026-07"
+open_items  = ["P5 — formal confirmation from Uchoa et al. 2017 paper text"]
+notes       = "X-family ATMOST hypothesis has the highest confidence of any family under investigation. The 2017 paper uses modern CVRP formulation and explicitly defines K as a fleet upper bound. No negative gaps observed in campaign — consistent with ATMOST semantics."

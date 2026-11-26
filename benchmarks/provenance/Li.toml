@@ -1,0 +1,67 @@
+# Provenance Registry — Li family
+# M18.1 — Provenance Registry v1.0
+# Generated: 2026-07-09
+
+[family]
+id                  = "Li"
+full_name           = "Li et al. (2005)"
+instance_count      = 12
+customer_range      = "201–560"
+in_campaign_scope   = false
+
+[source]
+primary             = "CVRPLIB (galgos.inf.puc-rio.br)"
+url                 = "https://galgos.inf.puc-rio.br/cvrplib/index.php/en/instances/1"
+mirror              = "Li et al. 2005 (original publication)"
+notes               = "Li family instances are less widely distributed than Augerat/CMT/Taillard families. CVRPLIB catalog is the primary accessible source."
+
+[publication]
+authors             = "Li, F., Golden, B., Wasil, E."
+title               = "Very Large-Scale Vehicle Routing: New Test Problems, Algorithms, and Results"
+year                = 2005
+journal             = "Computers and Operations Research"
+volume              = "32"
+number              = "5"
+pages               = "1165–1179"
+doi                 = "10.1016/j.cor.2003.10.002"
+notes               = "12 very large-scale instances (201–560 customers). Designed to extend the Golden benchmark set. All instances exceed the current Coralys campaign scope of ≤200 customers."
+
+[objective]
+function            = "Minimize total route distance"
+multi_objective     = false
+fleet_cost          = false
+notes               = "Pure distance minimization. No fleet-size penalty in objective."
+
+[coordinate_type]
+type                = "EUC_2D"
+description         = "2D Euclidean coordinates in TSPLIB format"
+coordinate_source   = "NODE_COORD_SECTION in .vrp file"
+notes               = "Coordinate type assumed EUC_2D based on CVRPLIB catalog classification. Not independently verified from original publication."
+
+[rounding]
+rule                = "TSPLIB integer rounding (assumed)"
+formula             = "nint(sqrt((x1-x2)^2 + (y1-y2)^2))"
+description         = "Assumed TSPLIB integer rounding — not independently verified from original publication"
+verified            = false
+notes               = "Rounding convention not confirmed from Li et al. 2005 paper. Assumed consistent with TSPLIB convention used by CVRPLIB."
+
+[bks]
+source              = "Li et al. 2005 (original publication)"
+url                 = "https://doi.org/10.1016/j.cor.2003.10.002"
+extraction_method   = "Original publication results table"
+value_type          = "Integer (best known at time of publication)"
+notes               = "BKS values sourced from original publication. Not cross-checked against current CVRPLIB catalog. Values may be outdated — subsequent algorithms may have improved on these results."
+
+[verification]
+status              = "Publication Only"
+method              = "Registry metadata from original publication; not cross-checked against CVRPLIB catalog"
+date                = "2026-07"
+campaign_reference  = "Campaign v1.5 (EVIDENCE-v1.5.md) — excluded from run"
+qualification_level = "Excluded"
+open_items          = [
+    "All 12 instances exceed MAX_CUSTOMERS=200 — excluded from current campaign scope",
+    "BKS values not cross-checked against current CVRPLIB catalog",
+    "Rounding convention not confirmed from original publication",
+    "Fleet semantics not investigated (out of scope)"
+]
+notes               = "Li family is registered for completeness and future campaign scope expansion. All instances have >200 customers and are skipped by the current campaign runner. Registry metadata sourced from original publication only — not verified against CVRPLIB catalog. This is the lowest-confidence provenance entry in the registry."

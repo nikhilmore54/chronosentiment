@@ -19,7 +19,9 @@ fn parse_u64_cell(raw: &str) -> Option<u64> {
 }
 
 fn find_col(headers: &[&str], names: &[&str]) -> Option<usize> {
-    headers.iter().position(|h| names.iter().any(|n| h.eq_ignore_ascii_case(n)))
+    headers
+        .iter()
+        .position(|h| names.iter().any(|n| h.eq_ignore_ascii_case(n)))
 }
 
 impl CandleSource for CsvCandleSource {
@@ -52,7 +54,11 @@ impl CandleSource for CsvCandleSource {
             let parts: Vec<&str> = line.split(',').collect();
 
             let get = |idx: usize| -> &str {
-                if idx < parts.len() { parts[idx] } else { "" }
+                if idx < parts.len() {
+                    parts[idx]
+                } else {
+                    ""
+                }
             };
 
             let open = match parse_u64_cell(get(open_idx)) {

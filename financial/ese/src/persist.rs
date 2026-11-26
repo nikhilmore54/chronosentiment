@@ -70,21 +70,19 @@ impl ArchivePersistor {
 
         let instability = record["instability_type"].as_str().unwrap_or("");
         let corridor = record["corridor"].as_bool().unwrap_or(false);
-        let prec_ent = record["precursor_entropy_expansion"].as_f64().unwrap_or(0.0);
-        let prec_curv = record["precursor_curvature_destabilization"].as_f64().unwrap_or(0.0);
-        let is_event = instability != "STABLE"
-            || corridor
-            || prec_ent > 0.05
-            || prec_curv > 15.0;
+        let prec_ent = record["precursor_entropy_expansion"]
+            .as_f64()
+            .unwrap_or(0.0);
+        let prec_curv = record["precursor_curvature_destabilization"]
+            .as_f64()
+            .unwrap_or(0.0);
+        let is_event = instability != "STABLE" || corridor || prec_ent > 0.05 || prec_curv > 15.0;
 
         if !is_event {
             let cnt = self.stable_counters.entry(symbol.clone()).or_insert(0);
             *cnt += 1;
             if *cnt % STABLE_SAMPLE_EVERY != 0 {
-                fs::write(
-                    sym_dir.join("latest.json"),
-                    serde_json::to_string(record)?,
-                )?;
+                fs::write(sym_dir.join("latest.json"), serde_json::to_string(record)?)?;
                 return Ok(());
             }
         } else {
@@ -101,20 +99,16 @@ impl ArchivePersistor {
 
         if corridor {
             self.corridors += 1;
-            let corr_dir = self
-                .archive_dir
-                .join("transitions")
-                .join("corridor_events");
+            let corr_dir = self.archive_dir.join("transitions").join("corridor_events");
             self.gzip
                 .writeln(&corr_dir.join(format!("{symbol}_events.jsonl.gz")), &line)?;
             let entropy = record["entropy"].as_f64().unwrap_or(0.0);
             if entropy > 0.95 {
-                let coll_dir = self
-                    .archive_dir
-                    .join("transitions")
-                    .join("collapse_events");
-                self.gzip
-                    .writeln(&coll_dir.join(format!("{symbol}_collapses.jsonl.gz")), &line)?;
+                let coll_dir = self.archive_dir.join("transitions").join("collapse_events");
+                self.gzip.writeln(
+                    &coll_dir.join(format!("{symbol}_collapses.jsonl.gz")),
+                    &line,
+                )?;
             }
         }
 

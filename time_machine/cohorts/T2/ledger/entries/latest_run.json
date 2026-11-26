@@ -1,0 +1,20 @@
+{
+  "run_id": "TIME004-20260717T034500Z-gen20260820T104928773748Z",
+  "run_at": "2026-08-20T10:49:29.928156Z",
+  "producer": "time004_ledger.v1",
+  "decision_replay_id": "TIME003-20260717T034500Z-gen20260820T104928773748Z",
+  "as_of": "2026-07-17T03:45:00Z",
+  "source_type": "HISTORICAL",
+  "n_admitted": 102,
+  "n_duplicate_skipped": 0,
+  "n_excluded_incomplete": 0,
+  "n_excluded_error": 0,
+  "n_total": 102,
+  "ledger_dir": "time_machine/cohorts/T2/ledger/entries",
+  "audit_dir": "time_machine/cohorts/T2/ledger/audit",
+  "ac_t4_01_admission_fidelity": true,
+  "ac_t4_02_t0_immutability": true,
+  "ac_t4_04_idempotency": true,
+  "ac_t4_05_no_recomputation": true,
+  "ac_t4_07_accounting": true
+}

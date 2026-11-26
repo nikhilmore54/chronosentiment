@@ -60,18 +60,12 @@ pub fn attest_domain_result(
     let first = materialize();
     let second = materialize();
 
-    let expected_event_hash = compute_event_stream_hash(
-        &first.events,
-        &substrate_reference,
-        ENGINE_MODE,
-    );
+    let expected_event_hash =
+        compute_event_stream_hash(&first.events, &substrate_reference, ENGINE_MODE);
     let result_hash = result_hash_for(&first);
 
-    let event_hash_second = compute_event_stream_hash(
-        &second.events,
-        &substrate_reference,
-        ENGINE_MODE,
-    );
+    let event_hash_second =
+        compute_event_stream_hash(&second.events, &substrate_reference, ENGINE_MODE);
     let result_hash_second = result_hash_for(&second);
 
     let attestation_status = if first.events.is_empty() {

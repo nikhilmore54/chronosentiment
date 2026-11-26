@@ -24,8 +24,16 @@ impl PcaWeights {
             .enumerate()
             .map(|(i, f)| (f - self.mean[i]) / self.std[i])
             .collect();
-        let pc1: f64 = norm.iter().enumerate().map(|(i, n)| n * self.pc1_vector[i]).sum();
-        let pc2: f64 = norm.iter().enumerate().map(|(i, n)| n * self.pc2_vector[i]).sum();
+        let pc1: f64 = norm
+            .iter()
+            .enumerate()
+            .map(|(i, n)| n * self.pc1_vector[i])
+            .sum();
+        let pc2: f64 = norm
+            .iter()
+            .enumerate()
+            .map(|(i, n)| n * self.pc2_vector[i])
+            .sum();
         let mut best_id = 0usize;
         let mut best_dist = f64::MAX;
         for (i, c) in self.centroids.iter().enumerate() {

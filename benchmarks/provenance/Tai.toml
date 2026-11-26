@@ -1,0 +1,114 @@
+# Provenance Registry — Taillard (Tai) family
+# M18.1 — Provenance Registry v1.0
+# Generated: 2026-07-09
+
+[family]
+id                  = "Tai"
+full_name           = "Taillard (1993)"
+instance_count      = 13
+customer_range      = "75–385"
+in_campaign_scope   = true
+
+[source]
+primary             = "CVRPLIB (galgos.inf.puc-rio.br)"
+url                 = "https://galgos.inf.puc-rio.br/cvrplib/index.php/en/instances/1"
+mirror              = "OR-Library (Beasley, Imperial College London)"
+mirror_url          = "http://people.brunel.ac.uk/~mastjjb/jeb/orlib/vrpinfo.html"
+notes               = "Vehicle counts are NOT embedded in the .vrp files. They are sourced from the CVRPLIB catalog and stored in the Coralys registry. Per-instance vehicle counts differ within size groups (e.g. Tai75b=9, Tai75d=9 vs Tai75a=10, Tai75c=10)."
+
+[publication]
+authors             = "Taillard, E."
+title               = "Parallel Iterative Search Methods for Vehicle Routing Problems"
+year                = 1993
+journal             = "Networks"
+volume              = "23"
+number              = "8"
+pages               = "661–673"
+doi                 = "10.1002/net.3230230804"
+notes               = "13 instances across four size groups: 75 (4 instances), 100 (4 instances), 150 (4 instances), 385 (1 instance). BKS values in the original 1993 paper are heuristic results. Current CVRPLIB catalog values reflect improvements by subsequent algorithms over 30+ years."
+
+[objective]
+function            = "Minimize total route distance"
+multi_objective     = false
+fleet_cost          = false
+notes               = "Pure distance minimization. No fleet-size penalty in objective."
+
+[coordinate_type]
+type                = "EUC_2D"
+description         = "2D Euclidean coordinates in TSPLIB format"
+coordinate_source   = "NODE_COORD_SECTION in .vrp file"
+
+[rounding]
+rule                = "TSPLIB integer rounding"
+formula             = "nint(sqrt((x1-x2)^2 + (y1-y2)^2))"
+description         = "Distances rounded to nearest integer per TSPLIB convention"
+verified            = true
+notes               = "Integer rounding confirmed. Coralys uses nint() rounding consistent with TSPLIB. The 'fp=' field in campaign logs records fractional vs integer BKS discrepancy per instance."
+
+[bks]
+source              = "CVRPLIB catalog (current)"
+url                 = "https://galgos.inf.puc-rio.br/cvrplib/index.php/en/instances/1"
+extraction_method   = "CVRPLIB catalog lookup (not from .vrp COMMENT field)"
+value_type          = "Float (best known — improved over original 1993 values)"
+notes               = """
+PROVENANCE NOTE (P4):
+Registry BKS values are sourced from the CVRPLIB catalog and reflect current best-known solutions.
+These values are significantly better than the original 1993 heuristic results.
+
+Campaign v1.5 observed negative gaps in 5 Tai instances:
+  Tai75d:  -7.61% (best=1354, BKS=1468.73)
+  Tai100a: -2.06% (best=2097, BKS=2141.07)
+  Tai75b:  -2.05% (best=1379, BKS=1407.89)
+  Tai100b: -0.29% (best=1935, BKS=1940.55)
+  Tai75a:  -0.21% (best=1615, BKS=1618.36)
+
+These negative gaps are under investigation (P4). Working hypotheses:
+  1. Fleet semantics mismatch: Coralys may be using more vehicles than K,
+     producing shorter routes at the cost of more vehicles.
+  2. BKS provenance: registry values may differ from values used by comparison papers.
+  3. Distance rounding: float vs integer objective representation.
+
+Stage B verification required before any negative gap can be interpreted as improvement.
+"""
+
+[instance_vehicle_counts]
+# Per-instance vehicle counts differ within size groups — this is a known property.
+# All sourced from CVRPLIB catalog (not from .vrp files).
+"Tai75a"  = 10
+"Tai75b"  = 9
+"Tai75c"  = 10
+"Tai75d"  = 9
+"Tai100a" = 11
+"Tai100b" = 11
+"Tai100c" = 11
+"Tai100d" = 11
+"Tai150a" = 12
+"Tai150b" = 12
+"Tai150c" = 12
+"Tai150d" = 12
+"Tai385"  = 24
+
+[verification]
+status              = "Under Investigation"
+method              = "CVRPLIB catalog cross-check completed; Stage B certificates pending"
+date                = "2026-07"
+campaign_reference  = "Campaign v1.5 (EVIDENCE-v1.5.md)"
+qualification_level = "Under Investigation"
+open_items          = [
+    "P4 — BKS provenance: cross-check registry values against CVRPLIB.org and OR-Library",
+    "P5 — fleet semantics: confirm ATMOST vs EXACT from Taillard 1993",
+    "Stage B — collect route-count certificates for all 13 Tai instances",
+    "Negative-gap root cause: Tai75d (-7.61%), Tai100a (-2.06%), Tai75b (-2.05%), Tai100b (-0.29%), Tai75a (-0.21%)",
+    "Tai150 fleet semantics require confirmation (Tai150 instances not in negative-gap list but fleet semantics unverified)",
+    "Tai385 — 385 customers, exceeds MAX_CUSTOMERS=200, excluded from campaign run"
+]
+notes               = """
+Taillard family is the second-highest priority provenance investigation target after CMT.
+Five instances show negative gaps ranging from -0.21% to -7.61%.
+
+Vehicle counts are stored in the Coralys registry (not in .vrp files) and were
+cross-checked against the CVRPLIB catalog in 2026-07. Per-instance counts differ
+within size groups — this is a documented property of the Taillard benchmark set.
+
+Tai385 (385 customers) is excluded from the current campaign scope (MAX_CUSTOMERS=200).
+"""

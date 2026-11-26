@@ -1,0 +1,63 @@
+{
+  "timestamp_utc": "2026-10-04T14:47:36.532183+00:00",
+  "status": "HEALTHY",
+  "governance": {
+    "rp605_live_authority": "100%",
+    "rp615_crypto_authority": "0% (Shadow Only)",
+    "nse_ledger_checksum": "46119e8dafc90338f132ca84ef606783c86d8d0ce0dfcc5e19e9b637c0b7a23c"
+  },
+  "cumulative_trades": {
+    "C0_Reference": 40,
+    "C1_Point_Expectancy": 1,
+    "C2_Dynamic_BreakEven": 21,
+    "C3_Uncertainty_LCB": 0,
+    "C4_Dispersion_Adjusted": 0,
+    "C5_Fixed_Capacity_Top2Pct": 0
+  },
+  "cumulative_net_pnl": {
+    "C0_Reference": 2974.549217716396,
+    "C1_Point_Expectancy": -43.474566521489216,
+    "C2_Dynamic_BreakEven": -183.65580012054448,
+    "C3_Uncertainty_LCB": 0.0,
+    "C4_Dispersion_Adjusted": 0.0,
+    "C5_Fixed_Capacity_Top2Pct": 0.0
+  },
+  "active_positions": {
+    "C0_Reference": {
+      "BTCUSDT": "CRYPTO-LIVE-BTCUSDT-20261004142213",
+      "ETHUSDT": "CRYPTO-LIVE-ETHUSDT-20261004143627",
+      "SOLUSDT": "CRYPTO-LIVE-SOLUSDT-20261004143627",
+      "BNBUSDT": "CRYPTO-LIVE-BNBUSDT-20261004143627"
+    },
+    "C1_Point_Expectancy": {
+      "BTCUSDT": null,
+      "ETHUSDT": null,
+      "SOLUSDT": null,
+      "BNBUSDT": null
+    },
+    "C2_Dynamic_BreakEven": {
+      "BTCUSDT": "CRYPTO-LIVE-BTCUSDT-20261004143627",
+      "ETHUSDT": "CRYPTO-LIVE-ETHUSDT-20261004143627",
+      "SOLUSDT": "CRYPTO-LIVE-SOLUSDT-20261004143223",
+      "BNBUSDT": "CRYPTO-LIVE-BNBUSDT-20261004143123"
+    },
+    "C3_Uncertainty_LCB": {
+      "BTCUSDT": null,
+      "ETHUSDT": null,
+      "SOLUSDT": null,
+      "BNBUSDT": null
+    },
+    "C4_Dispersion_Adjusted": {
+      "BTCUSDT": null,
+      "ETHUSDT": null,
+      "SOLUSDT": null,
+      "BNBUSDT": null
+    },
+    "C5_Fixed_Capacity_Top2Pct": {
+      "BTCUSDT": null,
+      "ETHUSDT": null,
+      "SOLUSDT": null,
+      "BNBUSDT": null
+    }
+  }
+}

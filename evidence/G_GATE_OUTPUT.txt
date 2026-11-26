@@ -1,0 +1,3 @@
+⚠️ G‑GATE cannot be evaluated – required scientific evidence is missing.
+Missing metrics: AUC Calibration Effect size Confidence interval p-value Baseline
+Missing horizon handling: 

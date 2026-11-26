@@ -1,0 +1,5 @@
+zone,count,min_slot,max_slot,mean_slot
+Peak,2288,0,49,26.9
+Shoulder,4972,0,49,28.33
+Transition,1856,0,49,22.6
+Tail,3949,0,46,14.93

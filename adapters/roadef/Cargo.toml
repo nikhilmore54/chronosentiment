@@ -1,0 +1,104 @@
+[package]
+name = "roadef"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+anyhow = "1.0.102"
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+coralys-ecology = { path = "../../coralys-ecology" }
+coralys-moga = { path = "../../coralys-moga" }
+rand = "0.8"
+coralys-core = { path = "../../coralys-core" }
+uuid = { version = "1", features = ["v4"] }
+chrono = "0.4"
+rayon = "1.10"
+
+[[bin]]
+name = "tiny_solver"
+path = "src/bin/tiny_solver.rs"
+
+[[bin]]
+name = "m25_benchmark"
+path = "src/bin/m25_benchmark.rs"
+
+[[bin]]
+name = "campaign"
+path = "src/bin/campaign.rs"
+
+[[bin]]
+name = "campaign_engine"
+path = "src/bin/campaign_engine.rs"
+
+[[bin]]
+name = "eval_profiler"
+path = "src/bin/eval_profiler.rs"
+
+[[bin]]
+name = "e001_dual_path"
+path = "src/bin/e001_dual_path.rs"
+
+[[bin]]
+name = "rp401c_ecmp_construction"
+path = "src/bin/rp401c_ecmp_construction.rs"
+
+[[bin]]
+name = "rp401d_ecmp_path_selection"
+path = "src/bin/rp401d_ecmp_path_selection.rs"
+
+[[bin]]
+name = "rp403_construction_portfolio"
+path = "src/bin/rp403_construction_portfolio.rs"
+
+[[bin]]
+name = "rp403v1_validate_rp401c"
+path = "src/bin/rp403v1_validate_rp401c.rs"
+
+[[bin]]
+name = "rp404a_lns_framework"
+path = "src/bin/rp404a_lns_framework.rs"
+
+[[bin]]
+name = "rp404c_bottleneck_link"
+path = "src/bin/rp404c_bottleneck_link.rs"
+
+[[bin]]
+name = "rp404d_ecmp_conflict"
+path = "src/bin/rp404d_ecmp_conflict.rs"
+
+[[bin]]
+name = "rp405_adaptive"
+path = "src/bin/rp405_adaptive.rs"
+
+[[bin]]
+name = "rp406_setA17_diag"
+path = "src/bin/rp406_setA17_diag.rs"
+
+[[bin]]
+name = "rp406b_bottleneck_relief"
+path = "src/bin/rp406b_bottleneck_relief.rs"
+
+[[bin]]
+name = "rp406c_characterise"
+path = "src/bin/rp406c_characterise.rs"
+
+[[bin]]
+name = "campaign_rp408b"
+path = "src/bin/campaign_rp408b.rs"
+
+[[bin]]
+name = "campaign_rp409b"
+path = "src/bin/campaign_rp409b.rs"
+
+[[bin]]
+name = "campaign_rc001"
+path = "src/bin/campaign_rc001.rs"
+
+[[bin]]
+name = "phase3_rayon_ab"
+path = "src/bin/phase3_rayon_ab.rs"
+[[bin]]
+name = "roadef_qualification"
+path = "src/bin/roadef_qualification.rs"
+

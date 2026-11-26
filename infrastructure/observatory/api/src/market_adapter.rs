@@ -22,10 +22,11 @@ struct RawMarketData {
 }
 
 pub fn parse_market_data(lines: Vec<String>) -> Vec<MarketEvent> {
-    lines.into_iter()
+    lines
+        .into_iter()
         .filter_map(|line| {
             let data: RawMarketData = serde_json::from_str(&line).ok()?;
-            
+
             let subtype = match data.event_type {
                 RawEventType::Trade => MarketEventType::Trade,
                 RawEventType::Add => MarketEventType::NewOrder,

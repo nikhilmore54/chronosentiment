@@ -1,0 +1,75 @@
+{
+  "identity": {
+    "certificate_id": "cert-F-n45-k4-effbb1e8",
+    "certificate_version": "1.0.0",
+    "generated_at": "2026-08-05T12:12:09.869314+00:00",
+    "campaign_id": "campaign_v1.6",
+    "solver_version": "0.1.0"
+  },
+  "instance": {
+    "name": "F-n45-k4",
+    "family": "F",
+    "customers": 44,
+    "capacity": 2010,
+    "benchmark_vehicles": 4,
+    "vehicle_source": "COMMENT",
+    "distance_metric": "TspLibEuc2D"
+  },
+  "objective": {
+    "best_distance": 724.0,
+    "best_distance_float": 724.493459489653,
+    "bks": 724.0,
+    "gap_pct": 0.0,
+    "gap_fp_pct": null,
+    "quality_class": "✅ Solved",
+    "routes_used": 4,
+    "runtime_ms": 1945,
+    "generations": 36,
+    "termination_reason": "NoImprovement(30) at gen 5"
+  },
+  "fcf": {
+    "status": "FEASIBILITY_UNDETERMINED",
+    "confidence_level": 3,
+    "fc1_passed": true,
+    "fc1_reason": "n=44 customers, depot_id=1, capacity=2010, metric=TspLibEuc2D",
+    "fc2_5_passed": true,
+    "fc2_5_reason": "No registry entry — BKS and vehicle count from file only",
+    "fc2_passed": true,
+    "fc2_reason": "FC2: D=7220 KQ=8040 K_min=4 K=4 NC1:PASS NC2:PASS NC5:PASS",
+    "fc3_passed": true,
+    "fc3_reason": "FC3-FFD PASS: packed 7220 demand into 4/4 bins of Q=2010"
+  },
+  "fcs": {
+    "constraint_type": "UNSPECIFIED",
+    "declared_k": null,
+    "routes_used": 4,
+    "outcome": "PendingVerification",
+    "comparison_valid": false
+  },
+  "fuc": {
+    "avg_utilization": 0.8980099502487562,
+    "median_utilization": 0.8995024875621891,
+    "cv": 0.11197305010828662,
+    "rcr": 0.5073170731707317,
+    "packing_classification": "BALANCED",
+    "capacity_violations": 0,
+    "total_demand": 7220,
+    "total_fleet_capacity": 8040,
+    "fleet_capacity_used": 0.8980099502487562
+  },
+  "benchmark_context": {
+    "provenance_registry_version": "1.0",
+    "fleet_semantics_registry_version": "1.0",
+    "qualification_version": "1.0",
+    "bks_source": "FileComment",
+    "fleet_semantics_evidence": "Minimum"
+  },
+  "governance": {
+    "fcf_version": "1.0",
+    "fcs_version": "1.0",
+    "fuc_version": "1.0",
+    "status": "UnderInvestigation",
+    "status_reason": "Fleet semantics unspecified for family 'F' — gap comparison validity unknown",
+    "content_hash": "0119af20a8d508bf"
+  }
+}

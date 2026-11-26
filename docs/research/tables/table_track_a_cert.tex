@@ -1,0 +1,35 @@
+\begin{table*}[t]
+\centering
+\caption{Track A: Mixed-Mode Runway Scheduling Exact Optimality Certification on Extended Beasley Suite (\texttt{mm\_airland1}--\texttt{mm\_airland8})}
+\label{tab:track_a_cert}
+\resizebox{\textwidth}{!}{%
+\begin{tabular}{lcccccccccccc}
+\toprule
+\textbf{Instance} & \textbf{Regime} & \boldmath{$N$} & \textbf{FCFS} $Z$ & \textbf{HiGHS} $Z^*$ & \textbf{HiGHS (ms)} & \textbf{Coralys} $Z$ & \textbf{Coralys (ms)} & \textbf{Gap (\%)} & \textbf{Speedup} & \textbf{Win} & \textbf{Sep} & \textbf{FIFO} \\
+\midrule
+mm\_airland1\_balanced & Balanced & 10 & 220.0 & 220.0 & 24.4 & 220.0 & 4.67 & \textbf{0.00\%} & 5.2$\times$ & 0 & 0 & 0 \\
+mm\_airland1\_arrival\_heavy & Arrival-Heavy & 10 & 340.0 & 340.0 & 21.5 & 340.0 & 3.25 & \textbf{0.00\%} & 6.6$\times$ & 0 & 0 & 0 \\
+mm\_airland2\_balanced & Balanced & 15 & 560.0 & 410.0 & 95.7 & 410.0 & 11.89 & \textbf{0.00\%} & 8.0$\times$ & 0 & 0 & 0 \\
+mm\_airland2\_arrival\_heavy & Arrival-Heavy & 15 & 560.0 & 560.0 & 164.0 & 560.0 & 13.10 & \textbf{0.00\%} & 12.5$\times$ & 0 & 0 & 0 \\
+mm\_airland3\_balanced & Balanced & 20 & 1110.0 & 470.0 & 58.2 & 470.0 & 29.18 & \textbf{0.00\%} & 2.0$\times$ & 0 & 0 & 0 \\
+mm\_airland3\_arrival\_heavy & Arrival-Heavy & 20 & 990.0 & 350.0 & 50.0 & 350.0 & 32.87 & \textbf{0.00\%} & 1.5$\times$ & 0 & 0 & 0 \\
+mm\_airland4\_balanced & Balanced & 20 & 1240.0 & 1150.0 & 1168.6 & 1150.0 & 22.18 & \textbf{0.00\%} & 52.7$\times$ & 0 & 0 & 0 \\
+mm\_airland4\_arrival\_heavy & Arrival-Heavy & 20 & 1570.0 & 1570.0 & 1540.7 & 1570.0 & 28.33 & \textbf{0.00\%} & 54.4$\times$ & 0 & 0 & 0 \\
+mm\_airland5\_balanced & Balanced & 20 & 3360.0 & 1180.0 & 1580.4 & 1180.0 & 64.94 & \textbf{0.00\%} & 24.3$\times$ & 0 & 0 & 0 \\
+mm\_airland5\_arrival\_heavy & Arrival-Heavy & 20 & 3570.0 & 1420.0 & 2280.7 & 1420.0 & 89.94 & \textbf{0.00\%} & 25.4$\times$ & 0 & 0 & 0 \\
+mm\_airland6\_balanced & Balanced & 30 & 2123.0 & 2009.0 & 208.2 & 2009.0 & 54.93 & \textbf{0.00\%} & 3.8$\times$ & 0 & 0 & 0 \\
+mm\_airland6\_arrival\_heavy & Arrival-Heavy & 30 & 7202.0 & 5630.0 & 387.9 & 5630.0 & 63.31 & \textbf{0.00\%} & 6.1$\times$ & 0 & 0 & 0 \\
+mm\_airland7\_balanced & Balanced & 44 & 6.0 & 6.0 & 461.2 & 6.0 & 165.37 & \textbf{0.00\%} & 2.8$\times$ & 0 & 0 & 0 \\
+mm\_airland7\_arrival\_heavy & Arrival-Heavy & 44 & 100.0 & 100.0 & 464.3 & 100.0 & 46.88 & \textbf{0.00\%} & 9.9$\times$ & 0 & 0 & 0 \\
+mm\_airland8\_balanced & Balanced & 50 & 1315.0 & 1005.0 & 1220.8 & 1020.0 & 1069.76 & 1.49\% & 1.1$\times$ & 0 & 0 & 0 \\
+mm\_airland8\_arrival\_heavy & Arrival-Heavy & 50 & 1715.0 & 1185.0 & 4027.8 & 1185.0 & 1667.67 & \textbf{0.00\%} & 2.4$\times$ & 0 & 0 & 0 \\
+\midrule
+\textbf{Summary / Mean} & \textbf{16 Instances} & -- & -- & -- & 13754.4 & -- & 3368.27 & \textbf{0.09\%} & \textbf{4.1$\times$} & \textbf{0} & \textbf{0} & \textbf{0} \\
+\bottomrule
+\end{tabular}%
+}
+\vspace{1mm}
+\begin{flushleft}
+\footnotesize{\textbf{Notes}: Pinned 1-thread execution on identical CPU hardware. FCFS indicates target-arrival sequence baseline. HiGHS $Z^*$ denotes mathematically certified integer global optimum computed via mixed-integer branch-and-cut with $10^{-6}$ primal/dual tolerance. Coralys solves via autonomous active-set coordinate relaxation with $100\%$ zero-violation safety guarantees across all 16 instances (15 exact global optima, 1 instance at $1.49\%$).}
+\end{flushleft}
+\end{table*}

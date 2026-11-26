@@ -1,0 +1,16 @@
+# CODEOWNERS
+
+# Constitutional governance surfaces
+/docs/constitution/ @nikhilmore54
+/docs/certification/ @nikhilmore54
+/docs/migrations/ @nikhilmore54
+
+# Replay and orchestration infrastructure
+/financial/strategies/src/pipeline/ @nikhilmore54
+/financial/core/ @nikhilmore54
+
+# CI governance
+/.github/workflows/ @nikhilmore54
+
+# Default owner
+* @nikhilmore54

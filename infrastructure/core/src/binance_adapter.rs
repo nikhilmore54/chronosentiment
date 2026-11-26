@@ -18,7 +18,10 @@ struct BinanceRawEvent {
     is_buyer_maker: bool,
 }
 
-pub fn load_binance_events_from_jsonl(path: &str, _depth: usize) -> Result<Vec<NormalizedMarketEvent>, String> {
+pub fn load_binance_events_from_jsonl(
+    path: &str,
+    _depth: usize,
+) -> Result<Vec<NormalizedMarketEvent>, String> {
     let file = File::open(path).map_err(|e| e.to_string())?;
     let reader = BufReader::new(file);
     let mut events = Vec::new();
@@ -31,7 +34,11 @@ pub fn load_binance_events_from_jsonl(path: &str, _depth: usize) -> Result<Vec<N
                 exchange_ts: raw.event_time,
                 price: raw.price.parse().unwrap_or(0.0),
                 volume: raw.quantity.parse().unwrap_or(0.0),
-                side: Some(if raw.is_buyer_maker { Side::Sell } else { Side::Buy }),
+                side: Some(if raw.is_buyer_maker {
+                    Side::Sell
+                } else {
+                    Side::Buy
+                }),
                 best_bid: None,
                 best_ask: None,
                 bids: None,

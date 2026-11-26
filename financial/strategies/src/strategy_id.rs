@@ -240,7 +240,6 @@ fn parse_legacy_underscore_strategy(serialized_id: &str) -> Result<Strategy, Str
         exec_aggression: 50,
         latency_bias: 10,
         fill_threshold: 50,
-        
     })
 }
 
@@ -285,7 +284,6 @@ fn parse_strategy_id_inner(serialized_id: &str) -> Result<Strategy, StrategyIdEr
         exec_aggression: 50,
         latency_bias: 10,
         fill_threshold: 50,
-        
     })
 }
 
