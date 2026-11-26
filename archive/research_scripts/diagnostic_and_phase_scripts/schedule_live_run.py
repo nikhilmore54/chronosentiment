@@ -119,9 +119,8 @@ def main():
     
     # ── Phase 3: Deterministic Replay ──
     replay_cmd = [
-        "python3", "scripts/run_nse_cohort.py",
+        "./target/release/cs-ingest", "cohort",
         "--batch-id", "903",
-        "--from-frozen",
         "--fresh",
         "--run-label", "replay_equiv"
     ]

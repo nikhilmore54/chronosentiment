@@ -1,0 +1,41 @@
+{
+  "artifact_root": "artifacts/lane3_probe_base/osc_50_1.0",
+  "authority_map": "LANE 3 SLICE 3 \u2014 ADMISSIBILITY (pre-implementation)",
+  "conclusion": "PASS: passive recomputation sufficient \u2014 Slice 3 implementation mechanically justified",
+  "envelope_reference_match": true,
+  "failures": [],
+  "frozen_six_file_universe": {
+    "cognitions": [
+      "rolling_50",
+      "event_reset"
+    ],
+    "files": [
+      "trace_summary.json",
+      "trace_v1.json",
+      "replay_hash.txt"
+    ]
+  },
+  "manifest_fingerprints_trace_summary_only": true,
+  "manifest_summary_binding_ok": true,
+  "passive_six_file_sufficient_without_schema": true,
+  "probe": "lane3_passive_recomputation_admissibility",
+  "recomputed_fingerprints": {
+    "event_reset": {
+      "replay_hash.txt": "94d348a2538db35daf83e1c8cb84004cf383aa0ce899911444166899ee70be17",
+      "trace_summary.json": "27b0c1c5e5bcbdd9756d7e71de27500eba6a70cff5075ffac808a308e857c06a",
+      "trace_v1.json": "aa133ecd71257ced3d847e2760604fc22484c51444893426bad5ea296b3051d5"
+    },
+    "rolling_50": {
+      "replay_hash.txt": "94d348a2538db35daf83e1c8cb84004cf383aa0ce899911444166899ee70be17",
+      "trace_summary.json": "c50ad1cce9b66c0dc9df908460e73daf4d13f2de897a93e2ebc485acaf8645dd",
+      "trace_v1.json": "6ab1c88c48f5e42935864e100214d91a12895b100c2e031055194b5644aa1907"
+    }
+  },
+  "semantic_widening_pressure": false,
+  "status": "PASS_PASSIVE_RECOMPUTATION_SUFFICIENT",
+  "tamper_tests": {
+    "T1_trace_byte_mutation": "DETECTED",
+    "T2_manifest_id_tamper": "DETECTED",
+    "T3_missing_artifact": "DETECTED"
+  }
+}

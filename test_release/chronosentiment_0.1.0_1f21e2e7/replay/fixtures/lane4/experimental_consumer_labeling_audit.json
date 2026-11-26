@@ -1,0 +1,1254 @@
+{
+  "attestations": [
+    "BOUNDED_SURFACE_SCAN_COMPLETE",
+    "NO_OPERATIONAL_AUTHORITY_GRANTED",
+    "SEMANTIC_DUPLICATES_LABELED",
+    "DETACHED_ARCHIVES_LABELED",
+    "MAP_BASELINE_ALIGNED"
+  ],
+  "audit_version": "1.0.0",
+  "classification_taxonomy": [
+    "semantic_duplicate",
+    "downstream_consumer",
+    "observational_consumer",
+    "orphaned_lineage",
+    "detached_archive"
+  ],
+  "convergence_authorized": false,
+  "core_rule": "documented \u2260 operational authority",
+  "git_commit": "cc5c28fd60a626207cc9da6195889a991eb4999b",
+  "lane": "Lane 4 \u2014 experimental consumer labeling audit",
+  "layer": "observational",
+  "lineage_doc": "docs/RESEARCH_LINEAGE.md",
+  "scope_doc": "docs/governance/LANE4_EXPERIMENTAL_CONSUMER_LABELING_SCOPE.md",
+  "status": "AUDIT_COMPLETE",
+  "summary": {
+    "by_primary_label": {
+      "detached_archive": 4,
+      "downstream_consumer": 58,
+      "observational_consumer": 24,
+      "semantic_duplicate": 7
+    },
+    "detached_archive_count": 4,
+    "map_baseline_surfaces": 14,
+    "map_label_mismatches": [],
+    "operational_authority_surfaces": 0,
+    "semantic_duplicate_count": 7,
+    "surfaces_scanned": 93
+  },
+  "surfaces": [
+    {
+      "labels": [
+        "detached_archive"
+      ],
+      "map_baseline_label": "detached_archive",
+      "notes": [
+        "not in Rust module tree \u2014 archived lineage only"
+      ],
+      "operational_authority": false,
+      "path": "research_experiments/kernel_stub_v0/kernel.rs",
+      "primary_label": "detached_archive",
+      "signals": []
+    },
+    {
+      "labels": [
+        "detached_archive"
+      ],
+      "map_baseline_label": "detached_archive",
+      "notes": [
+        "not in Rust module tree \u2014 archived lineage only"
+      ],
+      "operational_authority": false,
+      "path": "research_experiments/live_source_v0/live_source.rs",
+      "primary_label": "detached_archive",
+      "signals": []
+    },
+    {
+      "labels": [
+        "detached_archive"
+      ],
+      "map_baseline_label": "detached_archive",
+      "notes": [
+        "not in Rust module tree \u2014 archived lineage only"
+      ],
+      "operational_authority": false,
+      "path": "research_experiments/python_bridge/python.rs",
+      "primary_label": "detached_archive",
+      "signals": []
+    },
+    {
+      "labels": [
+        "detached_archive"
+      ],
+      "map_baseline_label": "detached_archive",
+      "notes": [
+        "not in Rust module tree \u2014 archived lineage only"
+      ],
+      "operational_authority": false,
+      "path": "research_experiments/yahoo_adapter_v0/yahoo.rs",
+      "primary_label": "detached_archive",
+      "signals": []
+    },
+    {
+      "labels": [
+        "semantic_duplicate"
+      ],
+      "map_baseline_label": "semantic_duplicate",
+      "notes": [],
+      "operational_authority": false,
+      "path": "scripts/adversarial_physics_test.py",
+      "primary_label": "semantic_duplicate",
+      "signals": [
+        "admissibility threshold drift"
+      ]
+    },
+    {
+      "labels": [
+        "downstream_consumer"
+      ],
+      "map_baseline_label": "downstream_consumer",
+      "notes": [
+        "default research corpus classification"
+      ],
+      "operational_authority": false,
+      "path": "scripts/research/adaptive_participation_layer.py",
+      "primary_label": "downstream_consumer",
+      "signals": []
+    },
+    {
+      "labels": [
+        "downstream_consumer"
+      ],
+      "map_baseline_label": null,
+      "notes": [
+        "default research corpus classification"
+      ],
+      "operational_authority": false,
+      "path": "scripts/research/alpha_grid_search.py",
+      "primary_label": "downstream_consumer",
+      "signals": []
+    },
+    {
+      "labels": [
+        "downstream_consumer"
+      ],
+      "map_baseline_label": null,
+      "notes": [
+        "default research corpus classification"
+      ],
+      "operational_authority": false,
+      "path": "scripts/research/alpha_stress_audit.py",
+      "primary_label": "downstream_consumer",
+      "signals": []
+    },
+    {
+      "labels": [
+        "downstream_consumer"
+      ],
+      "map_baseline_label": null,
+      "notes": [
+        "default research corpus classification"
+      ],
+      "operational_authority": false,
+      "path": "scripts/research/alpha_truth_detection.py",
+      "primary_label": "downstream_consumer",
+      "signals": []
+    },
+    {
+      "labels": [
+        "downstream_consumer"
+      ],
+      "map_baseline_label": null,
+      "notes": [
+        "default research corpus classification"
+      ],
+      "operational_authority": false,
+      "path": "scripts/research/alpha_validation_stress_test.py",
+      "primary_label": "downstream_consumer",
+      "signals": []
+    },
+    {
+      "labels": [
+        "observational_consumer"
+      ],
+      "map_baseline_label": null,
+      "notes": [],
+      "operational_authority": false,
+      "path": "scripts/research/analyze_physics_divergence.py",
+      "primary_label": "observational_consumer",
+      "signals": [
+        "observational export/plot/verify pattern"
+      ]
+    },
+    {
+      "labels": [
+        "downstream_consumer"
+      ],
+      "map_baseline_label": null,
+      "notes": [
+        "default research corpus classification"
+      ],
+      "operational_authority": false,
+      "path": "scripts/research/apply_patch.py",
+      "primary_label": "downstream_consumer",
+      "signals": []
+    },
+    {
+      "labels": [
+        "downstream_consumer"
+      ],
+      "map_baseline_label": null,
+      "notes": [
+        "default research corpus classification"
+      ],
+      "operational_authority": false,
+      "path": "scripts/research/audit_window.py",
+      "primary_label": "downstream_consumer",
+      "signals": []
+    },
+    {
+      "labels": [
+        "observational_consumer"
+      ],
+      "map_baseline_label": null,
+      "notes": [],
+      "operational_authority": false,
+      "path": "scripts/research/backfill_physics.py",
+      "primary_label": "observational_consumer",
+      "signals": [
+        "observational export/plot/verify pattern"
+      ]
+    },
+    {
+      "labels": [
+        "downstream_consumer"
+      ],
+      "map_baseline_label": null,
+      "notes": [
+        "default research corpus classification"
+      ],
+      "operational_authority": false,
+      "path": "scripts/research/blue_green_log_writer.py",
+      "primary_label": "downstream_consumer",
+      "signals": []
+    },
+    {
+      "labels": [
+        "downstream_consumer"
+      ],
+      "map_baseline_label": null,
+      "notes": [
+        "default research corpus classification"
+      ],
+      "operational_authority": false,
+      "path": "scripts/research/build_ev_table.py",
+      "primary_label": "downstream_consumer",
+      "signals": []
+    },
+    {
+      "labels": [
+        "observational_consumer"
+      ],
+      "map_baseline_label": null,
+      "notes": [],
+      "operational_authority": false,
+      "path": "scripts/research/build_genesis_atlas.py",
+      "primary_label": "observational_consumer",
+      "signals": [
+        "observational export/plot/verify pattern"
+      ]
+    },
+    {
+      "labels": [
+        "downstream_consumer"
+      ],
+      "map_baseline_label": null,
+      "notes": [
+        "default research corpus classification"
+      ],
+      "operational_authority": false,
+      "path": "scripts/research/build_persistence_atlas.py",
+      "primary_label": "downstream_consumer",
+      "signals": []
+    },
+    {
+      "labels": [
+        "downstream_consumer"
+      ],
+      "map_baseline_label": null,
+      "notes": [
+        "default research corpus classification"
+      ],
+      "operational_authority": false,
+      "path": "scripts/research/build_toxicity_atlas.py",
+      "primary_label": "downstream_consumer",
+      "signals": []
+    },
+    {
+      "labels": [
+        "downstream_consumer"
+      ],
+      "map_baseline_label": null,
+      "notes": [
+        "default research corpus classification"
+      ],
+      "operational_authority": false,
+      "path": "scripts/research/check_causality.py",
+      "primary_label": "downstream_consumer",
+      "signals": []
+    },
+    {
+      "labels": [
+        "downstream_consumer"
+      ],
+      "map_baseline_label": null,
+      "notes": [
+        "default research corpus classification"
+      ],
+      "operational_authority": false,
+      "path": "scripts/research/collapse_forecaster.py",
+      "primary_label": "downstream_consumer",
+      "signals": []
+    },
+    {
+      "labels": [
+        "observational_consumer"
+      ],
+      "map_baseline_label": null,
+      "notes": [],
+      "operational_authority": false,
+      "path": "scripts/research/conditional_transition_forecaster.py",
+      "primary_label": "observational_consumer",
+      "signals": [
+        "observational export/plot/verify pattern"
+      ]
+    },
+    {
+      "labels": [
+        "semantic_duplicate"
+      ],
+      "map_baseline_label": "semantic_duplicate",
+      "notes": [],
+      "operational_authority": false,
+      "path": "scripts/research/controlled_ablation_harness.py",
+      "primary_label": "semantic_duplicate",
+      "signals": [
+        "survival gain formula drift"
+      ]
+    },
+    {
+      "labels": [
+        "downstream_consumer"
+      ],
+      "map_baseline_label": null,
+      "notes": [
+        "default research corpus classification"
+      ],
+      "operational_authority": false,
+      "path": "scripts/research/controlled_unlock_calibration.py",
+      "primary_label": "downstream_consumer",
+      "signals": []
+    },
+    {
+      "labels": [
+        "downstream_consumer"
+      ],
+      "map_baseline_label": null,
+      "notes": [
+        "default research corpus classification"
+      ],
+      "operational_authority": false,
+      "path": "scripts/research/correlation_audit.py",
+      "primary_label": "downstream_consumer",
+      "signals": []
+    },
+    {
+      "labels": [
+        "semantic_duplicate"
+      ],
+      "map_baseline_label": "semantic_duplicate",
+      "notes": [],
+      "operational_authority": false,
+      "path": "scripts/research/counterfactual_replay.py",
+      "primary_label": "semantic_duplicate",
+      "signals": [
+        "survival gain formula drift"
+      ]
+    },
+    {
+      "labels": [
+        "observational_consumer"
+      ],
+      "map_baseline_label": null,
+      "notes": [],
+      "operational_authority": false,
+      "path": "scripts/research/cross_asset_comparison.py",
+      "primary_label": "observational_consumer",
+      "signals": [
+        "observational export/plot/verify pattern"
+      ]
+    },
+    {
+      "labels": [
+        "observational_consumer"
+      ],
+      "map_baseline_label": null,
+      "notes": [],
+      "operational_authority": false,
+      "path": "scripts/research/cross_period_invariance_test.py",
+      "primary_label": "observational_consumer",
+      "signals": [
+        "observational export/plot/verify pattern"
+      ]
+    },
+    {
+      "labels": [
+        "downstream_consumer"
+      ],
+      "map_baseline_label": null,
+      "notes": [
+        "default research corpus classification"
+      ],
+      "operational_authority": false,
+      "path": "scripts/research/download_lse_data.py",
+      "primary_label": "downstream_consumer",
+      "signals": []
+    },
+    {
+      "labels": [
+        "downstream_consumer"
+      ],
+      "map_baseline_label": null,
+      "notes": [
+        "default research corpus classification"
+      ],
+      "operational_authority": false,
+      "path": "scripts/research/ecology_cohort_compare.py",
+      "primary_label": "downstream_consumer",
+      "signals": []
+    },
+    {
+      "labels": [
+        "observational_consumer"
+      ],
+      "map_baseline_label": null,
+      "notes": [],
+      "operational_authority": false,
+      "path": "scripts/research/ecology_signature_atlas.py",
+      "primary_label": "observational_consumer",
+      "signals": [
+        "observational export/plot/verify pattern"
+      ]
+    },
+    {
+      "labels": [
+        "downstream_consumer"
+      ],
+      "map_baseline_label": null,
+      "notes": [
+        "default research corpus classification"
+      ],
+      "operational_authority": false,
+      "path": "scripts/research/ecology_transition_atlas.py",
+      "primary_label": "downstream_consumer",
+      "signals": []
+    },
+    {
+      "labels": [
+        "downstream_consumer"
+      ],
+      "map_baseline_label": null,
+      "notes": [
+        "default research corpus classification"
+      ],
+      "operational_authority": false,
+      "path": "scripts/research/ecology_validate.py",
+      "primary_label": "downstream_consumer",
+      "signals": []
+    },
+    {
+      "labels": [
+        "downstream_consumer"
+      ],
+      "map_baseline_label": null,
+      "notes": [
+        "default research corpus classification"
+      ],
+      "operational_authority": false,
+      "path": "scripts/research/emit_validation_multisymbol_batches.py",
+      "primary_label": "downstream_consumer",
+      "signals": []
+    },
+    {
+      "labels": [
+        "observational_consumer"
+      ],
+      "map_baseline_label": null,
+      "notes": [],
+      "operational_authority": false,
+      "path": "scripts/research/export_observatory_data.py",
+      "primary_label": "observational_consumer",
+      "signals": [
+        "observational export/plot/verify pattern"
+      ]
+    },
+    {
+      "labels": [
+        "downstream_consumer"
+      ],
+      "map_baseline_label": null,
+      "notes": [
+        "default research corpus classification"
+      ],
+      "operational_authority": false,
+      "path": "scripts/research/extract_threshold.py",
+      "primary_label": "downstream_consumer",
+      "signals": []
+    },
+    {
+      "labels": [
+        "downstream_consumer"
+      ],
+      "map_baseline_label": null,
+      "notes": [
+        "default research corpus classification"
+      ],
+      "operational_authority": false,
+      "path": "scripts/research/extract_trl_summary.py",
+      "primary_label": "downstream_consumer",
+      "signals": []
+    },
+    {
+      "labels": [
+        "downstream_consumer"
+      ],
+      "map_baseline_label": null,
+      "notes": [
+        "default research corpus classification"
+      ],
+      "operational_authority": false,
+      "path": "scripts/research/fetch_stream_loop.py",
+      "primary_label": "downstream_consumer",
+      "signals": []
+    },
+    {
+      "labels": [
+        "downstream_consumer"
+      ],
+      "map_baseline_label": null,
+      "notes": [
+        "default research corpus classification"
+      ],
+      "operational_authority": false,
+      "path": "scripts/research/fix_bootstrap_gating.py",
+      "primary_label": "downstream_consumer",
+      "signals": []
+    },
+    {
+      "labels": [
+        "downstream_consumer"
+      ],
+      "map_baseline_label": null,
+      "notes": [
+        "default research corpus classification"
+      ],
+      "operational_authority": false,
+      "path": "scripts/research/generate_alpha_curve.py",
+      "primary_label": "downstream_consumer",
+      "signals": []
+    },
+    {
+      "labels": [
+        "observational_consumer"
+      ],
+      "map_baseline_label": null,
+      "notes": [],
+      "operational_authority": false,
+      "path": "scripts/research/generate_pca_weights.py",
+      "primary_label": "observational_consumer",
+      "signals": [
+        "observational export/plot/verify pattern"
+      ]
+    },
+    {
+      "labels": [
+        "downstream_consumer"
+      ],
+      "map_baseline_label": null,
+      "notes": [
+        "default research corpus classification"
+      ],
+      "operational_authority": false,
+      "path": "scripts/research/generate_propagation_snapshots.py",
+      "primary_label": "downstream_consumer",
+      "signals": []
+    },
+    {
+      "labels": [
+        "downstream_consumer"
+      ],
+      "map_baseline_label": null,
+      "notes": [
+        "default research corpus classification"
+      ],
+      "operational_authority": false,
+      "path": "scripts/research/generate_real_validation_data.py",
+      "primary_label": "downstream_consumer",
+      "signals": []
+    },
+    {
+      "labels": [
+        "downstream_consumer"
+      ],
+      "map_baseline_label": null,
+      "notes": [
+        "default research corpus classification"
+      ],
+      "operational_authority": false,
+      "path": "scripts/research/grid_search_momentum_bootstrap.py",
+      "primary_label": "downstream_consumer",
+      "signals": []
+    },
+    {
+      "labels": [
+        "downstream_consumer"
+      ],
+      "map_baseline_label": null,
+      "notes": [
+        "default research corpus classification"
+      ],
+      "operational_authority": false,
+      "path": "scripts/research/hybrid_validation.py",
+      "primary_label": "downstream_consumer",
+      "signals": []
+    },
+    {
+      "labels": [
+        "downstream_consumer"
+      ],
+      "map_baseline_label": null,
+      "notes": [
+        "default research corpus classification"
+      ],
+      "operational_authority": false,
+      "path": "scripts/research/mfe_integrity_report.py",
+      "primary_label": "downstream_consumer",
+      "signals": []
+    },
+    {
+      "labels": [
+        "downstream_consumer"
+      ],
+      "map_baseline_label": null,
+      "notes": [
+        "default research corpus classification"
+      ],
+      "operational_authority": false,
+      "path": "scripts/research/microstructure_audit.py",
+      "primary_label": "downstream_consumer",
+      "signals": []
+    },
+    {
+      "labels": [
+        "downstream_consumer"
+      ],
+      "map_baseline_label": null,
+      "notes": [
+        "default research corpus classification"
+      ],
+      "operational_authority": false,
+      "path": "scripts/research/mock_streamer.py",
+      "primary_label": "downstream_consumer",
+      "signals": []
+    },
+    {
+      "labels": [
+        "downstream_consumer"
+      ],
+      "map_baseline_label": null,
+      "notes": [
+        "default research corpus classification"
+      ],
+      "operational_authority": false,
+      "path": "scripts/research/model_topology_transitions.py",
+      "primary_label": "downstream_consumer",
+      "signals": []
+    },
+    {
+      "labels": [
+        "downstream_consumer"
+      ],
+      "map_baseline_label": null,
+      "notes": [
+        "default research corpus classification"
+      ],
+      "operational_authority": false,
+      "path": "scripts/research/observatory_frontend.py",
+      "primary_label": "downstream_consumer",
+      "signals": []
+    },
+    {
+      "labels": [
+        "observational_consumer"
+      ],
+      "map_baseline_label": null,
+      "notes": [],
+      "operational_authority": false,
+      "path": "scripts/research/observatory_scheduler.py",
+      "primary_label": "observational_consumer",
+      "signals": [
+        "observational export/plot/verify pattern"
+      ]
+    },
+    {
+      "labels": [
+        "observational_consumer"
+      ],
+      "map_baseline_label": null,
+      "notes": [],
+      "operational_authority": false,
+      "path": "scripts/research/offline_ecology_clustering.py",
+      "primary_label": "observational_consumer",
+      "signals": [
+        "observational export/plot/verify pattern"
+      ]
+    },
+    {
+      "labels": [
+        "observational_consumer"
+      ],
+      "map_baseline_label": null,
+      "notes": [],
+      "operational_authority": false,
+      "path": "scripts/research/oos_structural_comparison.py",
+      "primary_label": "observational_consumer",
+      "signals": [
+        "observational export/plot/verify pattern"
+      ]
+    },
+    {
+      "labels": [
+        "downstream_consumer"
+      ],
+      "map_baseline_label": null,
+      "notes": [
+        "default research corpus classification"
+      ],
+      "operational_authority": false,
+      "path": "scripts/research/paper_k8_validation_report.py",
+      "primary_label": "downstream_consumer",
+      "signals": []
+    },
+    {
+      "labels": [
+        "observational_consumer"
+      ],
+      "map_baseline_label": null,
+      "notes": [],
+      "operational_authority": false,
+      "path": "scripts/research/permutation_destruction_test.py",
+      "primary_label": "observational_consumer",
+      "signals": [
+        "observational export/plot/verify pattern"
+      ]
+    },
+    {
+      "labels": [
+        "downstream_consumer"
+      ],
+      "map_baseline_label": null,
+      "notes": [
+        "default research corpus classification"
+      ],
+      "operational_authority": false,
+      "path": "scripts/research/phase_c_validation.py",
+      "primary_label": "downstream_consumer",
+      "signals": []
+    },
+    {
+      "labels": [
+        "downstream_consumer"
+      ],
+      "map_baseline_label": null,
+      "notes": [
+        "default research corpus classification"
+      ],
+      "operational_authority": false,
+      "path": "scripts/research/phase_validation.py",
+      "primary_label": "downstream_consumer",
+      "signals": []
+    },
+    {
+      "labels": [
+        "observational_consumer"
+      ],
+      "map_baseline_label": null,
+      "notes": [],
+      "operational_authority": false,
+      "path": "scripts/research/plot_observatory.py",
+      "primary_label": "observational_consumer",
+      "signals": [
+        "observational export/plot/verify pattern"
+      ]
+    },
+    {
+      "labels": [
+        "semantic_duplicate"
+      ],
+      "map_baseline_label": "semantic_duplicate",
+      "notes": [],
+      "operational_authority": false,
+      "path": "scripts/research/policy_competition_engine.py",
+      "primary_label": "semantic_duplicate",
+      "signals": [
+        "risk scoring formula drift (map-declared)",
+        "survival gain formula drift"
+      ]
+    },
+    {
+      "labels": [
+        "downstream_consumer"
+      ],
+      "map_baseline_label": null,
+      "notes": [
+        "default research corpus classification"
+      ],
+      "operational_authority": false,
+      "path": "scripts/research/precision_audit.py",
+      "primary_label": "downstream_consumer",
+      "signals": []
+    },
+    {
+      "labels": [
+        "observational_consumer"
+      ],
+      "map_baseline_label": null,
+      "notes": [],
+      "operational_authority": false,
+      "path": "scripts/research/prove_ecology_signatures.py",
+      "primary_label": "observational_consumer",
+      "signals": [
+        "observational export/plot/verify pattern"
+      ]
+    },
+    {
+      "labels": [
+        "downstream_consumer"
+      ],
+      "map_baseline_label": null,
+      "notes": [
+        "default research corpus classification"
+      ],
+      "operational_authority": false,
+      "path": "scripts/research/reco_attribution_summary.py",
+      "primary_label": "downstream_consumer",
+      "signals": []
+    },
+    {
+      "labels": [
+        "downstream_consumer"
+      ],
+      "map_baseline_label": null,
+      "notes": [
+        "default research corpus classification"
+      ],
+      "operational_authority": false,
+      "path": "scripts/research/recommendation_readiness_report.py",
+      "primary_label": "downstream_consumer",
+      "signals": []
+    },
+    {
+      "labels": [
+        "observational_consumer"
+      ],
+      "map_baseline_label": null,
+      "notes": [],
+      "operational_authority": false,
+      "path": "scripts/research/recurrence_stability_audit.py",
+      "primary_label": "observational_consumer",
+      "signals": [
+        "observational export/plot/verify pattern"
+      ]
+    },
+    {
+      "labels": [
+        "downstream_consumer"
+      ],
+      "map_baseline_label": null,
+      "notes": [
+        "default research corpus classification"
+      ],
+      "operational_authority": false,
+      "path": "scripts/research/regime_slicing_audit.py",
+      "primary_label": "downstream_consumer",
+      "signals": []
+    },
+    {
+      "labels": [
+        "observational_consumer"
+      ],
+      "map_baseline_label": null,
+      "notes": [],
+      "operational_authority": false,
+      "path": "scripts/research/replay_from_file.py",
+      "primary_label": "observational_consumer",
+      "signals": [
+        "observational export/plot/verify pattern"
+      ]
+    },
+    {
+      "labels": [
+        "semantic_duplicate"
+      ],
+      "map_baseline_label": "semantic_duplicate",
+      "notes": [],
+      "operational_authority": false,
+      "path": "scripts/research/robustness_experiments.py",
+      "primary_label": "semantic_duplicate",
+      "signals": [
+        "survival gain formula drift"
+      ]
+    },
+    {
+      "labels": [
+        "downstream_consumer"
+      ],
+      "map_baseline_label": null,
+      "notes": [
+        "default research corpus classification"
+      ],
+      "operational_authority": false,
+      "path": "scripts/research/run_decision_batch.py",
+      "primary_label": "downstream_consumer",
+      "signals": []
+    },
+    {
+      "labels": [
+        "observational_consumer"
+      ],
+      "map_baseline_label": null,
+      "notes": [],
+      "operational_authority": false,
+      "path": "scripts/research/run_multi_engine.py",
+      "primary_label": "observational_consumer",
+      "signals": [
+        "observational export/plot/verify pattern"
+      ]
+    },
+    {
+      "labels": [
+        "downstream_consumer"
+      ],
+      "map_baseline_label": null,
+      "notes": [
+        "default research corpus classification"
+      ],
+      "operational_authority": false,
+      "path": "scripts/research/run_structured_audit_automation.py",
+      "primary_label": "downstream_consumer",
+      "signals": []
+    },
+    {
+      "labels": [
+        "downstream_consumer"
+      ],
+      "map_baseline_label": null,
+      "notes": [
+        "default research corpus classification"
+      ],
+      "operational_authority": false,
+      "path": "scripts/research/sanitize_archive.py",
+      "primary_label": "downstream_consumer",
+      "signals": []
+    },
+    {
+      "labels": [
+        "observational_consumer"
+      ],
+      "map_baseline_label": null,
+      "notes": [],
+      "operational_authority": false,
+      "path": "scripts/research/scale_regime_disentanglement.py",
+      "primary_label": "observational_consumer",
+      "signals": [
+        "observational export/plot/verify pattern"
+      ]
+    },
+    {
+      "labels": [
+        "downstream_consumer"
+      ],
+      "map_baseline_label": null,
+      "notes": [
+        "default research corpus classification"
+      ],
+      "operational_authority": false,
+      "path": "scripts/research/selection_from_logs.py",
+      "primary_label": "downstream_consumer",
+      "signals": []
+    },
+    {
+      "labels": [
+        "downstream_consumer"
+      ],
+      "map_baseline_label": null,
+      "notes": [
+        "default research corpus classification"
+      ],
+      "operational_authority": false,
+      "path": "scripts/research/short_side_diagnostic_runner.py",
+      "primary_label": "downstream_consumer",
+      "signals": []
+    },
+    {
+      "labels": [
+        "downstream_consumer"
+      ],
+      "map_baseline_label": null,
+      "notes": [
+        "default research corpus classification"
+      ],
+      "operational_authority": false,
+      "path": "scripts/research/show_leaderboard.py",
+      "primary_label": "downstream_consumer",
+      "signals": []
+    },
+    {
+      "labels": [
+        "downstream_consumer"
+      ],
+      "map_baseline_label": null,
+      "notes": [
+        "default research corpus classification"
+      ],
+      "operational_authority": false,
+      "path": "scripts/research/simulate_governor_audit.py",
+      "primary_label": "downstream_consumer",
+      "signals": []
+    },
+    {
+      "labels": [
+        "downstream_consumer"
+      ],
+      "map_baseline_label": null,
+      "notes": [
+        "default research corpus classification"
+      ],
+      "operational_authority": false,
+      "path": "scripts/research/stability_validation.py",
+      "primary_label": "downstream_consumer",
+      "signals": []
+    },
+    {
+      "labels": [
+        "downstream_consumer"
+      ],
+      "map_baseline_label": null,
+      "notes": [
+        "default research corpus classification"
+      ],
+      "operational_authority": false,
+      "path": "scripts/research/structural_validation.py",
+      "primary_label": "downstream_consumer",
+      "signals": []
+    },
+    {
+      "labels": [
+        "downstream_consumer"
+      ],
+      "map_baseline_label": null,
+      "notes": [
+        "default research corpus classification"
+      ],
+      "operational_authority": false,
+      "path": "scripts/research/survival_validation.py",
+      "primary_label": "downstream_consumer",
+      "signals": []
+    },
+    {
+      "labels": [
+        "observational_consumer"
+      ],
+      "map_baseline_label": null,
+      "notes": [],
+      "operational_authority": false,
+      "path": "scripts/research/synthetic_ecology_attack.py",
+      "primary_label": "observational_consumer",
+      "signals": [
+        "observational export/plot/verify pattern"
+      ]
+    },
+    {
+      "labels": [
+        "observational_consumer"
+      ],
+      "map_baseline_label": null,
+      "notes": [],
+      "operational_authority": false,
+      "path": "scripts/research/tangible_trade_comparison.py",
+      "primary_label": "observational_consumer",
+      "signals": [
+        "observational export/plot/verify pattern"
+      ]
+    },
+    {
+      "labels": [
+        "observational_consumer"
+      ],
+      "map_baseline_label": null,
+      "notes": [],
+      "operational_authority": false,
+      "path": "scripts/research/telemetry_archive_daemon.py",
+      "primary_label": "observational_consumer",
+      "signals": [
+        "observational export/plot/verify pattern"
+      ]
+    },
+    {
+      "labels": [
+        "observational_consumer"
+      ],
+      "map_baseline_label": null,
+      "notes": [],
+      "operational_authority": false,
+      "path": "scripts/research/terminal_observatory.py",
+      "primary_label": "observational_consumer",
+      "signals": [
+        "observational export/plot/verify pattern"
+      ]
+    },
+    {
+      "labels": [
+        "downstream_consumer"
+      ],
+      "map_baseline_label": null,
+      "notes": [
+        "default research corpus classification"
+      ],
+      "operational_authority": false,
+      "path": "scripts/research/test_sanitation_bias.py",
+      "primary_label": "downstream_consumer",
+      "signals": []
+    },
+    {
+      "labels": [
+        "downstream_consumer"
+      ],
+      "map_baseline_label": null,
+      "notes": [
+        "default research corpus classification"
+      ],
+      "operational_authority": false,
+      "path": "scripts/research/test_silent_halt.py",
+      "primary_label": "downstream_consumer",
+      "signals": []
+    },
+    {
+      "labels": [
+        "downstream_consumer"
+      ],
+      "map_baseline_label": null,
+      "notes": [
+        "default research corpus classification"
+      ],
+      "operational_authority": false,
+      "path": "scripts/research/timescale_audit.py",
+      "primary_label": "downstream_consumer",
+      "signals": []
+    },
+    {
+      "labels": [
+        "downstream_consumer"
+      ],
+      "map_baseline_label": "downstream_consumer",
+      "notes": [
+        "default research corpus classification"
+      ],
+      "operational_authority": false,
+      "path": "scripts/research/train_ranking_model.py",
+      "primary_label": "downstream_consumer",
+      "signals": []
+    },
+    {
+      "labels": [
+        "observational_consumer"
+      ],
+      "map_baseline_label": null,
+      "notes": [],
+      "operational_authority": false,
+      "path": "scripts/research/trajectory_geometry_analysis.py",
+      "primary_label": "observational_consumer",
+      "signals": [
+        "observational export/plot/verify pattern"
+      ]
+    },
+    {
+      "labels": [
+        "downstream_consumer"
+      ],
+      "map_baseline_label": null,
+      "notes": [
+        "default research corpus classification"
+      ],
+      "operational_authority": false,
+      "path": "scripts/research/trigger_latency_bucket_report.py",
+      "primary_label": "downstream_consumer",
+      "signals": []
+    },
+    {
+      "labels": [
+        "downstream_consumer"
+      ],
+      "map_baseline_label": null,
+      "notes": [
+        "default research corpus classification"
+      ],
+      "operational_authority": false,
+      "path": "scripts/research/validate_momentum_bootstrap_window.py",
+      "primary_label": "downstream_consumer",
+      "signals": []
+    },
+    {
+      "labels": [
+        "downstream_consumer",
+        "semantic_duplicate"
+      ],
+      "map_baseline_label": "semantic_duplicate",
+      "notes": [],
+      "operational_authority": false,
+      "path": "scripts/signal_physics_harness.py",
+      "primary_label": "semantic_duplicate",
+      "signals": [
+        "signal logic drift (generate_intent)",
+        "strategy / GA consumer reference"
+      ]
+    },
+    {
+      "labels": [
+        "downstream_consumer"
+      ],
+      "map_baseline_label": "downstream_consumer",
+      "notes": [],
+      "operational_authority": false,
+      "path": "scripts/survivability_surface_builder.py",
+      "primary_label": "downstream_consumer",
+      "signals": [
+        "replay / certification consumer reference",
+        "strategy / GA consumer reference"
+      ]
+    },
+    {
+      "labels": [
+        "semantic_duplicate"
+      ],
+      "map_baseline_label": "semantic_duplicate",
+      "notes": [],
+      "operational_authority": false,
+      "path": "scripts/synthetic_fragmentation_injector.py",
+      "primary_label": "semantic_duplicate",
+      "signals": [
+        "admissibility threshold drift"
+      ]
+    }
+  ]
+}

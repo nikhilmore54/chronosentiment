@@ -1,0 +1,358 @@
+{
+  "canonical_candidate": "core/src/strategy_id.rs::parse_strategy_id",
+  "case_count": 4,
+  "cases": [
+    {
+      "classification": "bit_equivalent",
+      "fixture_ids": [
+        "api_base_13_defaults_expand",
+        "edge_decay_base_13_defaults_expand"
+      ],
+      "outcome_category": "accepted_same_meaning",
+      "parser_outputs": {
+        "core/src/edge_decay.rs::parse_strategy_from_id_local": {
+          "error": null,
+          "parsed_structure": {
+            "archetype": 0,
+            "base_edge": 2,
+            "direction_bias": 50,
+            "edge_ratio": 150,
+            "entry_offset": 0,
+            "exec_aggression": 50,
+            "exp_conviction": 100,
+            "exp_momentum": 100,
+            "exp_volatility": 100,
+            "fill_threshold": 50,
+            "holding_period": 50,
+            "latency_bias": 10,
+            "lineage": 0,
+            "mom_floor": 20,
+            "participation_threshold": 30,
+            "queue_threshold": 100,
+            "selectivity": 75,
+            "stop_loss": 10,
+            "take_profit": 20,
+            "vol_floor": 20,
+            "w_conviction": 50,
+            "w_momentum": 30,
+            "w_volatility": 20
+          },
+          "parser_result": "parsed",
+          "round_trip_serialization": "STRAT_100v2v20v10v50v50v30v20v100v100v100v75v0v0v50v20v20v150v30"
+        },
+        "core/src/strategy_id.rs::parse_strategy_id": {
+          "error": null,
+          "parsed_structure": {
+            "archetype": 0,
+            "base_edge": 2,
+            "direction_bias": 50,
+            "edge_ratio": 150,
+            "entry_offset": 0,
+            "exec_aggression": 50,
+            "exp_conviction": 100,
+            "exp_momentum": 100,
+            "exp_volatility": 100,
+            "fill_threshold": 50,
+            "holding_period": 50,
+            "latency_bias": 10,
+            "lineage": 0,
+            "mom_floor": 20,
+            "participation_threshold": 30,
+            "queue_threshold": 100,
+            "selectivity": 75,
+            "stop_loss": 10,
+            "take_profit": 20,
+            "vol_floor": 20,
+            "w_conviction": 50,
+            "w_momentum": 30,
+            "w_volatility": 20
+          },
+          "parser_result": "parsed",
+          "round_trip_serialization": "STRAT_100v2v20v10v50v50v30v20v100v100v100v75v0v0v50v20v20v150v30"
+        },
+        "services/api/src/strategy_id_parse.rs::parse_strategy_id_full": {
+          "error": null,
+          "parsed_structure": {
+            "archetype": 0,
+            "base_edge": 2,
+            "direction_bias": 50,
+            "edge_ratio": 150,
+            "entry_offset": 0,
+            "exec_aggression": 50,
+            "exp_conviction": 100,
+            "exp_momentum": 100,
+            "exp_volatility": 100,
+            "fill_threshold": 50,
+            "holding_period": 50,
+            "latency_bias": 10,
+            "lineage": 0,
+            "mom_floor": 20,
+            "participation_threshold": 30,
+            "queue_threshold": 100,
+            "selectivity": 75,
+            "stop_loss": 10,
+            "take_profit": 20,
+            "vol_floor": 20,
+            "w_conviction": 50,
+            "w_momentum": 30,
+            "w_volatility": 20
+          },
+          "parser_result": "parsed",
+          "round_trip_serialization": "STRAT_100v2v20v10v50v50v30v20v100v100v100v75v0v0v50v20v20v150v30"
+        }
+      },
+      "provenance": [
+        {
+          "observed_at": "phase2-phantom-authority-archived",
+          "source": "13-field base strategy identity without Phase D.1.21 extension fields",
+          "type": "boundary_derived"
+        },
+        {
+          "observed_at": "phase2-phantom-authority-archived",
+          "source": "13-field base strategy identity without Phase D.1.21 extension fields",
+          "type": "boundary_derived"
+        }
+      ],
+      "serialized_id": "STRAT_100v2v20v10v50v50v30v20v100v100v100v75v0"
+    },
+    {
+      "classification": "bit_equivalent",
+      "fixture_ids": [
+        "api_extended_19_entry_offset_at_13",
+        "edge_decay_extended_19_entry_offset_routed"
+      ],
+      "outcome_category": "accepted_same_meaning",
+      "parser_outputs": {
+        "core/src/edge_decay.rs::parse_strategy_from_id_local": {
+          "error": null,
+          "parsed_structure": {
+            "archetype": 0,
+            "base_edge": 2,
+            "direction_bias": 55,
+            "edge_ratio": 160,
+            "entry_offset": 3,
+            "exec_aggression": 50,
+            "exp_conviction": 100,
+            "exp_momentum": 100,
+            "exp_volatility": 100,
+            "fill_threshold": 50,
+            "holding_period": 50,
+            "latency_bias": 10,
+            "lineage": 0,
+            "mom_floor": 23,
+            "participation_threshold": 35,
+            "queue_threshold": 100,
+            "selectivity": 75,
+            "stop_loss": 10,
+            "take_profit": 20,
+            "vol_floor": 22,
+            "w_conviction": 50,
+            "w_momentum": 30,
+            "w_volatility": 20
+          },
+          "parser_result": "parsed",
+          "round_trip_serialization": "STRAT_100v2v20v10v50v50v30v20v100v100v100v75v0v3v55v22v23v160v35"
+        },
+        "core/src/strategy_id.rs::parse_strategy_id": {
+          "error": null,
+          "parsed_structure": {
+            "archetype": 0,
+            "base_edge": 2,
+            "direction_bias": 55,
+            "edge_ratio": 160,
+            "entry_offset": 3,
+            "exec_aggression": 50,
+            "exp_conviction": 100,
+            "exp_momentum": 100,
+            "exp_volatility": 100,
+            "fill_threshold": 50,
+            "holding_period": 50,
+            "latency_bias": 10,
+            "lineage": 0,
+            "mom_floor": 23,
+            "participation_threshold": 35,
+            "queue_threshold": 100,
+            "selectivity": 75,
+            "stop_loss": 10,
+            "take_profit": 20,
+            "vol_floor": 22,
+            "w_conviction": 50,
+            "w_momentum": 30,
+            "w_volatility": 20
+          },
+          "parser_result": "parsed",
+          "round_trip_serialization": "STRAT_100v2v20v10v50v50v30v20v100v100v100v75v0v3v55v22v23v160v35"
+        },
+        "services/api/src/strategy_id_parse.rs::parse_strategy_id_full": {
+          "error": null,
+          "parsed_structure": {
+            "archetype": 0,
+            "base_edge": 2,
+            "direction_bias": 55,
+            "edge_ratio": 160,
+            "entry_offset": 3,
+            "exec_aggression": 50,
+            "exp_conviction": 100,
+            "exp_momentum": 100,
+            "exp_volatility": 100,
+            "fill_threshold": 50,
+            "holding_period": 50,
+            "latency_bias": 10,
+            "lineage": 0,
+            "mom_floor": 23,
+            "participation_threshold": 35,
+            "queue_threshold": 100,
+            "selectivity": 75,
+            "stop_loss": 10,
+            "take_profit": 20,
+            "vol_floor": 22,
+            "w_conviction": 50,
+            "w_momentum": 30,
+            "w_volatility": 20
+          },
+          "parser_result": "parsed",
+          "round_trip_serialization": "STRAT_100v2v20v10v50v50v30v20v100v100v100v75v0v3v55v22v23v160v35"
+        }
+      },
+      "provenance": [
+        {
+          "observed_at": "post_edge_decay_routing_2026-05-26",
+          "source": "V-001 edge-decay routed through canonical parser after pre-routing archive",
+          "type": "boundary_derived"
+        },
+        {
+          "observed_at": "phase2-phantom-authority-archived",
+          "source": "V-001 entry_offset index boundary",
+          "type": "boundary_derived"
+        }
+      ],
+      "serialized_id": "STRAT_100v2v20v10v50v50v30v20v100v100v100v75v0v3v55v22v23v160v35"
+    },
+    {
+      "classification": "all_rejected",
+      "fixture_ids": [
+        "api_rejects_non_numeric_core_gene",
+        "edge_decay_rejects_non_numeric_core_gene"
+      ],
+      "outcome_category": "rejected_universally",
+      "parser_outputs": {
+        "core/src/edge_decay.rs::parse_strategy_from_id_local": {
+          "error": "invalid literal for int() with base 10: 'BAD'",
+          "parsed_structure": null,
+          "parser_result": "rejected",
+          "round_trip_serialization": null
+        },
+        "core/src/strategy_id.rs::parse_strategy_id": {
+          "error": "invalid literal for int() with base 10: 'BAD'",
+          "parsed_structure": null,
+          "parser_result": "rejected",
+          "round_trip_serialization": null
+        },
+        "services/api/src/strategy_id_parse.rs::parse_strategy_id_full": {
+          "error": "invalid literal for int() with base 10: 'BAD'",
+          "parsed_structure": null,
+          "parser_result": "rejected",
+          "round_trip_serialization": null
+        }
+      },
+      "provenance": [
+        {
+          "observed_at": "phase2-phantom-authority-archived",
+          "source": "non-numeric base_edge admissibility boundary",
+          "type": "malformed"
+        },
+        {
+          "observed_at": "phase2-phantom-authority-archived",
+          "source": "non-numeric base_edge admissibility boundary",
+          "type": "malformed"
+        }
+      ],
+      "serialized_id": "STRAT_100vBADv20v10v50v50v30v20v100v100v100v75v0"
+    },
+    {
+      "classification": "divergent_acceptance",
+      "fixture_ids": [
+        "api_historical_edge_decay_result_legacy_id",
+        "edge_decay_rejects_historical_underscore_id"
+      ],
+      "outcome_category": "rejected_historically_admitted",
+      "parser_outputs": {
+        "core/src/edge_decay.rs::parse_strategy_from_id_local": {
+          "error": "unsupported legacy format",
+          "parsed_structure": null,
+          "parser_result": "rejected",
+          "round_trip_serialization": null
+        },
+        "core/src/strategy_id.rs::parse_strategy_id": {
+          "error": "unsupported legacy format",
+          "parsed_structure": null,
+          "parser_result": "rejected",
+          "round_trip_serialization": null
+        },
+        "services/api/src/strategy_id_parse.rs::parse_strategy_id_full": {
+          "error": null,
+          "parsed_structure": {
+            "archetype": 0,
+            "base_edge": 2,
+            "direction_bias": 50,
+            "edge_ratio": 150,
+            "entry_offset": 0,
+            "exec_aggression": 50,
+            "exp_conviction": 100,
+            "exp_momentum": 100,
+            "exp_volatility": 100,
+            "fill_threshold": 50,
+            "holding_period": 0,
+            "latency_bias": 10,
+            "lineage": 0,
+            "mom_floor": 20,
+            "participation_threshold": 30,
+            "queue_threshold": 201,
+            "selectivity": 75,
+            "stop_loss": 10,
+            "take_profit": 31,
+            "vol_floor": 20,
+            "w_conviction": 50,
+            "w_momentum": 30,
+            "w_volatility": 20
+          },
+          "parser_result": "parsed",
+          "round_trip_serialization": "STRAT_201v2v31v10v0v50v30v20v100v100v100v75v0v0v50v20v20v150v30"
+        }
+      },
+      "provenance": [
+        {
+          "observed_at": "phase2-phantom-authority-archived",
+          "source": "results/edge_decay.json top_strategy_persistence_ticks",
+          "type": "historically_observed"
+        },
+        {
+          "observed_at": "phase2-phantom-authority-archived",
+          "source": "results/edge_decay.json top_strategy_persistence_ticks",
+          "type": "historically_observed"
+        }
+      ],
+      "serialized_id": "strat_BTCUSDT_jsonl_window_1_201_2_31_10"
+    }
+  ],
+  "outcome_model": {
+    "axes": [
+      "admissibility",
+      "interpretation"
+    ],
+    "categories": [
+      "accepted_same_meaning",
+      "accepted_normalized",
+      "accepted_divergent_semantics",
+      "rejected_historically_admitted",
+      "rejected_universally"
+    ]
+  },
+  "parser_sources": [
+    "core/src/edge_decay.rs::parse_strategy_from_id_local",
+    "core/src/strategy_id.rs::parse_strategy_id",
+    "services/api/src/strategy_id_parse.rs::parse_strategy_id_full"
+  ],
+  "report_type": "strategy_identity_differential_parser_report",
+  "status": "generated_from_frozen_fixtures"
+}

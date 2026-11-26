@@ -1,0 +1,10 @@
+{
+  "fixture_id": "yahoo_dialect_c_btcusd_crossfeed",
+  "dialect": "C",
+  "source_jsonl": "core/chronology/historical/2026_recent_crossfeed_1h_yahoo_1m/btcusd_1778976000000.jsonl",
+  "source_manifest": "core/chronology/historical/2026_recent_crossfeed_1h_yahoo_1m/btcusd_1778976000000_manifest.json",
+  "excerpt_line_count": 5,
+  "excerpt_chronology_hash": "27f0589519840bf1ab16715cd3bd4ce20d9a89fd353586c871d666ba60cf6126",
+  "hash_algorithm": "sha256_over_jsonl_line_bytes_including_trailing_newline",
+  "notes": "Lawful Yahoo provenance dialect; slim manifest + provenance field."
+}

@@ -1,0 +1,61 @@
+#!/usr/bin/env bash
+# chrono
+# ChronoSentiment — Unified Operator Facade
+#
+# Purpose: Deterministic command routing for operational tasks.
+#          Stateless passthrough. No orchestration or adaptive logic.
+
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+usage() {
+    echo "========================================================"
+    echo " ChronoSentiment — Operator Facade"
+    echo "========================================================"
+    echo "Usage: ./chrono <command> [args...]"
+    echo ""
+    echo "Commands:"
+    echo "  bootstrap         Environment validation (scripts/operator_bootstrap.sh)"
+    echo "  smoke             Replay smoke suite (scripts/replay_smoke_suite.sh)"
+    echo "  package           Generate release artifact (scripts/package_release.sh)"
+    echo "  manifest          Generate release manifest (scripts/generate_release_manifest.sh)"
+    echo "  release-verify    Verify release consistency (scripts/verify_release_consistency.sh)"
+    echo "  help              Show this output"
+    echo "========================================================"
+}
+
+if [ $# -eq 0 ]; then
+    usage
+    exit 1
+fi
+
+COMMAND="$1"
+shift
+
+case "${COMMAND}" in
+    bootstrap)
+        exec bash "${SCRIPT_DIR}/scripts/operator_bootstrap.sh" "$@"
+        ;;
+    smoke)
+        exec bash "${SCRIPT_DIR}/scripts/replay_smoke_suite.sh" "$@"
+        ;;
+    package)
+        exec bash "${SCRIPT_DIR}/scripts/package_release.sh" "$@"
+        ;;
+    manifest)
+        exec bash "${SCRIPT_DIR}/scripts/generate_release_manifest.sh" "$@"
+        ;;
+    release-verify)
+        exec bash "${SCRIPT_DIR}/scripts/verify_release_consistency.sh" "$@"
+        ;;
+    help|--help|-h)
+        usage
+        exit 0
+        ;;
+    *)
+        echo "[FAIL] Unknown command: ${COMMAND}" >&2
+        echo "       Run './chrono help' for valid commands." >&2
+        exit 1
+        ;;
+esac

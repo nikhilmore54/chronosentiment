@@ -45,8 +45,8 @@ sys.path.insert(0, str(ROOT / "scripts"))
 
 from archive_dedupe import iter_gzip_jsonl
 from candle_substrate import frozen_batch_dir
-from run_nse_cohort import resolve_archive_dir
-from verify_cohort_baseline import (
+from cs_bridge import resolve_archive_dir
+from verify_helpers import (
     cohort_symbol_names,
     iter_archive_records,
     load_cohort_symbols,

@@ -28,13 +28,10 @@ SCAN_ROOTS = (
     REPO_ROOT / "scripts" / "research",
 )
 
-# Map-declared surfaces outside scripts/research (Lane 4 high-signal)
-ADDITIONAL_SURFACES = (
-    "scripts/signal_physics_harness.py",
-    "scripts/adversarial_physics_test.py",
-    "scripts/synthetic_fragmentation_injector.py",
-    "scripts/survivability_surface_builder.py",
-)
+# Map-declared surfaces outside scripts/research (Lane 4 high-signal).
+# Former physics/survivability scripts were deleted in the Python→Rust cleanup;
+# keep this tuple empty so the auditor only scans remaining research_experiments/.
+ADDITIONAL_SURFACES: tuple[str, ...] = ()
 
 CLASS_PRIORITY = (
     "semantic_duplicate",
@@ -88,16 +85,6 @@ PATTERN_RULES: tuple[tuple[str, str, str], ...] = (
 )
 
 MAP_BASELINE: dict[str, str] = {
-    "scripts/research/policy_competition_engine.py": "semantic_duplicate",
-    "scripts/research/counterfactual_replay.py": "semantic_duplicate",
-    "scripts/research/controlled_ablation_harness.py": "semantic_duplicate",
-    "scripts/research/adaptive_participation_layer.py": "downstream_consumer",
-    "scripts/research/train_ranking_model.py": "downstream_consumer",
-    "scripts/research/robustness_experiments.py": "semantic_duplicate",
-    "scripts/signal_physics_harness.py": "semantic_duplicate",
-    "scripts/adversarial_physics_test.py": "semantic_duplicate",
-    "scripts/synthetic_fragmentation_injector.py": "semantic_duplicate",
-    "scripts/survivability_surface_builder.py": "downstream_consumer",
     "research_experiments/kernel_stub_v0/kernel.rs": "detached_archive",
     "research_experiments/live_source_v0/live_source.rs": "detached_archive",
     "research_experiments/python_bridge/python.rs": "detached_archive",

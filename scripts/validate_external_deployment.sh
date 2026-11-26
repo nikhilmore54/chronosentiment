@@ -32,19 +32,30 @@ TRANSIENT_IMAGE="chrono-eval-${RANDOM}"
 echo "[INFO] Phase 1: Preparing transient operational environment..."
 echo "[INFO] Building ${TRANSIENT_IMAGE} from ${IMAGE} with minimal python3 runtime."
 
+# arm64v8/* (and similar) images need an explicit platform on amd64 hosts with QEMU.
+DOCKER_PLATFORM=()
+case "${IMAGE}" in
+    arm64v8/*|*arm64*|*aarch64*)
+        DOCKER_PLATFORM=(--platform linux/arm64)
+        echo "[INFO] Using Docker platform linux/arm64 for image ${IMAGE}"
+        ;;
+esac
+
 TMP_DOCKER_DIR="$(mktemp -d)"
 cat <<EOF > "${TMP_DOCKER_DIR}/Dockerfile"
 FROM ${IMAGE}
 ENV DEBIAN_FRONTEND=noninteractive
-RUN apt-get update -qq >/dev/null 2>&1 && apt-get install -y -qq python3 >/dev/null 2>&1
+RUN apt-get update -qq && apt-get install -y -qq python3
 EOF
 
-if ! docker build -q -t "${TRANSIENT_IMAGE}" "${TMP_DOCKER_DIR}" >/dev/null 2>&1; then
+BUILD_LOG="$(mktemp)"
+if ! docker build "${DOCKER_PLATFORM[@]}" -q -t "${TRANSIENT_IMAGE}" "${TMP_DOCKER_DIR}" >"${BUILD_LOG}" 2>&1; then
     echo "[FAIL] Failed to build transient preparation image."
-    rm -rf "${TMP_DOCKER_DIR}"
+    cat "${BUILD_LOG}" >&2 || true
+    rm -rf "${TMP_DOCKER_DIR}" "${BUILD_LOG}"
     exit 1
 fi
-rm -rf "${TMP_DOCKER_DIR}"
+rm -rf "${TMP_DOCKER_DIR}" "${BUILD_LOG}"
 
 # Phase 2: Air-Gapped Execution
 echo "[INFO] Phase 2: Executing Air-Gapped Strict Validation..."
@@ -52,7 +63,9 @@ echo "       Constraints: --network none, --memory 512m, --cpus 1.0"
 
 # Note: GitHub Actions runners might not always support memory-swap limitations perfectly if swap accounting is off.
 # We apply memory and swap equally to enforce zero swap growth, falling back gracefully if daemon rejects it.
-DOCKER_RUN_CMD=(docker run --rm -v "${TARBALL_ABS}:/mnt/release.tar.gz:ro")
+DOCKER_RUN_CMD=(docker run --rm)
+DOCKER_RUN_CMD+=("${DOCKER_PLATFORM[@]}")
+DOCKER_RUN_CMD+=(-v "${TARBALL_ABS}:/mnt/release.tar.gz:ro")
 DOCKER_RUN_CMD+=(--network none)
 DOCKER_RUN_CMD+=(--memory 512m)
 DOCKER_RUN_CMD+=(--cpus="1.0")

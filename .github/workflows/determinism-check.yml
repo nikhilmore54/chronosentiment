@@ -65,8 +65,7 @@ jobs:
         profile: minimal
 
     - name: Build trace_replay (release)
-      run: cargo build --release --bin trace_replay
-      working-directory: core
+      run: cargo build --release -p chronosentiment_core --bin trace_replay
 
     - name: Tier 1 Alternate Scenario Smoke Verification
       run: python3 scripts/run_tier1_observability_demo.py --scenario alternate --smoke
@@ -90,8 +89,7 @@ jobs:
         profile: minimal
 
     - name: Build trace_replay (release)
-      run: cargo build --release --bin trace_replay
-      working-directory: core
+      run: cargo build --release -p chronosentiment_core --bin trace_replay
 
     - name: Replay Rerun Guard Assertion
       run: python3 scripts/lane3_replay_rerun_guard.py --scenario primary
@@ -115,8 +113,7 @@ jobs:
         profile: minimal
 
     - name: Build trace_replay (release)
-      run: cargo build --release --bin trace_replay
-      working-directory: core
+      run: cargo build --release -p chronosentiment_core --bin trace_replay
 
     - name: Reproducibility Envelope Freeze Assertion
       run: python3 scripts/lane3_reproducibility_envelope.py --scenario primary --check-reference
@@ -140,8 +137,7 @@ jobs:
         profile: minimal
 
     - name: Build trace_replay (release)
-      run: cargo build --release --bin trace_replay
-      working-directory: core
+      run: cargo build --release -p chronosentiment_core --bin trace_replay
 
     - name: Artifact Integrity Attestation Verification
       run: python3 scripts/lane3_artifact_integrity_attestation.py --scenario primary --run-tamper-tests --check-reference

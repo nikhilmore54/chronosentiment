@@ -34,7 +34,7 @@ sys.path.insert(0, str(ROOT / "scripts"))
 
 from candle_substrate import load_frozen_cohort
 from compare_replay_equivalence import load_live_ts_window
-from run_nse_cohort import resolve_archive_dir
+from cs_bridge import resolve_archive_dir
 
 
 def run(cmd: list[str], label: str) -> int:
@@ -46,12 +46,12 @@ def run(cmd: list[str], label: str) -> int:
 
 
 def cmd_full_replay(args: argparse.Namespace) -> int:
+    binary = ROOT / "target" / "release" / "cs-ingest"
     cmd = [
-        sys.executable,
-        str(ROOT / "scripts" / "run_nse_cohort.py"),
+        str(binary),
+        "cohort",
         "--batch-id",
         str(args.batch_id),
-        "--from-frozen",
         "--run-label",
         args.run_label,
         "--start-interval",

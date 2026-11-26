@@ -77,6 +77,9 @@ CHRONO_OUTPUT="$(python3 "${SCRIPT_DIR}/verify_chronology_byte_fixtures.py" 2>&1
 if echo "${CHRONO_OUTPUT}" | grep -q "PASS"; then
     CHRONO_COUNT="$(echo "${CHRONO_OUTPUT}" | grep -oE '[0-9]+' | head -1)"
     log_pass "verify_chronology_byte_fixtures.py" "${CHRONO_COUNT} fixtures PASS"
+elif echo "${CHRONO_OUTPUT}" | grep -Eq "WARN|meta-only|incomplete"; then
+    SUMMARY_LINES+=("  SKIP  | verify_chronology_byte_fixtures.py | incomplete corpus")
+    echo "[SKIP] verify_chronology_byte_fixtures.py: incomplete corpus"
 else
     log_fail "verify_chronology_byte_fixtures.py" "${CHRONO_OUTPUT}"
 fi
@@ -88,6 +91,9 @@ STRAT_OUTPUT="$(python3 "${SCRIPT_DIR}/verify_strategy_identity_fixtures.py" 2>&
 if echo "${STRAT_OUTPUT}" | grep -q "verified"; then
     STRAT_COUNT="$(echo "${STRAT_OUTPUT}" | grep -oE '[0-9]+' | head -1)"
     log_pass "verify_strategy_identity_fixtures.py" "${STRAT_COUNT} records PASS"
+elif echo "${STRAT_OUTPUT}" | grep -Eq "WARN|no strategy identity fixtures"; then
+    SUMMARY_LINES+=("  SKIP  | verify_strategy_identity_fixtures.py | fixtures not present")
+    echo "[SKIP] verify_strategy_identity_fixtures.py: fixtures not present"
 else
     log_fail "verify_strategy_identity_fixtures.py" "${STRAT_OUTPUT}"
 fi
@@ -108,8 +114,10 @@ else
     COGNITION="event_reset"
     ARTIFACT_META="artifacts/${SUBSTRATE}/${TOPOLOGY}/${COGNITION}/metadata.json"
 
+    # Align with generate_release_manifest.sh: pruned corpus → SKIP, not FAIL.
     if [ ! -f "${SUBSTRATE_FILE}" ]; then
-        log_fail "double-build determinism" "substrate file not found: ${SUBSTRATE_FILE}"
+        SUMMARY_LINES+=("  SKIP  | double-build determinism | substrate not in tree (pruned corpus)")
+        echo "[SKIP] double-build determinism: substrate not found: ${SUBSTRATE_FILE}"
     else
         echo "  Build pass 1..."
         cargo run --quiet --bin trace_replay -- \

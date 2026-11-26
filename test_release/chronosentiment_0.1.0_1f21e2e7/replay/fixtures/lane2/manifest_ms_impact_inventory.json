@@ -1,0 +1,935 @@
+{
+  "authority_refs": [
+    "V006_MANIFEST_DIALECT_POLICY.md",
+    "V006_LIVE_CAPTURE_AUTHORITY_DECISION.md",
+    "V006_PHASE_C_CLASSIFICATION.md"
+  ],
+  "consumer_surfaces": [
+    {
+      "bounds_sensitive": "yes",
+      "observation": "Uses start_ts > 1e11 heuristic to choose ms vs seconds for catalog dates.",
+      "replay_coupling": "catalog interpretation only; not replay hash",
+      "surface": "scripts/rebuild_catalog.py"
+    },
+    {
+      "bounds_sensitive": "yes",
+      "observation": "Records capture_start/end in provenance as capture_start_ms without dialect gate.",
+      "replay_coupling": "observational provenance; replay uses JSONL bytes + chronology_hash",
+      "surface": "scripts/run_tier1_observability_demo.py"
+    },
+    {
+      "bounds_sensitive": "yes",
+      "observation": "Classifies Dialect A ms bounds vs admitted Dialect B seconds defect.",
+      "replay_coupling": "none \u2014 evidence harness",
+      "surface": "scripts/verify_chronology_producer_ratification.py"
+    },
+    {
+      "bounds_sensitive": "indirect",
+      "observation": "Validates dialect-shaped manifest keys on frozen fixtures.",
+      "replay_coupling": "none \u2014 fixture integrity",
+      "surface": "scripts/verify_chronology_byte_fixtures.py"
+    },
+    {
+      "bounds_sensitive": "no",
+      "observation": "Binds certification manifest to substrate file hash; does not consume capture bounds.",
+      "replay_coupling": "downstream certification only",
+      "surface": "scripts/emit_manifest_v1.py"
+    },
+    {
+      "bounds_sensitive": "yes",
+      "observation": "Emits Dialect A-shaped manifest; capture_start/end from as_secs() (CD-2 defect).",
+      "replay_coupling": "forward producer; not replay hash if JSONL unchanged",
+      "surface": "core/src/bin/capture_daemon.rs"
+    },
+    {
+      "bounds_sensitive": "yes",
+      "observation": "Emits Dialect A with millisecond capture_start/end.",
+      "replay_coupling": "none on bounds alone",
+      "surface": "core/src/bin/historical_importer.rs"
+    },
+    {
+      "bounds_sensitive": "yes",
+      "observation": "Emits millisecond capture_start/end (Dialect C with provenance).",
+      "replay_coupling": "none on bounds alone",
+      "surface": "core/src/bin/yahoo_importer.rs"
+    }
+  ],
+  "doctrine": {
+    "correction_class": "manifest metadata migration \u2014 chronology_hash unchanged if JSONL unchanged",
+    "forward_law": "manifest capture_start/capture_end must be milliseconds",
+    "historical_defect": "Dialect B live manifests store seconds bounds; ticks remain ms",
+    "ms_threshold": 1000000000000
+  },
+  "escalation_triggers": [
+    {
+      "mandatory": "Lane 2 tranche scope doc + AUTHORITY_MAP update + catalog reinterpretation declaration",
+      "trigger": "batch_manifest_bounds_rewrite_seconds_to_ms"
+    },
+    {
+      "mandatory": "V-006 producer ratification path; prove byte-stable JSONL; manifest-only bounds change",
+      "trigger": "capture_daemon_producer_alignment"
+    },
+    {
+      "mandatory": "consumer inventory fix or explicit dialect classification gate",
+      "trigger": "tool_assumes_ms_on_dialect_b"
+    },
+    {
+      "mandatory": "stop inventory expansion; Lane 2 or AUTHORITY_MAP escalation",
+      "trigger": "schema_field_semantic_weight"
+    }
+  ],
+  "git_commit": "5c1f3cb4a84bf1af3d38b9e2a22cb627877a454d",
+  "inventory_version": "1.0.0",
+  "lane": "Lane 2 prerequisite \u2014 manifest ms impact inventory",
+  "layer": "observational",
+  "manifests": [
+    {
+      "bounds_unit": "milliseconds",
+      "capture_end": 1621440000000,
+      "capture_start": 1621425600000,
+      "chronology_hash_prefix": "d44ef90a6e29f20a",
+      "forward_law_violation": false,
+      "inferred_dialect": "A",
+      "lineage": "historical",
+      "notes": [],
+      "path": "core/chronology/historical/2021_may_19_cascade_4h_1m/2021_may_19_cascade_4h_1m_1621425600000_manifest.json",
+      "seconds_ms_ambiguity": false,
+      "tick_timestamp_unit": "milliseconds"
+    },
+    {
+      "bounds_unit": "milliseconds",
+      "capture_end": 1621440000000,
+      "capture_start": 1621425600000,
+      "chronology_hash_prefix": "e3b0c44298fc1c14",
+      "forward_law_violation": false,
+      "inferred_dialect": "A",
+      "lineage": "historical",
+      "notes": [],
+      "path": "core/chronology/historical/2021_may_19_cascade_4h_tick/2021_may_19_cascade_4h_tick_1621425600000_manifest.json",
+      "seconds_ms_ambiguity": false,
+      "tick_timestamp_unit": null
+    },
+    {
+      "bounds_unit": "milliseconds",
+      "capture_end": 1634443200000,
+      "capture_start": 1634428800000,
+      "chronology_hash_prefix": "f6be3b80235cc59d",
+      "forward_law_violation": false,
+      "inferred_dialect": "A",
+      "lineage": "historical",
+      "notes": [],
+      "path": "core/chronology/historical/2021_oct_17_quiet_sunday_4h_1m/2021_oct_17_quiet_sunday_4h_1m_1634428800000_manifest.json",
+      "seconds_ms_ambiguity": false,
+      "tick_timestamp_unit": "milliseconds"
+    },
+    {
+      "bounds_unit": "milliseconds",
+      "capture_end": 1634443200000,
+      "capture_start": 1634428800000,
+      "chronology_hash_prefix": "e3b0c44298fc1c14",
+      "forward_law_violation": false,
+      "inferred_dialect": "A",
+      "lineage": "historical",
+      "notes": [],
+      "path": "core/chronology/historical/2021_oct_17_quiet_sunday_4h_tick/2021_oct_17_quiet_sunday_4h_tick_1634428800000_manifest.json",
+      "seconds_ms_ambiguity": false,
+      "tick_timestamp_unit": null
+    },
+    {
+      "bounds_unit": "milliseconds",
+      "capture_end": 1667930400000,
+      "capture_start": 1667916000000,
+      "chronology_hash_prefix": "59cf35b2043bc6f8",
+      "forward_law_violation": false,
+      "inferred_dialect": "A",
+      "lineage": "historical",
+      "notes": [],
+      "path": "core/chronology/historical/2022_ftx_collapse_4h_1m/2022_ftx_collapse_4h_1m_1667916000000_manifest.json",
+      "seconds_ms_ambiguity": false,
+      "tick_timestamp_unit": "milliseconds"
+    },
+    {
+      "bounds_unit": "milliseconds",
+      "capture_end": 1667930400000,
+      "capture_start": 1667916000000,
+      "chronology_hash_prefix": "433b4e3a213d048e",
+      "forward_law_violation": false,
+      "inferred_dialect": "A",
+      "lineage": "historical",
+      "notes": [],
+      "path": "core/chronology/historical/2022_ftx_collapse_4h_tick/2022_ftx_collapse_4h_tick_1667916000000_manifest.json",
+      "seconds_ms_ambiguity": false,
+      "tick_timestamp_unit": "milliseconds"
+    },
+    {
+      "bounds_unit": "milliseconds",
+      "capture_end": 1663077600000,
+      "capture_start": 1663070400000,
+      "chronology_hash_prefix": "423ac4fcfe614cd4",
+      "forward_law_violation": false,
+      "inferred_dialect": "A",
+      "lineage": "historical",
+      "notes": [],
+      "path": "core/chronology/historical/2022_sep_13_cpi_shock_2h_1m/2022_sep_13_cpi_shock_2h_1m_1663070400000_manifest.json",
+      "seconds_ms_ambiguity": false,
+      "tick_timestamp_unit": "milliseconds"
+    },
+    {
+      "bounds_unit": "milliseconds",
+      "capture_end": 1663077600000,
+      "capture_start": 1663070400000,
+      "chronology_hash_prefix": "5fdd02565e57d8c6",
+      "forward_law_violation": false,
+      "inferred_dialect": "A",
+      "lineage": "historical",
+      "notes": [],
+      "path": "core/chronology/historical/2022_sep_13_cpi_shock_2h_tick/2022_sep_13_cpi_shock_2h_tick_1663070400000_manifest.json",
+      "seconds_ms_ambiguity": false,
+      "tick_timestamp_unit": "milliseconds"
+    },
+    {
+      "bounds_unit": "milliseconds",
+      "capture_end": 1679661000000,
+      "capture_start": 1679657400000,
+      "chronology_hash_prefix": "2114db4be683027b",
+      "forward_law_violation": false,
+      "inferred_dialect": "A",
+      "lineage": "historical",
+      "notes": [],
+      "path": "core/chronology/historical/2023_binance_outage_1h_1m/2023_binance_outage_1h_1m_1679657400000_manifest.json",
+      "seconds_ms_ambiguity": false,
+      "tick_timestamp_unit": "milliseconds"
+    },
+    {
+      "bounds_unit": "milliseconds",
+      "capture_end": 1679661000000,
+      "capture_start": 1679657400000,
+      "chronology_hash_prefix": "e3b0c44298fc1c14",
+      "forward_law_violation": false,
+      "inferred_dialect": "A",
+      "lineage": "historical",
+      "notes": [],
+      "path": "core/chronology/historical/2023_binance_outage_1h_tick/2023_binance_outage_1h_tick_1679657400000_manifest.json",
+      "seconds_ms_ambiguity": false,
+      "tick_timestamp_unit": null
+    },
+    {
+      "bounds_unit": "milliseconds",
+      "capture_end": 1703422800000,
+      "capture_start": 1703419200000,
+      "chronology_hash_prefix": "4b01424ae347285f",
+      "forward_law_violation": false,
+      "inferred_dialect": "A",
+      "lineage": "historical",
+      "notes": [],
+      "path": "core/chronology/historical/2023_christmas_drift_1h_1m/2023_christmas_drift_1h_1m_1703419200000_manifest.json",
+      "seconds_ms_ambiguity": false,
+      "tick_timestamp_unit": "milliseconds"
+    },
+    {
+      "bounds_unit": "milliseconds",
+      "capture_end": 1703422800000,
+      "capture_start": 1703419200000,
+      "chronology_hash_prefix": "ccb5b22f4ccd763c",
+      "forward_law_violation": false,
+      "inferred_dialect": "A",
+      "lineage": "historical",
+      "notes": [],
+      "path": "core/chronology/historical/2023_christmas_drift_1h_tick/2023_christmas_drift_1h_tick_1703419200000_manifest.json",
+      "seconds_ms_ambiguity": false,
+      "tick_timestamp_unit": "milliseconds"
+    },
+    {
+      "bounds_unit": "milliseconds",
+      "capture_end": 1692309600000,
+      "capture_start": 1692306000000,
+      "chronology_hash_prefix": "81d657e8073e0259",
+      "forward_law_violation": false,
+      "inferred_dialect": "A",
+      "lineage": "historical",
+      "notes": [],
+      "path": "core/chronology/historical/2023_liquidation_cascade_1h_1m/2023_liquidation_cascade_1h_1m_1692306000000_manifest.json",
+      "seconds_ms_ambiguity": false,
+      "tick_timestamp_unit": "milliseconds"
+    },
+    {
+      "bounds_unit": "milliseconds",
+      "capture_end": 1692309600000,
+      "capture_start": 1692306000000,
+      "chronology_hash_prefix": "dfec76d60d8ac788",
+      "forward_law_violation": false,
+      "inferred_dialect": "A",
+      "lineage": "historical",
+      "notes": [],
+      "path": "core/chronology/historical/2023_liquidation_cascade_1h_tick/2023_liquidation_cascade_1h_tick_1692306000000_manifest.json",
+      "seconds_ms_ambiguity": false,
+      "tick_timestamp_unit": "milliseconds"
+    },
+    {
+      "bounds_unit": "milliseconds",
+      "capture_end": 1709604000000,
+      "capture_start": 1709596800000,
+      "chronology_hash_prefix": "6443bab8ee327fe1",
+      "forward_law_violation": false,
+      "inferred_dialect": "A",
+      "lineage": "historical",
+      "notes": [],
+      "path": "core/chronology/historical/2024_asia_open_impulse_2h_1m/2024_asia_open_impulse_2h_1m_1709596800000_manifest.json",
+      "seconds_ms_ambiguity": false,
+      "tick_timestamp_unit": "milliseconds"
+    },
+    {
+      "bounds_unit": "milliseconds",
+      "capture_end": 1709604000000,
+      "capture_start": 1709596800000,
+      "chronology_hash_prefix": "b62b0630b2add657",
+      "forward_law_violation": false,
+      "inferred_dialect": "A",
+      "lineage": "historical",
+      "notes": [],
+      "path": "core/chronology/historical/2024_asia_open_impulse_2h_tick/2024_asia_open_impulse_2h_tick_1709596800000_manifest.json",
+      "seconds_ms_ambiguity": false,
+      "tick_timestamp_unit": "milliseconds"
+    },
+    {
+      "bounds_unit": "milliseconds",
+      "capture_end": 1707832800000,
+      "capture_start": 1707829200000,
+      "chronology_hash_prefix": "bfde3f72e8730974",
+      "forward_law_violation": false,
+      "inferred_dialect": "A",
+      "lineage": "historical",
+      "notes": [],
+      "path": "core/chronology/historical/2024_cpi_shock_1h_1m/2024_cpi_shock_1h_1m_1707829200000_manifest.json",
+      "seconds_ms_ambiguity": false,
+      "tick_timestamp_unit": "milliseconds"
+    },
+    {
+      "bounds_unit": "milliseconds",
+      "capture_end": 1707832800000,
+      "capture_start": 1707829200000,
+      "chronology_hash_prefix": "e3b0c44298fc1c14",
+      "forward_law_violation": false,
+      "inferred_dialect": "A",
+      "lineage": "historical",
+      "notes": [],
+      "path": "core/chronology/historical/2024_cpi_shock_1h_ontology_1m/2024_cpi_shock_1h_ontology_1m_1707829200000_manifest.json",
+      "seconds_ms_ambiguity": false,
+      "tick_timestamp_unit": null
+    },
+    {
+      "bounds_unit": "milliseconds",
+      "capture_end": 1707832800000,
+      "capture_start": 1707829200000,
+      "chronology_hash_prefix": "e3b0c44298fc1c14",
+      "forward_law_violation": false,
+      "inferred_dialect": "A",
+      "lineage": "historical",
+      "notes": [],
+      "path": "core/chronology/historical/2024_cpi_shock_1h_ontology_tick/2024_cpi_shock_1h_ontology_tick_1707829200000_manifest.json",
+      "seconds_ms_ambiguity": false,
+      "tick_timestamp_unit": null
+    },
+    {
+      "bounds_unit": "milliseconds",
+      "capture_end": 1707832800000,
+      "capture_start": 1707829200000,
+      "chronology_hash_prefix": "d970abd2669acfc2",
+      "forward_law_violation": false,
+      "inferred_dialect": "A",
+      "lineage": "historical",
+      "notes": [],
+      "path": "core/chronology/historical/2024_cpi_shock_1h_tick/2024_cpi_shock_1h_tick_1707829200000_manifest.json",
+      "seconds_ms_ambiguity": false,
+      "tick_timestamp_unit": "milliseconds"
+    },
+    {
+      "bounds_unit": "milliseconds",
+      "capture_end": 1704758400000,
+      "capture_start": 1704672000000,
+      "chronology_hash_prefix": "f8dba9ba66e9f5b2",
+      "forward_law_violation": false,
+      "inferred_dialect": "A",
+      "lineage": "historical",
+      "notes": [],
+      "path": "core/chronology/historical/2024_etf_approval/2024_etf_approval_1704672000000_manifest.json",
+      "seconds_ms_ambiguity": false,
+      "tick_timestamp_unit": "milliseconds"
+    },
+    {
+      "bounds_unit": "milliseconds",
+      "capture_end": 1704718800000,
+      "capture_start": 1704715200000,
+      "chronology_hash_prefix": "be633c0a1deeee82",
+      "forward_law_violation": false,
+      "inferred_dialect": "A",
+      "lineage": "historical",
+      "notes": [],
+      "path": "core/chronology/historical/2024_etf_approval_1h_1m/2024_etf_approval_1h_1m_1704715200000_manifest.json",
+      "seconds_ms_ambiguity": false,
+      "tick_timestamp_unit": "milliseconds"
+    },
+    {
+      "bounds_unit": "milliseconds",
+      "capture_end": 1704718800000,
+      "capture_start": 1704715200000,
+      "chronology_hash_prefix": "6dd9aa2b57725d61",
+      "forward_law_violation": false,
+      "inferred_dialect": "A",
+      "lineage": "historical",
+      "notes": [],
+      "path": "core/chronology/historical/2024_etf_approval_1h_tick/2024_etf_approval_1h_tick_1704715200000_manifest.json",
+      "seconds_ms_ambiguity": false,
+      "tick_timestamp_unit": "milliseconds"
+    },
+    {
+      "bounds_unit": "milliseconds",
+      "capture_end": 1708228800000,
+      "capture_start": 1708214400000,
+      "chronology_hash_prefix": "15d5eaf025beabe4",
+      "forward_law_violation": false,
+      "inferred_dialect": "A",
+      "lineage": "historical",
+      "notes": [],
+      "path": "core/chronology/historical/2024_quiet_sunday_4h_1m/2024_quiet_sunday_4h_1m_1708214400000_manifest.json",
+      "seconds_ms_ambiguity": false,
+      "tick_timestamp_unit": "milliseconds"
+    },
+    {
+      "bounds_unit": "milliseconds",
+      "capture_end": 1708228800000,
+      "capture_start": 1708214400000,
+      "chronology_hash_prefix": "63bbe586be9584a1",
+      "forward_law_violation": false,
+      "inferred_dialect": "A",
+      "lineage": "historical",
+      "notes": [],
+      "path": "core/chronology/historical/2024_quiet_sunday_4h_tick/2024_quiet_sunday_4h_tick_1708214400000_manifest.json",
+      "seconds_ms_ambiguity": false,
+      "tick_timestamp_unit": "milliseconds"
+    },
+    {
+      "bounds_unit": "milliseconds",
+      "capture_end": 1779479940000,
+      "capture_start": 1778765400000,
+      "chronology_hash_prefix": "74475e1aa8b8d713",
+      "forward_law_violation": false,
+      "inferred_dialect": "C",
+      "lineage": "historical",
+      "notes": [],
+      "path": "core/chronology/historical/2026_aapl_overnight_gap_1m/aapl_1778765400000_manifest.json",
+      "seconds_ms_ambiguity": false,
+      "tick_timestamp_unit": "milliseconds"
+    },
+    {
+      "bounds_unit": "milliseconds",
+      "capture_end": 1779525180000,
+      "capture_start": 1778976000000,
+      "chronology_hash_prefix": "35ccedd25ed94d02",
+      "forward_law_violation": false,
+      "inferred_dialect": "C",
+      "lineage": "historical",
+      "notes": [],
+      "path": "core/chronology/historical/2026_crossfeed_state_disagreement_1m/2026_crossfeed_state_disagreement_yahoo_1m_1778976000000_manifest.json",
+      "seconds_ms_ambiguity": false,
+      "tick_timestamp_unit": "milliseconds"
+    },
+    {
+      "bounds_unit": "milliseconds",
+      "capture_end": 1779520000000,
+      "capture_start": 1779510000000,
+      "chronology_hash_prefix": "1a76add6a748b05b",
+      "forward_law_violation": false,
+      "inferred_dialect": "A",
+      "lineage": "historical",
+      "notes": [],
+      "path": "core/chronology/historical/2026_crossfeed_state_disagreement_tick/2026_crossfeed_state_disagreement_binance_tick_1779510000000_manifest.json",
+      "seconds_ms_ambiguity": false,
+      "tick_timestamp_unit": "milliseconds"
+    },
+    {
+      "bounds_unit": "milliseconds",
+      "capture_end": 1773878400000,
+      "capture_start": 1773792000000,
+      "chronology_hash_prefix": "86ac8882965c86b8",
+      "forward_law_violation": false,
+      "inferred_dialect": "A",
+      "lineage": "historical",
+      "notes": [],
+      "path": "core/chronology/historical/2026_fomc_march/2026_fomc_march_1773792000000_manifest.json",
+      "seconds_ms_ambiguity": false,
+      "tick_timestamp_unit": "milliseconds"
+    },
+    {
+      "bounds_unit": "milliseconds",
+      "capture_end": 1779523200000,
+      "capture_start": 1779521400000,
+      "chronology_hash_prefix": "81156b67e1ec28ee",
+      "forward_law_violation": false,
+      "inferred_dialect": "A",
+      "lineage": "historical",
+      "notes": [],
+      "path": "core/chronology/historical/2026_intraday_impulse_shock_0730_0800_utc_1m/2026_intraday_impulse_shock_0730_0800_utc_1m_1779521400000_manifest.json",
+      "seconds_ms_ambiguity": false,
+      "tick_timestamp_unit": "milliseconds"
+    },
+    {
+      "bounds_unit": "milliseconds",
+      "capture_end": 1779523200000,
+      "capture_start": 1779521400000,
+      "chronology_hash_prefix": "66e6f8d90adc2e10",
+      "forward_law_violation": false,
+      "inferred_dialect": "A",
+      "lineage": "historical",
+      "notes": [],
+      "path": "core/chronology/historical/2026_intraday_impulse_shock_0730_0800_utc_tick/2026_intraday_impulse_shock_0730_0800_utc_tick_1779521400000_manifest.json",
+      "seconds_ms_ambiguity": false,
+      "tick_timestamp_unit": "milliseconds"
+    },
+    {
+      "bounds_unit": "milliseconds",
+      "capture_end": 1779508800000,
+      "capture_start": 1779480000000,
+      "chronology_hash_prefix": "f5784964549f84d4",
+      "forward_law_violation": false,
+      "inferred_dialect": "A",
+      "lineage": "historical",
+      "notes": [],
+      "path": "core/chronology/historical/2026_multi_stage_cascade_transition_1m/2026_multi_stage_cascade_transition_1m_1779480000000_manifest.json",
+      "seconds_ms_ambiguity": false,
+      "tick_timestamp_unit": "milliseconds"
+    },
+    {
+      "bounds_unit": "milliseconds",
+      "capture_end": 1779508800000,
+      "capture_start": 1779480000000,
+      "chronology_hash_prefix": "501066541b471850",
+      "forward_law_violation": false,
+      "inferred_dialect": "A",
+      "lineage": "historical",
+      "notes": [],
+      "path": "core/chronology/historical/2026_multi_stage_cascade_transition_tick/2026_multi_stage_cascade_transition_tick_1779480000000_manifest.json",
+      "seconds_ms_ambiguity": false,
+      "tick_timestamp_unit": "milliseconds"
+    },
+    {
+      "bounds_unit": "milliseconds",
+      "capture_end": 1767312000000,
+      "capture_start": 1767225600000,
+      "chronology_hash_prefix": "d40226b4ecb9c04b",
+      "forward_law_violation": false,
+      "inferred_dialect": "A",
+      "lineage": "historical",
+      "notes": [],
+      "path": "core/chronology/historical/2026_q1_volatility_expansion/2026_q1_volatility_expansion_1767225600000_manifest.json",
+      "seconds_ms_ambiguity": false,
+      "tick_timestamp_unit": "milliseconds"
+    },
+    {
+      "bounds_unit": "milliseconds",
+      "capture_end": 1779289200000,
+      "capture_start": 1779285600000,
+      "chronology_hash_prefix": "fc0ba5320b3fa4d2",
+      "forward_law_violation": false,
+      "inferred_dialect": "A",
+      "lineage": "historical",
+      "notes": [],
+      "path": "core/chronology/historical/2026_recent_crossfeed_1h_binance_tick/2026_recent_crossfeed_1h_binance_tick_1779285600000_manifest.json",
+      "seconds_ms_ambiguity": false,
+      "tick_timestamp_unit": "milliseconds"
+    },
+    {
+      "bounds_unit": "milliseconds",
+      "capture_end": 1779289200000,
+      "capture_start": 1779285600000,
+      "chronology_hash_prefix": "0b9ab8b6238be934",
+      "forward_law_violation": false,
+      "inferred_dialect": "A",
+      "lineage": "historical",
+      "notes": [],
+      "path": "core/chronology/historical/2026_recent_crossfeed_1h_ontology_binance_tick/2026_recent_crossfeed_1h_ontology_binance_tick_1779285600000_manifest.json",
+      "seconds_ms_ambiguity": false,
+      "tick_timestamp_unit": "milliseconds"
+    },
+    {
+      "bounds_unit": "milliseconds",
+      "capture_end": 1779539220000,
+      "capture_start": 1778976000000,
+      "chronology_hash_prefix": "d208b5bfd37c0532",
+      "forward_law_violation": false,
+      "inferred_dialect": "C",
+      "lineage": "historical",
+      "notes": [],
+      "path": "core/chronology/historical/2026_recent_crossfeed_1h_yahoo_1m/btcusd_1778976000000_manifest.json",
+      "seconds_ms_ambiguity": false,
+      "tick_timestamp_unit": "milliseconds"
+    },
+    {
+      "bounds_unit": "milliseconds",
+      "capture_end": 1779336000000,
+      "capture_start": 1779332400000,
+      "chronology_hash_prefix": "4676cf3a6c45c2c9",
+      "forward_law_violation": false,
+      "inferred_dialect": "A",
+      "lineage": "historical",
+      "notes": [],
+      "path": "core/chronology/historical/2026_recent_discontinuity_1h_binance_tick/2026_recent_discontinuity_1h_binance_tick_1779332400000_manifest.json",
+      "seconds_ms_ambiguity": false,
+      "tick_timestamp_unit": "milliseconds"
+    },
+    {
+      "bounds_unit": "milliseconds",
+      "capture_end": 1779336000000,
+      "capture_start": 1779332400000,
+      "chronology_hash_prefix": "7d40ef26e1db7f6d",
+      "forward_law_violation": false,
+      "inferred_dialect": "A",
+      "lineage": "historical",
+      "notes": [],
+      "path": "core/chronology/historical/2026_recent_discontinuity_1h_ontology_binance_tick/2026_recent_discontinuity_1h_ontology_binance_tick_1779332400000_manifest.json",
+      "seconds_ms_ambiguity": false,
+      "tick_timestamp_unit": "milliseconds"
+    },
+    {
+      "bounds_unit": "milliseconds",
+      "capture_end": 1779539220000,
+      "capture_start": 1778976000000,
+      "chronology_hash_prefix": "d208b5bfd37c0532",
+      "forward_law_violation": false,
+      "inferred_dialect": "C",
+      "lineage": "historical",
+      "notes": [],
+      "path": "core/chronology/historical/2026_recent_discontinuity_1h_yahoo_1m/btcusd_1778976000000_manifest.json",
+      "seconds_ms_ambiguity": false,
+      "tick_timestamp_unit": "milliseconds"
+    },
+    {
+      "bounds_unit": "milliseconds",
+      "capture_end": 1779443940000,
+      "capture_start": 1778730300000,
+      "chronology_hash_prefix": "d00b464d807cc1cd",
+      "forward_law_violation": false,
+      "inferred_dialect": "C",
+      "lineage": "historical",
+      "notes": [],
+      "path": "core/chronology/historical/2026_reliance_overnight_gap_1m/reliance.ns_1778730300000_manifest.json",
+      "seconds_ms_ambiguity": false,
+      "tick_timestamp_unit": "milliseconds"
+    },
+    {
+      "bounds_unit": "milliseconds",
+      "capture_end": 1779479940000,
+      "capture_start": 1778765400000,
+      "chronology_hash_prefix": "52f0af651fd76d9c",
+      "forward_law_violation": false,
+      "inferred_dialect": "C",
+      "lineage": "historical",
+      "notes": [],
+      "path": "core/chronology/historical/2026_spy_macro_1m/spy_1778765400000_manifest.json",
+      "seconds_ms_ambiguity": false,
+      "tick_timestamp_unit": "milliseconds"
+    },
+    {
+      "bounds_unit": "milliseconds",
+      "capture_end": 1775347200000,
+      "capture_start": 1775260800000,
+      "chronology_hash_prefix": "d08d4e096758ca9a",
+      "forward_law_violation": false,
+      "inferred_dialect": "A",
+      "lineage": "historical",
+      "notes": [],
+      "path": "core/chronology/historical/2026_weekend_liquidity_gap/2026_weekend_liquidity_gap_1775260800000_manifest.json",
+      "seconds_ms_ambiguity": false,
+      "tick_timestamp_unit": "milliseconds"
+    },
+    {
+      "bounds_unit": "milliseconds",
+      "capture_end": 1779289200000,
+      "capture_start": 1779285600000,
+      "chronology_hash_prefix": "81f07c9cc7604a77",
+      "forward_law_violation": false,
+      "inferred_dialect": "A",
+      "lineage": "historical",
+      "notes": [],
+      "path": "core/chronology/historical/test_btcusd/test_btcusd_1779285600000_manifest.json",
+      "seconds_ms_ambiguity": false,
+      "tick_timestamp_unit": "milliseconds"
+    },
+    {
+      "bounds_unit": "seconds",
+      "capture_end": 1779516360,
+      "capture_start": 1779512759,
+      "chronology_hash_prefix": "3534a6f2ac8909bf",
+      "forward_law_violation": true,
+      "inferred_dialect": "B",
+      "lineage": "live_capture",
+      "notes": [
+        "historically admitted Dialect B seconds bounds defect",
+        "tick timestamps ms; manifest bounds seconds"
+      ],
+      "path": "core/chronology/live_capture/btcusdt_1779512759_manifest.json",
+      "seconds_ms_ambiguity": true,
+      "tick_timestamp_unit": "milliseconds"
+    },
+    {
+      "bounds_unit": "seconds",
+      "capture_end": 1779519960,
+      "capture_start": 1779516360,
+      "chronology_hash_prefix": "2f2c0fdcd1e26a9c",
+      "forward_law_violation": true,
+      "inferred_dialect": "B",
+      "lineage": "live_capture",
+      "notes": [
+        "historically admitted Dialect B seconds bounds defect",
+        "tick timestamps ms; manifest bounds seconds"
+      ],
+      "path": "core/chronology/live_capture/btcusdt_1779516360_manifest.json",
+      "seconds_ms_ambiguity": true,
+      "tick_timestamp_unit": "milliseconds"
+    },
+    {
+      "bounds_unit": "seconds",
+      "capture_end": 1779523560,
+      "capture_start": 1779519960,
+      "chronology_hash_prefix": "41bd242d0eb19ef5",
+      "forward_law_violation": true,
+      "inferred_dialect": "B",
+      "lineage": "live_capture",
+      "notes": [
+        "historically admitted Dialect B seconds bounds defect",
+        "tick timestamps ms; manifest bounds seconds"
+      ],
+      "path": "core/chronology/live_capture/btcusdt_1779519960_manifest.json",
+      "seconds_ms_ambiguity": true,
+      "tick_timestamp_unit": "milliseconds"
+    },
+    {
+      "bounds_unit": "seconds",
+      "capture_end": 1779527160,
+      "capture_start": 1779523560,
+      "chronology_hash_prefix": "44cfcaaac88df11f",
+      "forward_law_violation": true,
+      "inferred_dialect": "B",
+      "lineage": "live_capture",
+      "notes": [
+        "historically admitted Dialect B seconds bounds defect",
+        "tick timestamps ms; manifest bounds seconds"
+      ],
+      "path": "core/chronology/live_capture/btcusdt_1779523560_manifest.json",
+      "seconds_ms_ambiguity": true,
+      "tick_timestamp_unit": "milliseconds"
+    },
+    {
+      "bounds_unit": "seconds",
+      "capture_end": 1779530760,
+      "capture_start": 1779527160,
+      "chronology_hash_prefix": "6ba7819b14a708d8",
+      "forward_law_violation": true,
+      "inferred_dialect": "B",
+      "lineage": "live_capture",
+      "notes": [
+        "historically admitted Dialect B seconds bounds defect",
+        "tick timestamps ms; manifest bounds seconds"
+      ],
+      "path": "core/chronology/live_capture/btcusdt_1779527160_manifest.json",
+      "seconds_ms_ambiguity": true,
+      "tick_timestamp_unit": "milliseconds"
+    },
+    {
+      "bounds_unit": "seconds",
+      "capture_end": 1779534360,
+      "capture_start": 1779530760,
+      "chronology_hash_prefix": "85af6f93aa996188",
+      "forward_law_violation": true,
+      "inferred_dialect": "B",
+      "lineage": "live_capture",
+      "notes": [
+        "historically admitted Dialect B seconds bounds defect",
+        "tick timestamps ms; manifest bounds seconds"
+      ],
+      "path": "core/chronology/live_capture/btcusdt_1779530760_manifest.json",
+      "seconds_ms_ambiguity": true,
+      "tick_timestamp_unit": "milliseconds"
+    },
+    {
+      "bounds_unit": "seconds",
+      "capture_end": 1779537960,
+      "capture_start": 1779534360,
+      "chronology_hash_prefix": "5bb15687e4246195",
+      "forward_law_violation": true,
+      "inferred_dialect": "B",
+      "lineage": "live_capture",
+      "notes": [
+        "historically admitted Dialect B seconds bounds defect",
+        "tick timestamps ms; manifest bounds seconds"
+      ],
+      "path": "core/chronology/live_capture/btcusdt_1779534360_manifest.json",
+      "seconds_ms_ambiguity": true,
+      "tick_timestamp_unit": "milliseconds"
+    },
+    {
+      "bounds_unit": "seconds",
+      "capture_end": 1779541560,
+      "capture_start": 1779537960,
+      "chronology_hash_prefix": "007afbff815a94e4",
+      "forward_law_violation": true,
+      "inferred_dialect": "B",
+      "lineage": "live_capture",
+      "notes": [
+        "historically admitted Dialect B seconds bounds defect",
+        "tick timestamps ms; manifest bounds seconds"
+      ],
+      "path": "core/chronology/live_capture/btcusdt_1779537960_manifest.json",
+      "seconds_ms_ambiguity": true,
+      "tick_timestamp_unit": "milliseconds"
+    },
+    {
+      "bounds_unit": "seconds",
+      "capture_end": 1779545161,
+      "capture_start": 1779541560,
+      "chronology_hash_prefix": "9e72a4d0226f1b28",
+      "forward_law_violation": true,
+      "inferred_dialect": "B",
+      "lineage": "live_capture",
+      "notes": [
+        "historically admitted Dialect B seconds bounds defect",
+        "tick timestamps ms; manifest bounds seconds"
+      ],
+      "path": "core/chronology/live_capture/btcusdt_1779541560_manifest.json",
+      "seconds_ms_ambiguity": true,
+      "tick_timestamp_unit": "milliseconds"
+    },
+    {
+      "bounds_unit": "seconds",
+      "capture_end": 1779548761,
+      "capture_start": 1779545161,
+      "chronology_hash_prefix": "87045cf2e6230399",
+      "forward_law_violation": true,
+      "inferred_dialect": "B",
+      "lineage": "live_capture",
+      "notes": [
+        "historically admitted Dialect B seconds bounds defect",
+        "tick timestamps ms; manifest bounds seconds"
+      ],
+      "path": "core/chronology/live_capture/btcusdt_1779545161_manifest.json",
+      "seconds_ms_ambiguity": true,
+      "tick_timestamp_unit": "milliseconds"
+    },
+    {
+      "bounds_unit": "seconds",
+      "capture_end": 1779552361,
+      "capture_start": 1779548761,
+      "chronology_hash_prefix": "00af7d2a5b029149",
+      "forward_law_violation": true,
+      "inferred_dialect": "B",
+      "lineage": "live_capture",
+      "notes": [
+        "historically admitted Dialect B seconds bounds defect",
+        "tick timestamps ms; manifest bounds seconds"
+      ],
+      "path": "core/chronology/live_capture/btcusdt_1779548761_manifest.json",
+      "seconds_ms_ambiguity": true,
+      "tick_timestamp_unit": "milliseconds"
+    },
+    {
+      "bounds_unit": "seconds",
+      "capture_end": 1779555961,
+      "capture_start": 1779552361,
+      "chronology_hash_prefix": "7f300bb933399187",
+      "forward_law_violation": true,
+      "inferred_dialect": "B",
+      "lineage": "live_capture",
+      "notes": [
+        "historically admitted Dialect B seconds bounds defect",
+        "tick timestamps ms; manifest bounds seconds"
+      ],
+      "path": "core/chronology/live_capture/btcusdt_1779552361_manifest.json",
+      "seconds_ms_ambiguity": true,
+      "tick_timestamp_unit": "milliseconds"
+    },
+    {
+      "bounds_unit": "MISSING",
+      "capture_end": null,
+      "capture_start": null,
+      "chronology_hash_prefix": "906c9160323afcc5",
+      "forward_law_violation": false,
+      "inferred_dialect": "UNKNOWN",
+      "lineage": "live_capture",
+      "notes": [],
+      "path": "core/chronology/live_capture_0001_manifest.json",
+      "seconds_ms_ambiguity": false,
+      "tick_timestamp_unit": "milliseconds"
+    },
+    {
+      "bounds_unit": "milliseconds",
+      "capture_end": 1707832800000,
+      "capture_start": 1707829200000,
+      "chronology_hash_prefix": "d970abd2669acfc2",
+      "forward_law_violation": false,
+      "inferred_dialect": "A",
+      "lineage": "byte_fixture",
+      "notes": [],
+      "path": "fixtures/chronology_serialization/historical_dialect_a_cpi_shock_tick/manifest.json",
+      "seconds_ms_ambiguity": false,
+      "tick_timestamp_unit": "milliseconds"
+    },
+    {
+      "bounds_unit": "seconds",
+      "capture_end": 1779548761,
+      "capture_start": 1779545161,
+      "chronology_hash_prefix": "87045cf2e6230399",
+      "forward_law_violation": false,
+      "inferred_dialect": "UNKNOWN",
+      "lineage": "byte_fixture",
+      "notes": [
+        "tick timestamps ms; manifest bounds seconds",
+        "frozen migration constraint fixture"
+      ],
+      "path": "fixtures/chronology_serialization/live_dialect_b_btcusdt_1779545161/manifest.json",
+      "seconds_ms_ambiguity": true,
+      "tick_timestamp_unit": "milliseconds"
+    },
+    {
+      "bounds_unit": "milliseconds",
+      "capture_end": 1779539220000,
+      "capture_start": 1778976000000,
+      "chronology_hash_prefix": "d208b5bfd37c0532",
+      "forward_law_violation": false,
+      "inferred_dialect": "C",
+      "lineage": "byte_fixture",
+      "notes": [],
+      "path": "fixtures/chronology_serialization/yahoo_dialect_c_btcusd_crossfeed/manifest.json",
+      "seconds_ms_ambiguity": false,
+      "tick_timestamp_unit": "milliseconds"
+    }
+  ],
+  "migration_constraint_fixtures": [
+    "fixtures/chronology_serialization/historical_dialect_a_cpi_shock_tick",
+    "fixtures/chronology_serialization/live_dialect_b_btcusdt_1779545161",
+    "fixtures/chronology_serialization/yahoo_dialect_c_btcusd_crossfeed"
+  ],
+  "scope_doc": "docs/governance/V006_MANIFEST_MS_IMPACT_INVENTORY_SCOPE.md",
+  "status": "INVENTORY_COMPLETE",
+  "summary": {
+    "bounds_unit": {
+      "milliseconds": 46,
+      "missing": 1,
+      "mixed": 0,
+      "non_integer": 0,
+      "seconds": 13,
+      "unreadable": 0
+    },
+    "forward_law_violation_count": 12,
+    "historical_millisecond_bounds": 44,
+    "inferred_dialect": {
+      "A": 39,
+      "B": 12,
+      "C": 7,
+      "unknown": 2
+    },
+    "live_capture_seconds_bounds": 12,
+    "manifests_scanned": 60,
+    "seconds_ms_ambiguity_count": 13
+  },
+  "tranche_authorized": false
+}
