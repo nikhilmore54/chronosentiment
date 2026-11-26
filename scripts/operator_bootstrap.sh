@@ -129,6 +129,9 @@ fi
 for f in "${FIXTURE_SCRIPTS[@]}"; do
     if [ -f "${REPO_ROOT}/${f}" ]; then
         ok "${f}"
+    elif [ "${f}" = "scripts/verify_strategy_identity_fixtures.py" ]; then
+        # Soft-skip: verifier pruned with strategy_identity corpus (align release gates).
+        warn "${f}: missing — skipping (pruned corpus)"
     else
         fail "${f}: missing"
     fi

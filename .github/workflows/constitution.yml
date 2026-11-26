@@ -34,16 +34,18 @@ jobs:
           -p cs-ingest
           -p chronosentiment_adapter
           -p api
+      # -p must precede the filter and `--` or cargo forwards -p to the harness.
       - name: Replay certification
         run: >
-          cargo test replay --release -- --test-threads=1
+          cargo test --release
           -p chronosentiment_core
           -p chronosentiment_strategies
           -p chronosentiment_optimization
+          replay -- --test-threads=1
       - name: Sweep determinism test
-        run: cargo test sweep_projection -p chronosentiment_strategies --quiet
+        run: cargo test -p chronosentiment_strategies sweep_projection --quiet
       - name: Orchestration ordering certification
-        run: cargo test orchestration_execution_order -p chronosentiment_core --quiet
+        run: cargo test -p chronosentiment_core orchestration_execution_order --quiet
       - name: Lint warnings budget (max 5)
         run: |
           cargo clippy -- -D warnings || true
