@@ -336,11 +336,14 @@ impl InvertedContext {
         let mut child_a_shifts = vec![vec![None; self.num_days]; self.num_nurses];
         let mut child_b_shifts = vec![vec![None; self.num_days]; self.num_nurses];
 
-        // Choose crossover pattern: either weekday/weekend split or random split point
-        let split_day = if rng.gen_bool(0.5) {
+        // Day-Preserving Crossover: Exchanges daily assignment blocks between parents.
+        // Guarantee 1: Entire day columns are transferred atomically, so daily HC1 coverage,
+        // HC2 skills, and HC3 single-shift legality are 100% mathematically invariant.
+        // Guarantee 2: Weekend (Sat=day 5, Sun=day 6) is NEVER split across parents, preventing S6 penalties.
+        let split_day = if rng.gen_bool(0.70) {
             5 // Keep weekdays (0..5) and weekend (5..7) atomic
         } else {
-            rng.gen_range(1..6)
+            rng.gen_range(1..=4) // Mid-week split; weekend remains atomic in child
         };
 
         for d in 0..self.num_days {
@@ -371,7 +374,28 @@ impl InvertedContext {
         for _ in 0..num_mutations {
             let d = rng.gen_range(0..self.num_days);
 
-            if rng.gen_bool(0.60) {
+            if rng.gen_bool(0.35) {
+                // Strategy C: Targeted Weekend Kempe Harmonizer (Directly repairs S6 split weekends)
+                let mut sat_only = Vec::new();
+                let mut sun_only = Vec::new();
+                for n in 0..self.num_nurses {
+                    let sat = shifts[n][5];
+                    let sun = shifts[n][6];
+                    if sat.is_some() && sun.is_none() {
+                        sat_only.push((n, sat.unwrap()));
+                    } else if sat.is_none() && sun.is_some() {
+                        sun_only.push((n, sun.unwrap()));
+                    }
+                }
+                if !sat_only.is_empty() && !sun_only.is_empty() {
+                    let &(u, s_sat) = sat_only.choose(rng).unwrap();
+                    let &(v, s_sun) = sun_only.choose(rng).unwrap();
+                    if self.nurse_can_work[u][6][s_sun] && !self.forbidden_matrix[s_sat][s_sun] {
+                        shifts[v][6] = None;
+                        shifts[u][6] = Some(s_sun);
+                    }
+                }
+            } else if rng.gen_bool(0.60) {
                 // Strategy A: Reassign shift to an off-duty eligible nurse on day d
                 let assigned_nurses: Vec<(usize, usize)> = (0..self.num_nurses)
                     .filter_map(|n| shifts[n][d].map(|s| (n, s)))
