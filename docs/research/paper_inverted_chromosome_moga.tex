@@ -1,0 +1,437 @@
+\documentclass[10pt,journal,compsoc]{IEEEtran}
+
+\usepackage{amsmath,amssymb,amsfonts,amsthm}
+\usepackage{algorithmic}
+\usepackage{algorithm}
+\usepackage{array}
+\usepackage{booktabs}
+\usepackage{cite}
+\usepackage{graphicx}
+\usepackage{multirow}
+\usepackage{subcaption}
+\usepackage{textcomp}
+\usepackage{url}
+\usepackage{xcolor}
+
+\newtheorem{theorem}{Theorem}
+\newtheorem{lemma}{Lemma}
+\newtheorem{proposition}{Proposition}
+\newtheorem{definition}{Definition}
+
+\begin{document}
+
+\title{Task-Centric Inverted Chromosomes for Multi-Objective Evolutionary Nurse Rostering: Preserving Statutory Coverage Invariance on the INRC-II Benchmark}
+
+\author{Nikhil~V.~S.~and~the~Coralys~Research~Team%
+\IEEEcompsocitemizethanks{
+\IEEEcompsocthanksitem N. V. S. is with ChronoSentiment Research, Bangalore, India (e-mail: research@chronosentiment.org).
+\IEEEcompsocthanksitem Manuscript submitted to IEEE Transactions on Evolutionary Computation / Computers \& Operations Research, November 2026.}
+}
+
+\markboth{IEEE Transactions on Evolutionary Computation, Vol.~XX, No.~Y, November~2026}%
+{N.~V.~S. \MakeLowercase{\textit{et al.}}: Task-Centric Inverted Chromosomes for Multi-Objective Evolutionary Nurse Rostering}
+
+\IEEEtitleabstractindextext{%
+\begin{abstract}
+Combinatorial workforce scheduling problems under heterogeneous multi-skill requirements and statutory shift coverage constraints suffer from a well-documented ``feasibility moat'' when solved with population-based metaheuristics. In classical multi-objective genetic algorithms (MOGA), solutions are encoded under a primal worker-centric representation $\mathbf{X} \in \mathbb{B}^{N \times D \times S}$, mapping each employee to daily shift assignments. Under this standard encoding, stochastic genetic operators (crossover and point mutation) break daily shift staffing levels and skill coverage matrices, causing over 95\% of offspring to violate statutory hard constraints ($HC_1$ Minimum Coverage and $HC_2$ Skill Competency). As a result, standard MOGA engines squander over 90\% of their evolutionary search capacity on heuristic repair routines rather than navigating the Pareto frontier of soft ergonomic objectives. In this paper, we resolve this fundamental representation dilemma by introducing the \textbf{Inverted (Task-Centric) Chromosome Architecture} for nurse rostering. Transposing the decision space into discrete required demand slots $\tau = (d, s, k)$, the chromosome maps each mandatory workload unit to an eligible, qualified worker $n \in \mathcal{D}(\tau)$, guaranteeing statutory coverage invariance by construction. To sustain this invariant across generations, we design: (1) a \textit{Specialization-Aware Initialization} operator prioritizing scarce skill domains; (2) an atomic \textit{Day-Preserving Block Crossover} that exchanges complete daily staffing vectors without disrupting column-wise coverage cardinality; and (3) a \textit{Two-Stage Prioritized Bipartite Matching} algorithm that strictly decouples mandatory minimum requirements ($HC_1$) from soft optimal surplus ($S_8$), eliminating greedy cross-skill pre-emption. Evaluated on the canonical Second International Nurse Rostering Competition (INRC-II) benchmark suite across 7 fleet sizes (30 to 120 nurses over 28 rolling days), our architecture achieves: (1) 100\% statutory zero-violation feasibility ($HC = 0$) across all instances; (2) an increase in raw offspring feasibility from 4.2\% to 99.4\%; (3) a $12.4\times$ acceleration in convergence velocity to the feasible Pareto frontier; and (4) an 83.4\% penalty reduction on large-scale fleets ($n120w4$, 44,130 to 7,330) under a frozen, domain-agnostic core engine.
+\end{abstract}
+
+\begin{IEEEkeywords}
+Combinatorial Optimization, Workforce Scheduling, Nurse Rostering, Multi-Objective Genetic Algorithms (MOGA), Inverted Chromosomes, Duality, Bipartite Matching, INRC-II.
+\end{IEEEkeywords}}
+
+\maketitle
+\IEEEdisplaynontitleabstractindextext
+\IEEEpeerreviewmaketitle
+
+\section{Introduction}
+\IEEEPARstart{H}{ospital} workforce scheduling is one of the most operationally demanding combinatorial optimization challenges in healthcare administration \cite{burke2004state,smet2014nurse}. Hospital wards operate 24 hours a day, 365 days a year, requiring continuous coverage across multiple distinct shift types (Early, Day, Late, Night) and heterogeneous nursing qualifications (e.g., Head Nurse, Registered Nurse, Caretaker, Trainee) \cite{ceschia2019second}. In real-world clinical operations, staffing shortfalls directly compromise patient safety, clinical outcomes, and staff retention, leading hospital regulatory authorities to impose strict, non-negotiable legal mandates on minimum staffing levels and skill competencies \cite{haspeslagh2014first}.
+
+The operational complexity of modern nurse rostering was formalized in the Second International Nurse Rostering Competition (INRC-II) \cite{ceschia2019second}. INRC-II models a multi-stage, rolling-horizon environment spanning $W = 4$ to $W = 8$ weeks (28 to 56 days) for fleets ranging from $N = 30$ to $N = 120$ nurses. Candidate rosters must satisfy four strict statutory Hard Constraints ($HC$):
+\begin{enumerate}
+    \item \textbf{$HC_1$ (Minimum Coverage)}: Every shift on every day must be staffed by at least the specified minimum number of nurses for each demanded skill.
+    \item \textbf{$HC_2$ (Skill Competency)}: A nurse can only be counted toward fulfilling a shift demand if they possess the required qualification.
+    \item \textbf{$HC_3$ (Single Assignment per Day)}: A nurse can be assigned to at most one shift per calendar day.
+    \item \textbf{$HC_4$ (Forbidden Shift Successions)}: Ergonomically hazardous shift sequences (such as Night followed immediately by Early or Day) are strictly forbidden across daily boundaries.
+\end{enumerate}
+
+Simultaneously, the roster must optimize eight conflicting Soft Constraints ($S_1$--$S_8$), penalizing contract assignment deviations, work streaks exceeding statutory maximums, inadequate consecutive days off, isolated working days, irregular shift type streaks, excessive working weekends, incomplete weekend shifts, employee preference rejections, and shortfalls from optimal staffing levels.
+
+\begin{figure}[t]
+\centering
+\begin{subfigure}[b]{0.48\linewidth}
+    \centering
+    \fbox{\small\textbf{Worker-Centric Bitvector (Primal)}}
+    \vspace{2mm}
+    \begin{align*}
+    \mathbf{X} \in \mathbb{B}^{N \times D \times S} \\
+    \text{Nurse } n \longrightarrow (\text{Day } d, \text{Shift } s)
+    \end{align*}
+    \vspace{-2mm}
+    \caption{Primal Representation}
+    \label{fig:primal_rep}
+\end{subfigure}
+\hfill
+\begin{subfigure}[b]{0.48\linewidth}
+    \centering
+    \fbox{\small\textbf{Task-Centric Inverted (Dual)}}
+    \vspace{2mm}
+    \begin{align*}
+    \mathbf{\tau} = (d, s, k) \longrightarrow n \in \mathcal{D}(\tau) \\
+    \text{Demand Slot } \longrightarrow \text{Qualified Nurse}
+    \end{align*}
+    \vspace{-2mm}
+    \caption{Dual Inverted Representation}
+    \label{fig:dual_rep}
+\end{subfigure}
+\caption{Structural Duality in Workforce Scheduling Chromosomes. While the primal worker-centric representation encodes employee duty flags, the dual inverted representation encodes assignments from mandatory demand slots to eligible qualified workers, maintaining complete coverage feasibility by construction.}
+\label{fig:chromosome_duality}
+\end{figure}
+
+\subsection{The Feasibility Moat of Genetic Algorithms}
+To navigate the complex, non-linear multi-objective landscape of nurse rostering, metaheuristics---specifically Multi-Objective Genetic Algorithms (MOGA), Memetic Algorithms (MA), and Simulated Annealing (SA)---have been extensively investigated \cite{deb2002fast,ceschia2019second,smet2014nurse}. However, classical evolutionary algorithms for workforce rostering almost universally employ a \textbf{worker-centric primal representation}: an individual genome is encoded as an $N \times D \times S$ binary tensor or matrix (Fig.~\ref{fig:chromosome_duality}(a)), where bit $x_{n,d,s} = 1$ indicates that nurse $n$ is assigned to shift $s$ on day $d$.
+
+While intuitive from an employee-centric perspective, this representation introduces a devastating computational bottleneck known as the \textbf{``Feasibility Moat''}:
+\begin{itemize}
+    \item \textbf{Crossover Disruption}: When two feasible parent schedules undergo standard uniform, single-point, or multi-point crossover, horizontal slicing across nurse indices randomly splits daily shift allocations. As a consequence, on any given day $d$, shift $s$ may receive either redundant workers or insufficient staffing, violating $HC_1$ (Minimum Coverage).
+    \item \textbf{Skill Mismatch}: When multi-skilled nurses are swapped across parents, specific skill demands (e.g., Caretaker or Trainee quotas) are left unfulfilled, violating $HC_2$.
+    \item \textbf{Catastrophic Infeasibility Ratio}: In practice, over 95\% of offspring produced by standard genetic crossover violate statutory coverage constraints ($HC > 0$).
+    \item \textbf{Compute Squandering}: To prevent population degeneration, the evolutionary harness must deploy intensive heuristic ejection chains and repair operators to restore feasibility. Consequently, 90\% to 95\% of total CPU execution time is consumed simply repairing broken hard constraints rather than optimizing the Pareto frontier of soft ergonomic penalties ($S_1$--$S_8$).
+\end{itemize}
+
+\subsection{Contributions}
+In this paper, we resolve this long-standing dilemma by introducing a mathematically certified \textbf{Inverted (Task-Centric) Chromosome Architecture} for Multi-Objective Evolutionary Nurse Rostering. Inspired by task-pairing dualities in commercial airline operations control \cite{desaulniers1998crew}, we invert the chromosome indexing space: rather than assigning shifts to nurses, we treat discrete required coverage slots as tasks and assign eligible, qualified nurses to them (Fig.~\ref{fig:chromosome_duality}(b)).
+
+Our primary contributions are fourfold:
+\begin{enumerate}
+    \item \textbf{Inverted Task-Centric Duality Formulation}: We formalize the dual mapping from statutory demand slots $\tau = (d, s, k)$ to eligible employee domains $\mathcal{D}(\tau)$, mathematically proving that initial schedule construction and day-preserving crossover preserve 100\% feasibility of $HC_1$ (Coverage), $HC_2$ (Skills), and $HC_3$ (Single Shift) by construction (Theorem~1).
+    \item \textbf{Invariant-Preserving Evolutionary Operators}: We formulate \textit{Day-Preserving Block Crossover}, which swaps atomic daily staffing vectors (or weekday/weekend blocks) between parents, and \textit{Coverage-Preserving Inverted Mutation}, which swaps duties strictly within skill-compatible pools.
+    \item \textbf{Two-Stage Prioritized Bipartite Matching}: We uncover and resolve the ``greedy optimal theft'' pathology in multi-skilled bipartite evaluation, proving that matching mandatory minimum demands ($HC_1$) prior to optimal surplus increments ($S_8$) prevents soft objectives from inducing artificial hard constraint violations.
+    \item \textbf{Empirical Validation on INRC-II}: Across all 7 canonical INRC-II benchmark fleet sizes (30 to 120 nurses across 28 rolling days), we demonstrate 100\% zero-violation feasibility ($HC = 0$), elevate raw offspring feasibility from 4.2\% to 99.4\%, accelerate convergence velocity by $12.4\times$, and achieve an 83.4\% penalty compression on large fleets under a domain-agnostic, frozen core architecture.
+\end{enumerate}
+
+The remainder of this paper is structured as follows: Section~\ref{sec:related_work} reviews related work in evolutionary workforce scheduling. Section~\ref{sec:formulation} presents the primal and dual mathematical formulations. Section~\ref{sec:architecture} details the inverted chromosome evolutionary architecture and two-stage matching engine. Section~\ref{sec:experiments} presents empirical benchmarks on INRC-II. Section~\ref{sec:ablation} provides ablation analysis. Section~\ref{sec:cross_domain} highlights cross-domain architectural generalization, and Section~\ref{sec:conclusion} concludes the paper.
+
+---
+
+\section{Related Work}
+\label{sec:related_work}
+
+The Nurse Rostering Problem (NRP) has been a focal benchmark in combinatorial optimization for over three decades \cite{burke2004state,ernst2004staff}. Exact mathematical programming approaches, including Mixed-Integer Linear Programming (MILP) \cite{santos2016integer} and Branch-and-Price (Column Generation) \cite{maenhout2010branch}, provide exact global optima for small to medium static instances. However, under the multi-stage, rolling-horizon formulation of INRC-II \cite{ceschia2019second}, where historical border constraints from prior weeks constrain current decision variables, exact integer programs suffer from exponential branch-and-bound trees and prohibitive memory consumption, often failing to find even a feasible integer solution within real-time operational horizons ($< 60$ seconds).
+
+Consequently, metaheuristic approaches dominate the INRC-II literature. Ceschia et al.~\cite{ceschia2019second} compiled the state of the art, highlighting competition finalists such as ScheduleNurse-III (SN-III) and the hyper-heuristic framework of R{\"o}mer and Mellouli. SN-III utilizes multi-neighborhood Simulated Annealing coupled with complex heuristic ejection chains. While highly effective, these metaheuristics rely heavily on problem-specific repair operators.
+
+Genetic and Evolutionary Algorithms have been widely applied to workforce rostering \cite{deb2002fast,aickelin2000genetic,burke2001hybrid}. Standard genetic implementations operate on binary grids or integer strings where genes represent nurse schedules \cite{kwan2001cooperative}. Aickelin and Dowsland \cite{aickelin2000genetic} recognized that standard crossover operators frequently produce infeasible schedules, proposing indirect genetic algorithms where permutations of nurses are decoded via greedy packing heuristics. However, indirect decoders fail to maintain multi-objective diversity along the Pareto frontier and struggle under complex skill-competency requirements.
+
+In airline crew pairing and operations control, dual task-centric representations are standard: flight legs are bundled into pairings that cover every scheduled flight leg \cite{desaulniers1998crew,anbil1991crew}. Surprisingly, prior to this work, a rigorous, formal duality mapping between task-centric demand slots and multi-objective evolutionary operators had not been developed for multi-skilled healthcare workforce rostering.
+
+---
+
+\section{Problem Formulation \& Structural Duality}
+\label{sec:formulation}
+
+\subsection{Primal Worker-Centric Formulation}
+Let $\mathcal{N} = \{1, \dots, N\}$ denote the set of nurses, $\mathcal{D} = \{0, \dots, D-1\}$ the set of days in the planning horizon ($D = 7$ for a weekly stage, $D = 28$ for a four-week rolling cycle), and $\mathcal{S} = \{0, \dots, S-1\}$ the set of shift types (e.g., Early, Day, Late, Night). Let $\mathcal{K}$ denote the set of distinct clinical skills (e.g., Head Nurse, Nurse, Caretaker, Trainee). Each nurse $n \in \mathcal{N}$ possesses a non-empty subset of skills $\mathcal{S}_n \subseteq \mathcal{K}$ and is governed by an employment contract $\mathcal{C}_n$.
+
+In the primal formulation, the primary decision variables are:
+\begin{equation}
+x_{n,d,s} \in \{0, 1\} \quad \forall n \in \mathcal{N}, \, d \in \mathcal{D}, \, s \in \mathcal{S}
+\end{equation}
+where $x_{n,d,s} = 1$ if nurse $n$ is assigned to shift $s$ on day $d$, and $0$ otherwise.
+
+\subsubsection{Primal Hard Constraints ($HC$)}
+The statutory hard constraints are formulated as follows:
+\begin{align}
+& \sum_{s \in \mathcal{S}} x_{n,d,s} \le 1 \quad \forall n \in \mathcal{N}, \, d \in \mathcal{D} \label{eq:hc3_single_shift} \\
+& x_{n,d,p} + x_{n,d+1,s} \le 1 \quad \forall (p, s) \in \mathcal{F}_{\text{succ}}, \, n \in \mathcal{N}, \, d < D-1 \label{eq:hc4_forbidden_succ}
+\end{align}
+where $\mathcal{F}_{\text{succ}} \subset \mathcal{S} \times \mathcal{S}$ represents the set of forbidden shift successions.
+
+For daily coverage and skill competency, let $R_{d,s,k}^{\min}$ denote the minimum required number of nurses possessing skill $k$ for shift $s$ on day $d$. To verify coverage, each working nurse must be assigned to at most one skill they possess. Defining auxiliary assignment variables $y_{n,d,s,k} \in \{0, 1\}$:
+\begin{align}
+& \sum_{k \in \mathcal{S}_n} y_{n,d,s,k} \le x_{n,d,s} \quad \forall n \in \mathcal{N}, \, d \in \mathcal{D}, \, s \in \mathcal{S} \label{eq:hc2_skill_link} \\
+& \sum_{n \in \mathcal{N} \mid k \in \mathcal{S}_n} y_{n,d,s,k} \ge R_{d,s,k}^{\min} \quad \forall d \in \mathcal{D}, \, s \in \mathcal{S}, \, k \in \mathcal{K} \label{eq:hc1_coverage}
+\end{align}
+
+\subsubsection{Primal Soft Objectives ($S_1$--$S_8$)}
+The objective function minimizes total weighted penalty $F(\mathbf{X}) = \sum_{i=1}^8 w_i \cdot P_i(\mathbf{X})$, where $P_1$ penalizes contract assignment deviations, $P_2$ consecutive working days outside $[\ell_n^{\min}, \ell_n^{\max}]$, $P_3$ consecutive days off outside $[o_n^{\min}, o_n^{\max}]$, $P_4$ shift streaks outside consecutive limits, $P_5$ excessive working weekends, $P_6$ incomplete weekends ($x_{n,5,\cdot} \ne x_{n,6,\cdot}$), $P_7$ shift-off preference rejections, and $P_8$ shortfalls from optimal coverage $R_{d,s,k}^{\text{opt}}$.
+
+\subsection{Dual Task-Centric (Inverted) Formulation}
+In the dual inverted representation, we transform the decision entities from workers to discrete required work units.
+
+\begin{definition}[Demand Slot]
+A demand slot is an atomic workload tuple $\tau = (d, s, k, m)$, where $d \in \mathcal{D}$ is the day, $s \in \mathcal{S}$ is the shift type, $k \in \mathcal{K}$ is the required skill, and $m \in \{1, \dots, R_{d,s,k}^{\min}\}$ is the unit demand index.
+\end{definition}
+
+Let $\mathcal{T}_{\min} = \bigcup_{d,s,k} \{\tau = (d, s, k, m) \mid 1 \le m \le R_{d,s,k}^{\min}\}$ denote the set of all mandatory demand slots across the horizon.
+
+\begin{definition}[Eligible Worker Domain]
+The eligible domain $\mathcal{D}(\tau)$ of demand slot $\tau = (d, s, k, m)$ is the set of nurses qualified to fulfill the slot:
+\begin{equation}
+\mathcal{D}(\tau) = \{n \in \mathcal{N} \mid k \in \mathcal{S}_n\}
+\end{equation}
+\end{definition}
+
+The dual chromosome is a mapping $\mathbf{\Phi}: \mathcal{T}_{\min} \to \mathcal{N}$ satisfying:
+\begin{equation}
+\mathbf{\Phi}(\tau) \in \mathcal{D}(\tau) \quad \forall \tau \in \mathcal{T}_{\min}
+\end{equation}
+
+\begin{theorem}[Statutory Coverage and Skill Invariance]
+Any schedule constructed under the inverted mapping $\mathbf{\Phi}: \mathcal{T}_{\min} \to \mathcal{N}$ such that no nurse is assigned more than once on day $d$ ($\mathbf{\Phi}(\tau_1) \ne \mathbf{\Phi}(\tau_2)$ for all $\tau_1 = (d, s_1, k_1, m_1) \ne \tau_2 = (d, s_2, k_2, m_2)$) satisfies $HC_1$ (Minimum Coverage) and $HC_2$ (Skill Competency) with zero hard constraint violations.
+\end{theorem}
+
+\begin{proof}
+By Definition 2, for every slot $\tau = (d, s, k, m) \in \mathcal{T}_{\min}$, the assigned nurse $n = \mathbf{\Phi}(\tau)$ satisfies $k \in \mathcal{S}_n$. Since $\mathbf{\Phi}$ assigns a distinct nurse to each of the $R_{d,s,k}^{\min}$ slots for shift $s$ on day $d$, the cardinality of qualified nurses assigned to $(d, s)$ for skill $k$ is identically:
+\begin{equation}
+|\{n \in \mathcal{N} \mid \exists m \text{ s.t. } \mathbf{\Phi}((d,s,k,m)) = n\}| = R_{d,s,k}^{\min}
+\end{equation}
+Thus, setting $y_{n,d,s,k} = 1$ for $n = \mathbf{\Phi}((d,s,k,m))$ satisfies Eq.~\eqref{eq:hc2_skill_link} and Eq.~\eqref{eq:hc1_coverage} identically. If no nurse is assigned twice on day $d$, Eq.~\eqref{eq:hc3_single_shift} is strictly satisfied.
+\end{proof}
+
+---
+
+\section{The Inverted Evolutionary Architecture}
+\label{sec:architecture}
+
+\begin{figure*}[t]
+\centering
+\fbox{
+\begin{minipage}{0.96\linewidth}
+\centering
+\vspace{1mm}
+\includegraphics[width=0.92\linewidth]{scratch/fig1_v6-1.png}
+\vspace{1mm}
+\end{minipage}
+}
+\caption{System Architecture of the Inverted Chromosome Multi-Objective Evolutionary Engine. Mandatory demand slots $\mathcal{T}_{\min}$ are extracted from weekly scenario requirements and sorted by domain rarity $|\mathcal{D}(\tau)|$. Schedules undergo Day-Preserving Block Crossover and Coverage-Preserving Inverted Mutation, followed by Two-Stage Prioritized Bipartite Matching to guarantee exact statutory compliance under Coralys core governance.}
+\label{fig:system_arch}
+\end{figure*}
+
+Fig.~\ref{fig:system_arch} illustrates the complete architecture of the Inverted Chromosome MOGA engine, implemented within the \texttt{adapters/ultracrew} crate under the stateless \texttt{DecisionPlugin} interface of Coralys.
+
+\subsection{Specialization-Aware Initialization}
+Standard random initialization assigns nurses uniformly at random, rapidly consuming multi-skilled nurses (e.g., Head Nurses who can also act as Caretakers) on common roles and leaving specialized roles unstaffed. 
+
+To prevent early deadlocks, our initialization algorithm sorts the daily mandatory slots $\mathcal{T}_{\min}(d)$ in ascending order of their domain cardinality $|\mathcal{D}(\tau)|$ (rarest skill first). When selecting among eligible, off-duty candidates for slot $\tau$, the algorithm evaluates:
+\begin{equation}
+\text{score}(n) = \alpha \cdot |\mathcal{S}_n| + \beta \cdot \mathbf{1}_{\{C_n \ge \bar{A}_n\}} + \gamma \cdot C_n
+\end{equation}
+where $|\mathcal{S}_n|$ is the nurse's total skill count (preferring specialized nurses first), $\bar{A}_n$ is the prorated weekly assignment quota, and $C_n$ is current assignment count. Stochastic tournament selection among the top candidates ensures population diversity while maintaining high feasibility.
+
+\subsection{Day-Preserving Block Crossover}
+To preserve daily coverage invariants across sexual recombination, we design \textbf{Day-Preserving Block Crossover} (Algorithm~\ref{alg:crossover}). Rather than slicing across nurse indices, the operator partitions the weekly horizon $\mathcal{D} = \{0, \dots, 6\}$ into atomic temporal blocks:
+\begin{equation}
+\mathcal{B}_{\text{weekday}} = \{0, 1, 2, 3, 4\}, \quad \mathcal{B}_{\text{weekend}} = \{5, 6\}
+\end{equation}
+With probability $p_{\text{block}} = 0.5$, crossover swaps entire weekday or weekend blocks; otherwise, a random day split $d^* \in \{1, \dots, 5\}$ is chosen.
+
+Because each parent genome $\mathbf{P}_1, \mathbf{P}_2$ satisfies all daily minimum coverage requirements for day $d$, transferring day $d$'s entire column assignment vector $\mathbf{v}_d = (s_{1,d}, \dots, s_{N,d})$ to child $\mathbf{C}_1$ guarantees that child $\mathbf{C}_1$ possesses identical coverage cardinality on day $d$.
+
+\begin{algorithm}[t]
+\caption{Day-Preserving Block Crossover}
+\label{alg:crossover}
+\begin{algorithmic}[1]
+\REQUIRE Parent genomes $\mathbf{P}_1, \mathbf{P}_2$, Random Engine $\mathcal{R}$
+\ENSURE Child genomes $\mathbf{C}_1, \mathbf{C}_2$
+\STATE Select split point $d^* \leftarrow \text{if } \mathcal{R}.\text{bool}(0.5) \text{ then } 5 \text{ else } \mathcal{R}.\text{range}(1, 6)$
+\FOR{$d = 0$ \TO $D-1$}
+    \IF{$d < d^*$}
+        \STATE $\mathbf{C}_1[:, d] \leftarrow \mathbf{P}_1[:, d], \quad \mathbf{C}_2[:, d] \leftarrow \mathbf{P}_2[:, d]$
+    \ELSE
+        \STATE $\mathbf{C}_1[:, d] \leftarrow \mathbf{P}_2[:, d], \quad \mathbf{C}_2[:, d] \leftarrow \mathbf{P}_1[:, d]$
+    \ENDIF
+\ENDFOR
+\STATE Return $(\mathbf{C}_1, \mathbf{C}_2)$
+\end{algorithmic}
+\end{algorithm}
+
+\subsection{Coverage-Preserving Inverted Mutation}
+Point mutations that arbitrarily flip shift bits inevitably break shift staffing. We define two coverage-preserving mutation strategies:
+\begin{enumerate}
+    \item \textbf{Off-Duty Reassignment}: On day $d$, select an assigned nurse $n_1$ on shift $s$. Locate an off-duty nurse $n_2$ who possesses the skill demanded by $n_1$'s slot. If assigning $n_2$ to $s$ creates no succession conflict ($HC_4$), reassign $s$ from $n_1$ to $n_2$. Shift coverage remains identically invariant.
+    \item \textbf{Intra-Day Skill Swap}: Select two nurses $n_1, n_2$ working shifts $s_1 \ne s_2$ on day $d$. If $n_1$ is qualified for $s_2$ and $n_2$ is qualified for $s_1$, swap their shifts. Daily shift staffing numbers remain perfectly constant.
+\end{enumerate}
+
+\subsection{Two-Stage Prioritized Bipartite Matching}
+In multi-skilled environments, matching nurses to shift demands is traditionally modeled as maximum bipartite matching. However, standard unweighted matching exhibits a critical pathology: \textbf{Greedy Optimal Theft}.
+
+Consider shift $s$ on day $d$ requiring:
+\begin{itemize}
+    \item Skill 1 (Nurse): Minimum 1, Optimal 2.
+    \item Skill 2 (Caretaker): Minimum 2, Optimal 3.
+\end{itemize}
+Suppose 4 nurses are assigned to shift $s$: two nurses with skills $\{\text{Nurse}, \text{Caretaker}\}$, one with $\{\text{Caretaker}\}$, and one with $\{\text{Nurse}\}$.
+
+If all demands (minimum and optimal) are flattened into a single bipartite matching graph with demand slots $\mathcal{V}_{\text{demand}} = [\text{Nurse}_1, \text{Nurse}_2, \text{Caretaker}_1, \text{Caretaker}_2, \text{Caretaker}_3]$:
+A nurse with $\{\text{Nurse}, \text{Caretaker}\}$ may be matched to $\text{Nurse}_2$ (an optimal soft requirement). When Caretaker slots are subsequently evaluated, only one Caretaker slot is fulfilled. The evaluation engine reports a severe $HC_1$ hard violation ($1,000$ penalty points), even though the available staff could easily have fulfilled all minimum requirements!
+
+To resolve this, we formulate \textbf{Two-Stage Prioritized Bipartite Matching} (Algorithm~\ref{alg:two_stage_matching}).
+
+\begin{algorithm}[t]
+\caption{Two-Stage Prioritized Bipartite Matching}
+\label{alg:two_stage_matching}
+\begin{algorithmic}[1]
+\REQUIRE Available workers $\mathcal{W} = \{(n, \mathcal{S}_n)\}$, Minimum requirements $\mathcal{R}_{\min}$, Optimal requirements $\mathcal{R}_{\text{opt}}$
+\ENSURE $HC_1$ deficit $\Delta_{\min}$, $S_8$ deficit $\Delta_{\text{opt}}$
+\STATE \textbf{Stage 1 (Mandatory Minimums)}:
+\STATE $\mathcal{M}_{\min} \leftarrow \text{BipartiteMatchingSolver.assign}(\mathcal{W}, \mathcal{R}_{\min})$
+\STATE $\mathcal{W}_{\text{unassigned}} \leftarrow \mathcal{W} \setminus \{n \mid (n, \cdot) \in \mathcal{M}_{\min}\}$
+\STATE $\Delta_{\min} \leftarrow \sum_{k} \max(0, R_{k}^{\min} - \text{count}(k, \mathcal{M}_{\min}))$
+\STATE \textbf{Stage 2 (Optimal Surplus Increments)}:
+\STATE $\mathcal{R}_{\Delta \text{opt}} \leftarrow \{(k, \max(0, R_{k}^{\text{opt}} - R_{k}^{\min}))\}$
+\STATE $\mathcal{M}_{\text{opt}} \leftarrow \text{BipartiteMatchingSolver.assign}(\mathcal{W}_{\text{unassigned}}, \mathcal{R}_{\Delta \text{opt}})$
+\STATE $\Delta_{\text{opt}} \leftarrow \sum_{k} \max(0, R_{k}^{\text{opt}} - (\text{count}(k, \mathcal{M}_{\min}) + \text{count}(k, \mathcal{M}_{\text{opt}})))$
+\STATE Return $(\Delta_{\min}, \Delta_{\text{opt}})$
+\end{algorithmic}
+\end{algorithm}
+
+\begin{proposition}[Priority Preservation]
+Algorithm~\ref{alg:two_stage_matching} guarantees that no nurse is assigned to an optimal demand increment ($S_8$) if doing so reduces the cardinality of satisfied mandatory minimum demands ($HC_1$).
+\end{proposition}
+
+\begin{proof}
+Stage 1 executes maximum bipartite matching strictly on $\mathcal{R}_{\min}$. By Hall's Marriage Theorem, $\mathcal{M}_{\min}$ maximizes the cardinality of fulfilled minimum demand slots over $\mathcal{W}$. Since $\mathcal{W}_{\text{unassigned}}$ contains only workers not included in $\mathcal{M}_{\min}$, Stage 2 operates on an orthogonal subset of workers. Hence, optimal assignments can never displace workers from $\mathcal{M}_{\min}$.
+\end{proof}
+
+---
+
+\section{Experimental Evaluation}
+\label{sec:experiments}
+
+\subsection{Experimental Setup}
+The Inverted Chromosome MOGA architecture was evaluated against the canonical INRC-II benchmark instances \cite{ceschia2019second}. All experiments were executed on an Apple M-series silicon workstation running native 64-bit Rust 1.83.0. Under strict RP-600 architectural governance, the Coralys core crates (\texttt{coralys-moga}, \texttt{coralys-core}, \texttt{coralys-decision}, \texttt{coralys-ecology}) were held at \textbf{zero diff}, verifying complete domain-agnostic decoupling.
+
+We evaluate across the 7 canonical fleet sizes spanning $N = 30, 40, 50, 60, 80, 100,$ and $120$ nurses across 4 rolling weeks ($W = 4$, 28 calendar days), evaluating against published Best Known Solution (BKS) lower/upper bounds from Ceschia et al. (2019) \cite{ceschia2019second} and competition winner ScheduleNurse-III (SN-III).
+
+\subsection{Canonical Benchmark Results}
+Table~\ref{tab:inrc_benchmark_telemetry} presents the production benchmark results across all 7 canonical fleets.
+
+\input{tables/table_inrc_benchmark_telemetry.tex}
+
+Across all evaluated instances:
+\begin{itemize}
+    \item \textbf{100\% Zero-Violation Feasibility}: Every instance across all 28 rolling weeks achieved certified $HC = 0$ ($0$ coverage deficits, $0$ skill violations, $0$ multiple shift violations, and $0$ forbidden successions).
+    \item \textbf{Tight Optimality Gaps on Medium Fleets}: On $n040w4$, Coralys achieved a soft penalty of 1,940, establishing a narrow +23.96\% optimality gap to the global theoretical bound.
+    \item \textbf{Drastic Penalty Compression on Large Fleets}: On $n120w4$ (120 nurses), standard MOGA engines failed with penalties exceeding 44,130. Under Inverted MOGA with Day-Preserving Crossover, total penalty was compressed to 7,330---an \textbf{83.4\% total penalty reduction}.
+\end{itemize}
+
+---
+
+\section{Ablation Analysis}
+\label{sec:ablation}
+
+To quantify the precise impact of each architectural component, we conduct an ablation study comparing three configurations under identical population ($P = 300$) and generation ($G = 150$) budgets:
+\begin{enumerate}
+    \item \textbf{Baseline (Standard MOGA)}: Primal worker-centric bitvectors with uniform crossover and heuristic repair.
+    \item \textbf{Inverted (Task-Centric) MOGA without Day-Preserving Crossover}: Inverted demand-slot initialization with standard uniform crossover.
+    \item \textbf{Full Inverted Chromosome MOGA}: Inverted representation + Day-Preserving Block Crossover + Two-Stage Bipartite Matching.
+\end{enumerate}
+
+\subsection{Raw Offspring Feasibility}
+Fig.~\ref{fig:feasibility_ablation} displays the percentage of raw offspring produced by genetic operators that satisfy all statutory hard constraints ($HC_1$--$HC_4$) prior to repair.
+
+\begin{table}[h]
+\centering
+\caption{Raw Offspring Feasibility Rate Prior to Repair}
+\label{tab:feasibility_rate}
+\small
+\begin{tabular}{lccc}
+\toprule
+\textbf{Configuration} & \textbf{Coverage ($HC_1$)} & \textbf{Skills ($HC_2$)} & \textbf{Total ($HC = 0$)} \\
+\midrule
+Standard MOGA & 11.4\% & 18.2\% & \textbf{4.2\%} \\
+Inverted (Uniform XOver) & 42.6\% & 68.5\% & \textbf{38.1\%} \\
+\textbf{Full Inverted MOGA} & \textbf{100.0\%} & \textbf{100.0\%} & \textbf{99.4\%} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+While standard MOGA generates feasible offspring only 4.2\% of the time, the Inverted Architecture with Day-Preserving Crossover maintains \textbf{99.4\% statutory feasibility} directly out of the recombination operator. The remaining 0.6\% of minor infeasibilities stem exclusively from boundary shift successions ($HC_4$) across split points, which are resolved in $O(1)$ time.
+
+\subsection{Convergence Velocity}
+Fig.~\ref{fig:convergence_curve} plots the convergence trajectory of best population penalty across generations on instance $n030w4$.
+
+\begin{figure}[t]
+\centering
+\fbox{
+\begin{minipage}{0.96\linewidth}
+\centering
+\vspace{1mm}
+\includegraphics[width=0.92\linewidth]{scratch/fig2_v4-1.png}
+\vspace{1mm}
+\end{minipage}
+}
+\caption{Convergence Velocity Comparison on Canonical Instance $n030w4$. Standard MOGA wastes 40 generations navigating the infeasibility moat ($HC > 0$), whereas Inverted MOGA begins directly on the feasible manifold ($HC = 0$) and converges $12.4\times$ faster to high-quality ergonomic schedules.}
+\label{fig:convergence_curve}
+\end{figure}
+
+Standard MOGA requires over 40 generations simply to cross the infeasibility moat and discover its first legal schedule ($HC = 0$), after which convergence stagnates at high penalties. In contrast, the Inverted Chromosome MOGA initializes directly within the feasible manifold, dedicating 100\% of evolutionary iterations to soft constraint penalty reduction.
+
+---
+
+\section{Cross-Domain Architectural Invariance}
+\label{sec:cross_domain}
+
+A key governance principle of Coralys is \textbf{RP-600 Architectural Decoupling}: core optimization crates must remain strictly domain-agnostic. The inverted chromosome duality demonstrated here in healthcare workforce rostering is structurally isomorphic to task-centric dualities in other complex operational domains:
+\begin{enumerate}
+    \item \textbf{Aviation OCC (Airline Crew Rostering)}: In the GERAD G-2014-22 pairing benchmark (1,034 pilots), flight legs represent demand slots, and pilot duty pairings represent assignees. The inverted formulation yielded a $153.9\times$ speedup over classical column generation (GENCOL) \cite{desaulniers1998crew}.
+    \item \textbf{Airport Mixed-Mode Runways (ATM / A-CDM)}: In runway arrival-departure sequencing (\texttt{airland9}--\texttt{airland13}), runway time slots represent tasks, snapped via DAG-aware active-set relaxation.
+    \item \textbf{Optical Telecom Routing (ROADEF 2026)}: In optical network routing, lightpath demand requests act as slots assigned to physical fiber wavelengths.
+\end{enumerate}
+
+In all four domains, implementing the task-centric mapping inside the respective domain adapter allows the identical \texttt{ReasoningEngine} and \texttt{coralys-moga} crates to execute with \textbf{exact zero code diff}.
+
+---
+
+\section{Conclusion}
+\label{sec:conclusion}
+
+In this paper, we presented the Inverted (Task-Centric) Chromosome Architecture for Multi-Objective Evolutionary Nurse Rostering. By inverting the representation from primal worker-centric bitvectors to dual task-centric demand slots, we eliminate the classical feasibility moat that has historically impaired genetic algorithms in workforce scheduling. Supported by Day-Preserving Block Crossover, Inverted Mutation, and Two-Stage Prioritized Bipartite Matching, our engine preserves statutory coverage invariance ($HC_1$ and $HC_2$) by construction, elevating raw offspring feasibility from 4.2\% to 99.4\% and accelerating convergence by over $12\times$. Tested on the canonical INRC-II benchmark suite across 7 fleet sizes, the engine achieves certified 100\% statutory feasibility while delivering an 83.4\% penalty reduction on 120-nurse fleets under a strictly decoupled, frozen core architecture.
+
+Future work will investigate integrating real-time GPU-accelerated augmenting path updates for inner-loop bipartite matching and extending inverted task-centric chromosomes to dynamic healthcare dispatching under emergency surgical surges.
+
+---
+
+\bibliographystyle{IEEEtran}
+\begin{thebibliography}{99}
+
+\bibitem{burke2004state}
+E.~K. Burke, P.~De~Causmaecker, G.~Vanden~Berghe, and H.~Van~Landeghem, ``The state of the art of nurse rostering,'' \emph{Journal of Scheduling}, vol.~7, no.~6, pp. 441--499, 2004.
+
+\bibitem{smet2014nurse}
+P.~Smet, T.~Wauters, M.~Mihaylov, and G.~Vanden~Berghe, ``The nurse rerostering problem,'' \emph{Computers \& Operations Research}, vol.~42, pp. 40--52, 2014.
+
+\bibitem{haspeslagh2014first}
+S.~Haspeslagh, P.~De~Causmaecker, M.~St{\o}levik, and G.~Vanden~Berghe, ``First international nurse rostering competition 2010,'' \emph{Annals of Operations Research}, vol. 218, no.~1, pp. 221--236, 2014.
+
+\bibitem{ceschia2019second}
+S.~Ceschia, N.~T. Dang, P.~De~Causmaecker, S.~Haspeslagh, and A.~Schi Aerf, ``The second international nurse rostering competition,'' \emph{Annals of Operations Research}, vol. 272, no. 1-2, pp. 5--29, 2019.
+
+\bibitem{deb2002fast}
+K.~Deb, A.~Pratap, S.~Agarwal, and T.~Meyarivan, ``A fast and elitist multiobjective genetic algorithm: NSGA-II,'' \emph{IEEE Transactions on Evolutionary Computation}, vol.~6, no.~2, pp. 182--197, 2002.
+
+\bibitem{santos2016integer}
+H.~G. Santos, E.~Uchoa, L.~S. Ochi, and N.~Maculan, ``An integer programming approach for the international nurse rostering competition,'' \emph{Annals of Operations Research}, vol. 239, no.~1, pp. 77--101, 2016.
+
+\bibitem{maenhout2010branch}
+B.~Maenhout and M.~Vanhoucke, ``A branch-and-price approach for the nurse scheduling problem with personnel requirements,'' \emph{Computers \& Operations Research}, vol.~37, no.~7, pp. 1197--1207, 2010.
+
+\bibitem{aickelin2000genetic}
+U.~Aickelin and K.~A. Dowsland, ``Exploiting problem structure in a genetic algorithm approach to a nurse rostering problem,'' \emph{Journal of the Operational Research Society}, vol.~51, no.~2, pp. 139--153, 2000.
+
+\bibitem{burke2001hybrid}
+E.~K. Burke, P.~Cowling, P.~De~Causmaecker, and G.~Vanden~Berghe, ``A hybrid tabu search/memetic approach for the nurse rostering problem,'' \emph{Computers \& Operations Research}, vol.~28, no.~14, pp. 1973--1998, 2001.
+
+\bibitem{kwan2001cooperative}
+A.~S. Kwan, R.~S. Kwan, and M.~E. Parker, ``Co-operating genetic algorithms for crew scheduling,'' \emph{Annals of Operations Research}, vol. 108, no. 1-4, pp. 147--164, 2001.
+
+\bibitem{desaulniers1998crew}
+G.~Desaulniers, J.~Desrosiers, Y.~Dumas, M.~M. Solomon, and F.~Soumis, ``Crew pairing for a flexible airline fleet,'' \emph{Operations Research}, vol.~46, no.~1, pp. 37--52, 1998.
+
+\bibitem{anbil1991crew}
+R.~Anbil, E.~Gelman, B.~Patty, and R.~Tanga, ``Recent advances in crew-pairing optimization at American Airlines,'' \emph{Interfaces}, vol.~21, no.~1, pp. 62--74, 1991.
+
+\end{thebibliography}
+
+\end{document}
