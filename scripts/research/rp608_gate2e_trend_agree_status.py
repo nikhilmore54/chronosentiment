@@ -90,51 +90,107 @@ def _wl(closed: List[Dict[str, Any]]) -> Dict[str, Any]:
     }
 
 
-def _book_from_journal(path: Path) -> Dict[str, Any]:
+def _rel(path: Path) -> str:
+    try:
+        return str(path.relative_to(WORKSPACE))
+    except ValueError:
+        return str(path)
+
+
+def _first_existing(*candidates: Path) -> Path:
+    for p in candidates:
+        if p.exists():
+            return p
+    return candidates[0]
+
+
+def _event_counts(path: Path) -> Dict[str, int]:
+    rows = _load_jsonl(path, max_bytes=8_000_000)
+    out: Dict[str, int] = {}
+    for r in rows:
+        et = str(r.get("event_type") or "")
+        if not et:
+            continue
+        out[et] = int(out.get(et) or 0) + 1
+    return out
+
+
+def _book_from_journal(path: Path, *, events_path: Optional[Path] = None) -> Dict[str, Any]:
     rows = _load_jsonl(path)
     closed = [r for r in rows if _is_closed(r)]
-    open_rows = [r for r in rows if not _is_closed(r)]
+    # Outcomes files are closed-only; events may carry PLAN_CREATED opens.
+    open_hint = 0
+    suppress_trend = 0
+    plans_created = 0
+    ev_path = events_path if events_path is not None else path
+    if ev_path.exists():
+        counts = _event_counts(ev_path)
+        plans_created = int(counts.get("PLAN_CREATED") or 0)
+        suppress_trend = int(counts.get("SUPPRESSED_GATE2E_TREND_AGREE") or 0)
+        open_hint = max(0, plans_created - sum(
+            int(counts.get(k) or 0)
+            for k in counts
+            if str(k).startswith("CLOSED_") or k in {"TIME_EXIT", "ORDER_FLOW_EXIT"}
+        ))
     return {
-        "path": str(path.relative_to(WORKSPACE)) if path.exists() else str(path),
-        "exists": path.exists(),
+        "path": _rel(path),
+        "exists": path.exists() or (events_path.exists() if events_path else False),
         "rows": len(rows),
-        "open_hint": len(open_rows),
+        "open_hint": open_hint,
+        "plans_created": plans_created,
+        "suppressed_trend_agree": suppress_trend,
         "wl": _wl(closed),
     }
 
 
 def _crypto_pair(root: Path, label: str) -> Dict[str, Any]:
-    primary = root / "trade_plan_overlay" / "events.jsonl"
-    # Outcomes often live beside overlay state
-    primary_out = root / "trade_plan_overlay" / "outcomes.jsonl"
-    baseline = root / "trade_plan_overlay_baseline_parallel_v1" / "outcomes.jsonl"
-    if not baseline.exists():
-        baseline = root / "trade_plan_overlay_baseline" / "outcomes.jsonl"
-    twin = root / "trade_plan_overlay_trend_agree_parallel_v1" / "outcomes.jsonl"
-    if not twin.exists():
-        twin = root / "trade_plan_overlay_trend_agree_parallel_v1" / "events.jsonl"
-
-    def prefer(out_path: Path, events_path: Path) -> Path:
-        if out_path.exists():
-            return out_path
-        return events_path
-
+    # Pi layout: trade_plan_overlay_v1/{trade_plan_outcomes,trade_plan_events}.jsonl
+    primary_out = _first_existing(
+        root / "trade_plan_overlay_v1" / "trade_plan_outcomes.jsonl",
+        root / "trade_plan_overlay" / "trade_plan_outcomes.jsonl",
+        root / "trade_plan_overlay_v1" / "outcomes.jsonl",
+    )
+    primary_ev = _first_existing(
+        root / "trade_plan_overlay_v1" / "trade_plan_events.jsonl",
+        root / "trade_plan_overlay" / "trade_plan_events.jsonl",
+    )
+    baseline_out = _first_existing(
+        root / "trade_plan_overlay_baseline_parallel_v1" / "trade_plan_outcomes.jsonl",
+        root / "trade_plan_overlay_baseline_parallel_v1" / "outcomes.jsonl",
+        root / "trade_plan_overlay_baseline_parallel_v1" / "trade_plan_events.jsonl",
+    )
+    baseline_ev = _first_existing(
+        root / "trade_plan_overlay_baseline_parallel_v1" / "trade_plan_events.jsonl",
+    )
+    twin_out = _first_existing(
+        root / "trade_plan_overlay_trend_agree_parallel_v1" / "trade_plan_outcomes.jsonl",
+        root / "trade_plan_overlay_trend_agree_parallel_v1" / "outcomes.jsonl",
+        root / "trade_plan_overlay_trend_agree_parallel_v1" / "trade_plan_events.jsonl",
+    )
+    twin_ev = _first_existing(
+        root / "trade_plan_overlay_trend_agree_parallel_v1" / "trade_plan_events.jsonl",
+    )
+    twin_dir = root / "trade_plan_overlay_trend_agree_parallel_v1"
     return {
         "venue": label,
-        "A_primary": _book_from_journal(prefer(primary_out, primary)),
-        "BASELINE": _book_from_journal(baseline),
-        "B_trend_agree": _book_from_journal(twin),
+        "twin_dir_exists": twin_dir.is_dir(),
+        "A_primary": _book_from_journal(primary_out, events_path=primary_ev),
+        "BASELINE": _book_from_journal(baseline_out, events_path=baseline_ev),
+        "B_trend_agree": _book_from_journal(twin_out, events_path=twin_ev),
     }
 
 
 def _nse_books() -> Dict[str, Any]:
-    primary = NSE_ROOT / "rp608_nse_trade_journal.jsonl"
-    if not primary.exists():
-        primary = NSE_ROOT / "estimand_a" / "rp608_nse_trade_journal.jsonl"
+    primary = _first_existing(
+        NSE_ROOT / "rp608_nse_trade_journal.jsonl",
+        NSE_ROOT / "estimand_a" / "rp608_nse_trade_journal.jsonl",
+    )
     baseline = NSE_ROOT / "estimand_a_baseline_parallel_v1" / "rp608_nse_trade_journal.jsonl"
     twin = NSE_ROOT / "estimand_a_trend_agree_parallel_v1" / "rp608_nse_trade_journal.jsonl"
+    twin_dir = NSE_ROOT / "estimand_a_trend_agree_parallel_v1"
     return {
         "venue": "NSE_ESTIMAND_A",
+        "twin_dir_exists": twin_dir.is_dir(),
         "A_primary": _book_from_journal(primary),
         "BASELINE": _book_from_journal(baseline),
         "B_trend_agree": _book_from_journal(twin),
@@ -143,12 +199,18 @@ def _nse_books() -> Dict[str, Any]:
 
 def _verdict_line(block: Dict[str, Any]) -> str:
     a = (block.get("A_primary") or {}).get("wl") or {}
-    b = (block.get("B_trend_agree") or {}).get("wl") or {}
+    b_book = block.get("B_trend_agree") or {}
+    b = b_book.get("wl") or {}
     bl = (block.get("BASELINE") or {}).get("wl") or {}
-    if not (block.get("B_trend_agree") or {}).get("exists"):
+    if not block.get("twin_dir_exists") and not b_book.get("exists"):
         return "TWIN_NOT_ARMED_OR_NO_JOURNAL"
     if int(b.get("n") or 0) == 0:
-        return "INSUFFICIENT_CLOSED_B"
+        return (
+            f"INSUFFICIENT_CLOSED_B "
+            f"plans={b_book.get('plans_created')} "
+            f"suppress_trend={b_book.get('suppressed_trend_agree')} "
+            f"(soak; DO_NOT_ADVANCE)"
+        )
     # Predeclared: need soak; this status never auto-ADVANCE.
     return (
         f"OBSERVE n_B={b.get('n')} WR_B={b.get('wr')} | "
@@ -186,6 +248,15 @@ def _fmt_wl(wl: Dict[str, Any]) -> str:
     )
 
 
+def _fmt_book(book: Dict[str, Any]) -> str:
+    return (
+        f"{_fmt_wl(book.get('wl') or {})} "
+        f"plans={book.get('plans_created')} "
+        f"suppress_trend={book.get('suppressed_trend_agree')} "
+        f"exists={book.get('exists')}"
+    )
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--json", action="store_true")
@@ -198,10 +269,10 @@ def main() -> int:
     print(f"logic={st['logic_authority']} gate5={st['gate5']} coralys={st['coralys']}")
     for key in ("btc", "eth", "nse"):
         block = st[key]
-        print(f"\n=== {block.get('venue')} ===")
+        print(f"\n=== {block.get('venue')} twin_dir={block.get('twin_dir_exists')} ===")
         for role in ("A_primary", "BASELINE", "B_trend_agree"):
             book = block.get(role) or {}
-            print(f"  {role}: {_fmt_wl(book.get('wl') or {})} exists={book.get('exists')}")
+            print(f"  {role}: {_fmt_book(book)}")
         print(f"  status: {block.get('status')}")
     return 0
 
