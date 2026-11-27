@@ -10,7 +10,8 @@
 **ML-1D package (primary hypothesis, await SELECT):** `docs/research/rp608_sci_adapter_rec_ml1d_dual_dimension.md`  
 **Anuj literature findings:** `docs/research/rp608_sci_adapter_rec_literature_findings_coralys_complement.md`  
 **Part 3 strengtheners:** `docs/research/rp608_sci_adapter_rec_literature_survey_part3.md`  
-**Quantitative evidence register (9 papers):** `docs/research/rp608_sci_adapter_rec_quantitative_evidence_register.md`
+**Quantitative evidence register (9 papers):** `docs/research/rp608_sci_adapter_rec_quantitative_evidence_register.md`  
+**Hit-rate / directional-accuracy register:** `docs/research/rp608_sci_adapter_rec_hit_rate_literature_register.md`
 
 ---
 

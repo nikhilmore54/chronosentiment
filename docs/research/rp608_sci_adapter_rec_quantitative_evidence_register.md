@@ -7,7 +7,7 @@
 **Status:** EVIDENCE REGISTER ONLY — **not** a threshold packet · **not** SELECT · **not** implementation  
 **Hard rule:** A number in a paper is **not** an effect size for Coralys. Coverage targets ≠ trading accuracy. Historical BTC spreads ≠ current book friction assumptions. Thresholds come from the frozen ChronoSentiment eval contract only.
 
-**Related:** ML-1D charter · findings complement · survey part 3  
+**Related:** ML-1D charter · findings complement · survey part 3 · **hit-rate register** (`rp608_sci_adapter_rec_hit_rate_literature_register.md`)  
 **Store mirror:** Agent store `docs/sci-adapter-rec-quantitative-evidence-register.md`
 
 ---
