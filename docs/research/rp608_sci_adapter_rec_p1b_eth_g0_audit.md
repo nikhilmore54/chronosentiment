@@ -62,7 +62,7 @@ Exit mix (1014): STOP_LOSS_HIT 531 · PROFIT_TARGET_HIT 359 · MAX_HORIZON_60M_E
 
 **PASS (2026-11-27):** Ingested `binance_ethusdt_2024_15m.json` + REC-001-H `ETHUSDT.jsonl.gz`.
 
-**Sealed ML-1D ETH package run:** `docs/research/rp608_sci_adapter_rec_ml1d_eth_holdout.md` — **ADVANCE_CANDIDATE** offline (never pooled; H11 skipped; no automatic twin).
+**Sealed ML-1D ETH package run:** `docs/research/rp608_sci_adapter_rec_ml1d_eth_holdout.md` — **DO_NOT_ADVANCE** after ETH-native H11 (earlier ADVANCE with H11 skipped superseded; never pooled; no twin). ETH SCI-v1 P1 alone remains ADVANCE_CANDIDATE — see `docs/research/rp608_sci_adapter_rec_p1_eth_review.md`.
 
 ---
 

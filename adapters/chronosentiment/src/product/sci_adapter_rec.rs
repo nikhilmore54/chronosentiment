@@ -155,6 +155,10 @@ impl FrozenTwinPack {
 pub const DEFAULT_FROZEN_PACK_REL: &str =
     "docs/research/rp608_sci_adapter_rec_p1/btc_p1_side_models.json";
 
+/// ETH native SCI-v1 frozen pack (H11 comparator for ETHUSDT — never use BTC pack).
+pub const ETH_FROZEN_PACK_REL: &str =
+    "docs/research/rp608_sci_adapter_rec_p1/eth_p1_side_models.json";
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SciRecStamp {
     pub protocol_id: String,

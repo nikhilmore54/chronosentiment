@@ -268,15 +268,15 @@
   ],
   "h11_sci_v1_comparator": {
     "fold": "holdout",
-    "baseline_n": 0,
-    "baseline_wins": 0,
-    "baseline_wr": 0.0,
-    "enter_n": 0,
-    "enter_wins": 0,
-    "enter_wr": 0.0,
-    "coverage": 0.0,
-    "payoff_asym": null,
-    "mean_net_proxy": null
+    "baseline_n": 2357,
+    "baseline_wins": 691,
+    "baseline_wr": 0.2931692829868477,
+    "enter_n": 139,
+    "enter_wins": 46,
+    "enter_wr": 0.33093525179856115,
+    "coverage": 0.05897327110733984,
+    "payoff_asym": 1.8723494372877638,
+    "mean_net_proxy": -0.03093867284612587
   },
   "e0_holdout": {
     "fold": "holdout",
@@ -302,8 +302,10 @@
     "payoff_asym": 1.8933518290312656,
     "mean_net_proxy": -0.042744036035647366
   },
-  "verdict": "ADVANCE_CANDIDATE",
-  "verdict_reasons": [],
+  "verdict": "DO_NOT_ADVANCE",
+  "verdict_reasons": [
+    "h11_sci_v1_competitive_or_better h11_wr=0.3309 h11_net=-0.030939 e3_wr=0.3158 e3_net=-0.042744"
+  ],
   "extension_verdict": "EXTENSIONS_DO_NOT_RESCUE",
   "extension_reasons": [
     "h8_ec2_no_net_lift_vs_ec1 e3_ec2=-0.073151 e3_ec1=-0.042744"

@@ -13,7 +13,7 @@ use chronosentiment_adapter::product::sci_adapter_rec::{
     build_features, coverage_floor_ok, decide_generator, fit_isotonic, raw_score, scorecard,
     wl_improves, Band, FoldScorecard, FrozenTwinPack, JointCuts, Side, FEATURE_NAMES,
     FEATURE_SCHEMA_ID, LABEL_HORIZON_BARS, PROTOCOL_ID as SCI_V1_PROTOCOL, PURGE_BARS,
-    DEFAULT_FROZEN_PACK_REL,
+    DEFAULT_FROZEN_PACK_REL, ETH_FROZEN_PACK_REL,
 };
 use chronosentiment_adapter::product::sci_adapter_rec_ml1d::{
     decide_ml1d_ex, fit_reliability_pack, ml1d_schema_hash, predict_q, selection_aware_diag,
@@ -591,21 +591,24 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         });
     }
 
-    // H11: SCI-v1 frozen pack comparator — BTC pack only (never apply BTC models to ETH).
-    let sci_pack_path = root.join(DEFAULT_FROZEN_PACK_REL);
-    let h11_sc = if book == "BTCUSDT" && sci_pack_path.exists() {
+    // H11: SCI-v1 frozen pack comparator — book-native pack only (never cross-book).
+    let sci_pack_rel = match book.as_str() {
+        "ETHUSDT" => ETH_FROZEN_PACK_REL,
+        _ => DEFAULT_FROZEN_PACK_REL,
+    };
+    let sci_pack_path = root.join(sci_pack_rel);
+    let h11_sc = if sci_pack_path.exists() {
         let pack = FrozenTwinPack::from_path(&sci_pack_path)?;
         println!(
-            "  H11 SCI-v1 comparator pack={:?} protocol={SCI_V1_PROTOCOL}",
+            "  H11 SCI-v1 comparator pack={:?} protocol={SCI_V1_PROTOCOL} book={book}",
             sci_pack_path
         );
         eval_sci_v1_comparator("holdout", &hold_all, &pack, &closes, &volumes)
     } else {
-        if book != "BTCUSDT" {
-            println!("  H11 skipped for {book} (BTC SCI-v1 pack is other-book — never pooled)");
-        } else {
-            eprintln!("  WARN: SCI-v1 pack missing at {:?}", sci_pack_path);
-        }
+        eprintln!(
+            "  WARN: SCI-v1 pack missing for {book} at {:?} — H11 skipped (not a cross-book fallback)",
+            sci_pack_path
+        );
         scorecard("holdout", &[], &[], &[])
     };
     println!(
