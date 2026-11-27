@@ -17,12 +17,15 @@ use std::process;
 use chronosentiment_adapter::nse_market_events::{
     depth_snapshot_row_from_cache_tick, DEPTH_JOURNAL_PROTOCOL_ID,
 };
+use chronosentiment_adapter::product::sci_adapter_rec::{
+    FrozenTwinPack, DEFAULT_FROZEN_PACK_REL,
+};
 use chronosentiment_adapter::product::{
     adapter_select_15m, build_tick_snapshot, evaluate_tick_policies_hygiened, ohlcv_trend_agreement,
     snapshot_to_json, Gate2xBookKind, RecommendationStabilizer, Gate2xFeatureSnapshot,
     Gate2xPositionManager, OpenPlanState, PlanLifecycleConfig, PlanLifecycleManager, PlanQuote,
     TickFeatureBuffer, TickQuote, ADAPTER_SELECT_15M_PROTOCOL_ID, CRYPTO_TICK_PROTOCOL_ID,
-    OHLCV_TREND_AGREE_PROTOCOL_ID, PLAN_LIFECYCLE_PROTOCOL,
+    OHLCV_TREND_AGREE_PROTOCOL_ID, PLAN_LIFECYCLE_PROTOCOL, SCI_ADAPTER_REC_PROTOCOL_ID,
 };
 use serde::Deserialize;
 use serde_json::Value;
@@ -94,6 +97,15 @@ struct TrendAgreeRequest {
     candidate_side: String,
 }
 
+/// SCI-ADAPTER-REC P2 apply: completed closes + volumes → generator stamp.
+#[derive(Debug, Deserialize)]
+struct SciAdapterRecRequest {
+    #[serde(default)]
+    closes: Vec<f64>,
+    #[serde(default)]
+    volumes: Vec<f64>,
+}
+
 fn main() {
     let args: Vec<String> = env::args().collect();
     let mut evidence_dir = "datasets/recommendation/historical_crypto".to_string();
@@ -103,6 +115,8 @@ fn main() {
     let mut depth_snapshot_loop = false;
     let mut adapter_select_15m_loop = false;
     let mut trend_agree_loop = false;
+    let mut sci_adapter_rec_loop = false;
+    let mut sci_pack_path: Option<String> = None;
     let mut book_arg: Option<String> = None;
     let mut i = 1;
     while i < args.len() {
@@ -141,13 +155,24 @@ fn main() {
             "--trend-agree-loop" => {
                 trend_agree_loop = true;
             }
+            "--sci-adapter-rec-loop" => {
+                sci_adapter_rec_loop = true;
+            }
+            "--sci-pack" => {
+                i += 1;
+                if i >= args.len() {
+                    eprintln!("--sci-pack requires a path");
+                    process::exit(2);
+                }
+                sci_pack_path = Some(args[i].clone());
+            }
             "--version" => {
                 println!("{VERSION}");
                 process::exit(0);
             }
             "-h" | "--help" => {
                 eprintln!(
-                    "rp608_position_decide ({VERSION} / {MANAGE_VERSION} / {PLAN_LIFECYCLE_PROTOCOL} / {CRYPTO_TICK_PROTOCOL_ID} / {DEPTH_JOURNAL_PROTOCOL_ID} / {ADAPTER_SELECT_15M_PROTOCOL_ID} / {OHLCV_TREND_AGREE_PROTOCOL_ID})\n\
+                    "rp608_position_decide ({VERSION} / {MANAGE_VERSION} / {PLAN_LIFECYCLE_PROTOCOL} / {CRYPTO_TICK_PROTOCOL_ID} / {DEPTH_JOURNAL_PROTOCOL_ID} / {ADAPTER_SELECT_15M_PROTOCOL_ID} / {OHLCV_TREND_AGREE_PROTOCOL_ID} / {SCI_ADAPTER_REC_PROTOCOL_ID})\n\
                      One-shot:              JSON stdin snapshot → JSON stdout decision\n\
                      Gate2X manage:         --manage-loop  JSONL → JSONL\n\
                      Plan lifecycle manage: --plan-lifecycle-loop  JSONL plan+quote → JSONL result\n\
@@ -155,10 +180,11 @@ fn main() {
                      NSE depth side-path:   --depth-snapshot-loop  JSONL symbol+tick → depth row\n\
                      Adapter select 15m:    --adapter-select-15m-loop  JSONL closes+side → RecommendationStamp\n\
                      Gate2E 15m trend B:    --trend-agree-loop  JSONL closes+side → agreement stamp\n\
+                     SCI adapter rec P2:    --sci-adapter-rec-loop [--sci-pack PATH]  JSONL closes+volumes → SciRecStamp\n\
                      --evidence-dir DIR   REC001h JSONL directory (crypto or NSE)\n\
                      --book crypto|nse    force book (else inferred from evidence-dir)\n\
                      --version            print protocol id\n\
-                     Env: RP608_POSITION_DECIDE_BIN / RP608_GATE2X_MANAGE_BIN / RP608_PLAN_LIFECYCLE_BIN / RP608_ADAPTER_SELECT_15M_BIN"
+                     Env: RP608_POSITION_DECIDE_BIN / RP608_GATE2X_MANAGE_BIN / RP608_PLAN_LIFECYCLE_BIN / RP608_ADAPTER_SELECT_15M_BIN / RP608_SCI_ADAPTER_REC_PACK"
                 );
                 process::exit(0);
             }
@@ -171,6 +197,57 @@ fn main() {
     }
 
     let book = detect_book(&evidence_dir, book_arg.as_deref());
+
+    if sci_adapter_rec_loop {
+        let pack_path = sci_pack_path
+            .or_else(|| env::var("RP608_SCI_ADAPTER_REC_PACK").ok())
+            .unwrap_or_else(|| DEFAULT_FROZEN_PACK_REL.to_string());
+        let pack = match FrozenTwinPack::from_path(std::path::Path::new(&pack_path)) {
+            Ok(p) => p,
+            Err(e) => {
+                eprintln!("[{SCI_ADAPTER_REC_PROTOCOL_ID}] load pack failed: {e}");
+                process::exit(1);
+            }
+        };
+        eprintln!(
+            "[{SCI_ADAPTER_REC_PROTOCOL_ID}] sci-adapter-rec-loop ready (P2 apply · pack={pack_path} · ladder={})",
+            pack.ladder_stage
+        );
+        let stdin = io::stdin();
+        let mut stdout = io::stdout();
+        for line in stdin.lock().lines() {
+            let line = match line {
+                Ok(l) => l,
+                Err(e) => {
+                    eprintln!("stdin read: {e}");
+                    process::exit(1);
+                }
+            };
+            if line.trim().is_empty() {
+                continue;
+            }
+            let req: SciAdapterRecRequest = match serde_json::from_str(&line) {
+                Ok(r) => r,
+                Err(e) => {
+                    eprintln!("parse sci-adapter-rec request: {e}");
+                    process::exit(1);
+                }
+            };
+            let stamp = pack.decide(&req.closes, &req.volumes);
+            let out = match serde_json::to_string(&stamp) {
+                Ok(s) => s,
+                Err(e) => {
+                    eprintln!("serialize sci-adapter-rec stamp: {e}");
+                    process::exit(1);
+                }
+            };
+            if writeln!(stdout, "{out}").is_err() {
+                process::exit(1);
+            }
+            let _ = stdout.flush();
+        }
+        return;
+    }
 
     if adapter_select_15m_loop {
         eprintln!(

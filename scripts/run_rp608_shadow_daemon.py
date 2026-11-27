@@ -100,6 +100,7 @@ from scripts.rp608_order_flow_mark import (
 )
 from scripts.rp608_trade_plan_overlay import TradePlanOverlayManager
 from scripts.rp608_adapter_select_15m import twin_enabled as adapter_select_15m_twin_enabled
+from scripts.rp608_sci_adapter_rec import twin_enabled as sci_adapter_rec_twin_enabled
 from scripts.rp608_ofx_crypto_aggtrade_journal import (
     OfxCryptoAggTradeJournal,
     ofx_crypto_aggtrade_capture_enabled,
@@ -876,6 +877,39 @@ class RP608ShadowDaemon:
                 flush=True,
             )
 
+        # SCI-ADAPTER-REC P2 twin (S1=b generator; BTC first; default off until Anuj arms).
+        # Independent of Gate 2E B + adapter_select baselines. Coralys / Gate 5 untouched.
+        self.trade_plan_overlay_sci_adapter_rec = None
+        _sci_on = sci_adapter_rec_twin_enabled(default=False)
+        _sci_symbol_ok = self.symbol == "BTCUSDT"
+        if _sci_on and _sci_symbol_ok:
+            _sci_book = "CRYPTO_PLAN_SCI_ADAPTER_REC"
+            sci_dir = self.output_dir / "trade_plan_overlay_sci_adapter_rec_v1"
+            self.trade_plan_overlay_sci_adapter_rec = TradePlanOverlayManager(
+                base_dir=sci_dir,
+                book_id=_sci_book,
+                symbol=self.symbol,
+                of_paper_enabled=False,
+                volume_pattern_axes=False,
+                pattern_entry_gate_mode="0",
+                config_overrides={
+                    "require_sci_adapter_rec": True,
+                    "plan_require_of": False,
+                    "b_persist_min_fires": 0,
+                },
+            )
+            print(
+                f"[sci_adapter_rec_twin] symbol={self.symbol} observational twin armed → "
+                f"{sci_dir} (book={_sci_book}; S1=b generator; PRIMARY/baselines untouched)",
+                flush=True,
+            )
+        elif _sci_on and not _sci_symbol_ok:
+            print(
+                f"[sci_adapter_rec_twin] symbol={self.symbol} skipped "
+                f"(P2 BTC-only; ETH/NSE deferred until join)",
+                flush=True,
+            )
+
         # Gate 2E B: 15m OHLCV L3/L8/L20 trend-agreement twin (PRIMARY unchanged).
         _ta_on = str(
             os.environ.get("RP608_GATE2E_TREND_AGREE_TWIN", "1")
@@ -1268,6 +1302,9 @@ class RP608ShadowDaemon:
     def _completed_closes(self) -> List[float]:
         return [c.close for c in self.recent_candles]
 
+    def _completed_volumes(self) -> List[float]:
+        return [float(c.volume) for c in self.recent_candles]
+
     async def ingest_ofx_aggtrade(self):
         """
         OFX research capture: Binance aggTrade → durable journal.
@@ -1393,6 +1430,10 @@ class RP608ShadowDaemon:
                                     self.trade_plan_overlay_adapter_select_15m.reload_state_from_disk(
                                         preserve_open_progress=True
                                     )
+                                if self.trade_plan_overlay_sci_adapter_rec is not None:
+                                    self.trade_plan_overlay_sci_adapter_rec.reload_state_from_disk(
+                                        preserve_open_progress=True
+                                    )
                                 if self.trade_plan_overlay_trend_agree is not None:
                                     self.trade_plan_overlay_trend_agree.reload_state_from_disk(
                                         preserve_open_progress=True
@@ -1420,6 +1461,13 @@ class RP608ShadowDaemon:
                                     (
                                         self.trade_plan_overlay_adapter_select_15m,
                                         "trade_plan_overlay_adapter_select_15m",
+                                    )
+                                )
+                            if self.trade_plan_overlay_sci_adapter_rec is not None:
+                                _tick_overlays.append(
+                                    (
+                                        self.trade_plan_overlay_sci_adapter_rec,
+                                        "trade_plan_overlay_sci_adapter_rec",
                                     )
                                 )
                             if self.trade_plan_overlay_trend_agree is not None:
@@ -1807,9 +1855,11 @@ class RP608ShadowDaemon:
             "order_flow_imbalance": of_mark.get("order_flow_imbalance"),
             "order_flow_source": of_mark.get("order_flow_source"),
             "rec_hygiene": self._last_rec_hygiene,
-            # Completed 15m closes for clean-slate adapter_select_15m (decision-time only).
+            # Completed 15m closes/volumes for adapter_select + SCI-ADAPTER-REC (decision-time only).
             "ohlcv_closes_15m": list(self._completed_closes()),
             "completed_closes": list(self._completed_closes()),
+            "ohlcv_volumes_15m": list(self._completed_volumes()),
+            "completed_volumes": list(self._completed_volumes()),
         }
         if REGIME_TELEMETRY_ENABLED and self.recent_candles:
             regime = classify_market_regime(self.recent_candles)
@@ -1871,6 +1921,16 @@ class RP608ShadowDaemon:
             except Exception as as_exc:
                 print(
                     f"[trade_plan_overlay_adapter_select_15m] process_decision_card skipped: {as_exc}"
+                )
+        if self.trade_plan_overlay_sci_adapter_rec is not None:
+            try:
+                self.trade_plan_overlay_sci_adapter_rec.process_decision_card(
+                    dict(decision_card),
+                    current_quote=q,
+                )
+            except Exception as sci_exc:
+                print(
+                    f"[trade_plan_overlay_sci_adapter_rec] process_decision_card skipped: {sci_exc}"
                 )
         if self.trade_plan_overlay_trend_agree is not None:
             try:
@@ -2125,6 +2185,13 @@ class RP608ShadowDaemon:
                                             (
                                                 self.trade_plan_overlay_adapter_select_15m,
                                                 "trade_plan_overlay_adapter_select_15m",
+                                            )
+                                        )
+                                    if self.trade_plan_overlay_sci_adapter_rec is not None:
+                                        _kline_overlays.append(
+                                            (
+                                                self.trade_plan_overlay_sci_adapter_rec,
+                                                "trade_plan_overlay_sci_adapter_rec",
                                             )
                                         )
                                     if self.trade_plan_overlay_trend_agree is not None:

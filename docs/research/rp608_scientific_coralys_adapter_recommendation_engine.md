@@ -2,7 +2,7 @@
 
 **Protocol:** `RP-608-SCI-ADAPTER-REC-001`  
 **Date:** 2026-11-27 (Asia/Calcutta)  
-**Status:** P1 BTC OFFLINE COMPLETE (2026-11-27 Asia/Calcutta) — BTC `ADVANCE_CANDIDATE`; ETH/NSE deferred; no Pi daemon restart / twin-knob edits  
+**Status:** P2 TWIN CODE COMPLETE (2026-11-27 Asia/Calcutta) — BTC observational twin env default **off** (Anuj-gated arm); P1 BTC `ADVANCE_CANDIDATE`; dual soak untouched  
 **Authority:** 0.0% until Gate 5 after sealed offline package + observational twin promote  
 **Working base:** `governance-hardening`  
 **Aligned with:** Project `preferences.md` · `.cursor/rules/chronosentiment-core.mdc` §3b/§3c · Gate 2 v2 (`docs/research/rp608_gate2_amendment_v2.md`) · Coralys no-touch · Rust-first / Python fail-closed I/O · 15m OHLCV first · books never pooled  
@@ -271,7 +271,7 @@ Morning MTM / open marks are **not** substitutes for closed-trade W/L.
 | --- | --- | --- |
 | **P0 — Charter** (this doc) | Scientific method + boundaries + **S1–S10 freeze** | **DONE** 2026-11-27 |
 | **P1 — Offline package** | Price+volume feature schema v1, labels under frozen exits, purged CV / chronological splits, adaptive A→B fit, joint calibration cuts, sealed holdout scorecard, leakage audit | **BTC `ADVANCE_CANDIDATE`** · ETH/NSE not run · review `docs/research/rp608_sci_adapter_rec_p1_btc_review.md` |
-| **P2 — Sealed twin** | Rust apply path + new protocol id + Python fail-closed client + twin book dirs; env default off | Deterministic unit tests; no Coralys diffs; no PRIMARY mutation |
+| **P2 — Sealed twin** | Rust apply path + new protocol id + Python fail-closed client + twin book dirs; env default off | **CODE LANDED** · scoped `docs/research/rp608_sci_adapter_rec_p2_twin_scoped.md` · arm still Anuj-gated |
 | **P3 — Pi soak** | Anuj-gated arm on agreed books (15m BTC first; ETH when join ready) | Dual soak baselines **unchanged**; journals + scorecard |
 | **P4 — Promote criteria** | Soak W/L direction matches offline; coverage floor; payoff/net disclosed; price+volume schema locked | Gate 5 packet draft only after Anuj go; else HOLD/ABANDON |
 
@@ -323,9 +323,9 @@ Morning MTM / open marks are **not** substitutes for closed-trade W/L.
 - Do **not** restart Pi daemons.  
 - Do **not** change `RP608_ADAPTER_SELECT_15M_*` or Gate 2E B env/knobs (S6 baselines).  
 - Do **not** modify live twin soft-score weights or `|S|≥0.35`.  
-- S1–S10 are **frozen**; P1 BTC offline is **complete** (`ADVANCE_CANDIDATE`).  
-- Next authorized work is **P2 sealed twin** (Anuj-gated arm); still no Coralys edits, still authority 0%.
+- S1–S10 are **frozen**; P1 BTC offline **ADVANCE_CANDIDATE**; P2 twin code landed (`RP608_SCI_ADAPTER_REC_TWIN` default **0**).  
+- Next: **Anuj arms P3 Pi soak** when ready; still no Coralys edits, still authority 0%; leave Gate 2E B + adapter_select baselines running.
 
 ---
 
-*End of charter — `RP-608-SCI-ADAPTER-REC-001` · S1–S10 frozen · P1 BTC ADVANCE_CANDIDATE 2026-11-27.*
+*End of charter — `RP-608-SCI-ADAPTER-REC-001` · S1–S10 frozen · P1 BTC ADVANCE_CANDIDATE · P2 twin ready 2026-11-27.*

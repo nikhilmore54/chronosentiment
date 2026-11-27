@@ -125,6 +125,36 @@ pub struct SideModelPack {
     pub isotonic: IsotonicMap,
 }
 
+/// Frozen P1 artifact shape (`btc_p1_side_models.json`).
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct FrozenTwinPack {
+    pub long: SideModelPack,
+    pub short: SideModelPack,
+    pub cuts: JointCuts,
+    #[serde(default)]
+    pub ladder_stage: String,
+}
+
+impl FrozenTwinPack {
+    pub fn from_json_str(s: &str) -> Result<Self, String> {
+        serde_json::from_str(s).map_err(|e| format!("frozen twin pack parse: {e}"))
+    }
+
+    pub fn from_path(path: &std::path::Path) -> Result<Self, String> {
+        let raw = std::fs::read_to_string(path)
+            .map_err(|e| format!("read frozen twin pack {}: {e}", path.display()))?;
+        Self::from_json_str(&raw)
+    }
+
+    pub fn decide(&self, closes: &[f64], volumes: &[f64]) -> SciRecStamp {
+        decide_generator(&self.long, &self.short, closes, volumes, &self.cuts)
+    }
+}
+
+/// Default on-disk location relative to repo root (P1 sealed BTC pack).
+pub const DEFAULT_FROZEN_PACK_REL: &str =
+    "docs/research/rp608_sci_adapter_rec_p1/btc_p1_side_models.json";
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SciRecStamp {
     pub protocol_id: String,

@@ -85,7 +85,8 @@ pub use adapter_select_15m::{
     PROTOCOL_ID as ADAPTER_SELECT_15M_PROTOCOL_ID, SCHEMA_VERSION as ADAPTER_SELECT_15M_SCHEMA,
 };
 pub use sci_adapter_rec::{
-    decide_generator as sci_adapter_rec_decide, PROTOCOL_ID as SCI_ADAPTER_REC_PROTOCOL_ID,
+    decide_generator as sci_adapter_rec_decide, FrozenTwinPack, DEFAULT_FROZEN_PACK_REL,
+    PROTOCOL_ID as SCI_ADAPTER_REC_PROTOCOL_ID,
 };
 pub use allocation_engine::{AllocationEngine, ALLOCATION_ENGINE_VERSION};
 pub use coralys_state_bridge::*;

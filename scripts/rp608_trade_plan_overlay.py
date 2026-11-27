@@ -65,6 +65,10 @@ from scripts.rp608_adapter_select_15m import (
     PROTOCOL_ID as ADAPTER_SELECT_15M_PROTOCOL_ID,
     recommend as adapter_select_15m_recommend,
 )
+from scripts.rp608_sci_adapter_rec import (
+    PROTOCOL_ID as SCI_ADAPTER_REC_PROTOCOL_ID,
+    recommend as sci_adapter_rec_recommend,
+)
 from scripts.rp608_crypto_trade_pattern_library import (
     default_baseline_library_path as crypto_baseline_pattern_library_path,
     default_library_path as crypto_pattern_library_path,
@@ -930,6 +934,10 @@ class TradePlanOverlayManager:
     def _require_adapter_select_15m(self) -> bool:
         """Clean-slate twin only: require Rust 15m soft-score ENTER (config override)."""
         return bool(self._config_overrides.get("require_adapter_select_15m"))
+
+    def _require_sci_adapter_rec(self) -> bool:
+        """SCI-ADAPTER-REC P2 twin: S1=b generator (config override; default off)."""
+        return bool(self._config_overrides.get("require_sci_adapter_rec"))
 
     def _require_trend_agree(self) -> bool:
         """B twin only: require L3/L8/L20 15m OHLCV agreement (config override)."""
@@ -3818,6 +3826,76 @@ class TradePlanOverlayManager:
         )
         if direction in ("LONG", "SHORT"):
             self._note_policy_b(_note_ms, str(direction))
+
+        now_ms = int(
+            (current_quote or {}).get("exchange_event_time_ms")
+            or card.get("close_time_ms")
+            or time.time() * 1000
+        )
+
+        # SCI-ADAPTER-REC P2: S1=b side generator (observational twin; default off).
+        # May open even when Coralys/Estimand emits NO_TRADE. Does not touch
+        # Gate 2E B, adapter_select, PRIMARY, or coralys-*.
+        if self._require_sci_adapter_rec():
+            closes_raw = (
+                card.get("ohlcv_closes_15m")
+                or card.get("completed_closes")
+                or []
+            )
+            vols_raw = (
+                card.get("ohlcv_volumes_15m")
+                or card.get("completed_volumes")
+                or []
+            )
+            closes: List[float] = []
+            volumes: List[float] = []
+            if isinstance(closes_raw, list):
+                for x in closes_raw:
+                    try:
+                        closes.append(float(x))
+                    except (TypeError, ValueError):
+                        continue
+            if isinstance(vols_raw, list):
+                for x in vols_raw:
+                    try:
+                        volumes.append(float(x))
+                    except (TypeError, ValueError):
+                        continue
+            sci = sci_adapter_rec_recommend(closes, volumes)
+            card["sci_adapter_rec"] = sci
+            if sci.get("blocks_entry") or str(sci.get("side") or "").upper() not in {
+                "LONG",
+                "SHORT",
+            }:
+                self.state["suppressed_signals_count"] = int(
+                    self.state.get("suppressed_signals_count") or 0
+                ) + 1
+                summ = self.state.setdefault("outcomes_summary", {})
+                summ["sci_adapter_rec_suppressions"] = int(
+                    summ.get("sci_adapter_rec_suppressions") or 0
+                ) + 1
+                self.state["last_suppressed_sci_adapter_rec"] = {
+                    "suppressed_ms": now_ms,
+                    "book_id": self.book_id,
+                    **sci,
+                }
+                self._log_event(
+                    "SUPPRESSED_SCI_ADAPTER_REC",
+                    {"book_id": self.book_id, "side": sci.get("side")},
+                    {
+                        "sci_adapter_rec": sci,
+                        "protocol_id": SCI_ADAPTER_REC_PROTOCOL_ID,
+                        "card_bar_idx": card.get("bar_idx"),
+                        "n_closes": len(closes),
+                        "n_volumes": len(volumes),
+                    },
+                )
+                self._save_state()
+                return None
+            direction = str(sci.get("side")).upper()
+            card["policy_b_action"] = direction
+            self._note_policy_b(now_ms, direction)
+
         if direction not in ("LONG", "SHORT"):
             # If no new signal, preserve and return existing active plan
             active = self.state.get("active_plan")
@@ -3848,11 +3926,6 @@ class TradePlanOverlayManager:
                 return active
 
         # Gate 2E: same-direction cooldown after fast SL / path-scratch.
-        now_ms = int(
-            (current_quote or {}).get("exchange_event_time_ms")
-            or card.get("close_time_ms")
-            or time.time() * 1000
-        )
         cool = self._gate2e_cooldown_blocks(str(direction), now_ms)
         if cool:
             self.state["suppressed_signals_count"] = int(
@@ -3973,6 +4046,8 @@ class TradePlanOverlayManager:
         plan["volume_pattern_axes"] = bool(self.volume_pattern_axes)
         if isinstance(card.get("adapter_select_15m"), dict):
             plan["adapter_select_15m"] = card.get("adapter_select_15m")
+        if isinstance(card.get("sci_adapter_rec"), dict):
+            plan["sci_adapter_rec"] = card.get("sci_adapter_rec")
         if isinstance(card.get("trend_agree"), dict):
             plan["trend_agree"] = card.get("trend_agree")
         self._stamp_gate2x_runtime_on_plan(plan)
