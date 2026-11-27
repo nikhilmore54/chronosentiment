@@ -9,7 +9,8 @@
 **Research mission (revised dual-dimension):** `docs/research/rp608_sci_adapter_rec_research_mission.md`  
 **ML-1D package (primary hypothesis, await SELECT):** `docs/research/rp608_sci_adapter_rec_ml1d_dual_dimension.md`  
 **Anuj literature findings:** `docs/research/rp608_sci_adapter_rec_literature_findings_coralys_complement.md`  
-**Part 3 strengtheners:** `docs/research/rp608_sci_adapter_rec_literature_survey_part3.md`
+**Part 3 strengtheners:** `docs/research/rp608_sci_adapter_rec_literature_survey_part3.md`  
+**Quantitative evidence register (9 papers):** `docs/research/rp608_sci_adapter_rec_quantitative_evidence_register.md`
 
 ---
 

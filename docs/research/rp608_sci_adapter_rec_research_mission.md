@@ -40,7 +40,7 @@ Determine whether an adapter-owned **dual-dimension** layer — **recommendation
 
 ## Outline A–J
 
-Completed in `docs/research/rp608_sci_adapter_rec_ml1d_dual_dimension.md`. Literature: findings complement + survey parts 1–3.
+Completed in `docs/research/rp608_sci_adapter_rec_ml1d_dual_dimension.md`. Literature: findings complement + survey parts 1–3 + **quantitative evidence register** (evidence only — no Coralys thresholds from paper numbers).
 
 ---
 
