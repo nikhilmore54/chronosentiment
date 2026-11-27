@@ -11,7 +11,7 @@
 
 ## Verdict
 
-**DO_NOT_ADVANCE** — no Pi twin.
+**DO_NOT_ADVANCE** — **permanent** under diagnose-first charter (2026-11-27). No remine · no Pi twin.
 
 | Gate | Result |
 | --- | --- |

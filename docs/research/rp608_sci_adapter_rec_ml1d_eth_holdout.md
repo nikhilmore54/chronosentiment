@@ -11,9 +11,9 @@
 
 ## Verdict
 
-**DO_NOT_ADVANCE** (with book-native H11) · **no Pi twin**
+**DO_NOT_ADVANCE** (permanent under diagnose-first charter) · **no Pi twin** · no remine
 
-Earlier ADVANCE_CANDIDATE (H11 skipped) is **superseded**. Completing H11 shows ETH SCI-v1 side generator beats ML-1D E3 on holdout WR and net — H11 falsifier fires.
+Earlier ADVANCE_CANDIDATE (H11 skipped) is **superseded**. Completing H11 shows ETH SCI-v1 side generator beats ML-1D E3 on holdout WR and net — H11 falsifier fires. Architecture retired — see `rp608_sci_adapter_rec_diagnose_first_charter.md`.
 
 | Gate | Result |
 | --- | --- |
