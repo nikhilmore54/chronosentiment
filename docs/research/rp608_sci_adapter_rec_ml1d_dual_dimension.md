@@ -7,7 +7,8 @@
 **Rules:** `.cursor/rules/chronosentiment-core.mdc` §3b/§3c · Coralys no-touch · books never pooled · no Gate 5  
 **Supersedes as hypothesis:** single-dimension ML-1 (meta-label act/pass alone) — retained as nested special case / comparator, **not frozen**  
 **Quantitative evidence (do not convert to cuts):** `docs/research/rp608_sci_adapter_rec_quantitative_evidence_register.md`  
-**Hit-rate literature (15m BTC ~53–54% reference, not target):** `docs/research/rp608_sci_adapter_rec_hit_rate_literature_register.md`
+**Hit-rate literature (15m BTC ~53–54% reference, not target):** `docs/research/rp608_sci_adapter_rec_hit_rate_literature_register.md`  
+**Product aspiration:** ~85% ACT-subset W/L + good after-friction margins — `docs/research/rp608_sci_adapter_rec_aspirational_target_85.md`
 
 ---
 

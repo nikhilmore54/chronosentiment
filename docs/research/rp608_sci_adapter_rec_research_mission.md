@@ -32,9 +32,15 @@ Determine whether an adapter-owned **dual-dimension** layer — **recommendation
 
 ---
 
+## Product aspiration (Anuj 2026-11-27)
+
+**~85% hit rate on the ACT subset** with **good after-friction margins** (payoff + net; not WR-only). See `docs/research/rp608_sci_adapter_rec_aspirational_target_85.md`.
+
+Unconditional 15m literature band is ~53–54%; 85% is only scientifically approachable via **selective** dual-dimension ACT/PASS + economic filter — not always-on side replacement.
+
 ## North star (one line)
 
-**Preserve Coralys direction; add independent reliability and economic-context intelligence; ACT only when evidence is sufficient and expected net utility is positive.**
+**Preserve Coralys direction; add independent reliability and economic-context intelligence; ACT only when evidence is sufficient and expected net utility is positive — aiming toward ~85% selective W/L with durable margins.**
 
 ---
 
