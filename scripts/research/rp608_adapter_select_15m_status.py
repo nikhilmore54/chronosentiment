@@ -116,12 +116,33 @@ def _book_from_journal(
 def _crypto_block(root: Path) -> Dict[str, Any]:
     primary = root / "trade_plan_overlay_v1" / "trade_plan_outcomes.jsonl"
     baseline = root / "trade_plan_overlay_baseline_parallel_v1" / "trade_plan_outcomes.jsonl"
-    twin_out = root / "trade_plan_overlay_adapter_select_15m_v1" / "trade_plan_outcomes.jsonl"
-    twin_ev = root / "trade_plan_overlay_adapter_select_15m_v1" / "trade_plan_events.jsonl"
+    twin_dir = root / "trade_plan_overlay_adapter_select_15m_v1"
+    twin_out = twin_dir / "trade_plan_outcomes.jsonl"
+    twin_ev = twin_dir / "trade_plan_events.jsonl"
+    twin = _book_from_journal(twin_out, events_path=twin_ev)
+    state_path = twin_dir / "overlay_state.json"
+    open_info: Dict[str, Any] = {"open": False}
+    if state_path.exists():
+        try:
+            st = json.loads(state_path.read_text(encoding="utf-8"))
+            ap = st.get("active_plan") if isinstance(st, dict) else None
+            if isinstance(ap, dict) and ap.get("state") == "OPEN":
+                sel = ap.get("adapter_select_15m") if isinstance(ap.get("adapter_select_15m"), dict) else {}
+                open_info = {
+                    "open": True,
+                    "plan_id": ap.get("plan_id"),
+                    "direction": ap.get("direction"),
+                    "band": sel.get("band"),
+                    "side_score": sel.get("side_score"),
+                    "rust_ok": sel.get("rust_ok"),
+                }
+        except Exception:
+            pass
+    twin["active_open"] = open_info
     return {
         "A_primary": _book_from_journal(primary),
         "BASELINE": _book_from_journal(baseline),
-        "adapter_select_15m": _book_from_journal(twin_out, events_path=twin_ev),
+        "adapter_select_15m": twin,
         "root": str(root),
     }
 
@@ -129,10 +150,17 @@ def _crypto_block(root: Path) -> Dict[str, Any]:
 def _fmt(book: Dict[str, Any]) -> str:
     wr = book.get("wr")
     wr_s = f"{wr*100:.1f}%" if isinstance(wr, float) else "n/a"
+    open_bit = ""
+    ao = book.get("active_open") if isinstance(book.get("active_open"), dict) else None
+    if ao and ao.get("open"):
+        open_bit = (
+            f" OPEN={ao.get('direction')}/{ao.get('band')}"
+            f" side={ao.get('side_score')} rust_ok={ao.get('rust_ok')}"
+        )
     return (
         f"n={book.get('n')} W/L={book.get('W')}/{book.get('L')} WR={wr_s} "
         f"payoff={book.get('payoff')} net={book.get('net')} "
-        f"suppress_select={book.get('suppressed_adapter_select_15m')}"
+        f"suppress_select={book.get('suppressed_adapter_select_15m')}{open_bit}"
     )
 
 
@@ -156,7 +184,8 @@ def main() -> int:
         "NSE": {"status": "NOT_ARMED_SLICE1"},
         "note": (
             "Gate 2E B trend-agree excluded from this promote path (D4). "
-            "Twin default off until RP608_ADAPTER_SELECT_15M_TWIN=1 + Anuj Pi arm."
+            "Pi arm 2026-11-27: RP608_ADAPTER_SELECT_15M_TWIN=1 on BTC+ETH; "
+            "n=0 closed means soak started — check OPEN plans / events until first closes."
         ),
     }
     if args.json:
