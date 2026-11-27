@@ -1,8 +1,8 @@
 {
   "protocol_id": "RP-608-SCI-ADAPTER-REC-ML1D-001",
-  "schema_version": "1.1",
+  "schema_version": "1.2",
   "feature_schema_id": "ml1d_coralys_actpass_v1",
-  "schema_hash": "0fa891f4d265539af894beea68f0a1e582281efa509d398c738a12cec209f3c9",
+  "schema_hash": "3c885ea15d5ac756aa6b010ab7540d6230821c24326a5267510e1fbd40f06599",
   "book": "BTCUSDT_15M",
   "cuts": {
     "reliability": {
@@ -22,7 +22,7 @@
     "completed_bars_only": true,
     "coralys_side_sealed": true,
     "decision_time_features_only": true,
-    "extension_ladder": "R1_EC1_EC2_H9_R3",
+    "extension_ladder": "R1_EC1_EC2_H9_R3_R2",
     "feature_names": [
       "side_r3",
       "side_r8",
@@ -311,6 +311,40 @@
   "extension_reasons": [
     "h9_fused_beats_or_ties_dual fused=-0.000956 dual=-0.003671"
   ],
+  "r2_drift": {
+    "validation_baseline_brier": 0.213790579596464,
+    "holdout_static_flag_index": null,
+    "holdout_aci_flag_index": 1,
+    "aci_detection_earlier": true,
+    "holdout_high_vol_brier": 0.20703861032738416,
+    "holdout_low_vol_brier": 0.20969489571443697,
+    "e1_static": {
+      "fold": "holdout_E1_static",
+      "baseline_n": 2327,
+      "baseline_wins": 690,
+      "baseline_wr": 0.29651912333476577,
+      "enter_n": 1121,
+      "enter_wins": 368,
+      "enter_wr": 0.328278322925959,
+      "coverage": 0.48173614095401807,
+      "payoff_asym": 2.017814055169702,
+      "mean_net_proxy": -0.0031913540640283273
+    },
+    "e1_r2_aci": {
+      "fold": "holdout_E1_R2_aci",
+      "baseline_n": 2327,
+      "baseline_wins": 690,
+      "baseline_wr": 0.29651912333476577,
+      "enter_n": 55,
+      "enter_wins": 16,
+      "enter_wr": 0.2909090909090909,
+      "coverage": 0.023635582294800173,
+      "payoff_asym": 1.5754016824703618,
+      "mean_net_proxy": -0.1351611727812196
+    },
+    "h5_status": "PARTIAL_EARLIER_FLAG_NO_WL_LIFT",
+    "note": "ACI γ=0.05 α*=0.3; static window Brier vs val baseline+δ. R2 ACT=E1∧aci.accept_q. e1_r2_net=-0.135161 vs e1_net=-0.003191. Not Gate5."
+  },
   "hypotheses_status": {
     "H0": "OPEN",
     "H1": "PARTIAL_E1_LIFT_NO_ADVANCE",
@@ -319,7 +353,7 @@
     "H2": "FALSIFIED_ON_HOLDOUT",
     "H3": "SUPPORTIVE_ON_VAL",
     "H4": "PARTIAL_MILD_LIFT",
-    "H5": "DEFERRED_R2",
+    "H5": "PARTIAL_EARLIER_FLAG_NO_WL_LIFT",
     "H6": "WEAK_GAP",
     "H7": "WEAK_EC1_NO_LIFT_VS_E1",
     "H8": "SUPPORTIVE_OR_TIE_ON_HOLDOUT",

@@ -13,7 +13,7 @@ use super::sci_adapter_rec::{
 };
 
 pub const PROTOCOL_ID: &str = "RP-608-SCI-ADAPTER-REC-ML1D-001";
-pub const SCHEMA_VERSION: &str = "1.1";
+pub const SCHEMA_VERSION: &str = "1.2";
 pub const ML1D_FEATURE_SCHEMA_ID: &str = "ml1d_coralys_actpass_v1";
 
 /// Predeclared Ec1 friction proxy (not a live venue table).
@@ -25,6 +25,14 @@ pub const FRICTION_LIQ_SCALE: f64 = 0.10;
 pub const FRICTION_DLOG_SCALE: f64 = 0.05;
 /// H9: improper double-count weight mixing evidence margin back into U.
 pub const H9_DOUBLE_COUNT_WEIGHT: f64 = 0.25;
+/// R2 ACI target miscoverage (monitor, not Q̂ itself).
+pub const R2_ALPHA_TARGET: f64 = 0.30;
+/// R2 ACI step size (predeclared; Gibbs–Candès-style adaptation scale).
+pub const R2_ACI_GAMMA: f64 = 0.05;
+/// R2 static rolling window for Brier deterioration flag.
+pub const R2_STATIC_WINDOW: usize = 200;
+/// R2 flag when rolling/EWMA Brier exceeds validation baseline by this margin.
+pub const R2_BRIER_DELTA: f64 = 0.03;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
@@ -161,8 +169,114 @@ pub fn ml1d_schema_hash() -> String {
     h.update(SCHEMA_VERSION.as_bytes());
     h.update(b"reuses:");
     h.update(FEATURE_SCHEMA_ID.as_bytes());
-    h.update(b"|Qt+Ut|ACT_PASS|Ec2|H9|R3");
+    h.update(b"|Qt+Ut|ACT_PASS|Ec2|H9|R3|R2");
     format!("{:x}", h.finalize())
+}
+
+/// Binary nonconformity for outcome vs calibrated Q (win → 1−q, loss → q).
+pub fn binary_nonconformity(y: f64, q: f64) -> f64 {
+    let q = q.clamp(0.0, 1.0);
+    if y >= 0.5 {
+        1.0 - q
+    } else {
+        q
+    }
+}
+
+/// ACI-style adaptive threshold on nonconformity (uncertainty monitor for H5).
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct AciMonitor {
+    pub alpha_target: f64,
+    pub gamma: f64,
+    /// Adaptive quantile level on nonconformity (higher → stricter PASS).
+    pub level: f64,
+    pub updates: usize,
+}
+
+impl AciMonitor {
+    pub fn new(alpha_target: f64, gamma: f64) -> Self {
+        Self {
+            alpha_target,
+            gamma,
+            level: alpha_target.clamp(0.05, 0.95),
+            updates: 0,
+        }
+    }
+
+    pub fn default_r2() -> Self {
+        Self::new(R2_ALPHA_TARGET, R2_ACI_GAMMA)
+    }
+
+    /// Update after outcome is revealed. `err=1` if nonconformity exceeded level.
+    pub fn update(&mut self, y: f64, q: f64) {
+        let s = binary_nonconformity(y, q);
+        let err = if s > self.level { 1.0 } else { 0.0 };
+        self.level = (self.level + self.gamma * (err - self.alpha_target)).clamp(0.05, 0.95);
+        self.updates += 1;
+    }
+
+    /// Evidence still OK under adaptive nonconformity gate (stricter when drifting).
+    pub fn accept_q(&self, q: f64) -> bool {
+        // For prospective ACT: treat predicted win path nonconformity as 1−q.
+        // Accept when 1−q ≤ level ⇔ q ≥ 1−level.
+        q >= (1.0 - self.level)
+    }
+}
+
+/// Static rolling Brier deterioration flag (comparator for H5 detection delay).
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct StaticBrierMonitor {
+    pub window: usize,
+    pub baseline_brier: f64,
+    pub delta: f64,
+    buf: Vec<f64>,
+}
+
+impl StaticBrierMonitor {
+    pub fn new(baseline_brier: f64) -> Self {
+        Self {
+            window: R2_STATIC_WINDOW,
+            baseline_brier,
+            delta: R2_BRIER_DELTA,
+            buf: Vec::with_capacity(R2_STATIC_WINDOW),
+        }
+    }
+
+    pub fn update(&mut self, y: f64, q: f64) {
+        let d = y - q;
+        self.buf.push(d * d);
+        if self.buf.len() > self.window {
+            self.buf.remove(0);
+        }
+    }
+
+    pub fn rolling_brier(&self) -> Option<f64> {
+        if self.buf.len() < self.window / 2 {
+            return None;
+        }
+        Some(self.buf.iter().sum::<f64>() / self.buf.len() as f64)
+    }
+
+    pub fn deteriorated(&self) -> bool {
+        match self.rolling_brier() {
+            Some(b) => b > self.baseline_brier + self.delta,
+            None => false,
+        }
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct R2DriftReport {
+    pub validation_baseline_brier: f64,
+    pub holdout_static_flag_index: Option<usize>,
+    pub holdout_aci_flag_index: Option<usize>,
+    pub aci_detection_earlier: bool,
+    pub holdout_high_vol_brier: f64,
+    pub holdout_low_vol_brier: f64,
+    pub e1_static: FoldScorecard,
+    pub e1_r2_aci: FoldScorecard,
+    pub h5_status: String,
+    pub note: String,
 }
 
 pub fn fit_reliability_pack(side: Side, xs: &[Vec<f64>], ys: &[f64]) -> ReliabilityPack {
@@ -498,5 +612,25 @@ mod tests {
         let low = fused_double_count_score(0.20, 0.10, -0.01, &cuts);
         let high = fused_double_count_score(0.50, 0.40, -0.01, &cuts);
         assert!(high > low);
+    }
+
+    #[test]
+    fn aci_tightens_on_persistent_errors() {
+        let mut aci = AciMonitor::default_r2();
+        let level0 = aci.level;
+        for _ in 0..50 {
+            // Always loss while q high → large nonconformity → err often 1
+            aci.update(0.0, 0.8);
+        }
+        assert!(aci.level > level0);
+    }
+
+    #[test]
+    fn static_brier_flags_when_worse_than_baseline() {
+        let mut m = StaticBrierMonitor::new(0.10);
+        for _ in 0..R2_STATIC_WINDOW {
+            m.update(1.0, 0.0); // brier contrib 1.0
+        }
+        assert!(m.deteriorated());
     }
 }

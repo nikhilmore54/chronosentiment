@@ -78,7 +78,8 @@ Baseline holdout WR (all Coralys sides followed) ≈ **29.7%** — far from ~85%
 | H2 | **Falsified here** — E3 net ≰ E1 net |
 | H3 | Supportive on validation Brier |
 | H4 | Mild WR lift; not near aspiration |
-| H5–H6 | Deferred (R2/R3) |
+| H5 | R2 scored — PARTIAL earlier flag, no W/L lift (see r2 holdout) |
+| H6 | R3 scored — weak ACT Q−WR gap |
 | H7 | Weak — Ec filter does not improve net vs E1 |
 | H8–H9 | Deferred |
 | H10 | Not approached (Wilson LB ~0.29) |
@@ -89,8 +90,9 @@ Baseline holdout WR (all Coralys sides followed) ≈ **29.7%** — far from ~85%
 ## Non-advance implications
 
 - No twin · no authority · no Gate 5.  
-- Extension pass landed: Ec2 / H9 / R3 — see `docs/research/rp608_sci_adapter_rec_ml1d_extension_holdout.md` (**EXTENSIONS_DO_NOT_RESCUE**).  
-- Still deferred: R2 drift conformal. Not Coralys edits or soak remine.  
+- Extension pass: Ec2 / H9 / R3 — `rp608_sci_adapter_rec_ml1d_extension_holdout.md` (**EXTENSIONS_DO_NOT_RESCUE**).  
+- R2 pass: `rp608_sci_adapter_rec_ml1d_r2_holdout.md` (H5 PARTIAL · does not rescue).  
+- Offline ladder complete for this package. Not Coralys edits or soak remine.  
 - SCI-v1 remains the frozen H11 comparator (`S1=b`).
 
 ---

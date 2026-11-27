@@ -40,11 +40,10 @@ Positive net under **improper double-count** + Ec2 on a **single** sealed holdou
 
 ---
 
-## Still deferred
+## Follow-ons
 
-- **R2** adaptive/drift conformal (H5)  
-- Live-plan outcome label join (practical steer P1b)  
-- ETH book (never pool)
+- **R2** scored separately — `rp608_sci_adapter_rec_ml1d_r2_holdout.md` (H5 PARTIAL).  
+- Still open outside this package: live-plan outcome label join (P1b) · ETH book (never pool).
 
 ---
 

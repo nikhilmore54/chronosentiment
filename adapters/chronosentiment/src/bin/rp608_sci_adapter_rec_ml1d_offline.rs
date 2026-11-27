@@ -17,10 +17,10 @@ use chronosentiment_adapter::product::sci_adapter_rec::{
 };
 use chronosentiment_adapter::product::sci_adapter_rec_ml1d::{
     decide_ml1d_ex, fit_reliability_pack, ml1d_schema_hash, predict_q, selection_aware_diag,
-    CombineMode, EconomicMode, Experiment, Ml1dCuts, Ml1dFrozenPack, ReliabilityPack,
-    SelectionAwareDiag, FRICTION_BPS_FLOOR, FRICTION_DLOG_SCALE, FRICTION_LIQ_SCALE,
-    FRICTION_VOL_SCALE, H9_DOUBLE_COUNT_WEIGHT, ML1D_FEATURE_SCHEMA_ID, PROTOCOL_ID,
-    SCHEMA_VERSION,
+    AciMonitor, CombineMode, EconomicMode, Experiment, Ml1dCuts, Ml1dFrozenPack, R2DriftReport,
+    ReliabilityPack, SelectionAwareDiag, StaticBrierMonitor, FRICTION_BPS_FLOOR,
+    FRICTION_DLOG_SCALE, FRICTION_LIQ_SCALE, FRICTION_VOL_SCALE, H9_DOUBLE_COUNT_WEIGHT,
+    ML1D_FEATURE_SCHEMA_ID, PROTOCOL_ID, R2_ALPHA_TARGET, SCHEMA_VERSION,
 };
 use serde::{Deserialize, Serialize};
 use serde_json::json;
@@ -93,6 +93,7 @@ struct PackageReport {
     verdict_reasons: Vec<String>,
     extension_verdict: String,
     extension_reasons: Vec<String>,
+    r2_drift: R2DriftReport,
     hypotheses_status: serde_json::Value,
 }
 
@@ -770,6 +771,124 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         "EXTENSIONS_DO_NOT_RESCUE".to_string()
     };
 
+    // --- R2: ACI drift monitor vs static rolling Brier (H5) ---
+    let mut aci = AciMonitor::default_r2();
+    let mut static_mon = StaticBrierMonitor::new(brier_cal);
+    // Warm on validation (chronological) with revealed outcomes.
+    for s in &val_all {
+        let pack = match s.side {
+            Side::Long => &long_pack,
+            Side::Short => &short_pack,
+        };
+        let (q, _) = predict_q(pack, &s.features);
+        aci.update(s.y, q);
+        static_mon.update(s.y, q);
+    }
+    let aci_level_after_val = aci.level;
+    let mut static_flag: Option<usize> = None;
+    let mut aci_flag: Option<usize> = None;
+    let aci_flag_level = (R2_ALPHA_TARGET + 0.05).min(0.95);
+    let mut y_hold = Vec::new();
+    let mut pay_hold = Vec::new();
+    let mut mask_e1 = Vec::new();
+    let mut mask_e1_r2 = Vec::new();
+    let mut high_vol_ys = Vec::new();
+    let mut high_vol_qs = Vec::new();
+    let mut low_vol_ys = Vec::new();
+    let mut low_vol_qs = Vec::new();
+    // Median vol_rel on holdout for stratum split.
+    let mut vols_all: Vec<f64> = hold_all
+        .iter()
+        .map(|s| s.features.get(7).copied().unwrap_or(0.0).abs())
+        .collect();
+    vols_all.sort_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
+    let vol_med = vols_all.get(vols_all.len() / 2).copied().unwrap_or(0.0);
+
+    for (i, s) in hold_all.iter().enumerate() {
+        let pack = match s.side {
+            Side::Long => &long_pack,
+            Side::Short => &short_pack,
+        };
+        let (q, q_lb) = predict_q(pack, &s.features);
+        let evidence_ok = chronosentiment_adapter::product::sci_adapter_rec_ml1d::evidence_sufficient(
+            q,
+            q_lb,
+            &cuts.reliability,
+        );
+        let act_e1 = evidence_ok;
+        let act_r2 = evidence_ok && aci.accept_q(q);
+        y_hold.push(s.y);
+        pay_hold.push(s.payoff_proxy);
+        mask_e1.push(act_e1);
+        mask_e1_r2.push(act_r2);
+
+        let vol = s.features.get(7).copied().unwrap_or(0.0).abs();
+        if vol >= vol_med {
+            high_vol_ys.push(s.y);
+            high_vol_qs.push(q);
+        } else {
+            low_vol_ys.push(s.y);
+            low_vol_qs.push(q);
+        }
+
+        // Update monitors after reveal (causal online).
+        aci.update(s.y, q);
+        static_mon.update(s.y, q);
+        if static_flag.is_none() && static_mon.deteriorated() {
+            static_flag = Some(i);
+        }
+        if aci_flag.is_none() && aci.level > aci_flag_level {
+            aci_flag = Some(i);
+        }
+    }
+    let e1_static_sc = scorecard("holdout_E1_static", &y_hold, &mask_e1, &pay_hold);
+    let e1_r2_sc = scorecard("holdout_E1_R2_aci", &y_hold, &mask_e1_r2, &pay_hold);
+    let hv_brier = brier(&high_vol_ys, &high_vol_qs);
+    let lv_brier = brier(&low_vol_ys, &low_vol_qs);
+    let aci_earlier = match (aci_flag, static_flag) {
+        (Some(a), Some(s)) => a < s,
+        (Some(_), None) => true,
+        _ => false,
+    };
+    let e1_r2_net = e1_r2_sc.mean_net_proxy.unwrap_or(f64::NEG_INFINITY);
+    let e1_net_cmp = e1_hold.mean_net_proxy.unwrap_or(0.0);
+    let h5_status = if aci_earlier && e1_r2_sc.enter_wr + 1e-12 >= e1_static_sc.enter_wr {
+        "SUPPORTIVE_EARLIER_FLAG"
+    } else if aci_earlier {
+        "PARTIAL_EARLIER_FLAG_NO_WL_LIFT"
+    } else {
+        "FALSIFIED_OR_NO_EARLIER_FLAG"
+    };
+    println!(
+        "  R2 static_flag={static_flag:?} aci_flag={aci_flag:?} earlier={aci_earlier} aci_level_val={aci_level_after_val:.4} aci_level_end={:.4}",
+        aci.level
+    );
+    println!(
+        "  R2 E1_static n={} wr={:.4} net={:?} | E1_R2 n={} wr={:.4} net={:?} | hv_brier={hv_brier:.4} lv_brier={lv_brier:.4}",
+        e1_static_sc.enter_n,
+        e1_static_sc.enter_wr,
+        e1_static_sc.mean_net_proxy,
+        e1_r2_sc.enter_n,
+        e1_r2_sc.enter_wr,
+        e1_r2_sc.mean_net_proxy
+    );
+    let r2_report = R2DriftReport {
+        validation_baseline_brier: brier_cal,
+        holdout_static_flag_index: static_flag,
+        holdout_aci_flag_index: aci_flag,
+        aci_detection_earlier: aci_earlier,
+        holdout_high_vol_brier: hv_brier,
+        holdout_low_vol_brier: lv_brier,
+        e1_static: e1_static_sc,
+        e1_r2_aci: e1_r2_sc,
+        h5_status: h5_status.into(),
+        note: format!(
+            "ACI γ={} α*={}; static window Brier vs val baseline+δ. R2 ACT=E1∧aci.accept_q. e1_r2_net={e1_r2_net:.6} vs e1_net={e1_net_cmp:.6}. Not Gate5.",
+            chronosentiment_adapter::product::sci_adapter_rec_ml1d::R2_ACI_GAMMA,
+            R2_ALPHA_TARGET
+        ),
+    };
+
     let leakage_audit = json!({
         "decision_time_features_only": true,
         "coralys_side_sealed": true,
@@ -796,7 +915,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         "r1_brier_validation": {"raw": brier_raw, "isotonic": brier_cal},
         "book_pooling": false,
         "gate5": false,
-        "extension_ladder": "R1_EC1_EC2_H9_R3"
+        "extension_ladder": "R1_EC1_EC2_H9_R3_R2"
     });
 
     let h8_status = if e3_ec2_net + 1e-12 >= e3_net && e3_ec2_net.is_finite() {
@@ -816,7 +935,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         "H2": "FALSIFIED_ON_HOLDOUT",
         "H3": if brier_cal + 1e-12 < brier_raw { "SUPPORTIVE_ON_VAL" } else { "OPEN" },
         "H4": "PARTIAL_MILD_LIFT",
-        "H5": "DEFERRED_R2",
+        "H5": h5_status,
         "H6": h6_status,
         "H7": "WEAK_EC1_NO_LIFT_VS_E1",
         "H8": h8_status,
@@ -843,6 +962,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         verdict_reasons: reasons.clone(),
         extension_verdict: extension_verdict.clone(),
         extension_reasons: ext_reasons.clone(),
+        r2_drift: r2_report,
         hypotheses_status,
     };
 
@@ -854,7 +974,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         long: long_pack,
         short: short_pack,
         cuts: cuts.clone(),
-        ladder_stage: "R1_EC1_EC2_H9_R3".into(),
+        ladder_stage: "R1_EC1_EC2_H9_R3_R2".into(),
     };
 
     let report_path = out_dir.join("btc_ml1d_package_report.json");
