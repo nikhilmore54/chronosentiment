@@ -43,9 +43,12 @@
 
 ## Out of scope
 
-- Pi daemon restart without Anuj  
 - Flip Gate 2E B / `adapter_select` knobs  
 - `coralys-*` edits · Gate 5 floor/OF/stop retunes · book pooling · ETH arm  
+
+## P3 status
+
+**Armed** 2026-11-27 IST Asia/Calcutta on BTC observer only — see `docs/research/rp608_sci_adapter_rec_p3_pi_arm.md`.
 
 ## Advance (soak)
 

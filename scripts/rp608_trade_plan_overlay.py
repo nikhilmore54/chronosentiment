@@ -65,6 +65,10 @@ from scripts.rp608_adapter_select_15m import (
     PROTOCOL_ID as ADAPTER_SELECT_15M_PROTOCOL_ID,
     recommend as adapter_select_15m_recommend,
 )
+from scripts.rp608_gate2e_15m_trend_agree import (
+    PROTOCOL_ID as TREND_AGREE_PROTOCOL_ID,
+    agreement as trend_agreement,
+)
 from scripts.rp608_sci_adapter_rec import (
     PROTOCOL_ID as SCI_ADAPTER_REC_PROTOCOL_ID,
     recommend as sci_adapter_rec_recommend,
