@@ -26,6 +26,7 @@ CRYPTO_ROOT = WORKSPACE / "live_capture/shadow_validation/crypto"
 BOOKS = {
     "SCI": "trade_plan_overlay_sci_adapter_rec_v1",
     "SCI_CLEAN": "trade_plan_overlay_sci_adapter_rec_clean_v1",
+    "SCI_ETH": "trade_plan_overlay_sci_adapter_rec_eth_v1",
     "PRIMARY": "trade_plan_overlay_v1",
     "ADAPTER_SELECT": "trade_plan_overlay_adapter_select_15m_v1",
     "GATE2E_B": "trade_plan_overlay_trend_agree_parallel_v1",
@@ -74,7 +75,25 @@ def _f(row: Dict[str, Any], *keys: str) -> Optional[float]:
     return None
 
 
-def ledger_for(root: Path, book_key: str) -> Dict[str, Any]:
+def _s0_from_cards(cards: List[Dict[str, Any]]) -> Dict[str, Any]:
+    """Primary Coralys/policy_b directional recommendation events."""
+    pb = Counter(str(c.get("policy_b_action") or "NONE") for c in cards)
+    disp = Counter(str(c.get("recommendation_disposition") or "NONE") for c in cards)
+    directional = int(pb.get("LONG", 0) + pb.get("SHORT", 0))
+    return {
+        "decision_cards_scanned": len(cards),
+        "policy_b_directional": directional,
+        "policy_b_counts": dict(pb.most_common(8)),
+        "disposition_counts": dict(disp.most_common(8)),
+        "note": "S0 = policy_b LONG+SHORT in scanned decision-card tail (not pooled)",
+    }
+
+
+def ledger_for(
+    root: Path,
+    book_key: str,
+    cards: Optional[List[Dict[str, Any]]] = None,
+) -> Dict[str, Any]:
     rel = BOOKS[book_key]
     base = root / rel
     events = _load_jsonl(base / "trade_plan_events.jsonl")
@@ -94,6 +113,15 @@ def ledger_for(root: Path, book_key: str) -> Dict[str, Any]:
     upstream = {k: et_counts[k] for k in sorted(UPSTREAM_SUPPRESS) if et_counts.get(k)}
     sci_owned = {k: et_counts[k] for k in sorted(SCI_OWNED_SUPPRESS) if et_counts.get(k)}
     plan_created = int(et_counts.get("PLAN_CREATED") or 0)
+    # S2 proxy: events that imply SCI path was entered (SCI suppress or post-SCI stack).
+    s2_proxy = (
+        plan_created
+        + int(et_counts.get("SUPPRESSED_SCI_ADAPTER_REC") or 0)
+        + int(et_counts.get("SUPPRESSED_GATE2E_DI_SKEW") or 0)
+        + int(et_counts.get("SUPPRESSED_GATE2E_PATH_INVALID") or 0)
+        + int(et_counts.get("SUPPRESSED_GATE2E_REGIME_ALIGN") or 0)
+    )
+    s0 = _s0_from_cards(cards or [])
 
     # S4–S7 from outcomes (closed only).
     closed = [o for o in outcomes if o.get("exit_reason") or o.get("exit_time_ms")]
@@ -129,12 +157,13 @@ def ledger_for(root: Path, book_key: str) -> Dict[str, Any]:
         if avg_friction is not None:
             net_exp = gross_exp - avg_friction
 
-    # Eligible population proxies (disclose; not Coralys S0 until card feed wired).
     s1_upstream_blocks = sum(upstream.values())
     s3_accepted = plan_created
-    # Events that reached SCI decision path ≈ suppressions that fire after SCI require
-    # + plans; exact S0/S2 need decision-card feed — flagged incomplete.
     open_n = 1 if (state.get("active_plan") or {}).get("state") == "OPEN" else 0
+    s0_dir = int(s0.get("policy_b_directional") or 0)
+    net_per_eligible = (
+        round(net_sum / s0_dir, 6) if s0_dir > 0 else None
+    )
 
     return {
         "book_key": book_key,
@@ -142,13 +171,16 @@ def ledger_for(root: Path, book_key: str) -> Dict[str, Any]:
         "armed": base.exists(),
         "generated_utc": datetime.now(timezone.utc).isoformat(),
         "stages": {
-            "S0_coralys_primary_events": None,  # requires decision-card join
+            "S0_coralys_primary_events": s0,
             "S1_upstream_eligible_proxy": {
-                "note": "inverse of counted upstream suppress events; not full eligible set",
+                "note": "upstream suppress ledger (DI_SKEW/PATH/OPEN_PLAN); not adapter-owned",
                 "upstream_suppress_total": s1_upstream_blocks,
                 "exclusion_ledger": upstream,
             },
-            "S2_evaluated_by_sci": None,  # incomplete without card-level SCI stamps
+            "S2_evaluated_by_sci_proxy": {
+                "note": "PLAN_CREATED + SCI_SUPPRESS + DI_SKEW + PATH + REGIME (post/with SCI path)",
+                "n": s2_proxy,
+            },
             "S3_accepted_by_sci": {"PLAN_CREATED": s3_accepted},
             "S4_closed_outcomes": {"n": n, "open_active": open_n},
             "S5_wl": {
@@ -168,6 +200,7 @@ def ledger_for(root: Path, book_key: str) -> Dict[str, Any]:
                 "gross_expectancy": round(gross_exp, 4) if gross_exp is not None else None,
                 "net_expectancy": round(net_exp, 4) if net_exp is not None else None,
                 "net_per_accepted_plan": round(net_sum / s3_accepted, 4) if s3_accepted else None,
+                "net_per_eligible_s0_directional": net_per_eligible,
             },
         },
         "ownership": {
@@ -176,8 +209,8 @@ def ledger_for(root: Path, book_key: str) -> Dict[str, Any]:
             "other_event_top": et_counts.most_common(12),
         },
         "incomplete": [
-            "S0 requires Coralys/primary decision-card join",
-            "S2 requires per-card SCI evaluate stamps before upstream suppress",
+            "S2 is a proxy until per-card SCI stamps are journaled on decision cards",
+            "S0 uses decision-card file tail (max_bytes), not full history",
         ],
         "rules": "chronosentiment-core §3b; diagnose-first charter; never pool books",
     }
@@ -186,13 +219,21 @@ def ledger_for(root: Path, book_key: str) -> Dict[str, Any]:
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--root", type=Path, default=CRYPTO_ROOT)
+    ap.add_argument(
+        "--cards",
+        type=Path,
+        default=None,
+        help="decision cards jsonl (default: <root>/rp608_decision_cards.jsonl)",
+    )
     ap.add_argument("--book", choices=sorted(BOOKS.keys()), default="SCI")
     ap.add_argument("--all", action="store_true")
     ap.add_argument("--json", action="store_true")
     args = ap.parse_args()
 
+    cards_path = args.cards or (args.root / "rp608_decision_cards.jsonl")
+    cards = _load_jsonl(cards_path, max_bytes=8_000_000)
     keys = list(BOOKS.keys()) if args.all else [args.book]
-    reports = [ledger_for(args.root, k) for k in keys]
+    reports = [ledger_for(args.root, k, cards=cards) for k in keys]
     if args.json:
         print(json.dumps(reports if args.all else reports[0], indent=2))
         return 0
@@ -200,9 +241,16 @@ def main() -> int:
     for r in reports:
         print(f"[DIAG-LEDGER] book={r['book_key']} armed={r['armed']} utc={r['generated_utc']}")
         s = r["stages"]
+        s0 = s["S0_coralys_primary_events"]
+        print(
+            f"  S0 cards={s0.get('decision_cards_scanned')} "
+            f"policy_b_directional={s0.get('policy_b_directional')} "
+            f"pb={s0.get('policy_b_counts')}"
+        )
         print(f"  S1 upstream_suppress_total={s['S1_upstream_eligible_proxy']['upstream_suppress_total']}")
         for k, v in (s["S1_upstream_eligible_proxy"]["exclusion_ledger"] or {}).items():
             print(f"    {k}={v}")
+        print(f"  S2 sci_path_proxy={s['S2_evaluated_by_sci_proxy']['n']}")
         print(f"  S3 PLAN_CREATED={s['S3_accepted_by_sci']['PLAN_CREATED']}")
         s5 = s["S5_wl"]
         print(f"  S5 W/L={s5['W']}/{s5['L']} n={s['S4_closed_outcomes']['n']} wr={s5['wr']} open={s['S4_closed_outcomes']['open_active']}")
@@ -214,7 +262,8 @@ def main() -> int:
         )
         print(
             f"  S7 net={s7['net_sum']} gross_exp={s7['gross_expectancy']} "
-            f"net_exp={s7['net_expectancy']} net_per_plan={s7['net_per_accepted_plan']}"
+            f"net_exp={s7['net_expectancy']} net_per_plan={s7['net_per_accepted_plan']} "
+            f"net_per_s0={s7['net_per_eligible_s0_directional']}"
         )
         print(f"  incomplete: {', '.join(r['incomplete'])}")
     return 0

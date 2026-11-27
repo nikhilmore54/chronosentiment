@@ -3865,7 +3865,9 @@ class TradePlanOverlayManager:
                         volumes.append(float(x))
                     except (TypeError, ValueError):
                         continue
-            sci = sci_adapter_rec_recommend(closes, volumes)
+            pack_override = self._config_overrides.get("sci_adapter_rec_pack")
+            pack_path = Path(str(pack_override)) if pack_override else None
+            sci = sci_adapter_rec_recommend(closes, volumes, pack_path=pack_path)
             card["sci_adapter_rec"] = sci
             if sci.get("blocks_entry") or str(sci.get("side") or "").upper() not in {
                 "LONG",

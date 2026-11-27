@@ -25,8 +25,12 @@ _REPO_ROOT = Path(__file__).resolve().parents[1]
 _DEFAULT_PACK = (
     _REPO_ROOT / "docs/research/rp608_sci_adapter_rec_p1/btc_p1_side_models.json"
 )
+_ETH_PACK = (
+    _REPO_ROOT / "docs/research/rp608_sci_adapter_rec_p1/eth_p1_side_models.json"
+)
 _SESSION_LOCK = threading.Lock()
 _SESSION: Optional["SciAdapterRecSession"] = None
+_SESSIONS: Dict[str, "SciAdapterRecSession"] = {}
 
 
 def twin_enabled(default: bool = False) -> bool:
@@ -40,11 +44,24 @@ def clean_twin_enabled(default: bool = False) -> bool:
     return str(raw).strip().lower() not in {"0", "false", "no", "off"}
 
 
+def eth_twin_enabled(default: bool = False) -> bool:
+    """ETH SCI-v1 twin (audit-cleared; Anuj-gated; default off). Never pools with BTC."""
+    raw = os.environ.get("RP608_SCI_ADAPTER_REC_ETH_TWIN", "1" if default else "0")
+    return str(raw).strip().lower() not in {"0", "false", "no", "off"}
+
+
 def frozen_pack_path() -> Path:
     env = os.environ.get("RP608_SCI_ADAPTER_REC_PACK", "").strip()
     if env:
         return Path(env)
     return _DEFAULT_PACK
+
+
+def eth_frozen_pack_path() -> Path:
+    env = os.environ.get("RP608_SCI_ADAPTER_REC_ETH_PACK", "").strip()
+    if env:
+        return Path(env)
+    return _ETH_PACK
 
 
 def _fail_closed(reason: str) -> Dict[str, Any]:
@@ -188,31 +205,45 @@ class SciAdapterRecSession:
             return stamp
 
 
-def _session() -> Optional[SciAdapterRecSession]:
+def _session_for(pack: Path) -> Optional[SciAdapterRecSession]:
+    """One Rust session per pack path (BTC vs ETH never share a pack)."""
     global _SESSION
+    key = str(pack.resolve()) if pack.exists() else str(pack)
     with _SESSION_LOCK:
-        if _SESSION is not None:
-            return _SESSION
+        existing = _SESSIONS.get(key)
+        if existing is not None:
+            return existing
         bin_path = resolve_decide_bin()
-        pack = frozen_pack_path()
         if not bin_path:
             return None
         if not pack.exists():
             return None
-        _SESSION = SciAdapterRecSession(bin_path, pack)
+        sess = SciAdapterRecSession(bin_path, pack)
         try:
-            _SESSION.start()
+            sess.start()
         except Exception:
-            _SESSION = None
             return None
-        return _SESSION
+        _SESSIONS[key] = sess
+        # Keep legacy singleton pointing at default BTC pack for older callers.
+        if pack.resolve() == frozen_pack_path().resolve() or pack == _DEFAULT_PACK:
+            _SESSION = sess
+        return sess
 
 
-def recommend(closes: Sequence[float], volumes: Sequence[float]) -> Dict[str, Any]:
+def _session() -> Optional[SciAdapterRecSession]:
+    return _session_for(frozen_pack_path())
+
+
+def recommend(
+    closes: Sequence[float],
+    volumes: Sequence[float],
+    pack_path: Optional[Path] = None,
+) -> Dict[str, Any]:
     """Rust-owned generator stamp; fail-closed if bin/pack unavailable."""
-    sess = _session()
+    pack = Path(pack_path) if pack_path is not None else frozen_pack_path()
+    sess = _session_for(pack)
     if sess is None:
-        if not frozen_pack_path().exists():
+        if not pack.exists():
             return _fail_closed("RUST_SCI_ADAPTER_REC_PACK_MISSING")
         return _fail_closed("RUST_SCI_ADAPTER_REC_BIN_MISSING")
     return sess.evaluate(closes, volumes)
