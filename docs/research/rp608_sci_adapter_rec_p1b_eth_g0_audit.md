@@ -40,13 +40,13 @@ Exit mix (1014): STOP_LOSS_HIT 531 · PROFIT_TARGET_HIT 359 · MAX_HORIZON_60M_E
 
 ### G0 verdict — P1b
 
-**FAIL.** Live friction labels exist but cannot be joined to decision-time features with current candle store, and n/span are insufficient for a sealed dual-dimension package. Do **not** remine REC-001-H holdout as a substitute.
+**PARTIAL UNBLOCK (2026-11-27):** BTC 15m 2026-09→11 ingested (`datasets/crypto_15m/binance_btcusdt_2026q4_15m.json`). Feature join works.
 
-**Unblock requires (Anuj-gated data ops, not cut remine):**
+**Still FAIL for sealed ADVANCE package:** ~11d / 890 TP/SL joins — no train/val/holdout firewall.
 
-1. BTC 15m OHLCV covering ≥ live-plan span (ideally much longer)  
-2. Stable symbol/book tags on plan journals  
-3. Enough closed n for train/val/holdout with purge (order-of-magnitude: thousands across months, not ~1k / 11d)
+**Observational transfer run:** `docs/research/rp608_sci_adapter_rec_ml1d_p1b_transfer.md` — frozen 2024 packs → live plans; E1 lifts WR+net vs E0; verdict `DO_NOT_ADVANCE_TRANSFER_OBSERVATIONAL`.
+
+**Full sealed P1b still needs:** months more live-plan closures + symbol tags · not cut remine.
 
 ---
 

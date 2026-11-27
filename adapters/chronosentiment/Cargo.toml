@@ -280,6 +280,11 @@ path = "src/bin/rp608_sci_adapter_rec_offline.rs"
 name = "rp608_sci_adapter_rec_ml1d_offline"
 path = "src/bin/rp608_sci_adapter_rec_ml1d_offline.rs"
 
+# P1b: frozen ML-1D packs → 2026 live-plan transfer (observational)
+[[bin]]
+name = "rp608_sci_adapter_rec_ml1d_p1b_transfer"
+path = "src/bin/rp608_sci_adapter_rec_ml1d_p1b_transfer.rs"
+
 [[test]]
 name = "research_dataset_tests"
 path = "research/tests/research_dataset_tests.rs"
