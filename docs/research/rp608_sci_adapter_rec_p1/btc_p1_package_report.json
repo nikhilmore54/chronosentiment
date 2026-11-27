@@ -1,0 +1,68 @@
+{
+  "protocol_id": "RP-608-SCI-ADAPTER-REC-001",
+  "schema_version": "1",
+  "feature_schema_id": "price_volume_15m_v1",
+  "schema_hash": "f0cc1fe4d938d2e7c00d2050fb6e721aec3a325117823df5983ebfb7b2ec6b5f",
+  "book": "BTCUSDT_15M",
+  "ladder_stage": "A",
+  "cuts": {
+    "p_min": 0.3,
+    "p_lb": 0.18
+  },
+  "leakage_audit": {
+    "book_pooling": false,
+    "chronological_split": {
+      "holdout": "2024-11-01..2024-12-31 sealed",
+      "train": "2024-01-01..2024-08-31",
+      "validation": "2024-09-01..2024-10-31 (purged after train)"
+    },
+    "completed_bars_only": true,
+    "decision_time_features_only": true,
+    "feature_names": [
+      "side_r3",
+      "side_r8",
+      "side_r20",
+      "mag_rank3",
+      "mag_rank8",
+      "mag_rank20",
+      "side_path20",
+      "vol_rel20",
+      "dlog_vol",
+      "vol_rank20",
+      "abs_r3",
+      "abs_r8",
+      "abs_r20"
+    ],
+    "label": "TARGET_BEFORE_RISK=win; RISK_BEFORE_TARGET=loss; HORIZON censored",
+    "purge_bars": 30,
+    "uses_mfe_mae_as_features": false,
+    "uses_outcome_as_feature": false
+  },
+  "validation": {
+    "fold": "validation",
+    "baseline_n": 2393,
+    "baseline_wins": 740,
+    "baseline_wr": 0.3092352695361471,
+    "enter_n": 1002,
+    "enter_wins": 333,
+    "enter_wr": 0.3323353293413174,
+    "coverage": 0.4187212703719181,
+    "payoff_asym": 1.9124384966520562,
+    "mean_net_proxy": -0.0087448138774621
+  },
+  "holdout": {
+    "fold": "holdout",
+    "baseline_n": 2327,
+    "baseline_wins": 690,
+    "baseline_wr": 0.29651912333476577,
+    "enter_n": 931,
+    "enter_wins": 311,
+    "enter_wr": 0.33404940923737914,
+    "coverage": 0.40008594757198107,
+    "payoff_asym": 1.9799456730676022,
+    "mean_net_proxy": -0.0016161139144584042
+  },
+  "baseline_holdout_wr": 0.29651912333476577,
+  "verdict": "ADVANCE_CANDIDATE",
+  "verdict_reasons": []
+}

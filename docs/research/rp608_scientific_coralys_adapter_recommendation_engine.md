@@ -2,7 +2,7 @@
 
 **Protocol:** `RP-608-SCI-ADAPTER-REC-001`  
 **Date:** 2026-11-27 (Asia/Calcutta)  
-**Status:** CHARTER FROZEN (Anuj S1–S10 · 2026-11-27 Asia/Calcutta) — design sealed; P1 offline package next; no Pi daemon restart / twin-knob edits  
+**Status:** P1 BTC OFFLINE COMPLETE (2026-11-27 Asia/Calcutta) — BTC `ADVANCE_CANDIDATE`; ETH/NSE deferred; no Pi daemon restart / twin-knob edits  
 **Authority:** 0.0% until Gate 5 after sealed offline package + observational twin promote  
 **Working base:** `governance-hardening`  
 **Aligned with:** Project `preferences.md` · `.cursor/rules/chronosentiment-core.mdc` §3b/§3c · Gate 2 v2 (`docs/research/rp608_gate2_amendment_v2.md`) · Coralys no-touch · Rust-first / Python fail-closed I/O · 15m OHLCV first · books never pooled  
@@ -261,7 +261,7 @@ Morning MTM / open marks are **not** substitutes for closed-trade W/L.
 5. **No OFX authority** and no reinterpretation of baseline OF as aggressor flow.  
 6. **No WR-only success**; no symbol/hour ban lists as the sole rule; no remine of burned holdouts.  
 7. **No silent replacement** of PRIMARY with the scientific twin without Gate 5.  
-8. **This turn:** design/charter only — no runtime implementation unless later tasked.
+8. **P2/P3** still require Anuj gate before Pi arm; dual soak baselines remain untouched.
 
 ---
 
@@ -270,7 +270,7 @@ Morning MTM / open marks are **not** substitutes for closed-trade W/L.
 | Phase | Deliverable | Exit criteria |
 | --- | --- | --- |
 | **P0 — Charter** (this doc) | Scientific method + boundaries + **S1–S10 freeze** | **DONE** 2026-11-27 |
-| **P1 — Offline package** | Price+volume feature schema v1, labels under frozen exits, purged CV / chronological splits, adaptive A→B fit, joint calibration cuts, sealed holdout scorecard, leakage audit | Gate 2E-style review memo: ADVANCE_CANDIDATE or DO_NOT_ADVANCE **per book** |
+| **P1 — Offline package** | Price+volume feature schema v1, labels under frozen exits, purged CV / chronological splits, adaptive A→B fit, joint calibration cuts, sealed holdout scorecard, leakage audit | **BTC `ADVANCE_CANDIDATE`** · ETH/NSE not run · review `docs/research/rp608_sci_adapter_rec_p1_btc_review.md` |
 | **P2 — Sealed twin** | Rust apply path + new protocol id + Python fail-closed client + twin book dirs; env default off | Deterministic unit tests; no Coralys diffs; no PRIMARY mutation |
 | **P3 — Pi soak** | Anuj-gated arm on agreed books (15m BTC first; ETH when join ready) | Dual soak baselines **unchanged**; journals + scorecard |
 | **P4 — Promote criteria** | Soak W/L direction matches offline; coverage floor; payoff/net disclosed; price+volume schema locked | Gate 5 packet draft only after Anuj go; else HOLD/ABANDON |
@@ -292,12 +292,17 @@ Morning MTM / open marks are **not** substitutes for closed-trade W/L.
 | **S9** | No idea → recommended default | **Journal-first:** every ENTER/STANDASIDE stamp must carry \(\hat p\), CI (or reliability bin), ladder stage, schema hash. Scorecard must show calibration ECE/reliability. **UI deferred** until after P2 twin exists. |
 | **S10** | Consider price + volume | Feature schema **must** include price **and** completed-bar volume families (S10). Promote bar: soak **W/L direction** matches offline ADVANCE_CANDIDATE **and** coverage floor met **and** payoff/net disclosed; magnitude band match optional disclosure, not a hard fail unless P1 freezes tighter bands. Price+volume ablation (price-only vs price+volume) predeclared inside train/val only — holdout sees the frozen winner once. |
 
-### 8.1 Still fixed at P1 kickoff (not reopening S1–S10)
+### 8.1 Locked at P1 BTC package (2026-11-27)
 
-- Numeric \(p_{\min}\), \(p_{\mathrm{lb}}\) (from validation only).  
-- Exact feature column list / schema hash.  
-- ETH 15m archive path once connected.  
-- Label definition pointer (which frozen-exit journal fields).  
+| Item | Lock |
+| --- | --- |
+| \(p_{\min}\), \(p_{\mathrm{lb}}\) | **0.30 / 0.18** (validation-only grid; holdout sealed after) |
+| Feature schema | `price_volume_15m_v1` · 13 cols · hash `f0cc1fe4…6b5f` |
+| Ladder | **A** (GLM + isotonic) |
+| Labels | REC-001-H TARGET_BEFORE_RISK / RISK_BEFORE_TARGET; HORIZON censored |
+| BTC verdict | **ADVANCE_CANDIDATE** (holdout WR 33.4% vs base 29.7%; cov 40.0%; asym ≈1.98) |
+| ETH 15m path | Still to wire before ETH package |
+| Pi journals | Confirm on P2/P3 twin under live frozen exits |
 
 ---
 
@@ -318,8 +323,9 @@ Morning MTM / open marks are **not** substitutes for closed-trade W/L.
 - Do **not** restart Pi daemons.  
 - Do **not** change `RP608_ADAPTER_SELECT_15M_*` or Gate 2E B env/knobs (S6 baselines).  
 - Do **not** modify live twin soft-score weights or `|S|≥0.35`.  
-- S1–S10 are **frozen**; next authorized work is **P1 offline package** (still no Coralys edits, still authority 0%).
+- S1–S10 are **frozen**; P1 BTC offline is **complete** (`ADVANCE_CANDIDATE`).  
+- Next authorized work is **P2 sealed twin** (Anuj-gated arm); still no Coralys edits, still authority 0%.
 
 ---
 
-*End of charter — `RP-608-SCI-ADAPTER-REC-001` · S1–S10 frozen 2026-11-27.*
+*End of charter — `RP-608-SCI-ADAPTER-REC-001` · S1–S10 frozen · P1 BTC ADVANCE_CANDIDATE 2026-11-27.*

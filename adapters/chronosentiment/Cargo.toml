@@ -270,6 +270,11 @@ required-features = ["research"]
 name = "rp608_position_decide"
 path = "src/bin/rp608_position_decide.rs"
 
+# RP-608-SCI-ADAPTER-REC-001 P1 offline package (Coralys no-touch)
+[[bin]]
+name = "rp608_sci_adapter_rec_offline"
+path = "src/bin/rp608_sci_adapter_rec_offline.rs"
+
 [[test]]
 name = "research_dataset_tests"
 path = "research/tests/research_dataset_tests.rs"
