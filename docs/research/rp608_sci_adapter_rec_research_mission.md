@@ -56,10 +56,11 @@ Completed in `docs/research/rp608_sci_adapter_rec_ml1d_dual_dimension.md`. Liter
 | --- | --- |
 | Outline A–J | **Done** (Anuj) |
 | G1 strengthening lit pass | **Done** (part 3) |
-| G0 data + decision-time feature sufficiency | **Green** |
+| G0 data + decision-time feature sufficiency | **Green** (ML-1D BTC REC-001-H) |
 | Explicit **SELECT ML-1D** | **SELECTED** (Anuj · H0–H11) |
-| Offline E0–E3 sealed package | Blocked on SELECT |
-| Pi arm / soak twin | Blocked on offline gates |
+| Offline E0–E3 + Ec2/H9/R3/R2 | **Done** · **DO_NOT_ADVANCE** (no Pi twin) |
+| P1b live-plan labels / ETH package G0 | **FAIL** — see `rp608_sci_adapter_rec_p1b_eth_g0_audit.md` |
+| Pi arm / soak twin | **Blocked** (offline did not ADVANCE) |
 
 ---
 
