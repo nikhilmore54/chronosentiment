@@ -1,9 +1,12 @@
 #!/usr/bin/env python3
 """
-RP-608-SCI-ADAPTER-REC-001 P2 scorecard — W/L-first (BTC book).
+RP-608-SCI-ADAPTER-REC-001 P3 scorecard — W/L-first (BTC book).
 
 Compares SCI twin vs PRIMARY (A) vs BASELINE vs adapter_select / Gate2E B
 as observational baselines. Books never pooled. Authority 0%.
+
+Reads the live journal filenames used by TradePlanOverlayManager:
+  trade_plan_outcomes.jsonl · trade_plan_events.jsonl · overlay_state.json
 
 Usage:
   python3 scripts/research/rp608_sci_adapter_rec_status.py
@@ -14,6 +17,7 @@ from __future__ import annotations
 
 import argparse
 import json
+from collections import Counter
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
@@ -21,6 +25,19 @@ from typing import Any, Dict, List, Optional, Tuple
 WORKSPACE = Path(__file__).resolve().parents[2]
 PROTOCOL = "RP-608-SCI-ADAPTER-REC-001"
 CRYPTO_ROOT = WORKSPACE / "live_capture/shadow_validation/crypto"
+
+# Event types that are SCI-twin-specific or useful soak diagnostics.
+_SCI_SUPPRESS = "SUPPRESSED_SCI_ADAPTER_REC"
+_DIAG_EVENTS = (
+    _SCI_SUPPRESS,
+    "SUPPRESSED_GATE2E_DI_SKEW",
+    "SUPPRESSED_GATE2E_REGIME_DIRECTIONAL",
+    "SUPPRESSED_GATE2E_PATH_INVALID",
+    "SUPPRESSED_GATE2E_TREND_AGREE",
+    "SUPPRESSED_ADAPTER_SELECT_15M",
+    "SUPPRESSED_OPEN_PLAN",
+    "PLAN_CREATED",
+)
 
 
 def _load_jsonl(path: Path, max_bytes: int = 16_000_000) -> List[Dict[str, Any]]:
@@ -82,25 +99,91 @@ def _wl(closed: List[Dict[str, Any]]) -> Dict[str, Any]:
     }
 
 
-def _book(root: Path, twin_dir: str, suppress_event: str) -> Dict[str, Any]:
+def _event_counts(events_path: Path) -> Dict[str, int]:
+    c: Counter[str] = Counter()
+    for ev in _load_jsonl(events_path):
+        et = str(ev.get("event_type") or ev.get("type") or "")
+        if et:
+            c[et] += 1
+    return dict(c)
+
+
+def _book(
+    root: Path,
+    twin_dir: str,
+    *,
+    primary_suppress_event: str = "",
+) -> Dict[str, Any]:
     base = root / twin_dir
-    outcomes = base / "outcomes.jsonl"
-    events = base / "events.jsonl"
+    outcomes = base / "trade_plan_outcomes.jsonl"
+    events = base / "trade_plan_events.jsonl"
+    state_path = base / "overlay_state.json"
+
     rows = _load_jsonl(outcomes)
+    # Fallback: closed rows sometimes only appear as CLOSED_* in events.
+    if not rows:
+        rows = [r for r in _load_jsonl(events) if _is_closed(r)]
     closed = [r for r in rows if _is_closed(r)]
     wl = _wl(closed)
-    suppress = 0
-    for ev in _load_jsonl(events):
-        et = str(ev.get("event_type") or ev.get("type") or "")
-        if et == suppress_event:
-            suppress += 1
-    open_n = sum(1 for r in rows if str(r.get("state") or "").upper() == "OPEN")
+
+    ev_counts = _event_counts(events) if events.exists() else {}
+    suppress = int(ev_counts.get(primary_suppress_event, 0)) if primary_suppress_event else 0
+
+    open_n = 0
+    state_summ: Dict[str, Any] = {}
+    if state_path.exists():
+        try:
+            st = json.loads(state_path.read_text(encoding="utf-8"))
+            if isinstance(st, dict):
+                ap = st.get("active_plan")
+                if isinstance(ap, dict) and str(ap.get("state") or "").upper() == "OPEN":
+                    open_n = 1
+                summ = st.get("outcomes_summary")
+                if isinstance(summ, dict):
+                    state_summ = {
+                        k: summ.get(k)
+                        for k in (
+                            "sci_adapter_rec_suppressions",
+                            "gate2e_di_skew_suppressions",
+                            "gate2e_regime_align_suppressions",
+                            "gate2e_trend_agree_suppressions",
+                            "adapter_select_15m_suppressions",
+                            "cumulative_net_pnl_usdt",
+                            "tp_hits",
+                            "sl_hits",
+                            "time_exits",
+                        )
+                        if k in summ
+                    }
+                    if primary_suppress_event == _SCI_SUPPRESS:
+                        try:
+                            suppress = max(
+                                suppress,
+                                int(summ.get("sci_adapter_rec_suppressions") or 0),
+                            )
+                        except (TypeError, ValueError):
+                            pass
+        except Exception:
+            pass
+
+    diag = {k: int(ev_counts.get(k, 0)) for k in _DIAG_EVENTS if ev_counts.get(k)}
+    # Include any other SUPPRESSED_* / CLOSED_* for soak visibility (capped).
+    for k, v in sorted(ev_counts.items(), key=lambda kv: (-kv[1], kv[0])):
+        if k.startswith("SUPPRESSED_") or k.startswith("CLOSED_") or k == "PLAN_CREATED":
+            diag.setdefault(k, int(v))
+        if len(diag) >= 16:
+            break
+
     return {
         "path": str(base),
         "armed": base.exists(),
         **wl,
         "suppress": suppress,
         "open": open_n,
+        "event_diag": diag,
+        "state_summary": state_summ,
+        "outcomes_path": str(outcomes) if outcomes.exists() else None,
+        "events_path": str(events) if events.exists() else None,
     }
 
 
@@ -114,19 +197,19 @@ def main() -> int:
     sci = _book(
         args.root,
         "trade_plan_overlay_sci_adapter_rec_v1",
-        "SUPPRESSED_SCI_ADAPTER_REC",
+        primary_suppress_event=_SCI_SUPPRESS,
     )
-    primary = _book(args.root, "trade_plan_overlay_v1", "")
-    baseline = _book(args.root, "trade_plan_overlay_baseline_v1", "")
+    primary = _book(args.root, "trade_plan_overlay_v1")
+    baseline = _book(args.root, "trade_plan_overlay_baseline_parallel_v1")
     adapter_select = _book(
         args.root,
         "trade_plan_overlay_adapter_select_15m_v1",
-        "SUPPRESSED_ADAPTER_SELECT_15M",
+        primary_suppress_event="SUPPRESSED_ADAPTER_SELECT_15M",
     )
     trend_agree = _book(
         args.root,
         "trade_plan_overlay_trend_agree_parallel_v1",
-        "SUPPRESSED_GATE2E_TREND_AGREE",
+        primary_suppress_event="SUPPRESSED_GATE2E_TREND_AGREE",
     )
 
     out = {
@@ -139,9 +222,10 @@ def main() -> int:
         "adapter_select_baseline": adapter_select,
         "gate2e_b_baseline": trend_agree,
         "notes": [
-            "W/L-first per book; never pooled",
-            "SCI twin env RP608_SCI_ADAPTER_REC_TWIN default off",
-            "Gate 2E B + adapter_select left observational",
+            "W/L-first per book; never pooled (.cursor/rules chronosentiment-core §3b)",
+            "SCI twin env RP608_SCI_ADAPTER_REC_TWIN=1 on BTC Pi observer (P3)",
+            "Gate 2E B + adapter_select left observational (S6)",
+            "Journals: trade_plan_outcomes.jsonl + trade_plan_events.jsonl",
         ],
     }
     if args.json:
@@ -162,6 +246,10 @@ def main() -> int:
             f"payoff={block['payoff']} net={block['net']}  "
             f"suppress={block['suppress']} open={block['open']}"
         )
+        diag = block.get("event_diag") or {}
+        if diag and name in {"SCI_ADAPTER_REC", "ADAPTER_SELECT", "GATE2E_B"}:
+            top = ", ".join(f"{k}={v}" for k, v in list(diag.items())[:6])
+            print(f"    events: {top}")
     return 0
 
 

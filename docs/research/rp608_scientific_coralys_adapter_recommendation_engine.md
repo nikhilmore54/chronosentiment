@@ -273,7 +273,7 @@ Morning MTM / open marks are **not** substitutes for closed-trade W/L.
 | **P1 — Offline package** | Price+volume feature schema v1, labels under frozen exits, purged CV / chronological splits, adaptive A→B fit, joint calibration cuts, sealed holdout scorecard, leakage audit | **BTC `ADVANCE_CANDIDATE`** · ETH/NSE not run · review `docs/research/rp608_sci_adapter_rec_p1_btc_review.md` |
 | **P2 — Sealed twin** | Rust apply path + new protocol id + Python fail-closed client + twin book dirs; env default off | **CODE LANDED** · scoped `docs/research/rp608_sci_adapter_rec_p2_twin_scoped.md` |
 | **P3 — Pi soak** | Anuj-gated arm on agreed books (15m BTC first; ETH when join ready) | **ARMED 2026-11-27 IST** BTC only · memo `docs/research/rp608_sci_adapter_rec_p3_pi_arm.md` · Gate2E B + adapter_select baselines left running; ETH no SCI |
-| **P4 — Promote criteria** | Soak W/L direction matches offline; coverage floor; payoff/net disclosed; price+volume schema locked | Gate 5 packet draft only after Anuj go; else HOLD/ABANDON |
+| **P4 — Promote criteria** | Soak W/L direction matches offline; coverage floor; payoff/net disclosed; price+volume schema locked | **DRAFT** `docs/research/rp608_sci_adapter_rec_p4_promote_criteria_draft.md` · soak `HOLD_SOAK` until closed n; Gate 5 only after Anuj |
 
 ---
 
