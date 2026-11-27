@@ -60,9 +60,9 @@ Exit mix (1014): STOP_LOSS_HIT 531 · PROFIT_TARGET_HIT 359 · MAX_HORIZON_60M_E
 
 ### G0 verdict — ETH
 
-**FAIL.** No 15m+label join. Never invent pooled BTC metrics as ETH proxy.
+**PASS (2026-11-27):** Ingested `binance_ethusdt_2024_15m.json` + REC-001-H `ETHUSDT.jsonl.gz`.
 
-**Unblock requires:** ETHUSDT 15m history + REC-001-H-style (or live-plan) label store under `historical_crypto/`, then own chronological package.
+**Sealed ML-1D ETH package run:** `docs/research/rp608_sci_adapter_rec_ml1d_eth_holdout.md` — **ADVANCE_CANDIDATE** offline (never pooled; H11 skipped; no automatic twin).
 
 ---
 

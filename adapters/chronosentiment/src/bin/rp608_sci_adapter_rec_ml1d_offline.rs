@@ -335,17 +335,46 @@ fn pick_ml1d_cuts(
     best.map(|(c, _)| c).unwrap_or_default()
 }
 
+fn parse_book_arg() -> String {
+    let mut args = std::env::args().skip(1);
+    while let Some(a) = args.next() {
+        if a == "--book" {
+            if let Some(b) = args.next() {
+                return b.to_ascii_uppercase();
+            }
+        } else if let Some(b) = a.strip_prefix("--book=") {
+            return b.to_ascii_uppercase();
+        }
+    }
+    "BTCUSDT".to_string()
+}
+
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let root = repo_root();
-    let candles_path = root.join("datasets/crypto_15m/binance_btcusdt_2024_15m.json");
-    let rec_path = root.join("artifacts/rp608_sci_adapter_rec_ml1d/BTCUSDT.jsonl");
+    let book = parse_book_arg(); // BTCUSDT | ETHUSDT — never pooled
+    let (candles_rel, gz_rel, artifact_stem, book_id) = match book.as_str() {
+        "ETHUSDT" => (
+            "datasets/crypto_15m/binance_ethusdt_2024_15m.json",
+            "datasets/recommendation/historical_crypto/ETHUSDT.jsonl.gz",
+            "eth_ml1d",
+            "ETHUSDT_15M",
+        ),
+        _ => (
+            "datasets/crypto_15m/binance_btcusdt_2024_15m.json",
+            "datasets/recommendation/historical_crypto/BTCUSDT.jsonl.gz",
+            "btc_ml1d",
+            "BTCUSDT_15M",
+        ),
+    };
+    let candles_path = root.join(candles_rel);
+    let rec_path = root.join(format!("artifacts/rp608_sci_adapter_rec_ml1d/{book}.jsonl"));
     let out_dir = root.join("artifacts/rp608_sci_adapter_rec_ml1d");
     let docs_out = root.join("docs/research/rp608_sci_adapter_rec_ml1d");
     fs::create_dir_all(&out_dir)?;
     fs::create_dir_all(&docs_out)?;
 
     if !rec_path.exists() {
-        let gz = root.join("datasets/recommendation/historical_crypto/BTCUSDT.jsonl.gz");
+        let gz = root.join(gz_rel);
         eprintln!("Preparing JSONL from {:?}", gz);
         let status = std::process::Command::new("gunzip")
             .args(["-c"])
@@ -358,6 +387,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     }
 
     println!("[{PROTOCOL_ID}] ML-1D offline — dual ACT/PASS around Coralys side");
+    println!("  book={book_id} (never pooled)");
     println!(
         "  schema={} hash={}",
         ML1D_FEATURE_SCHEMA_ID,
@@ -435,7 +465,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         .filter(|s| split_name(&s.date) == "holdout")
         .collect();
     println!(
-        "  split train={} val={} holdout={} (book=BTC never pooled)",
+        "  split train={} val={} holdout={} (book={book_id} never pooled)",
         train.len(),
         validation.len(),
         holdout.len()
@@ -561,9 +591,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         });
     }
 
-    // H11: SCI-v1 frozen pack comparator (side generator, not ACT filter).
+    // H11: SCI-v1 frozen pack comparator — BTC pack only (never apply BTC models to ETH).
     let sci_pack_path = root.join(DEFAULT_FROZEN_PACK_REL);
-    let h11_sc = if sci_pack_path.exists() {
+    let h11_sc = if book == "BTCUSDT" && sci_pack_path.exists() {
         let pack = FrozenTwinPack::from_path(&sci_pack_path)?;
         println!(
             "  H11 SCI-v1 comparator pack={:?} protocol={SCI_V1_PROTOCOL}",
@@ -571,7 +601,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         );
         eval_sci_v1_comparator("holdout", &hold_all, &pack, &closes, &volumes)
     } else {
-        eprintln!("  WARN: SCI-v1 pack missing at {:?}", sci_pack_path);
+        if book != "BTCUSDT" {
+            println!("  H11 skipped for {book} (BTC SCI-v1 pack is other-book — never pooled)");
+        } else {
+            eprintln!("  WARN: SCI-v1 pack missing at {:?}", sci_pack_path);
+        }
         scorecard("holdout", &[], &[], &[])
     };
     println!(
@@ -949,7 +983,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         schema_version: SCHEMA_VERSION.into(),
         feature_schema_id: ML1D_FEATURE_SCHEMA_ID.into(),
         schema_hash: ml1d_schema_hash(),
-        book: "BTCUSDT_15M".into(),
+        book: book_id.into(),
         cuts: cuts.clone(),
         leakage_audit,
         experiments: experiment_scores,
@@ -977,10 +1011,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         ladder_stage: "R1_EC1_EC2_H9_R3_R2".into(),
     };
 
-    let report_path = out_dir.join("btc_ml1d_package_report.json");
-    let model_path = out_dir.join("btc_ml1d_reliability_packs.json");
-    let docs_report = docs_out.join("btc_ml1d_package_report.json");
-    let docs_model = docs_out.join("btc_ml1d_reliability_packs.json");
+    let report_path = out_dir.join(format!("{artifact_stem}_package_report.json"));
+    let model_path = out_dir.join(format!("{artifact_stem}_reliability_packs.json"));
+    let docs_report = docs_out.join(format!("{artifact_stem}_package_report.json"));
+    let docs_model = docs_out.join(format!("{artifact_stem}_reliability_packs.json"));
     fs::write(&report_path, serde_json::to_vec_pretty(&report)?)?;
     fs::write(&model_path, serde_json::to_vec_pretty(&frozen)?)?;
     fs::write(&docs_report, serde_json::to_vec_pretty(&report)?)?;
