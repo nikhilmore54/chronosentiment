@@ -45,6 +45,8 @@ Environment=RP608_CRYPTO_PLAN_REQUIRE_OF=1
 # Gate 2E: require ≥2 same-dir Policy B fires in 60s (anti one-shot flicker).
 Environment=RP608_CRYPTO_PLAN_B_PERSIST_MIN_FIRES=2
 Environment=RP608_CRYPTO_PLAN_B_PERSIST_WINDOW_S=60
+# Clean-slate 15m adapter_select twin (D3 BTC+ETH; observational; B soak untouched)
+Environment=RP608_ADAPTER_SELECT_15M_TWIN=1
 
 [Install]
 WantedBy=multi-user.target
