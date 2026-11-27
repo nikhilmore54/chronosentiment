@@ -1,12 +1,12 @@
 # Clean-slate 15m adapter selection design
 
-**Protocol (proposed):** `RP-608-ADAPTER-SELECT-15M-V1`  
+**Protocol:** `RP-608-ADAPTER-SELECT-15M-V1`  
 **Date:** 2026-11-27 (Asia/Calcutta)  
 **Track:** Parallel to Gate 2E A/B soak — **does not** extend, retune, or stack `RP-608-GATE2E-15M-OHLCV-TREND-AGREE-001` / PR #7  
 **Authority:** 0.0% observational twin until explicit promote  
 **Aligned with:** Project `preferences.md` · `.cursor/rules/chronosentiment-core.mdc` §3b/§3c · Gate 2 v2 (`rp608_gate2_amendment_v2.md`) · Coralys no-touch · Rust-first / Python fail-closed I/O  
 **Branch base:** `governance-hardening` → `cursor/clean-slate-15m-adapter-selection-fcb5`  
-**Status:** **DESIGN ONLY** — no implementation this turn; coding waits on Anuj decisions in §7.
+**Status:** **SLICE 1 LANDED** — D1–D5 frozen (Anuj 2026-11-27). Scoped memo: `docs/research/rp608_adapter_select_15m_v1_scoped.md`. Pi arm/deploy still Anuj-gated (`RP608_ADAPTER_SELECT_15M_TWIN` default off).
 
 ---
 
@@ -118,9 +118,9 @@ Use **completed** 15m closes available at decision time. Default lookbacks (tuna
 
 | Horizon book | Interval | First slice |
 | --- | --- | --- |
-| CRYPTO BTC 15m | 15m | **In scope** |
-| CRYPTO ETH 15m | 15m | **In scope** |
-| NSE Estimand A 15m | 15m | **In scope** |
+| CRYPTO BTC 15m | 15m | **Slice 1 armed path** (env-gated) |
+| CRYPTO ETH 15m | 15m | **Slice 1 armed path** (env-gated) |
+| NSE Estimand A 15m | 15m | **Deferred** (D3 — after crypto proven) |
 | Other intervals (5m/1h/…) | — | **Out of scope** until 15m promote criteria met |
 
 Each horizon book gets its own:
@@ -165,15 +165,13 @@ Verdict vocabulary: `SOAK` → `HOLD` / `DO_NOT_ADVANCE` / `ADVANCE_CANDIDATE` (
 4. If Rust bin missing → twin **standaside / no-open** (fail-closed); PRIMARY continues.
 5. No shared mutable OF policy config; OFX remains separate research line (`rp608-ofx.mdc`).
 
-### 3.2 Suggested twin book ids (impl-time; not armed yet)
+### 3.2 Twin book ids (locked · slice 1)
 
-| Book | Twin id (proposed) |
-| --- | --- |
-| BTC | `trade_plan_overlay_adapter_select_15m_v1` |
-| ETH | `trade_plan_overlay_eth_adapter_select_15m_v1` |
-| NSE | `estimand_a_adapter_select_15m_v1` |
-
-Exact strings locked at first implementation PR after §7 decisions.
+| Book | Dir (under symbol output) | Book id |
+| --- | --- | --- |
+| BTC | `trade_plan_overlay_adapter_select_15m_v1` | `CRYPTO_PLAN_ADAPTER_SELECT_15M` |
+| ETH | `trade_plan_overlay_adapter_select_15m_v1` | `CRYPTO_PLAN_ADAPTER_SELECT_15M_ETHUSDT` |
+| NSE | — | **Not armed** (D3) |
 
 ---
 
@@ -181,17 +179,18 @@ Exact strings locked at first implementation PR after §7 decisions.
 
 ### 4.1 In scope (slice 0 → slice 1)
 
-**Slice 0 (this turn):** design doc + stub branch from `governance-hardening`. **No runtime code.**
+**Slice 0:** design doc + stub branch from `governance-hardening`.
 
-**Slice 1 (after Anuj §7):**
+**Slice 1 (landed after D1–D5):**
 
-| Surface | Location (proposed) | Responsibility |
+| Surface | Location | Responsibility |
 | --- | --- | --- |
-| Pure scorer | `adapters/chronosentiment/src/product/adapter_select_15m.rs` (new) | Features → `RecommendationStamp` |
-| CLI mode | `rp608_position_decide --adapter-select-15m-loop` (new flag) | stdin JSON closes + context → stdout stamp |
-| Unit tests | `adapters/chronosentiment` | Determinism, insufficient-data, side projection |
-| Thin Python I/O | `scripts/rp608_adapter_select_15m.py` (new) | Resolve bin, fail-closed, journal fan-out only |
-| Scorecard | `scripts/research/rp608_adapter_select_15m_status.py` (new) | W/L-first per book vs A / BASELINE |
+| Pure scorer | `adapters/chronosentiment/src/product/adapter_select_15m.rs` | Features → `RecommendationStamp` |
+| CLI mode | `rp608_position_decide --adapter-select-15m-loop` | stdin JSON closes + side → stdout stamp |
+| Unit tests | `adapters/chronosentiment` + `tests/test_rp608_adapter_select_15m.py` | Determinism, insufficient-data, side projection |
+| Thin Python I/O | `scripts/rp608_adapter_select_15m.py` | Resolve bin, fail-closed |
+| Twin path | `scripts/run_rp608_shadow_daemon.py` + overlay `require_adapter_select_15m` | BTC+ETH observational (env default off) |
+| Scorecard | `scripts/research/rp608_adapter_select_15m_status.py` | W/L-first per book vs A / BASELINE |
 | Protocol memo | `docs/research/rp608_adapter_select_15m_v1_scoped.md` | Freeze features + floors before soak |
 
 ### 4.2 Explicitly out of scope (slice 1)
@@ -263,35 +262,37 @@ If after a minimum closed sample (proposed: **n ≥ 30** closes on a book) twin 
 
 ---
 
-## 7. Decisions Anuj must make before coding
+## 7. Decisions (frozen 2026-11-27 · Anuj)
 
-| # | Decision | Options | Recommendation |
-| --- | --- | --- | --- |
-| **D1** | Candidate source | **(a)** Score as filter on existing Coralys/Estimand candidate side · **(b)** Stand-alone side from 15m score sign (engine side ignored for twin opens) · **(c)** Hybrid: stand-alone side only when \|S\| ≥ enter band, else filter mode | **(a)** for slice 1 (lowest blast radius); evaluate (b) as slice 2 if (a) still under-uses the engine |
-| **D2** | Enter band | Soft score threshold for ENTER vs STANDASIDE (e.g. \|S\| ≥ 0.35) — freeze one predeclared value | Freeze **one** value in scoped memo before soak; no mid-soak retune |
-| **D3** | First book to arm on Pi | BTC only · ETH only · NSE only · all three observational | Start **BTC + ETH** observational; NSE after crypto scorecard path proven (NSE daemon currently fragile) |
-| **D4** | Gate 2E B twin fate | Leave B soak running · disarm B twin · ignore B in new scorecards | **Leave running**, exclude from this track’s promote path |
-| **D5** | Design agreement | Approve this doc as coding charter · request revisions | Required before slice 1 |
+| # | Decision | Freeze |
+| --- | --- | --- |
+| **D1** | Candidate source | **(a)** Score as filter on existing Coralys/Estimand candidate side |
+| **D2** | Enter band | **\|S_side\| ≥ 0.35** (no mid-soak retune) |
+| **D3** | First books | **BTC + ETH** observational; NSE deferred |
+| **D4** | Gate 2E B | Leave soak running; exclude from this promote path |
+| **D5** | Design | **Approved** as coding charter |
 
-Coding starts only when **D5 = approve** and D1–D4 are explicit.
+Slice 2 may revisit D1=(b) stand-alone generator if (a) still under-uses the engine.
 
 ---
 
-## 8. Acceptance checklist for “design agreed”
+## 8. Acceptance checklist
 
-- [ ] Anuj confirms abandon Gate 2E A/B stacking for this parallel track (preferences already lean yes)
-- [ ] D1–D4 answered
-- [ ] D5 approve
-- [ ] Slice 1 scoped memo frozen (features + enter band + coverage floor)
-- [ ] No Coralys / Gate 5 / Pi restart in slice 1 plan
+- [x] Anuj confirms abandon Gate 2E A/B stacking for this parallel track
+- [x] D1–D4 answered
+- [x] D5 approve
+- [x] Slice 1 scoped memo frozen (`rp608_adapter_select_15m_v1_scoped.md`)
+- [x] No Coralys / Gate 5 / Pi restart in slice 1 plan
+- [ ] Pi deploy + `RP608_ADAPTER_SELECT_15M_TWIN=1` (Anuj-gated; not done in slice 1 code land)
 
 ---
 
 ## 9. References
 
-- Project preferences: Coralys no-touch; Rust-first; 15m first; per-horizon books; clean-slate over A/B retune (2026-11-27)
+- Project preferences: Coralys no-touch; Rust-first; 15m first; per-horizon books; clean-slate over A/B retune (2026-11-27); D1–D5 freeze
 - `.cursor/rules/chronosentiment-core.mdc` §3b/§3c
 - `docs/research/rp608_gate2_amendment_v2.md`
+- `docs/research/rp608_adapter_select_15m_v1_scoped.md` (slice 1 freeze)
 - `docs/research/rp608_gate2e_15m_ohlcv_trend_agree_scoped.md` (abandoned kernel for this track)
 - Internal B soak: `internal/gate2e-b-soak-check-2026-11-27-0945.md`
 - Hold fork: `internal/gate2e-b-next-pass-hold-2026-11-26.md`

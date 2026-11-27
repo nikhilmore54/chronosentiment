@@ -5,6 +5,8 @@
 //! - **`--manage-loop`:** Gate2X JSONL snapshots → decisions (in-process)
 //! - **`--plan-lifecycle-loop`:** plan+quote JSONL → full lifecycle tick
 //!   (Adaptive TP + SL/TP + Gate 2X) — Python shadows become I/O only
+//! - **`--adapter-select-15m-loop`:** completed 15m closes + candidate side →
+//!   RecommendationStamp (clean-slate twin; Rust-owned)
 //!
 //! Deterministic · coralys-* frozen (PVP-003) · books never pooled.
 
@@ -16,11 +18,10 @@ use chronosentiment_adapter::nse_market_events::{
     depth_snapshot_row_from_cache_tick, DEPTH_JOURNAL_PROTOCOL_ID,
 };
 use chronosentiment_adapter::product::{
-    build_tick_snapshot, evaluate_tick_policies_hygiened, snapshot_to_json, Gate2xBookKind,
-    RecommendationStabilizer,
-    Gate2xFeatureSnapshot, Gate2xPositionManager, OpenPlanState, PlanLifecycleConfig,
-    PlanLifecycleManager, PlanQuote, TickFeatureBuffer, TickQuote, CRYPTO_TICK_PROTOCOL_ID,
-    PLAN_LIFECYCLE_PROTOCOL,
+    adapter_select_15m, build_tick_snapshot, evaluate_tick_policies_hygiened, snapshot_to_json,
+    Gate2xBookKind, RecommendationStabilizer, Gate2xFeatureSnapshot, Gate2xPositionManager,
+    OpenPlanState, PlanLifecycleConfig, PlanLifecycleManager, PlanQuote, TickFeatureBuffer,
+    TickQuote, ADAPTER_SELECT_15M_PROTOCOL_ID, CRYPTO_TICK_PROTOCOL_ID, PLAN_LIFECYCLE_PROTOCOL,
 };
 use serde::Deserialize;
 use serde_json::Value;
@@ -76,6 +77,14 @@ struct DepthSnapshotRequest {
     sample_utc_ms: Option<u64>,
 }
 
+/// Clean-slate 15m adapter select: completed closes + candidate side → stamp.
+#[derive(Debug, Deserialize)]
+struct AdapterSelect15mRequest {
+    #[serde(default)]
+    closes: Vec<f64>,
+    candidate_side: String,
+}
+
 fn main() {
     let args: Vec<String> = env::args().collect();
     let mut evidence_dir = "datasets/recommendation/historical_crypto".to_string();
@@ -83,6 +92,7 @@ fn main() {
     let mut plan_lifecycle_loop = false;
     let mut tick_eval_loop = false;
     let mut depth_snapshot_loop = false;
+    let mut adapter_select_15m_loop = false;
     let mut book_arg: Option<String> = None;
     let mut i = 1;
     while i < args.len() {
@@ -115,22 +125,26 @@ fn main() {
             "--depth-snapshot-loop" => {
                 depth_snapshot_loop = true;
             }
+            "--adapter-select-15m-loop" => {
+                adapter_select_15m_loop = true;
+            }
             "--version" => {
                 println!("{VERSION}");
                 process::exit(0);
             }
             "-h" | "--help" => {
                 eprintln!(
-                    "rp608_position_decide ({VERSION} / {MANAGE_VERSION} / {PLAN_LIFECYCLE_PROTOCOL} / {CRYPTO_TICK_PROTOCOL_ID} / {DEPTH_JOURNAL_PROTOCOL_ID})\n\
+                    "rp608_position_decide ({VERSION} / {MANAGE_VERSION} / {PLAN_LIFECYCLE_PROTOCOL} / {CRYPTO_TICK_PROTOCOL_ID} / {DEPTH_JOURNAL_PROTOCOL_ID} / {ADAPTER_SELECT_15M_PROTOCOL_ID})\n\
                      One-shot:              JSON stdin snapshot → JSON stdout decision\n\
                      Gate2X manage:         --manage-loop  JSONL → JSONL\n\
                      Plan lifecycle manage: --plan-lifecycle-loop  JSONL plan+quote → JSONL result\n\
                      Crypto tick eval:      --tick-eval-loop  JSONL quote+genomes → B/C actions\n\
                      NSE depth side-path:   --depth-snapshot-loop  JSONL symbol+tick → depth row\n\
+                     Adapter select 15m:    --adapter-select-15m-loop  JSONL closes+side → RecommendationStamp\n\
                      --evidence-dir DIR   REC001h JSONL directory (crypto or NSE)\n\
                      --book crypto|nse    force book (else inferred from evidence-dir)\n\
                      --version            print protocol id\n\
-                     Env: RP608_POSITION_DECIDE_BIN / RP608_GATE2X_MANAGE_BIN / RP608_PLAN_LIFECYCLE_BIN"
+                     Env: RP608_POSITION_DECIDE_BIN / RP608_GATE2X_MANAGE_BIN / RP608_PLAN_LIFECYCLE_BIN / RP608_ADAPTER_SELECT_15M_BIN"
                 );
                 process::exit(0);
             }
@@ -143,6 +157,46 @@ fn main() {
     }
 
     let book = detect_book(&evidence_dir, book_arg.as_deref());
+
+    if adapter_select_15m_loop {
+        eprintln!(
+            "[{ADAPTER_SELECT_15M_PROTOCOL_ID}] adapter-select-15m-loop ready (clean-slate · Rust-owned)"
+        );
+        let stdin = io::stdin();
+        let mut stdout = io::stdout();
+        for line in stdin.lock().lines() {
+            let line = match line {
+                Ok(l) => l,
+                Err(e) => {
+                    eprintln!("stdin read: {e}");
+                    process::exit(1);
+                }
+            };
+            if line.trim().is_empty() {
+                continue;
+            }
+            let req: AdapterSelect15mRequest = match serde_json::from_str(&line) {
+                Ok(r) => r,
+                Err(e) => {
+                    eprintln!("parse adapter-select-15m request: {e}");
+                    process::exit(1);
+                }
+            };
+            let stamp = adapter_select_15m(&req.closes, &req.candidate_side);
+            let out = match serde_json::to_string(&stamp) {
+                Ok(s) => s,
+                Err(e) => {
+                    eprintln!("serialize adapter-select-15m stamp: {e}");
+                    process::exit(1);
+                }
+            };
+            if writeln!(stdout, "{out}").is_err() {
+                process::exit(1);
+            }
+            let _ = stdout.flush();
+        }
+        return;
+    }
 
     if depth_snapshot_loop {
         eprintln!("[{DEPTH_JOURNAL_PROTOCOL_ID}] depth-snapshot-loop ready (Track B side-path)");
