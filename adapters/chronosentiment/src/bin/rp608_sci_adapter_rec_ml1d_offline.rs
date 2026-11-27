@@ -16,9 +16,11 @@ use chronosentiment_adapter::product::sci_adapter_rec::{
     DEFAULT_FROZEN_PACK_REL,
 };
 use chronosentiment_adapter::product::sci_adapter_rec_ml1d::{
-    decide_ml1d, fit_reliability_pack, ml1d_schema_hash, predict_q, Experiment, Ml1dCuts,
-    Ml1dFrozenPack, ReliabilityPack, FRICTION_BPS_FLOOR, FRICTION_VOL_SCALE,
-    ML1D_FEATURE_SCHEMA_ID, PROTOCOL_ID, SCHEMA_VERSION,
+    decide_ml1d_ex, fit_reliability_pack, ml1d_schema_hash, predict_q, selection_aware_diag,
+    CombineMode, EconomicMode, Experiment, Ml1dCuts, Ml1dFrozenPack, ReliabilityPack,
+    SelectionAwareDiag, FRICTION_BPS_FLOOR, FRICTION_DLOG_SCALE, FRICTION_LIQ_SCALE,
+    FRICTION_VOL_SCALE, H9_DOUBLE_COUNT_WEIGHT, ML1D_FEATURE_SCHEMA_ID, PROTOCOL_ID,
+    SCHEMA_VERSION,
 };
 use serde::{Deserialize, Serialize};
 use serde_json::json;
@@ -64,6 +66,15 @@ struct ExperimentScore {
 }
 
 #[derive(Debug, Serialize)]
+struct ExtensionScore {
+    label: String,
+    economic_mode: String,
+    combine_mode: String,
+    holdout: FoldScorecard,
+    holdout_wilson_wr_lb: f64,
+}
+
+#[derive(Debug, Serialize)]
 struct PackageReport {
     protocol_id: String,
     schema_version: String,
@@ -73,11 +84,15 @@ struct PackageReport {
     cuts: Ml1dCuts,
     leakage_audit: serde_json::Value,
     experiments: Vec<ExperimentScore>,
+    extensions: Vec<ExtensionScore>,
+    r3_selection_aware: Vec<SelectionAwareDiag>,
     h11_sci_v1_comparator: FoldScorecard,
     e0_holdout: FoldScorecard,
     primary_e3_holdout: FoldScorecard,
     verdict: String,
     verdict_reasons: Vec<String>,
+    extension_verdict: String,
+    extension_reasons: Vec<String>,
     hypotheses_status: serde_json::Value,
 }
 
@@ -172,6 +187,46 @@ fn brier(ys: &[f64], ps: &[f64]) -> f64 {
         / ys.len() as f64
 }
 
+fn eval_experiment_ex(
+    fold: &str,
+    samples: &[&Sample],
+    experiment: Experiment,
+    economic_mode: EconomicMode,
+    combine_mode: CombineMode,
+    long_pack: &ReliabilityPack,
+    short_pack: &ReliabilityPack,
+    cuts: &Ml1dCuts,
+    closes: &[f64],
+    volumes: &[f64],
+) -> (FoldScorecard, Vec<bool>, Vec<f64>, Vec<f64>) {
+    let mut y = Vec::with_capacity(samples.len());
+    let mut mask = Vec::with_capacity(samples.len());
+    let mut pay = Vec::with_capacity(samples.len());
+    let mut qs = Vec::with_capacity(samples.len());
+    let mut qlbs = Vec::with_capacity(samples.len());
+    for s in samples {
+        y.push(s.y);
+        pay.push(s.payoff_proxy);
+        let stamp = decide_ml1d_ex(
+            experiment,
+            economic_mode,
+            combine_mode,
+            s.side,
+            &closes[..=s.bar_idx],
+            &volumes[..=s.bar_idx],
+            long_pack,
+            short_pack,
+            cuts,
+            s.target_distance_pct,
+            s.risk_distance_pct,
+        );
+        mask.push(stamp.act);
+        qs.push(stamp.q_hat);
+        qlbs.push(stamp.q_lb_wilson);
+    }
+    (scorecard(fold, &y, &mask, &pay), mask, qs, qlbs)
+}
+
 fn eval_experiment(
     fold: &str,
     samples: &[&Sample],
@@ -182,28 +237,19 @@ fn eval_experiment(
     closes: &[f64],
     volumes: &[f64],
 ) -> FoldScorecard {
-    let mut y = Vec::with_capacity(samples.len());
-    let mut mask = Vec::with_capacity(samples.len());
-    let mut pay = Vec::with_capacity(samples.len());
-    for s in samples {
-        y.push(s.y);
-        pay.push(s.payoff_proxy);
-        let c = &closes[..=s.bar_idx];
-        let v = &volumes[..=s.bar_idx];
-        let stamp = decide_ml1d(
-            experiment,
-            s.side,
-            c,
-            v,
-            long_pack,
-            short_pack,
-            cuts,
-            s.target_distance_pct,
-            s.risk_distance_pct,
-        );
-        mask.push(stamp.act);
-    }
-    scorecard(fold, &y, &mask, &pay)
+    eval_experiment_ex(
+        fold,
+        samples,
+        experiment,
+        EconomicMode::Ec1,
+        CombineMode::Dual,
+        long_pack,
+        short_pack,
+        cuts,
+        closes,
+        volumes,
+    )
+    .0
 }
 
 fn eval_sci_v1_comparator(
@@ -612,6 +658,118 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         "DO_NOT_ADVANCE".to_string()
     };
 
+    // --- Extensions: Ec2 (H8), H9 fused ablation, R3 selection-aware (H6) ---
+    // Same frozen cuts (no remine). Compare holdout nets only.
+    let extension_specs: [(&str, Experiment, EconomicMode, CombineMode); 4] = [
+        ("E2_EC2", Experiment::E2, EconomicMode::Ec2, CombineMode::Dual),
+        ("E3_EC2", Experiment::E3, EconomicMode::Ec2, CombineMode::Dual),
+        (
+            "E3_H9_FUSED",
+            Experiment::E3,
+            EconomicMode::Ec1,
+            CombineMode::FusedDoubleCount,
+        ),
+        (
+            "E3_EC2_H9_FUSED",
+            Experiment::E3,
+            EconomicMode::Ec2,
+            CombineMode::FusedDoubleCount,
+        ),
+    ];
+    let mut extensions = Vec::new();
+    let mut ext_reasons = Vec::new();
+    let mut e3_ec2_net = f64::NEG_INFINITY;
+    let mut h9_net = f64::NEG_INFINITY;
+    for (label, exp, econ, comb) in extension_specs {
+        let (hold_sc, _, _, _) = eval_experiment_ex(
+            "holdout",
+            &hold_all,
+            exp,
+            econ,
+            comb,
+            &long_pack,
+            &short_pack,
+            &cuts,
+            &closes,
+            &volumes,
+        );
+        let wlb = wilson_wr_lb(hold_sc.enter_wins, hold_sc.enter_n);
+        println!(
+            "  EXT {label} enter_n={} wr={:.4} cov={:.3} wilson_lb={:.4} net={:?}",
+            hold_sc.enter_n, hold_sc.enter_wr, hold_sc.coverage, wlb, hold_sc.mean_net_proxy
+        );
+        if label == "E3_EC2" {
+            e3_ec2_net = hold_sc.mean_net_proxy.unwrap_or(f64::NEG_INFINITY);
+        }
+        if label == "E3_H9_FUSED" {
+            h9_net = hold_sc.mean_net_proxy.unwrap_or(f64::NEG_INFINITY);
+        }
+        extensions.push(ExtensionScore {
+            label: label.into(),
+            economic_mode: econ.as_str().into(),
+            combine_mode: comb.as_str().into(),
+            holdout: hold_sc,
+            holdout_wilson_wr_lb: wlb,
+        });
+    }
+    // H8: Ec2 should improve E3 net vs Ec1 E3
+    if e3_ec2_net + 1e-12 < e3_net {
+        ext_reasons.push(format!(
+            "h8_ec2_no_net_lift_vs_ec1 e3_ec2={e3_ec2_net:.6} e3_ec1={e3_net:.6}"
+        ));
+    }
+    // H9: dual should beat fused double-count on net
+    if e3_net + 1e-12 < h9_net {
+        ext_reasons.push(format!(
+            "h9_fused_beats_or_ties_dual fused={h9_net:.6} dual={e3_net:.6}"
+        ));
+    } else if h9_net.is_finite() {
+        // dual wins → H9 supportive
+    }
+
+    // R3 on E1 and E3 ACT subsets (Ec1 dual)
+    let mut r3_diags = Vec::new();
+    for (label, exp) in [("E1", Experiment::E1), ("E3", Experiment::E3)] {
+        let y: Vec<f64> = hold_all.iter().map(|s| s.y).collect();
+        let (_, mask, qs, qlbs) = eval_experiment_ex(
+            "holdout",
+            &hold_all,
+            exp,
+            EconomicMode::Ec1,
+            CombineMode::Dual,
+            &long_pack,
+            &short_pack,
+            &cuts,
+            &closes,
+            &volumes,
+        );
+        let diag = selection_aware_diag(&format!("holdout_{label}"), &y, &qs, &qlbs, &mask);
+        println!(
+            "  R3 {label} act_n={} emp_wr={:.4} mean_q={:.4} q-wr={:.4} brier={:.4}",
+            diag.act_n, diag.act_empirical_wr, diag.act_mean_q, diag.q_minus_wr, diag.act_brier
+        );
+        r3_diags.push(diag);
+    }
+    let r3_e3_gap = r3_diags
+        .iter()
+        .find(|d| d.fold == "holdout_E3")
+        .map(|d| d.q_minus_wr)
+        .unwrap_or(0.0);
+    // H6 supportive if selected mean Q overstates empirical WR by > 2pp
+    let h6_status = if r3_e3_gap > 0.02 {
+        "SUPPORTIVE_OVERCONFIDENT_ACT"
+    } else if r3_e3_gap < -0.02 {
+        "SUPPORTIVE_UNDERCONFIDENT_ACT"
+    } else {
+        "WEAK_GAP"
+    };
+
+    let extension_verdict = if ext_reasons.is_empty() {
+        "EXTENSIONS_NO_ADVANCE_SIGNAL".to_string()
+    } else {
+        "EXTENSIONS_DO_NOT_RESCUE".to_string()
+    };
+
     let leakage_audit = json!({
         "decision_time_features_only": true,
         "coralys_side_sealed": true,
@@ -630,26 +788,41 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         "feature_names": FEATURE_NAMES,
         "friction_proxy": {
             "bps_floor": FRICTION_BPS_FLOOR,
-            "vol_scale": FRICTION_VOL_SCALE
+            "vol_scale": FRICTION_VOL_SCALE,
+            "liq_scale_ec2": FRICTION_LIQ_SCALE,
+            "dlog_scale_ec2": FRICTION_DLOG_SCALE,
+            "h9_double_count_weight": H9_DOUBLE_COUNT_WEIGHT
         },
         "r1_brier_validation": {"raw": brier_raw, "isotonic": brier_cal},
         "book_pooling": false,
-        "gate5": false
+        "gate5": false,
+        "extension_ladder": "R1_EC1_EC2_H9_R3"
     });
+
+    let h8_status = if e3_ec2_net + 1e-12 >= e3_net && e3_ec2_net.is_finite() {
+        "SUPPORTIVE_OR_TIE_ON_HOLDOUT"
+    } else {
+        "FALSIFIED_ON_HOLDOUT"
+    };
+    let h9_status = if e3_net + 1e-12 >= h9_net && h9_net.is_finite() {
+        "SUPPORTIVE_DUAL_BEATS_FUSED"
+    } else {
+        "FALSIFIED_OR_TIED_FUSED_GE_DUAL"
+    };
 
     let hypotheses_status = json!({
         "H0": "OPEN",
-        "H1": "OPEN",
-        "H2": "OPEN",
+        "H1": "PARTIAL_E1_LIFT_NO_ADVANCE",
+        "H2": "FALSIFIED_ON_HOLDOUT",
         "H3": if brier_cal + 1e-12 < brier_raw { "SUPPORTIVE_ON_VAL" } else { "OPEN" },
-        "H4": "OPEN",
+        "H4": "PARTIAL_MILD_LIFT",
         "H5": "DEFERRED_R2",
-        "H6": "DEFERRED_R3",
-        "H7": "OPEN",
-        "H8": "DEFERRED_EC2",
-        "H9": "DEFERRED_ABLATION",
-        "H10": "OPEN",
-        "H11": "OPEN_COMPARATOR_SCORED"
+        "H6": h6_status,
+        "H7": "WEAK_EC1_NO_LIFT_VS_E1",
+        "H8": h8_status,
+        "H9": h9_status,
+        "H10": "NOT_APPROACHED",
+        "H11": "SCI_V1_COMPETITIVE"
     });
 
     let report = PackageReport {
@@ -661,11 +834,15 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         cuts: cuts.clone(),
         leakage_audit,
         experiments: experiment_scores,
+        extensions,
+        r3_selection_aware: r3_diags,
         h11_sci_v1_comparator: h11_sc,
         e0_holdout: e0_hold,
         primary_e3_holdout: e3_hold,
         verdict: verdict.clone(),
         verdict_reasons: reasons.clone(),
+        extension_verdict: extension_verdict.clone(),
+        extension_reasons: ext_reasons.clone(),
         hypotheses_status,
     };
 
@@ -677,7 +854,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         long: long_pack,
         short: short_pack,
         cuts: cuts.clone(),
-        ladder_stage: "R1_EC1".into(),
+        ladder_stage: "R1_EC1_EC2_H9_R3".into(),
     };
 
     let report_path = out_dir.join("btc_ml1d_package_report.json");
@@ -691,6 +868,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     println!("  VERDICT[{}] = {}", report.book, verdict);
     for r in &reasons {
+        println!("    - {r}");
+    }
+    println!("  EXTENSION_VERDICT = {extension_verdict}");
+    for r in &ext_reasons {
         println!("    - {r}");
     }
     println!("  wrote {:?}", report_path);

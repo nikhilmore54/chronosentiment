@@ -1,8 +1,8 @@
 {
   "protocol_id": "RP-608-SCI-ADAPTER-REC-ML1D-001",
-  "schema_version": "1",
+  "schema_version": "1.1",
   "feature_schema_id": "ml1d_coralys_actpass_v1",
-  "schema_hash": "d442b15cfb68dc3e5e4c41d79389c64d2f01f98ccccc2227bebb65c0fbd194ea",
+  "schema_hash": "0fa891f4d265539af894beea68f0a1e582281efa509d398c738a12cec209f3c9",
   "book": "BTCUSDT_15M",
   "cuts": {
     "reliability": {
@@ -22,6 +22,7 @@
     "completed_bars_only": true,
     "coralys_side_sealed": true,
     "decision_time_features_only": true,
+    "extension_ladder": "R1_EC1_EC2_H9_R3",
     "feature_names": [
       "side_r3",
       "side_r8",
@@ -40,6 +41,9 @@
     "feature_schema_reused": "price_volume_15m_v1",
     "friction_proxy": {
       "bps_floor": 2.0,
+      "dlog_scale_ec2": 0.05,
+      "h9_double_count_weight": 0.25,
+      "liq_scale_ec2": 0.1,
       "vol_scale": 0.15
     },
     "gate5": false,
@@ -166,6 +170,102 @@
       "holdout_wilson_wr_lb": 0.28815098477126894
     }
   ],
+  "extensions": [
+    {
+      "label": "E2_EC2",
+      "economic_mode": "EC2",
+      "combine_mode": "DUAL",
+      "holdout": {
+        "fold": "holdout",
+        "baseline_n": 2327,
+        "baseline_wins": 690,
+        "baseline_wr": 0.29651912333476577,
+        "enter_n": 251,
+        "enter_wins": 78,
+        "enter_wr": 0.3107569721115538,
+        "coverage": 0.10786420283626988,
+        "payoff_asym": 2.124279353148081,
+        "mean_net_proxy": -0.007629224147220294
+      },
+      "holdout_wilson_wr_lb": 0.2567169384765429
+    },
+    {
+      "label": "E3_EC2",
+      "economic_mode": "EC2",
+      "combine_mode": "DUAL",
+      "holdout": {
+        "fold": "holdout",
+        "baseline_n": 2327,
+        "baseline_wins": 690,
+        "baseline_wr": 0.29651912333476577,
+        "enter_n": 242,
+        "enter_wins": 78,
+        "enter_wr": 0.32231404958677684,
+        "coverage": 0.10399656209712076,
+        "payoff_asym": 2.067017607616274,
+        "mean_net_proxy": -0.003086067284541569
+      },
+      "holdout_wilson_wr_lb": 0.2666028619101974
+    },
+    {
+      "label": "E3_H9_FUSED",
+      "economic_mode": "EC1",
+      "combine_mode": "FUSED_DOUBLE_COUNT",
+      "holdout": {
+        "fold": "holdout",
+        "baseline_n": 2327,
+        "baseline_wins": 690,
+        "baseline_wr": 0.29651912333476577,
+        "enter_n": 618,
+        "enter_wins": 201,
+        "enter_wr": 0.32524271844660196,
+        "coverage": 0.26557799742157284,
+        "payoff_asym": 2.0640956321147934,
+        "mean_net_proxy": -0.0009562110161451428
+      },
+      "holdout_wilson_wr_lb": 0.2894862937789319
+    },
+    {
+      "label": "E3_EC2_H9_FUSED",
+      "economic_mode": "EC2",
+      "combine_mode": "FUSED_DOUBLE_COUNT",
+      "holdout": {
+        "fold": "holdout",
+        "baseline_n": 2327,
+        "baseline_wins": 690,
+        "baseline_wr": 0.29651912333476577,
+        "enter_n": 314,
+        "enter_wins": 107,
+        "enter_wr": 0.34076433121019106,
+        "coverage": 0.13493768801031372,
+        "payoff_asym": 2.1621499808007867,
+        "mean_net_proxy": 0.021088405784320523
+      },
+      "holdout_wilson_wr_lb": 0.2905470383936923
+    }
+  ],
+  "r3_selection_aware": [
+    {
+      "fold": "holdout_E1",
+      "act_n": 1121,
+      "act_empirical_wr": 0.328278322925959,
+      "act_mean_q": 0.3189833728549917,
+      "act_mean_q_lb": 0.2593213469449591,
+      "act_brier": 0.22061533749162715,
+      "q_minus_wr": -0.009294950070967312,
+      "note": "Naive ACT-subset mean Q vs empirical WR; large positive gap ⇒ overconfident selected statements (H6)."
+    },
+    {
+      "fold": "holdout_E3",
+      "act_n": 536,
+      "act_empirical_wr": 0.32649253731343286,
+      "act_mean_q": 0.3243326504834151,
+      "act_mean_q_lb": 0.26809347224579,
+      "act_brier": 0.21982837945891226,
+      "q_minus_wr": -0.0021598868300177765,
+      "note": "Naive ACT-subset mean Q vs empirical WR; large positive gap ⇒ overconfident selected statements (H6)."
+    }
+  ],
   "h11_sci_v1_comparator": {
     "fold": "holdout",
     "baseline_n": 2327,
@@ -207,18 +307,22 @@
     "e3_net_not_above_max_e1_e2 e3=-0.003671 max_single=-0.003191",
     "h11_sci_v1_competitive_or_better h11_wr=0.3340 h11_net=-0.001616 e3_wr=0.3265 e3_net=-0.003671"
   ],
+  "extension_verdict": "EXTENSIONS_DO_NOT_RESCUE",
+  "extension_reasons": [
+    "h9_fused_beats_or_ties_dual fused=-0.000956 dual=-0.003671"
+  ],
   "hypotheses_status": {
     "H0": "OPEN",
-    "H1": "OPEN",
-    "H10": "OPEN",
-    "H11": "OPEN_COMPARATOR_SCORED",
-    "H2": "OPEN",
+    "H1": "PARTIAL_E1_LIFT_NO_ADVANCE",
+    "H10": "NOT_APPROACHED",
+    "H11": "SCI_V1_COMPETITIVE",
+    "H2": "FALSIFIED_ON_HOLDOUT",
     "H3": "SUPPORTIVE_ON_VAL",
-    "H4": "OPEN",
+    "H4": "PARTIAL_MILD_LIFT",
     "H5": "DEFERRED_R2",
-    "H6": "DEFERRED_R3",
-    "H7": "OPEN",
-    "H8": "DEFERRED_EC2",
-    "H9": "DEFERRED_ABLATION"
+    "H6": "WEAK_GAP",
+    "H7": "WEAK_EC1_NO_LIFT_VS_E1",
+    "H8": "SUPPORTIVE_OR_TIE_ON_HOLDOUT",
+    "H9": "FALSIFIED_OR_TIED_FUSED_GE_DUAL"
   }
 }

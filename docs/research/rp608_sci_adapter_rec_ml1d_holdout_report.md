@@ -89,7 +89,8 @@ Baseline holdout WR (all Coralys sides followed) ≈ **29.7%** — far from ~85%
 ## Non-advance implications
 
 - No twin · no authority · no Gate 5.  
-- Next research (if any): Ec2 liquidity conditioning, R2 drift, selection-aware R3 — **not** Coralys edits or soak remine.  
+- Extension pass landed: Ec2 / H9 / R3 — see `docs/research/rp608_sci_adapter_rec_ml1d_extension_holdout.md` (**EXTENSIONS_DO_NOT_RESCUE**).  
+- Still deferred: R2 drift conformal. Not Coralys edits or soak remine.  
 - SCI-v1 remains the frozen H11 comparator (`S1=b`).
 
 ---

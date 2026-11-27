@@ -1,8 +1,8 @@
 {
   "protocol_id": "RP-608-SCI-ADAPTER-REC-ML1D-001",
-  "schema_version": "1",
+  "schema_version": "1.1",
   "feature_schema_id": "ml1d_coralys_actpass_v1",
-  "schema_hash": "d442b15cfb68dc3e5e4c41d79389c64d2f01f98ccccc2227bebb65c0fbd194ea",
+  "schema_hash": "0fa891f4d265539af894beea68f0a1e582281efa509d398c738a12cec209f3c9",
   "long": {
     "side": "LONG",
     "glm": {
@@ -166,5 +166,5 @@
     },
     "u_min": -0.05
   },
-  "ladder_stage": "R1_EC1"
+  "ladder_stage": "R1_EC1_EC2_H9_R3"
 }
