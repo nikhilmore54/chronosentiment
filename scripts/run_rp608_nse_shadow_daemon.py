@@ -231,6 +231,9 @@ from scripts.rp608_gate2e_shadow_insufficient import (  # noqa: E402
 from scripts.rp608_gate2e_regime_align import (  # noqa: E402
     evaluate_regime_align,
 )
+from scripts.rp608_gate2e_15m_trend_agree import (  # noqa: E402
+    agreement as nse_trend_agreement,
+)
 from scripts.rp608_nse_trade_pattern_library import (  # noqa: E402
     default_library_path as trade_pattern_library_path,
     session_phase_ist as _pattern_session_phase_ist,
@@ -289,6 +292,11 @@ GATE2X_FLOOR_LOCK_RATCHET = float(
     os.environ.get("RP608_NSE_GATE2X_FLOOR_LOCK_RATCHET", "0.50")
 )
 GATE2X_FLOOR_LOCK_PROTOCOL = "RP-608-GATE2X-FLOOR-LOCK-TWIN-001"
+# Gate 2E B: 15m OHLCV L3/L8/L20 trend-agreement twin (PRIMARY unchanged).
+GATE2E_TREND_AGREE_TWIN_ENABLED = os.environ.get(
+    "RP608_NSE_GATE2E_TREND_AGREE_TWIN", "1"
+).strip().lower() not in {"0", "false", "no", "off"}
+GATE2E_TREND_AGREE_PROTOCOL = "RP-608-GATE2E-15M-OHLCV-TREND-AGREE-001"
 GATE2X_DEEP_GIVEBACK_FRAC = float(os.environ.get("RP608_NSE_GATE2X_DEEP_GB_FRAC", "0.50"))
 GATE2X_DEEP_GIVEBACK_DWELL_SCALE = float(
     os.environ.get("RP608_NSE_GATE2X_DEEP_GB_DWELL_SCALE", "0.40")
@@ -374,14 +382,16 @@ NSE_BOOK_PRIMARY = "NSE_ESTIMAND_A"
 NSE_BOOK_BASELINE = "NSE_ESTIMAND_A_BASELINE_PARALLEL"
 NSE_BOOK_G2X_R50 = "NSE_ESTIMAND_A_GATE2X_R50_PARALLEL"
 NSE_BOOK_G2X_FLOOR_LOCK = "NSE_ESTIMAND_A_GATE2X_FLOOR_LOCK_PARALLEL"
-# PRIMARY (Gate2E) + BASELINE (ungated r30) + Gate2X r50 + floor-lock twin.
-# Floor-lock optional via RP608_NSE_GATE2X_FLOOR_LOCK_TWIN (default on).
+NSE_BOOK_TREND_AGREE = "NSE_ESTIMAND_A_TREND_AGREE_PARALLEL"
+# PRIMARY (Gate2E) + BASELINE (ungated r30) + Gate2X r50 + floor-lock + trend-agree B.
+# Floor-lock / trend-agree optional via env (default on).
 _ESTIMAND_BOOK_KEYS_CORE = ("primary", "baseline", "gate2x_r50")
-ESTIMAND_BOOK_KEYS = (
-    _ESTIMAND_BOOK_KEYS_CORE + ("gate2x_floor_lock",)
-    if GATE2X_FLOOR_LOCK_TWIN_ENABLED
-    else _ESTIMAND_BOOK_KEYS_CORE
-)
+_ESTIMAND_BOOK_KEYS = list(_ESTIMAND_BOOK_KEYS_CORE)
+if GATE2X_FLOOR_LOCK_TWIN_ENABLED:
+    _ESTIMAND_BOOK_KEYS.append("gate2x_floor_lock")
+if GATE2E_TREND_AGREE_TWIN_ENABLED:
+    _ESTIMAND_BOOK_KEYS.append("trend_agree")
+ESTIMAND_BOOK_KEYS = tuple(_ESTIMAND_BOOK_KEYS)
 DEFAULT_OPPORTUNITY_LOG_PATH = DEFAULT_OUTPUT_DIR / "rp608_nse_opportunity_registry.jsonl"
 DEFAULT_INSTRUMENT_MAP_CACHE = DEFAULT_OUTPUT_DIR / "kite_nse_instrument_map.json"
 DEFAULT_KITE_READINESS_REPORT = DEFAULT_OUTPUT_DIR / "kite_readiness_report.json"
@@ -1118,6 +1128,15 @@ class RP608NSEShadowDaemon:
         )
         if GATE2X_FLOOR_LOCK_TWIN_ENABLED:
             self.g2x_floor_lock_twin_dir.mkdir(parents=True, exist_ok=True)
+        # Gate 2E B trend-agree twin (Rust-owned L3/L8/L20; PRIMARY unchanged).
+        self.trend_agree_twin_dir = (
+            self.output_dir / "estimand_a_trend_agree_parallel_v1"
+        )
+        self.trade_journal_trend_agree_path = (
+            self.trend_agree_twin_dir / "rp608_nse_trade_journal.jsonl"
+        )
+        if GATE2E_TREND_AGREE_TWIN_ENABLED:
+            self.trend_agree_twin_dir.mkdir(parents=True, exist_ok=True)
         self._primary_gate_mode = pattern_entry_gate_mode()
         self._baseline_gate_mode = pattern_entry_gate_mode_baseline()
         print(
@@ -1138,6 +1157,13 @@ class RP608NSEShadowDaemon:
                 f"gate={self._baseline_gate_mode!r} ratchet={GATE2X_FLOOR_LOCK_RATCHET} "
                 f"dir={self.g2x_floor_lock_twin_dir} "
                 f"(immediate protect floor; PRIMARY/BASELINE/r50 unchanged)",
+                flush=True,
+            )
+        if GATE2E_TREND_AGREE_TWIN_ENABLED:
+            print(
+                f"[gate2e_trend_agree_twin] book={NSE_BOOK_TREND_AGREE} "
+                f"protocol={GATE2E_TREND_AGREE_PROTOCOL} dir={self.trend_agree_twin_dir} "
+                f"(Rust L3/L8/L20 agree; PRIMARY Gate2E stack unchanged)",
                 flush=True,
             )
         self.opportunity_path = self.output_dir / "rp608_nse_opportunity_registry.jsonl"
@@ -1161,6 +1187,7 @@ class RP608NSEShadowDaemon:
         self._journaled_trade_ids_baseline: set[str] = set()
         self._journaled_trade_ids_g2x_r50: set[str] = set()
         self._journaled_trade_ids_g2x_floor_lock: set[str] = set()
+        self._journaled_trade_ids_trend_agree: set[str] = set()
         # Pattern gate: session-level "prior stop in similar ToA/traj family" (NOT symbol bans).
         self._pattern_session_date: Optional[str] = None
         self._pattern_session_stop_families: set[str] = set()
@@ -1200,6 +1227,7 @@ class RP608NSEShadowDaemon:
             self.active_trades_baseline,
             self.active_trades_g2x_r50,
             self.active_trades_g2x_floor_lock,
+            self.active_trades_trend_agree,
         ) = self.load_pending_evaluations()
         self._journaled_trade_ids = self._load_journaled_trade_ids(self.trade_journal_path)
         self._journaled_trade_ids_baseline = self._load_journaled_trade_ids(
@@ -1210,6 +1238,9 @@ class RP608NSEShadowDaemon:
         )
         self._journaled_trade_ids_g2x_floor_lock = self._load_journaled_trade_ids(
             self.trade_journal_g2x_floor_lock_path
+        )
+        self._journaled_trade_ids_trend_agree = self._load_journaled_trade_ids(
+            self.trade_journal_trend_agree_path
         )
         self._bootstrap_pattern_session_stop_families()
         # Scrip-level decision ledger cache: {symbol: evaluation_record}
@@ -1522,13 +1553,15 @@ class RP608NSEShadowDaemon:
         Dict[str, Dict[str, Any]],
         Dict[str, Dict[str, Any]],
         Dict[str, Dict[str, Any]],
+        Dict[str, Dict[str, Any]],
     ]:
-        """Loads pending forward evals + PRIMARY/BASELINE/r50/floor-lock actives (never pooled)."""
+        """Loads pending forward evals + PRIMARY/BASELINE/r50/floor-lock/trend-agree actives."""
         pending_evals: Dict[int, Dict[str, Dict[str, Any]]] = {}
         active_trades: Dict[str, Dict[str, Any]] = {}
         active_trades_baseline: Dict[str, Dict[str, Any]] = {}
         active_trades_g2x_r50: Dict[str, Dict[str, Any]] = {}
         active_trades_g2x_floor_lock: Dict[str, Dict[str, Any]] = {}
+        active_trades_trend_agree: Dict[str, Dict[str, Any]] = {}
         if hasattr(self, "pending_evaluations_path") and self.pending_evaluations_path.exists():
             try:
                 with open(self.pending_evaluations_path, "r", encoding="utf-8") as f:
@@ -1542,6 +1575,9 @@ class RP608NSEShadowDaemon:
                 active_trades_g2x_floor_lock = (
                     data.get("active_trades_g2x_floor_lock", {}) or {}
                 )
+                active_trades_trend_agree = (
+                    data.get("active_trades_trend_agree", {}) or {}
+                )
             except Exception as e:
                 print(f"[!] Warning: Failed to load pending evaluations from {self.pending_evaluations_path}: {e}", file=sys.stderr)
         return (
@@ -1550,6 +1586,7 @@ class RP608NSEShadowDaemon:
             active_trades_baseline,
             active_trades_g2x_r50,
             active_trades_g2x_floor_lock,
+            active_trades_trend_agree,
         )
 
     def _load_journaled_trade_ids(self, journal_path: Optional[Path] = None) -> set:
@@ -1602,6 +1639,13 @@ class RP608NSEShadowDaemon:
             NSE_BOOK_G2X_FLOOR_LOCK.lower(),
         }:
             return "gate2x_floor_lock"
+        if b in {
+            "trend_agree",
+            "trendagree",
+            "nse_estimand_a_trend_agree_parallel",
+            NSE_BOOK_TREND_AGREE.lower(),
+        }:
+            return "trend_agree"
         return "primary"
 
     @classmethod
@@ -1617,12 +1661,17 @@ class RP608NSEShadowDaemon:
         return cls._estimand_normalize_book(book) == "gate2x_floor_lock"
 
     @classmethod
+    def _estimand_book_is_trend_agree(cls, book: str) -> bool:
+        return cls._estimand_normalize_book(book) == "trend_agree"
+
+    @classmethod
     def _estimand_entry_like_baseline(cls, book: str) -> bool:
-        """BASELINE + r50 + floor-lock twins share ungated entry; exit geometry differs."""
+        """BASELINE + r50 + floor-lock + trend-agree share ungated pattern entry; B adds agree filter."""
         return cls._estimand_normalize_book(book) in (
             "baseline",
             "gate2x_r50",
             "gate2x_floor_lock",
+            "trend_agree",
         )
 
     def _estimand_active_trades(self, book: str = "primary") -> Dict[str, Dict[str, Any]]:
@@ -1633,6 +1682,8 @@ class RP608NSEShadowDaemon:
             return self.active_trades_g2x_r50
         if key == "gate2x_floor_lock":
             return self.active_trades_g2x_floor_lock
+        if key == "trend_agree":
+            return self.active_trades_trend_agree
         return self.active_trades
 
     def _estimand_journaled_ids(self, book: str = "primary") -> set:
@@ -1643,6 +1694,8 @@ class RP608NSEShadowDaemon:
             return self._journaled_trade_ids_g2x_r50
         if key == "gate2x_floor_lock":
             return self._journaled_trade_ids_g2x_floor_lock
+        if key == "trend_agree":
+            return self._journaled_trade_ids_trend_agree
         return self._journaled_trade_ids
 
     def _estimand_journal_path(self, book: str = "primary") -> Path:
@@ -1653,6 +1706,8 @@ class RP608NSEShadowDaemon:
             return self.trade_journal_g2x_r50_path
         if key == "gate2x_floor_lock":
             return self.trade_journal_g2x_floor_lock_path
+        if key == "trend_agree":
+            return self.trade_journal_trend_agree_path
         return self.trade_journal_path
 
     def _estimand_book_id(self, book: str = "primary") -> str:
@@ -1663,6 +1718,8 @@ class RP608NSEShadowDaemon:
             return NSE_BOOK_G2X_R50
         if key == "gate2x_floor_lock":
             return NSE_BOOK_G2X_FLOOR_LOCK
+        if key == "trend_agree":
+            return NSE_BOOK_TREND_AGREE
         return NSE_BOOK_PRIMARY
 
     def _estimand_gate_mode_for_book(self, book: str = "primary") -> str:
@@ -1700,6 +1757,8 @@ class RP608NSEShadowDaemon:
             return f"nse_r50_trade_{self.state.session_idx}_{int(signal_bar_idx)}_{symbol}"
         if key == "gate2x_floor_lock":
             return f"nse_fl_trade_{self.state.session_idx}_{int(signal_bar_idx)}_{symbol}"
+        if key == "trend_agree":
+            return f"nse_ta_trade_{self.state.session_idx}_{int(signal_bar_idx)}_{symbol}"
         return f"nse_trade_{self.state.session_idx}_{int(signal_bar_idx)}_{symbol}"
 
     def _estimand_active_count(self) -> int:
@@ -1708,6 +1767,7 @@ class RP608NSEShadowDaemon:
             + len(self.active_trades_baseline)
             + len(self.active_trades_g2x_r50)
             + len(self.active_trades_g2x_floor_lock)
+            + len(getattr(self, "active_trades_trend_agree", {}) or {})
         )
 
     def _regime_align_for_long(
@@ -1943,6 +2003,7 @@ class RP608NSEShadowDaemon:
             "active_trades_baseline": self.active_trades_baseline,
             "active_trades_g2x_r50": self.active_trades_g2x_r50,
             "active_trades_g2x_floor_lock": self.active_trades_g2x_floor_lock,
+            "active_trades_trend_agree": getattr(self, "active_trades_trend_agree", {}) or {},
             "updated_at_utc_ms": int(time.time() * 1000),
             "updated_at_iso": datetime.now(timezone.utc).isoformat()
         }
@@ -2867,12 +2928,26 @@ class RP608NSEShadowDaemon:
         bar_lo = float(getattr(latest_bar, "low", p_ref) or p_ref)
 
         if mutate_trades:
+            # Gate 2E B: Rust L3/L8/L20 agreement on completed closes (LONG book).
+            trend_agree_stamp = nse_trend_agreement(closes, "LONG") if signal_entry else {
+                "blocks_entry": True,
+                "agreement": "STANDASIDE",
+                "block_reason": "NO_SIGNAL",
+                "protocol_id": GATE2E_TREND_AGREE_PROTOCOL,
+            }
+
             for book in ESTIMAND_BOOK_KEYS:
                 active = self._estimand_active_trades(book)
                 journaled = self._estimand_journaled_ids(book)
                 if book == "primary":
                     stamp = pattern_stamp
                     gate_blocks = input_gate_blocks
+                elif book == "trend_agree":
+                    # B twin: only trend-agreement filter (not Coralys-input / pattern stack).
+                    stamp = {"trend_agree": trend_agree_stamp}
+                    gate_blocks = bool(
+                        signal_entry and trend_agree_stamp.get("blocks_entry")
+                    )
                 else:
                     # BASELINE + r50 + floor-lock: ungated twin stamp (entry parity).
                     stamp = pattern_stamp.get("baseline_parallel") or {}
@@ -3156,8 +3231,15 @@ class RP608NSEShadowDaemon:
                                 "management_path": "TICK_PATH",
                                 "coralys_input_context": input_ctx,
                                 "trade_pattern_match": stamp,
-                                "regime_align": self._regime_align_for_long(
-                                    book=book, history=history
+                                "regime_align": (
+                                    {"blocks_entry": False, "skipped": "TREND_AGREE_TWIN"}
+                                    if book == "trend_agree"
+                                    else self._regime_align_for_long(
+                                        book=book, history=history
+                                    )
+                                ),
+                                "trend_agree": (
+                                    trend_agree_stamp if book == "trend_agree" else None
                                 ),
                             }
 
@@ -3761,40 +3843,50 @@ class RP608NSEShadowDaemon:
             decision_ts_ist=decision_ts_ist,
             symbol=symbol,
         )
-        if self._estimand_entry_like_baseline(book):
-            pattern_stamp = pattern_full.get("baseline_parallel") or pattern_full
+        if self._estimand_book_is_trend_agree(book):
+            # B twin (TICK_PATH): Rust L3/L8/L20 agree only — not Coralys-input / pattern / DI.
+            closes = [float(getattr(b, "close", 0.0) or 0.0) for b in session_bars]
+            ta = nse_trend_agreement(closes, "LONG")
+            if ta.get("blocks_entry"):
+                return False
+            pattern_stamp = {"trend_agree": ta}
+            regime_align = {"blocks_entry": False, "skipped": "TREND_AGREE_TWIN"}
         else:
-            pattern_stamp = pattern_full
-        if coralys_input_gate_enabled() and not bool(input_ctx.get("allow_long_entry")):
-            return False
-        if pattern_stamp.get("blocks_entry"):
-            # PRIMARY cold-start observe (TICK_PATH); BASELINE/r50 may still open.
-            if not self._estimand_entry_like_baseline(book):
-                try:
-                    self._maybe_log_gate2e_shadow_insufficient(
-                        symbol=symbol,
-                        pattern_stamp=pattern_stamp
-                        if pattern_stamp is pattern_full
-                        else pattern_full,
-                        suppressed_ms=int(now_ms),
-                        decision_bar_idx=int(signal_bar_idx),
-                        source="tick_path_suppress",
-                        direction="LONG",
-                        session_phase=(
-                            str(input_ctx.get("session_phase"))
-                            if isinstance(input_ctx, dict) and input_ctx.get("session_phase")
-                            else None
-                        ),
-                    )
-                except Exception:
-                    pass
-            return False
+            if self._estimand_entry_like_baseline(book):
+                pattern_stamp = pattern_full.get("baseline_parallel") or pattern_full
+            else:
+                pattern_stamp = pattern_full
+            if coralys_input_gate_enabled() and not bool(input_ctx.get("allow_long_entry")):
+                return False
+            if pattern_stamp.get("blocks_entry"):
+                # PRIMARY cold-start observe (TICK_PATH); BASELINE/r50 may still open.
+                if not self._estimand_entry_like_baseline(book):
+                    try:
+                        self._maybe_log_gate2e_shadow_insufficient(
+                            symbol=symbol,
+                            pattern_stamp=pattern_stamp
+                            if pattern_stamp is pattern_full
+                            else pattern_full,
+                            suppressed_ms=int(now_ms),
+                            decision_bar_idx=int(signal_bar_idx),
+                            source="tick_path_suppress",
+                            direction="LONG",
+                            session_phase=(
+                                str(input_ctx.get("session_phase"))
+                                if isinstance(input_ctx, dict) and input_ctx.get("session_phase")
+                                else None
+                            ),
+                        )
+                    except Exception:
+                        pass
+                return False
+
+            history = self.price_history.get(symbol) or []
+            regime_align = self._regime_align_for_long(book=book, history=history)
+            if regime_align.get("blocks_entry"):
+                return False
 
         history = self.price_history.get(symbol) or []
-        regime_align = self._regime_align_for_long(book=book, history=history)
-        if regime_align.get("blocks_entry"):
-            return False
-
         half_spread = float(getattr(quote, "half_spread_bps", 0) or 0) or 2.5
         friction_proxy_bps = max(9.0, float(half_spread) * 2.0 + 8.0)
         bounds = self.resolve_exit_boundaries(symbol, mark, history, friction_proxy_bps)
@@ -3841,6 +3933,11 @@ class RP608NSEShadowDaemon:
             "coralys_input_context": input_ctx,
             "trade_pattern_match": pattern_stamp,
             "regime_align": regime_align,
+            "trend_agree": (
+                pattern_stamp.get("trend_agree")
+                if self._estimand_book_is_trend_agree(book)
+                else None
+            ),
             "entry_trade_like": True,
         }
         return True
@@ -4437,6 +4534,7 @@ class RP608NSEShadowDaemon:
                         f"active_bl={len(self.active_trades_baseline)} "
                         f"active_r50={len(self.active_trades_g2x_r50)} "
                         f"active_fl={len(self.active_trades_g2x_floor_lock)} "
+                        f"active_ta={len(getattr(self, 'active_trades_trend_agree', {}) or {})} "
                         f"trade_like_gate={int(TICK_TRADE_LIKE_ENTRY)}",
                         flush=True,
                     )
@@ -4819,6 +4917,8 @@ class RP608NSEShadowDaemon:
             self.active_trades_baseline.clear()
             self.active_trades_g2x_r50.clear()
             self.active_trades_g2x_floor_lock.clear()
+            if hasattr(self, "active_trades_trend_agree"):
+                self.active_trades_trend_agree.clear()
             self.pending_directional_evals.clear()
             self.last_evaluations.clear()
             self._symbol_last_bootstrap_bar.clear()
@@ -5097,6 +5197,9 @@ class RP608NSEShadowDaemon:
             "active_positions_baseline": len(self.active_trades_baseline),
             "active_positions_g2x_r50": len(self.active_trades_g2x_r50),
             "active_positions_g2x_floor_lock": len(self.active_trades_g2x_floor_lock),
+            "active_positions_trend_agree": len(
+                getattr(self, "active_trades_trend_agree", {}) or {}
+            ),
             "nse_of_paper_n_open": of_paper_summary.get("n_open"),
             "nse_of_paper_n_trades": (of_paper_summary.get("of_outcomes_summary") or {}).get("n_trades"),
             "completed_trades": self.state.completed_trades_count,

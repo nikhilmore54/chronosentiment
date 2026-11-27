@@ -1,0 +1,24 @@
+\begin{table*}[t]
+\centering
+\scriptsize
+\setlength{\tabcolsep}{2.5pt}
+\caption{Empirical Progression Across Representation \& Operator Paradigms on the 7 Canonical INRC-II Fleet Benchmarks (28 Rolling Days, $W=4$). Baseline reference: Ceschia et al. (2019 / Annals of OR) and ScheduleNurse-III (SN-III). All configurations achieved certified 100\% statutory feasibility ($HC = 0$ across all 28 rolling weeks).}
+\label{tab:inrc_before_after_comparison}
+\begin{tabular}{lccccccccccc}
+\toprule
+\multirow{2}{*}{\textbf{Instance Code}} & \multirow{2}{*}{\textbf{Nurses}} & \multirow{2}{*}{\textbf{BKS}} & \multicolumn{2}{c}{\textbf{1. Primal + Repair}} & \multicolumn{2}{c}{\textbf{2. Inverted (Naive)}} & \multicolumn{3}{c}{\textbf{3. Inverted + Upgrades}} & \multirow{2}{*}{\textbf{$\Delta$ (3 vs 2)}} & \multirow{2}{*}{\textbf{Feasibility}} \\
+\cmidrule(lr){4-5} \cmidrule(lr){6-7} \cmidrule(lr){8-10}
+& ($N$) & (UB) & \textbf{Penalty} & \textbf{Gap (\%)} & \textbf{Penalty} & \textbf{Gap (\%)} & \textbf{Penalty} & \textbf{Gap (\%)} & \textbf{Time (s)} & & ($HC$) \\
+\midrule
+\texttt{n030w4\_1\_6-2-9-1} &  30 & 1,670 & 2,275 & +36.23\% &  2,380 &  +42.51\% &  2,270 &  +35.93\% &  73.51 &  $-110$ pts   & Certified 0 \\
+\texttt{n040w4\_0\_2-0-6-1} &  40 & 1,565 & 1,940 & +23.96\% &  2,715 &  +73.48\% &  2,275 &  +45.37\% &  91.73 &  $-440$ pts  & Certified 0 \\
+\texttt{n050w4\_0\_0-4-8-7} &  50 & 1,315 & 2,085 & +58.56\% &  2,960 & +125.10\% &  2,120 &  +61.22\% & 111.73 &  $-840$ pts  & Certified 0 \\
+\texttt{n060w4\_1\_6-1-1-5} &  60 & 2,450 & 5,005 & +104.29\% &  6,100 & +148.98\% &  6,165 & +151.63\% & 119.40 &   $+65$ pts  & Certified 0 \\
+\texttt{n080w4\_2\_4-3-3-3} &  80 & 3,300 & 6,245 & +89.24\% &  7,185 & +117.73\% &  6,010 &  +82.12\% & 157.53 &  $-1,175$ pts & Certified 0 \\
+\texttt{n100w4\_0\_1-1-0-8} & 100 & 1,170 & 2,530 & +116.24\% &  4,780 & +308.55\% &  2,575 & +120.09\% & 182.52 &  $-2,205$ pts & Certified 0 \\
+\texttt{n120w4\_1\_4-6-2-6} & 120 & 2,020 & 7,330 & +262.87\% & 10,035 & +396.78\% &  7,435 & +268.07\% & 274.06 &  $-2,600$ pts & Certified 0 \\
+\midrule
+\textbf{Mean / Aggregate}    & ---  & ---   & \textbf{3,916} & \textbf{+98.77\%} &  \textbf{5,165} & \textbf{+173.30\%} &  \textbf{4,121} & \textbf{+109.20\%} & \textbf{144.35} & \textbf{$-1,044$ pts ($-20.2\%$)} & \textbf{100\% (7/7)} \\
+\bottomrule
+\end{tabular}
+\end{table*}
