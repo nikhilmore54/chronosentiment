@@ -57,13 +57,13 @@ from scripts.rp608_gate2e_regime_align import (
     evaluate_regime_align,
     regime_dict_from_card,
 )
-from scripts.rp608_gate2e_15m_trend_agree import (
-    PROTOCOL_ID as TREND_AGREE_PROTOCOL_ID,
-    agreement as trend_agreement,
-)
 from scripts.rp608_gate2e_rejected_cf import (
     build_rejected_cf_stamp,
     rejected_cf_applies_to_book,
+)
+from scripts.rp608_adapter_select_15m import (
+    PROTOCOL_ID as ADAPTER_SELECT_15M_PROTOCOL_ID,
+    recommend as adapter_select_15m_recommend,
 )
 from scripts.rp608_crypto_trade_pattern_library import (
     default_baseline_library_path as crypto_baseline_pattern_library_path,
@@ -926,6 +926,10 @@ class TradePlanOverlayManager:
         if "plan_require_of" in self._config_overrides:
             return bool(self._config_overrides["plan_require_of"])
         return plan_require_of_enabled()
+
+    def _require_adapter_select_15m(self) -> bool:
+        """Clean-slate twin only: require Rust 15m soft-score ENTER (config override)."""
+        return bool(self._config_overrides.get("require_adapter_select_15m"))
 
     def _require_trend_agree(self) -> bool:
         """B twin only: require L3/L8/L20 15m OHLCV agreement (config override)."""
@@ -3878,6 +3882,50 @@ class TradePlanOverlayManager:
             self._save_state()
             return None
 
+        # Clean-slate 15m adapter select (observational twin; D1=a filter on candidate).
+        # Does not touch Gate 2E B trend-agree or PRIMARY Gate 2E A stack.
+        if self._require_adapter_select_15m():
+            closes_raw = (
+                card.get("ohlcv_closes_15m")
+                or card.get("completed_closes")
+                or []
+            )
+            closes: List[float] = []
+            if isinstance(closes_raw, list):
+                for x in closes_raw:
+                    try:
+                        closes.append(float(x))
+                    except (TypeError, ValueError):
+                        continue
+            sel = adapter_select_15m_recommend(closes, str(direction))
+            card["adapter_select_15m"] = sel
+            if sel.get("blocks_entry"):
+                self.state["suppressed_signals_count"] = int(
+                    self.state.get("suppressed_signals_count") or 0
+                ) + 1
+                summ = self.state.setdefault("outcomes_summary", {})
+                summ["adapter_select_15m_suppressions"] = int(
+                    summ.get("adapter_select_15m_suppressions") or 0
+                ) + 1
+                self.state["last_suppressed_adapter_select_15m"] = {
+                    "direction": direction,
+                    "suppressed_ms": now_ms,
+                    "book_id": self.book_id,
+                    **sel,
+                }
+                self._log_event(
+                    "SUPPRESSED_ADAPTER_SELECT_15M",
+                    {"direction": direction, "book_id": self.book_id},
+                    {
+                        "adapter_select_15m": sel,
+                        "protocol_id": ADAPTER_SELECT_15M_PROTOCOL_ID,
+                        "card_bar_idx": card.get("bar_idx"),
+                        "n_closes": len(closes),
+                    },
+                )
+                self._save_state()
+                return None
+
         # Gate 2E B: 15m multi-lookback OHLCV trend agreement (observational twin).
         if self._require_trend_agree():
             closes_raw = card.get("ohlcv_closes_15m") or card.get("completed_closes") or []
@@ -3923,6 +3971,8 @@ class TradePlanOverlayManager:
             return None
         plan["book_id"] = self.book_id
         plan["volume_pattern_axes"] = bool(self.volume_pattern_axes)
+        if isinstance(card.get("adapter_select_15m"), dict):
+            plan["adapter_select_15m"] = card.get("adapter_select_15m")
         if isinstance(card.get("trend_agree"), dict):
             plan["trend_agree"] = card.get("trend_agree")
         self._stamp_gate2x_runtime_on_plan(plan)

@@ -47,6 +47,7 @@
 //! No module in this layer may alter C3-002 direction or Coralys execution parameters.
 //! The allocation engine is a portfolio constraint layer, not a market intelligence layer.
 
+pub mod adapter_select_15m;
 pub mod allocation_engine;
 pub mod coralys_state_bridge;
 pub mod crypto_tick_policy;
@@ -78,6 +79,10 @@ pub mod user_profile;
 pub use decision_card::{DecisionCardViewModel, ResolutionState, ResolutionsMap};
 pub use decision_tape::DecisionTape;
 
+pub use adapter_select_15m::{
+    recommend as adapter_select_15m, RecommendationStamp as AdapterSelect15mStamp, ENTER_ABS,
+    PROTOCOL_ID as ADAPTER_SELECT_15M_PROTOCOL_ID, SCHEMA_VERSION as ADAPTER_SELECT_15M_SCHEMA,
+};
 pub use allocation_engine::{AllocationEngine, ALLOCATION_ENGINE_VERSION};
 pub use coralys_state_bridge::*;
 pub use gate2x_decide::{gate2x_decide, Gate2xDecision};
