@@ -49,6 +49,7 @@
 
 pub mod adapter_select_15m;
 pub mod sci_adapter_rec;
+pub mod sci_adapter_rec_ml1d;
 pub mod allocation_engine;
 pub mod coralys_state_bridge;
 pub mod crypto_tick_policy;
@@ -87,6 +88,10 @@ pub use adapter_select_15m::{
 pub use sci_adapter_rec::{
     decide_generator as sci_adapter_rec_decide, FrozenTwinPack, DEFAULT_FROZEN_PACK_REL,
     PROTOCOL_ID as SCI_ADAPTER_REC_PROTOCOL_ID,
+};
+pub use sci_adapter_rec_ml1d::{
+    decide_ml1d as sci_adapter_rec_ml1d_decide, Experiment as SciAdapterRecMl1dExperiment,
+    PROTOCOL_ID as SCI_ADAPTER_REC_ML1D_PROTOCOL_ID,
 };
 pub use allocation_engine::{AllocationEngine, ALLOCATION_ENGINE_VERSION};
 pub use coralys_state_bridge::*;

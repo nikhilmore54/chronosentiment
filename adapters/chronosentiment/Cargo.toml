@@ -275,6 +275,11 @@ path = "src/bin/rp608_position_decide.rs"
 name = "rp608_sci_adapter_rec_offline"
 path = "src/bin/rp608_sci_adapter_rec_offline.rs"
 
+# RP-608-SCI-ADAPTER-REC-ML1D-001 dual-dimension ACT/PASS (Coralys no-touch)
+[[bin]]
+name = "rp608_sci_adapter_rec_ml1d_offline"
+path = "src/bin/rp608_sci_adapter_rec_ml1d_offline.rs"
+
 [[test]]
 name = "research_dataset_tests"
 path = "research/tests/research_dataset_tests.rs"

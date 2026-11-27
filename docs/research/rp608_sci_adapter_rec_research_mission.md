@@ -28,7 +28,7 @@ Determine whether an adapter-owned **dual-dimension** layer — **recommendation
 | First book | BTC 15m |
 | Package under investigation | **ML-1D** |
 | Single-dimension ML-1 | Comparator / nested special case — **do not freeze yet** |
-| Implementation | **Await explicit SELECT** (+ G0 data/feature check) |
+| Implementation | **SELECTED** — offline `RP-608-SCI-ADAPTER-REC-ML1D-001` in flight |
 
 ---
 
@@ -56,8 +56,8 @@ Completed in `docs/research/rp608_sci_adapter_rec_ml1d_dual_dimension.md`. Liter
 | --- | --- |
 | Outline A–J | **Done** (Anuj) |
 | G1 strengthening lit pass | **Done** (part 3) |
-| G0 data + decision-time feature sufficiency | **Pending** |
-| Explicit **SELECT ML-1D** | **Pending Anuj** |
+| G0 data + decision-time feature sufficiency | **Green** |
+| Explicit **SELECT ML-1D** | **SELECTED** (Anuj · H0–H11) |
 | Offline E0–E3 sealed package | Blocked on SELECT |
 | Pi arm / soak twin | Blocked on offline gates |
 

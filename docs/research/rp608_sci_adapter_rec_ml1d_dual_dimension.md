@@ -2,7 +2,7 @@
 ## Dual-Dimension Recommendation Intelligence
 
 **Date:** 2026-11-27 Asia/Calcutta  
-**Status:** PRIMARY RESEARCH HYPOTHESIS · **not authorized for implementation**  
+**Status:** **SELECTED** (G0 green · Anuj proceed H0–H11) · offline package `RP-608-SCI-ADAPTER-REC-ML1D-001`  
 **Author:** Anuj (architecture + literature) · worker formalization  
 **Rules:** `.cursor/rules/chronosentiment-core.mdc` §3b/§3c · Coralys no-touch · books never pooled · no Gate 5  
 **Supersedes as hypothesis:** single-dimension ML-1 (meta-label act/pass alone) — retained as nested special case / comparator, **not frozen**  
@@ -116,7 +116,7 @@ Component ladder (dev-set first):
 | G2 | Explicit Anuj package **SELECT** (ML-1D) — not implied by hypothesis |
 | G3 | Sealed offline package design with E0–E3 protocol; no Pi arm until offline gates |
 
-**Current state:** Hypothesis **accepted as primary**. Implementation **blocked** pending G0–G2.
+**Current state:** G0–G2 cleared · **ML-1D SELECTED** · offline E0–E3 / R1 / Ec1 / H11 in flight · Pi twin only after offline ADVANCE.
 
 ---
 
@@ -133,7 +133,7 @@ Component ladder (dev-set first):
 | G Eval | ✓ Chronological · E0–E3 · W/L+payoff+net · HLZ caution |
 | H Negatives | ✓ B · adapter_select · SCI-v1 |
 | I Non-goals | ✓ Listed |
-| J Package id | ✓ **ML-1D** (await SELECT) |
+| J Package id | ✓ **ML-1D SELECTED** |
 
 ---
 

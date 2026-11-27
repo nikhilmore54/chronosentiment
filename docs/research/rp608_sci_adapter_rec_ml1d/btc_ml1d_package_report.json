@@ -1,0 +1,224 @@
+{
+  "protocol_id": "RP-608-SCI-ADAPTER-REC-ML1D-001",
+  "schema_version": "1",
+  "feature_schema_id": "ml1d_coralys_actpass_v1",
+  "schema_hash": "d442b15cfb68dc3e5e4c41d79389c64d2f01f98ccccc2227bebb65c0fbd194ea",
+  "book": "BTCUSDT_15M",
+  "cuts": {
+    "reliability": {
+      "p_min": 0.3,
+      "p_lb": 0.18
+    },
+    "u_min": -0.05
+  },
+  "leakage_audit": {
+    "adapter_authority": "ACT_PASS_ONLY",
+    "book_pooling": false,
+    "chronological_split": {
+      "holdout": "2024-11-01..2024-12-31 sealed",
+      "train": "2024-01-01..2024-08-31",
+      "validation": "2024-09-01..2024-10-31 (purged after train)"
+    },
+    "completed_bars_only": true,
+    "coralys_side_sealed": true,
+    "decision_time_features_only": true,
+    "feature_names": [
+      "side_r3",
+      "side_r8",
+      "side_r20",
+      "mag_rank3",
+      "mag_rank8",
+      "mag_rank20",
+      "side_path20",
+      "vol_rel20",
+      "dlog_vol",
+      "vol_rank20",
+      "abs_r3",
+      "abs_r8",
+      "abs_r20"
+    ],
+    "feature_schema_reused": "price_volume_15m_v1",
+    "friction_proxy": {
+      "bps_floor": 2.0,
+      "vol_scale": 0.15
+    },
+    "gate5": false,
+    "label_horizon_bars_ref": 10,
+    "purge_bars": 30,
+    "r1_brier_validation": {
+      "isotonic": 0.213790579596464,
+      "raw": 0.501044713748433
+    },
+    "uses_mfe_mae_as_features": false,
+    "uses_outcome_as_feature": false
+  },
+  "experiments": [
+    {
+      "experiment": "E0",
+      "validation": {
+        "fold": "validation",
+        "baseline_n": 2393,
+        "baseline_wins": 740,
+        "baseline_wr": 0.3092352695361471,
+        "enter_n": 2393,
+        "enter_wins": 740,
+        "enter_wr": 0.3092352695361471,
+        "coverage": 1.0,
+        "payoff_asym": 1.8997797347454393,
+        "mean_net_proxy": -0.029208990510662225
+      },
+      "holdout": {
+        "fold": "holdout",
+        "baseline_n": 2327,
+        "baseline_wins": 690,
+        "baseline_wr": 0.29651912333476577,
+        "enter_n": 2327,
+        "enter_wins": 690,
+        "enter_wr": 0.29651912333476577,
+        "coverage": 1.0,
+        "payoff_asym": 1.917705082289811,
+        "mean_net_proxy": -0.05066119302571837
+      },
+      "holdout_wilson_wr_lb": 0.2783099748729843
+    },
+    {
+      "experiment": "E1",
+      "validation": {
+        "fold": "validation",
+        "baseline_n": 2393,
+        "baseline_wins": 740,
+        "baseline_wr": 0.3092352695361471,
+        "enter_n": 1244,
+        "enter_wins": 409,
+        "enter_wr": 0.3287781350482315,
+        "coverage": 0.5198495612202256,
+        "payoff_asym": 1.9304246938208145,
+        "mean_net_proxy": -0.009687499007064298
+      },
+      "holdout": {
+        "fold": "holdout",
+        "baseline_n": 2327,
+        "baseline_wins": 690,
+        "baseline_wr": 0.29651912333476577,
+        "enter_n": 1121,
+        "enter_wins": 368,
+        "enter_wr": 0.328278322925959,
+        "coverage": 0.48173614095401807,
+        "payoff_asym": 2.017814055169702,
+        "mean_net_proxy": -0.0031913540640283273
+      },
+      "holdout_wilson_wr_lb": 0.3014163506400552
+    },
+    {
+      "experiment": "E2",
+      "validation": {
+        "fold": "validation",
+        "baseline_n": 2393,
+        "baseline_wins": 740,
+        "baseline_wr": 0.3092352695361471,
+        "enter_n": 868,
+        "enter_wins": 276,
+        "enter_wr": 0.31797235023041476,
+        "coverage": 0.36272461345591306,
+        "payoff_asym": 1.9726752999873922,
+        "mean_net_proxy": -0.011142023300459212
+      },
+      "holdout": {
+        "fold": "holdout",
+        "baseline_n": 2327,
+        "baseline_wins": 690,
+        "baseline_wr": 0.29651912333476577,
+        "enter_n": 571,
+        "enter_wins": 185,
+        "enter_wr": 0.3239929947460595,
+        "coverage": 0.24538031800601634,
+        "payoff_asym": 2.043943126839595,
+        "mean_net_proxy": -0.0037641210307338404
+      },
+      "holdout_wilson_wr_lb": 0.28689353341048107
+    },
+    {
+      "experiment": "E3",
+      "validation": {
+        "fold": "validation",
+        "baseline_n": 2393,
+        "baseline_wins": 740,
+        "baseline_wr": 0.3092352695361471,
+        "enter_n": 727,
+        "enter_wins": 241,
+        "enter_wr": 0.3314993122420908,
+        "coverage": 0.30380275804429585,
+        "payoff_asym": 1.925506001151024,
+        "mean_net_proxy": -0.00658158324959015
+      },
+      "holdout": {
+        "fold": "holdout",
+        "baseline_n": 2327,
+        "baseline_wins": 690,
+        "baseline_wr": 0.29651912333476577,
+        "enter_n": 536,
+        "enter_wins": 175,
+        "enter_wr": 0.32649253731343286,
+        "coverage": 0.23033949290932532,
+        "payoff_asym": 2.0230134589478173,
+        "mean_net_proxy": -0.003670875464553382
+      },
+      "holdout_wilson_wr_lb": 0.28815098477126894
+    }
+  ],
+  "h11_sci_v1_comparator": {
+    "fold": "holdout",
+    "baseline_n": 2327,
+    "baseline_wins": 690,
+    "baseline_wr": 0.29651912333476577,
+    "enter_n": 931,
+    "enter_wins": 311,
+    "enter_wr": 0.33404940923737914,
+    "coverage": 0.40008594757198107,
+    "payoff_asym": 1.9799456730676022,
+    "mean_net_proxy": -0.0016161139144584042
+  },
+  "e0_holdout": {
+    "fold": "holdout",
+    "baseline_n": 2327,
+    "baseline_wins": 690,
+    "baseline_wr": 0.29651912333476577,
+    "enter_n": 2327,
+    "enter_wins": 690,
+    "enter_wr": 0.29651912333476577,
+    "coverage": 1.0,
+    "payoff_asym": 1.917705082289811,
+    "mean_net_proxy": -0.05066119302571837
+  },
+  "primary_e3_holdout": {
+    "fold": "holdout",
+    "baseline_n": 2327,
+    "baseline_wins": 690,
+    "baseline_wr": 0.29651912333476577,
+    "enter_n": 536,
+    "enter_wins": 175,
+    "enter_wr": 0.32649253731343286,
+    "coverage": 0.23033949290932532,
+    "payoff_asym": 2.0230134589478173,
+    "mean_net_proxy": -0.003670875464553382
+  },
+  "verdict": "DO_NOT_ADVANCE",
+  "verdict_reasons": [
+    "e3_net_not_above_max_e1_e2 e3=-0.003671 max_single=-0.003191",
+    "h11_sci_v1_competitive_or_better h11_wr=0.3340 h11_net=-0.001616 e3_wr=0.3265 e3_net=-0.003671"
+  ],
+  "hypotheses_status": {
+    "H0": "OPEN",
+    "H1": "OPEN",
+    "H10": "OPEN",
+    "H11": "OPEN_COMPARATOR_SCORED",
+    "H2": "OPEN",
+    "H3": "SUPPORTIVE_ON_VAL",
+    "H4": "OPEN",
+    "H5": "DEFERRED_R2",
+    "H6": "DEFERRED_R3",
+    "H7": "OPEN",
+    "H8": "DEFERRED_EC2",
+    "H9": "DEFERRED_ABLATION"
+  }
+}
