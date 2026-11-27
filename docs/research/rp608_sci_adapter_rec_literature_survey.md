@@ -4,7 +4,8 @@
 **Purpose:** Ground the Coralys-wrapped adapter in **peer-reviewed** venues **before any further design**.  
 **Status:** **SURVEY ONLY** — no new twin, no cut change, no Coralys edit, no Gate 5.  
 **Rules:** `.cursor/rules/chronosentiment-core.mdc` §3b/§3c · S1–S10 freeze · books never pooled  
-**Companion:** `docs/research/rp608_sci_adapter_rec_practical_research_steer.md` (product implications)
+**Companion:** `docs/research/rp608_sci_adapter_rec_practical_research_steer.md` (product implications)  
+**Part 2 (selection failure + meta-label alternatives):** `docs/research/rp608_sci_adapter_rec_literature_survey_part2.md`
 
 ---
 

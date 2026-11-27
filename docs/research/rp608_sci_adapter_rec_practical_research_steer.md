@@ -4,7 +4,8 @@
 **Audience:** product direction for the Coralys-wrapped adapter (not a Gate 5 packet)  
 **Rules:** `.cursor/rules/chronosentiment-core.mdc` §3b/§3c · Coralys no-touch · S1–S10 freeze · books never pooled  
 **Live context:** P3 BTC twin armed · first opens co-ride Gate2E B LONG · closed n still small · `HOLD_SOAK`  
-**Peer-reviewed survey (read first before further design):** `docs/research/rp608_sci_adapter_rec_literature_survey.md`
+**Peer-reviewed survey:** `docs/research/rp608_sci_adapter_rec_literature_survey.md`  
+**Part 2 (current selection failing → meta-label redirect):** `docs/research/rp608_sci_adapter_rec_literature_survey_part2.md`
 
 ---
 
