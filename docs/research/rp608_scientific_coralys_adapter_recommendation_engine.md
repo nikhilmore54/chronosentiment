@@ -315,7 +315,8 @@ Morning MTM / open marks are **not** substitutes for closed-trade W/L.
 | `docs/research/rp608_gate2e_15m_ohlcv_trend_agree_scoped.md` | Gate 2E B observational — DO_NOT_ADVANCE path; leave running |
 | `docs/research/rp608_gate2_amendment_v2.md` | Binding advance criteria for this engine’s offline + twin evaluation |
 | `docs/research/rp608_wl_improvement_plan.md` | Parent WL-IMPROVE programme; this charter is the scientific Gate 2E-shaped adapter path |
-| `docs/research/rp608_sci_adapter_rec_practical_research_steer.md` | Short literature→product steer (selective classification, purged CV, Wilson, conformal-later); does not unfreeze S1–S10 |
+| `docs/research/rp608_sci_adapter_rec_practical_research_steer.md` | Short literature→product steer; does not unfreeze S1–S10 |
+| `docs/research/rp608_sci_adapter_rec_literature_survey.md` | Peer-reviewed journals/transactions/proceedings survey; **design freeze** until Anuj names next package |
 
 ---
 
