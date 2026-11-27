@@ -6,7 +6,10 @@
 **Live context:** P3 BTC twin armed · first opens co-ride Gate2E B LONG · closed n still small · `HOLD_SOAK`  
 **Peer-reviewed survey:** `docs/research/rp608_sci_adapter_rec_literature_survey.md`  
 **Part 2 (current selection failing → meta-label redirect):** `docs/research/rp608_sci_adapter_rec_literature_survey_part2.md`  
-**Research mission (Anuj outlines against this):** `docs/research/rp608_sci_adapter_rec_research_mission.md`
+**Research mission (revised dual-dimension):** `docs/research/rp608_sci_adapter_rec_research_mission.md`  
+**ML-1D package (primary hypothesis, await SELECT):** `docs/research/rp608_sci_adapter_rec_ml1d_dual_dimension.md`  
+**Anuj literature findings:** `docs/research/rp608_sci_adapter_rec_literature_findings_coralys_complement.md`  
+**Part 3 strengtheners:** `docs/research/rp608_sci_adapter_rec_literature_survey_part3.md`
 
 ---
 
