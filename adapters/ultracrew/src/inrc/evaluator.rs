@@ -1,10 +1,141 @@
+use super::annealing::{AnnealingConfig, AnnealingDomain, SimulatedAnnealingEngine};
 use super::optimization::{InrcEvaluation, InrcGenome, InrcOptimizer, SoftConstraintReport};
 use coralys_core::{EvaluationResult, Violation};
 use coralys_matching::{AssignmentSolver, BipartiteMatchingSolver};
 use coralys_moga::traits::FitnessEvaluator;
 use rand::rngs::StdRng;
-use rand::Rng;
 use std::collections::HashMap;
+
+#[inline(always)]
+fn dfs_kuhn(
+    w: usize,
+    demand_slots: &[u8],
+    worker_mask: u8,
+    match_slot: &mut [i8],
+    match_worker: &mut [i8],
+    visited: &mut [bool],
+    worker_masks: &[u8],
+) -> bool {
+    for (slot_idx, &req_skill) in demand_slots.iter().enumerate() {
+        if (worker_mask & (1 << req_skill)) != 0 && !visited[slot_idx] {
+            visited[slot_idx] = true;
+            let current_matched_w = match_slot[slot_idx];
+            if current_matched_w < 0
+                || dfs_kuhn(
+                    current_matched_w as usize,
+                    demand_slots,
+                    worker_masks[current_matched_w as usize],
+                    match_slot,
+                    match_worker,
+                    visited,
+                    worker_masks,
+                )
+            {
+                match_slot[slot_idx] = w as i8;
+                match_worker[w] = slot_idx as i8;
+                return true;
+            }
+        }
+    }
+    false
+}
+
+#[inline(always)]
+pub fn fast_eval_shift_coverage(
+    demand: &super::optimization::FastShiftDemand,
+    worker_skill_masks: &[u8],
+    optimal_coverage_weight: i32,
+) -> (bool, i32) {
+    let num_workers = worker_skill_masks.len();
+    if num_workers < demand.total_min {
+        return (false, 0);
+    }
+    if demand.total_min == 0 && demand.opt_slots.is_empty() {
+        return (true, 0);
+    }
+
+    const MAX_SLOTS: usize = 64;
+    const MAX_WORKERS: usize = 64;
+
+    let num_min = demand.min_slots.len();
+    let num_opt = demand.opt_slots.len();
+
+    if num_min > MAX_SLOTS || num_opt > MAX_SLOTS || num_workers > MAX_WORKERS {
+        return (false, 0);
+    }
+
+    // Stage 1: Match Mandatory Minimums
+    let mut match_slot = [-1i8; MAX_SLOTS];
+    let mut match_worker = [-1i8; MAX_WORKERS];
+    let mut cardinality_min = 0;
+
+    for w in 0..num_workers {
+        let mut visited = [false; MAX_SLOTS];
+        if dfs_kuhn(
+            w,
+            &demand.min_slots,
+            worker_skill_masks[w],
+            &mut match_slot[0..num_min],
+            &mut match_worker,
+            &mut visited[0..num_min],
+            worker_skill_masks,
+        ) {
+            cardinality_min += 1;
+        }
+    }
+
+    if cardinality_min < demand.total_min {
+        return (false, 0);
+    }
+
+    // Stage 2: Match Optimal Increments using only workers not assigned in Stage 1
+    let mut opt_match_slot = [-1i8; MAX_SLOTS];
+    let mut opt_match_worker = [-1i8; MAX_WORKERS];
+    if num_opt > 0 {
+        for w in 0..num_workers {
+            if match_worker[w] >= 0 {
+                continue;
+            }
+            let mut visited = [false; MAX_SLOTS];
+            dfs_kuhn(
+                w,
+                &demand.opt_slots,
+                worker_skill_masks[w],
+                &mut opt_match_slot[0..num_opt],
+                &mut opt_match_worker,
+                &mut visited[0..num_opt],
+                worker_skill_masks,
+            );
+        }
+    }
+
+    let mut fulfilled = [0usize; 8];
+    for s in 0..num_min {
+        if match_slot[s] >= 0 {
+            let skill_idx = demand.min_slots[s] as usize;
+            if skill_idx < 8 {
+                fulfilled[skill_idx] += 1;
+            }
+        }
+    }
+    for s in 0..num_opt {
+        if opt_match_slot[s] >= 0 {
+            let skill_idx = demand.opt_slots[s] as usize;
+            if skill_idx < 8 {
+                fulfilled[skill_idx] += 1;
+            }
+        }
+    }
+
+    let mut total_s8 = 0i32;
+    for (k, &opt_needed) in demand.opt_demands_by_skill.iter().enumerate() {
+        if k < 8 && fulfilled[k] < opt_needed {
+            total_s8 += (opt_needed - fulfilled[k]) as i32 * optimal_coverage_weight;
+        }
+    }
+
+    (true, total_s8)
+}
 
 impl InrcOptimizer {
     pub fn get_bit(&self, genome: &InrcGenome, nurse: usize, day: usize, shift: usize) -> bool {
@@ -121,6 +252,9 @@ impl InrcOptimizer {
         }
 
         // 2. Clean forbidden shift type successions (HC4)
+        let days_map = [
+            "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday",
+        ];
         for n in 0..num_nurses {
             for d in 0..num_days {
                 if let Some(s) = self.get_assigned_shift(genome, n, d) {
@@ -128,9 +262,31 @@ impl InrcOptimizer {
                         let mut fixed = false;
                         for alt_s in 0..num_shifts {
                             if alt_s != s && !self.is_forbidden_succession(n, d, alt_s, genome) {
-                                self.set_assigned_shift(genome, n, d, Some(alt_s));
-                                fixed = true;
-                                break;
+                                let alt_shift_name = &self.context.shift_types[alt_s];
+                                let alt_day_name = days_map[d];
+                                let nurse_skills = &self.context.scenario.nurses[n].skills;
+                                let has_demanded_skill = self.context.week_data.requirements.iter().any(|req| {
+                                    if req.shift_type == *alt_shift_name {
+                                        let req_level = match alt_day_name {
+                                            "Monday" => &req.monday,
+                                            "Tuesday" => &req.tuesday,
+                                            "Wednesday" => &req.wednesday,
+                                            "Thursday" => &req.thursday,
+                                            "Friday" => &req.friday,
+                                            "Saturday" => &req.saturday,
+                                            "Sunday" => &req.sunday,
+                                            _ => unreachable!(),
+                                        };
+                                        (req_level.minimum > 0 || req_level.optimal > 0) && nurse_skills.contains(&req.skill)
+                                    } else {
+                                        false
+                                    }
+                                });
+                                if has_demanded_skill {
+                                    self.set_assigned_shift(genome, n, d, Some(alt_s));
+                                    fixed = true;
+                                    break;
+                                }
                             }
                         }
                         if !fixed {
@@ -142,9 +298,6 @@ impl InrcOptimizer {
         }
 
         // 3. Ejection chain repair for minimum coverage & skills (HC1 & HC2)
-        let days_map = [
-            "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday",
-        ];
 
         for _pass in 0..20 {
             let mut any_deficit = false;
@@ -649,6 +802,35 @@ impl InrcOptimizer {
         }
 
         // End of week boundary handling
+        let num_weeks = self.context.scenario.number_of_weeks;
+        let week_k = (self.context.history.week + 1).min(num_weeks);
+
+        if week_k < num_weeks {
+            // Sunday Border Lookahead (w < W - 1): penalize active work/shift stubs ending on Sunday
+            if current_streak > 0 && current_streak < contract.min_consecutive_working_days {
+                penalty += (contract.min_consecutive_working_days - current_streak) as i32
+                    * weights.consecutive_working_days;
+            }
+            // Sunday Streak Saturation Lookahead: penalize nurses at max consecutive days on Sunday to prevent Monday lockouts
+            if current_streak >= contract.max_consecutive_working_days {
+                penalty += weights.consecutive_working_days;
+            }
+            if let Some(ref last) = current_last_shift {
+                if let Some(s_type) = self
+                    .context
+                    .scenario
+                    .shift_types
+                    .iter()
+                    .find(|st| &st.id == last)
+                {
+                    if current_shift_streak > 0 && current_shift_streak < s_type.min_consecutive {
+                        penalty += (s_type.min_consecutive - current_shift_streak) as i32
+                            * weights.consecutive_shift_days;
+                    }
+                }
+            }
+        }
+
         if current_streak > contract.max_consecutive_working_days {
             let current_excess = current_streak - contract.max_consecutive_working_days;
             let initial_excess = if initial_streak > contract.max_consecutive_working_days {
@@ -700,36 +882,24 @@ impl InrcOptimizer {
             penalty += contract.complete_weekends as i32 * weights.complete_weekends;
         }
 
-        // Max working weekends with historical accumulation pacing
+        // S7: Max working weekends
         let works_weekend = works_saturday || works_sunday;
-        let hist_weekends = hist.map(|h| h.number_of_working_weekends).unwrap_or(0);
-        let cum_weekends = hist_weekends + if works_weekend { 1 } else { 0 };
-        if cum_weekends > contract.max_working_weekends {
-            penalty += (cum_weekends - contract.max_working_weekends) as i32
+        let total_working_weekends = if works_weekend { 1 } else { 0 };
+        if total_working_weekends > contract.max_working_weekends {
+            penalty += (total_working_weekends - contract.max_working_weekends) as i32
                 * weights.max_working_weekends;
-        } else {
-            let num_weeks = self.context.scenario.number_of_weeks;
-            let week_k = (self.context.history.week + 1).min(num_weeks);
-            if week_k < num_weeks {
-                let pace_weekends = ((week_k * contract.max_working_weekends) as f64 / num_weeks as f64).ceil() as usize;
-                if cum_weekends > pace_weekends {
-                    penalty += (cum_weekends - pace_weekends) as i32 * weights.max_working_weekends;
-                }
-            }
         }
 
-        // Total assignments with pro-rated cumulative horizon pacing
-        let hist_assignments = hist.map(|h| h.number_of_assignments).unwrap_or(0);
-        let cum_assignments = hist_assignments + week_assignments;
-        let num_weeks = self.context.scenario.number_of_weeks;
-        let week_k = (self.context.history.week + 1).min(num_weeks);
-        let pace_min = (week_k * contract.min_assignments) / num_weeks;
-        let pace_max = ((week_k * contract.max_assignments) as f64 / num_weeks as f64).ceil() as usize;
-        if cum_assignments < pace_min {
-            penalty += (pace_min - cum_assignments) as i32 * weights.assignments;
+        // S1: Assignments
+        let weekly_min = contract.min_assignments / self.context.scenario.number_of_weeks;
+        let weekly_max = (contract.max_assignments as f64
+            / self.context.scenario.number_of_weeks as f64)
+            .ceil() as usize;
+        if week_assignments < weekly_min {
+            penalty += (weekly_min - week_assignments) as i32 * weights.assignments;
         }
-        if cum_assignments > pace_max {
-            penalty += (cum_assignments - pace_max) as i32 * weights.assignments;
+        if week_assignments > weekly_max {
+            penalty += (week_assignments - weekly_max) as i32 * weights.assignments;
         }
 
         penalty
@@ -740,79 +910,30 @@ impl InrcOptimizer {
     pub fn eval_day_coverage(&self, genome: &InrcGenome, d: usize) -> (bool, i32) {
         let num_nurses = self.context.num_nurses;
         let num_shifts = self.context.shift_types.len();
-        let days_map = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
-        let day_name = days_map[d];
         let mut total_s8 = 0i32;
 
         for s in 0..num_shifts {
-            let shift_name = &self.context.shift_types[s];
-            let mut demands = Vec::new();
-            for req in &self.context.week_data.requirements {
-                if req.shift_type == *shift_name {
-                    let req_level = match day_name {
-                        "Monday" => &req.monday,
-                        "Tuesday" => &req.tuesday,
-                        "Wednesday" => &req.wednesday,
-                        "Thursday" => &req.thursday,
-                        "Friday" => &req.friday,
-                        "Saturday" => &req.saturday,
-                        "Sunday" => &req.sunday,
-                        _ => unreachable!(),
-                    };
-                    let target = std::cmp::max(req_level.minimum, req_level.optimal);
-                    if target > 0 {
-                        demands.push((req.skill.clone(), target));
-                    }
-                }
-            }
-
-            let mut available_nurses = Vec::new();
+            let demand = &self.context.fast_shift_demands[d][s];
+            let mut worker_masks = [0u8; 64];
+            let mut worker_count = 0;
             for n in 0..num_nurses {
                 if self.get_bit(genome, n, d, s) {
-                    available_nurses.push(n);
-                }
-            }
-
-            // Check HC2: Skills
-            for &n in &available_nurses {
-                let nurse = &self.context.scenario.nurses[n];
-                let has_valid_skill = demands.iter().any(|(skill, _)| nurse.skills.contains(skill));
-                if !has_valid_skill && !demands.is_empty() {
-                    return (false, 0);
-                }
-            }
-
-            // Check HC1: Minimum Coverage & S8: Optimal Coverage
-            let workers: Vec<(usize, Vec<String>)> = available_nurses
-                .iter()
-                .map(|&n| (n, self.context.scenario.nurses[n].skills.clone()))
-                .collect();
-            let matching = BipartiteMatchingSolver.assign(&workers, &demands);
-            let mut fulfilled_map = HashMap::new();
-            for (_, skill) in &matching.assignments {
-                *fulfilled_map.entry(skill.clone()).or_insert(0) += 1;
-            }
-
-            for req in &self.context.week_data.requirements {
-                if req.shift_type == *shift_name {
-                    let req_level = match day_name {
-                        "Monday" => &req.monday,
-                        "Tuesday" => &req.tuesday,
-                        "Wednesday" => &req.wednesday,
-                        "Thursday" => &req.thursday,
-                        "Friday" => &req.friday,
-                        "Saturday" => &req.saturday,
-                        "Sunday" => &req.sunday,
-                        _ => unreachable!(),
-                    };
-                    let fulfilled = *fulfilled_map.get(&req.skill).unwrap_or(&0);
-                    if fulfilled < req_level.minimum {
-                        return (false, 0);
-                    } else if fulfilled < req_level.optimal {
-                        total_s8 += (req_level.optimal - fulfilled) as i32 * self.context.weights.optimal_coverage;
+                    if worker_count < 64 {
+                        worker_masks[worker_count] = self.context.nurse_skill_masks[n];
+                        worker_count += 1;
                     }
                 }
             }
+
+            let (feas, s8) = fast_eval_shift_coverage(
+                demand,
+                &worker_masks[0..worker_count],
+                self.context.weights.optimal_coverage,
+            );
+            if !feas {
+                return (false, 0);
+            }
+            total_s8 += s8;
         }
         (true, total_s8)
     }
@@ -843,20 +964,60 @@ impl InrcOptimizer {
         false
     }
 
-    /// High-throughput O(1) incremental Simulated Annealing within homogeneous skill groups.
+    /// High-throughput O(1) incremental Simulated Annealing powered by Coralys.
+    /// All decision-making (cooling schedules, acceptance gates, stagnation restarts)
+    /// is executed directly by [`coralys_moga::annealing::SimulatedAnnealingEngine`].
     pub fn simulated_annealing(
         &self,
         genome: &mut InrcGenome,
         time_budget_ms: u64,
         rng: &mut StdRng,
     ) -> InrcEvaluation {
-        let start = std::time::Instant::now();
-        let num_nurses = self.context.num_nurses;
-        let num_days = self.context.num_days;
+        let initial_eval = self.evaluate(genome, &Default::default());
+        let current_hc = initial_eval.hc_coverage
+            + initial_eval.hc_skills
+            + initial_eval.hc_one_shift_per_day
+            + initial_eval.hc_forbidden_successions;
 
-        // Group nurses by identical skill sets to guarantee HC1 and HC2 invariance
+        if current_hc > 0 {
+            self.repair_hard_constraints(genome);
+        }
+
+        let domain = InrcAnnealingDomain::new(self);
+        let sa_config = AnnealingConfig {
+            initial_temperature: 50.0,
+            cooling_rate: 0.99998,
+            min_temperature: 0.1,
+            restart_temperature: 50.0,
+            time_budget_ms,
+        };
+        let sa_engine = SimulatedAnnealingEngine::new(sa_config);
+
+        let (best_genome, _, _) = sa_engine.optimize(&domain, genome, rng);
+        *genome = best_genome;
+        self.evaluate(genome, &Default::default())
+    }
+}
+
+/// Passive domain adapter for Coralys Simulated Annealing Decision Engine.
+/// Provides state evaluation and candidate neighborhood move proposals.
+/// ALL decisions (acceptance gates, cooling schedules, budget termination)
+/// are performed strictly within Coralys (`coralys_moga::annealing::SimulatedAnnealingEngine`).
+pub struct InrcAnnealingDomain<'a> {
+    pub optimizer: &'a InrcOptimizer,
+    pub eligible_groups: Vec<Vec<usize>>,
+    pub nurse_can_work: Vec<Vec<Vec<bool>>>,
+    pub nurse_target_bands: Vec<(usize, usize)>,
+}
+
+impl<'a> InrcAnnealingDomain<'a> {
+    pub fn new(optimizer: &'a InrcOptimizer) -> Self {
+        let num_nurses = optimizer.context.num_nurses;
+        let num_days = optimizer.context.num_days;
+        let num_shifts = optimizer.context.shift_types.len();
+
         let mut skill_groups: HashMap<Vec<String>, Vec<usize>> = HashMap::new();
-        for (n, nurse) in self.context.scenario.nurses.iter().enumerate() {
+        for (n, nurse) in optimizer.context.scenario.nurses.iter().enumerate() {
             let mut s = nurse.skills.clone();
             s.sort();
             skill_groups.entry(s).or_default().push(n);
@@ -866,215 +1027,491 @@ impl InrcOptimizer {
             .filter(|g| g.len() >= 2)
             .collect();
 
-        if eligible_groups.is_empty() && num_nurses < 2 {
-            return self.evaluate(genome, &Default::default());
-        }
-
-        let initial_eval = self.evaluate(genome, &Default::default());
-        let mut current_hc = initial_eval.hc_coverage
-            + initial_eval.hc_skills
-            + initial_eval.hc_one_shift_per_day
-            + initial_eval.hc_forbidden_successions;
-
-        let num_shifts = self.context.shift_types.len();
-
-        // Phase 1: If genome has any residual hard constraint violations, actively repair them
-        if current_hc > 0 {
-            self.repair_hard_constraints(genome);
-            let post_repair_eval = self.evaluate(genome, &Default::default());
-            current_hc = post_repair_eval.hc_coverage
-                + post_repair_eval.hc_skills
-                + post_repair_eval.hc_one_shift_per_day
-                + post_repair_eval.hc_forbidden_successions;
-        }
-
-        if current_hc > 0 {
-            let mut best_hc = current_hc;
-            let mut best_feas_genome = genome.clone();
-            while start.elapsed().as_millis() < time_budget_ms as u128 && current_hc > 0 {
-                let mut cand = genome.clone();
-                let move_type = rng.gen_range(0..2);
-                if move_type == 0 {
-                    let n = rng.gen_range(0..num_nurses);
-                    let d = rng.gen_range(0..num_days);
-                    let new_shift = if rng.gen_bool(0.3) {
-                        None
-                    } else {
-                        Some(rng.gen_range(0..num_shifts))
-                    };
-                    self.set_assigned_shift(&mut cand, n, d, new_shift);
-                } else {
-                    let n1 = rng.gen_range(0..num_nurses);
-                    let mut n2 = rng.gen_range(0..num_nurses);
-                    if n1 == n2 { n2 = (n1 + 1) % num_nurses; }
-                    let d = rng.gen_range(0..num_days);
-                    let s1 = self.get_assigned_shift(&cand, n1, d);
-                    let s2 = self.get_assigned_shift(&cand, n2, d);
-                    self.set_assigned_shift(&mut cand, n1, d, s2);
-                    self.set_assigned_shift(&mut cand, n2, d, s1);
-                }
-
-                let cand_eval = self.evaluate(&cand, &Default::default());
-                let cand_hc = cand_eval.hc_coverage
-                    + cand_eval.hc_skills
-                    + cand_eval.hc_one_shift_per_day
-                    + cand_eval.hc_forbidden_successions;
-
-                if cand_hc < current_hc || (cand_hc == current_hc && rng.gen_bool(0.05)) {
-                    *genome = cand;
-                    current_hc = cand_hc;
-                    if current_hc < best_hc {
-                        best_hc = current_hc;
-                        best_feas_genome = genome.clone();
+        let days_map = [
+            "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday",
+        ];
+        let mut shift_demanded_skills: Vec<Vec<Vec<String>>> = vec![vec![Vec::new(); num_shifts]; num_days];
+        for d in 0..num_days {
+            let day_name = days_map[d];
+            for (s, st_name) in optimizer.context.shift_types.iter().enumerate() {
+                for req in &optimizer.context.week_data.requirements {
+                    if &req.shift_type == st_name {
+                        let req_level = match day_name {
+                            "Monday" => &req.monday,
+                            "Tuesday" => &req.tuesday,
+                            "Wednesday" => &req.wednesday,
+                            "Thursday" => &req.thursday,
+                            "Friday" => &req.friday,
+                            "Saturday" => &req.saturday,
+                            "Sunday" => &req.sunday,
+                            _ => unreachable!(),
+                        };
+                        if req_level.minimum > 0 || req_level.optimal > 0 {
+                            shift_demanded_skills[d][s].push(req.skill.clone());
+                        }
                     }
                 }
             }
-            if current_hc > 0 && best_hc < current_hc {
-                *genome = best_feas_genome;
+        }
+
+        let mut nurse_can_work: Vec<Vec<Vec<bool>>> = vec![vec![vec![false; num_shifts]; num_days]; num_nurses];
+        for n in 0..num_nurses {
+            let nurse_skills = &optimizer.context.scenario.nurses[n].skills;
+            for d in 0..num_days {
+                for s in 0..num_shifts {
+                    let demanded = &shift_demanded_skills[d][s];
+                    nurse_can_work[n][d][s] = demanded.is_empty() || demanded.iter().any(|sk| nurse_skills.contains(sk));
+                }
             }
         }
 
-        // Pre-compute nurse soft penalties
-        let mut nurse_penalties: Vec<i32> = (0..num_nurses)
-            .map(|n| self.eval_nurse_soft_penalty(genome, n))
+        let nurse_target_bands: Vec<(usize, usize)> = (0..num_nurses)
+            .map(|n| {
+                let contract = optimizer
+                    .context
+                    .scenario
+                    .contracts
+                    .iter()
+                    .find(|c| c.id == optimizer.context.scenario.nurses[n].contract)
+                    .unwrap();
+                let min_a = contract.min_assignments / optimizer.context.scenario.number_of_weeks;
+                let max_a = (contract.max_assignments as f64
+                    / optimizer.context.scenario.number_of_weeks as f64)
+                    .ceil() as usize;
+                (min_a, max_a)
+            })
             .collect();
-        let mut current_total_soft: i32 = nurse_penalties.iter().sum();
 
-        let mut best_genome = genome.clone();
-        let mut best_total_soft = current_total_soft;
+        Self {
+            optimizer,
+            eligible_groups,
+            nurse_can_work,
+            nurse_target_bands,
+        }
+    }
+}
 
-        let mut temp = 50.0f64;
-        let cool_rate = 0.99998f64;
+impl<'a> AnnealingDomain<InrcGenome> for InrcAnnealingDomain<'a> {
+    fn initial_cost(&self, genome: &InrcGenome) -> f64 {
+        let num_nurses = self.optimizer.context.num_nurses;
+        let soft: i32 = (0..num_nurses)
+            .map(|n| self.optimizer.eval_nurse_soft_penalty(genome, n))
+            .sum();
+        let num_days = self.optimizer.context.num_days;
+        let days: Vec<usize> = (0..num_days).collect();
+        let (_, s8) = self.optimizer.eval_days_coverage(genome, &days);
+        (soft + s8) as f64
+    }
 
-        while start.elapsed().as_millis() < time_budget_ms as u128 {
-            let is_cross_skill = rng.gen_bool(0.25) || eligible_groups.is_empty();
-            let (n1, n2) = if !is_cross_skill && !eligible_groups.is_empty() {
-                let group_idx = rng.gen_range(0..eligible_groups.len());
-                let group = &eligible_groups[group_idx];
-                let i1 = rng.gen_range(0..group.len());
-                let mut i2 = rng.gen_range(0..group.len());
-                if i1 == i2 {
-                    i2 = (i1 + 1) % group.len();
+    fn propose_move(
+        &self,
+        current: &InrcGenome,
+        rng_core: &mut dyn rand::RngCore,
+    ) -> Option<(InrcGenome, f64)> {
+        use rand::Rng;
+        let num_nurses = self.optimizer.context.num_nurses;
+        let num_days = self.optimizer.context.num_days;
+        let num_shifts = self.optimizer.context.shift_types.len();
+
+        let op_choice = rng_core.gen_range(0..100);
+
+        if op_choice < 20 {
+            // Operator 5: Targeted Weekend Kempe Harmonizer (Directly eliminates S6 incomplete weekends)
+            let mut sat_only = Vec::new();
+            let mut sun_only = Vec::new();
+
+            for n in 0..num_nurses {
+                let sat = self.optimizer.get_assigned_shift(current, n, 5);
+                let sun = self.optimizer.get_assigned_shift(current, n, 6);
+                if sat.is_some() && sun.is_none() {
+                    sat_only.push((n, sat.unwrap()));
+                } else if sat.is_none() && sun.is_some() {
+                    sun_only.push((n, sun.unwrap()));
                 }
-                (group[i1], group[i2])
+            }
+
+            if !sat_only.is_empty() && !sun_only.is_empty() {
+                let u_idx = rng_core.gen_range(0..sat_only.len());
+                let v_idx = rng_core.gen_range(0..sun_only.len());
+                let (u, s_sat) = sat_only[u_idx];
+                let (v, s_sun) = sun_only[v_idx];
+
+                let u_can_work_sun = self.nurse_can_work[u][6][s_sun];
+                let u_succ_ok = !self.optimizer.context.inverted.forbidden_matrix[s_sat][s_sun];
+
+                if u_can_work_sun && u_succ_ok {
+                    let mut cand = current.clone();
+                    let old_p_u = self.optimizer.eval_nurse_soft_penalty(current, u);
+                    let old_p_v = self.optimizer.eval_nurse_soft_penalty(current, v);
+
+                    self.optimizer.set_assigned_shift(&mut cand, v, 6, None);
+                    self.optimizer.set_assigned_shift(&mut cand, u, 6, Some(s_sun));
+
+                    if !self.optimizer.nurse_has_forbidden_succession(&cand, u)
+                        && !self.optimizer.nurse_has_forbidden_succession(&cand, v)
+                    {
+                        let (new_feas, new_s8) = self.optimizer.eval_days_coverage(&cand, &[6]);
+                        if new_feas {
+                            let (_, old_s8) = self.optimizer.eval_days_coverage(current, &[6]);
+                            let new_p_u = self.optimizer.eval_nurse_soft_penalty(&cand, u);
+                            let new_p_v = self.optimizer.eval_nurse_soft_penalty(&cand, v);
+                            let delta = (new_p_u + new_p_v) - (old_p_u + old_p_v) + (new_s8 - old_s8);
+                            return Some((cand, delta as f64));
+                        }
+                    }
+                }
+            }
+        } else if op_choice < 40 {
+            // Operator 6: Targeted Optimal Demand Staffing (Directly reduces S8 optimal coverage deficit)
+            let d = rng_core.gen_range(0..num_days);
+            let opt_slots = &self.optimizer.context.inverted.opt_slots_by_day[d];
+            if !opt_slots.is_empty() {
+                let sid = opt_slots[rng_core.gen_range(0..opt_slots.len())];
+                let slot = &self.optimizer.context.inverted.slots[sid];
+                let s_idx = slot.shift_idx;
+
+                let candidates: Vec<usize> = slot
+                    .eligible_nurses
+                    .iter()
+                    .copied()
+                    .filter(|&n| {
+                        if self.optimizer.get_assigned_shift(current, n, d).is_some() {
+                            return false;
+                        }
+                        if d == 0 {
+                            !self.optimizer.context.inverted.history_forbidden[n][s_idx]
+                        } else {
+                            match self.optimizer.get_assigned_shift(current, n, d - 1) {
+                                Some(prev_s) => !self.optimizer.context.inverted.forbidden_matrix[prev_s][s_idx],
+                                None => true,
+                            }
+                        }
+                    })
+                    .collect();
+
+                if !candidates.is_empty() {
+                    let u = candidates[rng_core.gen_range(0..candidates.len())];
+                    let mut cand = current.clone();
+                    let (_, old_s8) = self.optimizer.eval_days_coverage(current, &[d]);
+                    let old_p_u = self.optimizer.eval_nurse_soft_penalty(current, u);
+
+                    self.optimizer.set_assigned_shift(&mut cand, u, d, Some(s_idx));
+
+                    if !self.optimizer.nurse_has_forbidden_succession(&cand, u) {
+                        let (new_feas, new_s8) = self.optimizer.eval_days_coverage(&cand, &[d]);
+                        if new_feas {
+                            let new_p_u = self.optimizer.eval_nurse_soft_penalty(&cand, u);
+                            let delta = (new_p_u - old_p_u) + (new_s8 - old_s8);
+                            return Some((cand, delta as f64));
+                        }
+                    }
+                }
+            }
+        }
+
+        if op_choice < 60 {
+            // Operator 1: 3-Day Contiguous Streak-Repair / Stub Ejection & Consolidation (S2/S4)
+            let n = rng_core.gen_range(0..num_nurses);
+            let mut stub_d = None;
+            for d in 0..num_days {
+                if self.optimizer.get_assigned_shift(current, n, d).is_some() {
+                    let prev = d > 0 && self.optimizer.get_assigned_shift(current, n, d - 1).is_some();
+                    let next = d + 1 < num_days && self.optimizer.get_assigned_shift(current, n, d + 1).is_some();
+                    if !prev && !next {
+                        stub_d = Some(d);
+                        break;
+                    }
+                }
+            }
+
+            if let Some(d) = stub_d {
+                let s_n = self.optimizer.get_assigned_shift(current, n, d);
+                let mut donor = None;
+                for _ in 0..15 {
+                    let u = rng_core.gen_range(0..num_nurses);
+                    if u != n && self.optimizer.get_assigned_shift(current, u, d).is_none() {
+                        let u_adj_works = (d > 0 && self.optimizer.get_assigned_shift(current, u, d - 1).is_some())
+                            || (d + 1 < num_days && self.optimizer.get_assigned_shift(current, u, d + 1).is_some());
+                        if u_adj_works {
+                            if let Some(s) = s_n {
+                                if self.nurse_can_work[u][d][s] {
+                                    donor = Some(u);
+                                    break;
+                                }
+                            }
+                        }
+                    }
+                }
+
+                if let Some(u) = donor {
+                    let mut cand = current.clone();
+                    let (_, old_s8) = self.optimizer.eval_days_coverage(current, &[d]);
+                    let old_p_n = self.optimizer.eval_nurse_soft_penalty(current, n);
+                    let old_p_u = self.optimizer.eval_nurse_soft_penalty(current, u);
+
+                    self.optimizer.set_assigned_shift(&mut cand, n, d, None);
+                    self.optimizer.set_assigned_shift(&mut cand, u, d, s_n);
+
+                    let valid = !self.optimizer.nurse_has_forbidden_succession(&cand, n)
+                        && !self.optimizer.nurse_has_forbidden_succession(&cand, u);
+                    let (new_feas, new_s8) = if valid {
+                        self.optimizer.eval_days_coverage(&cand, &[d])
+                    } else {
+                        (false, 0)
+                    };
+
+                    if new_feas {
+                        let new_p_n = self.optimizer.eval_nurse_soft_penalty(&cand, n);
+                        let new_p_u = self.optimizer.eval_nurse_soft_penalty(&cand, u);
+                        let delta = (new_p_n + new_p_u) - (old_p_n + old_p_u) + (new_s8 - old_s8);
+                        return Some((cand, delta as f64));
+                    }
+                }
+            }
+            return None;
+        }
+
+        if op_choice < 75 {
+            // Operator 2: Multi-Day Kempe-Chain Workload Transfer (S1)
+            let mut over_nurses = Vec::new();
+            let mut under_nurses = Vec::new();
+
+            for n in 0..num_nurses {
+                let mut count = 0;
+                for d in 0..num_days {
+                    if self.optimizer.get_assigned_shift(current, n, d).is_some() {
+                        count += 1;
+                    }
+                }
+                let (min_a, max_a) = self.nurse_target_bands[n];
+                if count > max_a {
+                    over_nurses.push(n);
+                } else if count < min_a {
+                    under_nurses.push(n);
+                }
+            }
+
+            let (u, v) = if !over_nurses.is_empty() && !under_nurses.is_empty() {
+                let u_idx = rng_core.gen_range(0..over_nurses.len());
+                let v_idx = rng_core.gen_range(0..under_nurses.len());
+                (over_nurses[u_idx], under_nurses[v_idx])
             } else {
-                let i1 = rng.gen_range(0..num_nurses);
-                let mut i2 = rng.gen_range(0..num_nurses);
-                if i1 == i2 {
-                    i2 = (i1 + 1) % num_nurses;
-                }
+                let i1 = rng_core.gen_range(0..num_nurses);
+                let mut i2 = rng_core.gen_range(0..num_nurses);
+                if i1 == i2 { i2 = (i1 + 1) % num_nurses; }
                 (i1, i2)
             };
 
-            let move_type = rng.gen_range(0..4);
-            let days_to_swap: Vec<usize> = match move_type {
-                0 => {
-                    // Single day swap
-                    vec![rng.gen_range(0..num_days)]
-                }
-                1 => {
-                    // Weekend block swap (Saturday & Sunday)
-                    vec![5, 6]
-                }
-                2 => {
-                    // 2-day consecutive block swap
-                    let d = rng.gen_range(0..num_days - 1);
-                    vec![d, d + 1]
-                }
-                _ => {
-                    // 3-day consecutive block swap
-                    let d = rng.gen_range(0..num_days - 2);
-                    vec![d, d + 1, d + 2]
-                }
-            };
+            if u != v {
+                let block_len = if rng_core.gen_bool(0.65) { 2 } else { 3 };
+                let max_start = if num_days >= block_len { num_days - block_len } else { 0 };
+                let start_d = if max_start > 0 { rng_core.gen_range(0..=max_start) } else { 0 };
+                let days: Vec<usize> = (start_d..start_d + block_len).collect();
 
-            let (old_feasible, old_s8) = if is_cross_skill {
-                self.eval_days_coverage(genome, &days_to_swap)
+                let mut u_works_all = true;
+                let mut v_off_all = true;
+                let mut v_can_work_all = true;
+
+                for &d in &days {
+                    let s_u = self.optimizer.get_assigned_shift(current, u, d);
+                    let s_v = self.optimizer.get_assigned_shift(current, v, d);
+                    if s_u.is_none() { u_works_all = false; break; }
+                    if s_v.is_some() { v_off_all = false; break; }
+                    if let Some(s) = s_u {
+                        if !self.nurse_can_work[v][d][s] {
+                            v_can_work_all = false;
+                            break;
+                        }
+                    }
+                }
+
+                if u_works_all && v_off_all && v_can_work_all {
+                    let mut cand = current.clone();
+                    let (_, old_s8) = self.optimizer.eval_days_coverage(current, &days);
+                    let old_p_u = self.optimizer.eval_nurse_soft_penalty(current, u);
+                    let old_p_v = self.optimizer.eval_nurse_soft_penalty(current, v);
+
+                    for &d in &days {
+                        let s = self.optimizer.get_assigned_shift(current, u, d);
+                        self.optimizer.set_assigned_shift(&mut cand, u, d, None);
+                        self.optimizer.set_assigned_shift(&mut cand, v, d, s);
+                    }
+
+                    let valid = !self.optimizer.nurse_has_forbidden_succession(&cand, u)
+                        && !self.optimizer.nurse_has_forbidden_succession(&cand, v);
+                    let (new_feas, new_s8) = if valid {
+                        self.optimizer.eval_days_coverage(&cand, &days)
+                    } else {
+                        (false, 0)
+                    };
+
+                    if new_feas {
+                        let new_p_u = self.optimizer.eval_nurse_soft_penalty(&cand, u);
+                        let new_p_v = self.optimizer.eval_nurse_soft_penalty(&cand, v);
+                        let delta = (new_p_u + new_p_v) - (old_p_u + old_p_v) + (new_s8 - old_s8);
+                        return Some((cand, delta as f64));
+                    }
+                }
+            }
+            return None;
+        }
+
+        if rng_core.gen_bool(0.25) {
+            // Operator 3: Single-nurse shift block reassignment (rebalance S8 optimal coverage & S1 assignment quotas)
+            let n = rng_core.gen_range(0..num_nurses);
+            let block_len = if rng_core.gen_bool(0.60) { 2 } else { 1 };
+            let start_d = if block_len > 1 {
+                rng_core.gen_range(0..num_days - 1)
             } else {
-                (true, 0)
+                rng_core.gen_range(0..num_days)
             };
-            if !old_feasible {
-                continue;
-            }
+            let days: Vec<usize> = (start_d..start_d + block_len).collect();
 
-            // Apply swap in-place
-            let mut old_shifts_1 = Vec::with_capacity(days_to_swap.len());
-            let mut old_shifts_2 = Vec::with_capacity(days_to_swap.len());
-
-            for &d in &days_to_swap {
-                let s1 = self.get_assigned_shift(genome, n1, d);
-                let s2 = self.get_assigned_shift(genome, n2, d);
-                old_shifts_1.push(s1);
-                old_shifts_2.push(s2);
-                self.set_assigned_shift(genome, n1, d, s2);
-                self.set_assigned_shift(genome, n2, d, s1);
-            }
-
-            // Check succession validity (HC4)
-            let valid_succession = !self.nurse_has_forbidden_succession(genome, n1)
-                && !self.nurse_has_forbidden_succession(genome, n2);
-
-            if !valid_succession {
-                // Revert swap in-place
-                for (i, &d) in days_to_swap.iter().enumerate() {
-                    self.set_assigned_shift(genome, n1, d, old_shifts_1[i]);
-                    self.set_assigned_shift(genome, n2, d, old_shifts_2[i]);
-                }
-                continue;
-            }
-
-            // For cross-skill swap, check HC1 and HC2 coverage feasibility
-            let (new_feasible, new_s8) = if is_cross_skill {
-                self.eval_days_coverage(genome, &days_to_swap)
+            let new_shift = if rng_core.gen_bool(0.35) {
+                None
             } else {
-                (true, 0)
+                Some(rng_core.gen_range(0..num_shifts))
             };
 
+            let mut can_work_all = true;
+            if let Some(s_idx) = new_shift {
+                for &d in &days {
+                    if !self.nurse_can_work[n][d][s_idx] {
+                        can_work_all = false;
+                        break;
+                    }
+                }
+            }
+            if !can_work_all {
+                return None;
+            }
+
+            let mut old_shifts = Vec::with_capacity(days.len());
+            for &d in &days {
+                old_shifts.push(self.optimizer.get_assigned_shift(current, n, d));
+            }
+            if old_shifts.iter().all(|&s| s == new_shift) {
+                return None;
+            }
+
+            let mut cand = current.clone();
+            let (_, old_s8) = self.optimizer.eval_days_coverage(current, &days);
+            let old_p_n = self.optimizer.eval_nurse_soft_penalty(current, n);
+
+            for &d in &days {
+                self.optimizer.set_assigned_shift(&mut cand, n, d, new_shift);
+            }
+
+            if self.optimizer.nurse_has_forbidden_succession(&cand, n) {
+                return None;
+            }
+
+            let (new_feasible, new_s8) = self.optimizer.eval_days_coverage(&cand, &days);
             if !new_feasible {
-                // Revert swap in-place
-                for (i, &d) in days_to_swap.iter().enumerate() {
-                    self.set_assigned_shift(genome, n1, d, old_shifts_1[i]);
-                    self.set_assigned_shift(genome, n2, d, old_shifts_2[i]);
-                }
-                continue;
+                return None;
             }
 
-            // Calculate exact O(1) delta penalty including S8 optimal coverage delta
-            let new_pen_1 = self.eval_nurse_soft_penalty(genome, n1);
-            let new_pen_2 = self.eval_nurse_soft_penalty(genome, n2);
-            let delta = (new_pen_1 + new_pen_2) - (nurse_penalties[n1] + nurse_penalties[n2]) + (new_s8 - old_s8);
+            let new_pen = self.optimizer.eval_nurse_soft_penalty(&cand, n);
+            let delta = (new_pen - old_p_n) + (new_s8 - old_s8);
+            return Some((cand, delta as f64));
+        }
 
-            let accept = if delta <= 0 {
-                true
-            } else {
-                rng.gen_bool((-delta as f64 / temp.max(1.0)).exp().min(1.0))
-            };
+        // Operator 4: Intra-group or cross-skill day swap
+        let is_cross_skill = rng_core.gen_bool(0.20) || self.eligible_groups.is_empty();
+        let (n1, n2) = if !is_cross_skill && !self.eligible_groups.is_empty() {
+            let group_idx = rng_core.gen_range(0..self.eligible_groups.len());
+            let group = &self.eligible_groups[group_idx];
+            let i1 = rng_core.gen_range(0..group.len());
+            let mut i2 = rng_core.gen_range(0..group.len());
+            if i1 == i2 {
+                i2 = (i1 + 1) % group.len();
+            }
+            (group[i1], group[i2])
+        } else {
+            let i1 = rng_core.gen_range(0..num_nurses);
+            let mut i2 = rng_core.gen_range(0..num_nurses);
+            if i1 == i2 {
+                i2 = (i1 + 1) % num_nurses;
+            }
+            (i1, i2)
+        };
 
-            if accept {
-                nurse_penalties[n1] = new_pen_1;
-                nurse_penalties[n2] = new_pen_2;
-                current_total_soft += delta;
+        let move_type = rng_core.gen_range(0..4);
+        let days_to_swap: Vec<usize> = match move_type {
+            0 => vec![rng_core.gen_range(0..num_days)],
+            1 => vec![5, 6],
+            2 => {
+                let d = rng_core.gen_range(0..num_days - 1);
+                vec![d, d + 1]
+            }
+            _ => {
+                let d = rng_core.gen_range(0..num_days - 2);
+                vec![d, d + 1, d + 2]
+            }
+        };
 
-                if current_total_soft < best_total_soft {
-                    best_total_soft = current_total_soft;
-                    best_genome = genome.clone();
+        // Fast HC2 qualification filter for cross-skill moves
+        if is_cross_skill {
+            let mut qualified = true;
+            for &d in &days_to_swap {
+                let s1 = self.optimizer.get_assigned_shift(current, n1, d);
+                let s2 = self.optimizer.get_assigned_shift(current, n2, d);
+                if let Some(s1_idx) = s1 {
+                    if !self.nurse_can_work[n2][d][s1_idx] {
+                        qualified = false;
+                        break;
+                    }
                 }
-            } else {
-                // Revert swap in-place
-                for (i, &d) in days_to_swap.iter().enumerate() {
-                    self.set_assigned_shift(genome, n1, d, old_shifts_1[i]);
-                    self.set_assigned_shift(genome, n2, d, old_shifts_2[i]);
+                if let Some(s2_idx) = s2 {
+                    if !self.nurse_can_work[n1][d][s2_idx] {
+                        qualified = false;
+                        break;
+                    }
                 }
             }
-
-            temp *= cool_rate;
-            if temp < 0.1 {
-                temp = 50.0;
+            if !qualified {
+                return None;
             }
         }
 
-        *genome = best_genome;
-        self.evaluate(genome, &Default::default())
+        let mut cand = current.clone();
+        let (_, old_s8) = if is_cross_skill {
+            self.optimizer.eval_days_coverage(current, &days_to_swap)
+        } else {
+            (true, 0)
+        };
+        let old_p_1 = self.optimizer.eval_nurse_soft_penalty(current, n1);
+        let old_p_2 = self.optimizer.eval_nurse_soft_penalty(current, n2);
+
+        for &d in &days_to_swap {
+            let s1 = self.optimizer.get_assigned_shift(current, n1, d);
+            let s2 = self.optimizer.get_assigned_shift(current, n2, d);
+            self.optimizer.set_assigned_shift(&mut cand, n1, d, s2);
+            self.optimizer.set_assigned_shift(&mut cand, n2, d, s1);
+        }
+
+        let valid_succession = !self.optimizer.nurse_has_forbidden_succession(&cand, n1)
+            && !self.optimizer.nurse_has_forbidden_succession(&cand, n2);
+
+        if !valid_succession {
+            return None;
+        }
+
+        let (new_feasible, new_s8) = if is_cross_skill {
+            self.optimizer.eval_days_coverage(&cand, &days_to_swap)
+        } else {
+            (true, 0)
+        };
+
+        if !new_feasible {
+            return None;
+        }
+
+        let new_pen_1 = self.optimizer.eval_nurse_soft_penalty(&cand, n1);
+        let new_pen_2 = self.optimizer.eval_nurse_soft_penalty(&cand, n2);
+        let delta = (new_pen_1 + new_pen_2) - (old_p_1 + old_p_2) + (new_s8 - old_s8);
+
+        Some((cand, delta as f64))
     }
 }
 
@@ -1227,7 +1664,8 @@ impl FitnessEvaluator<InrcGenome> for InrcOptimizer {
             for s in 0..num_shifts {
                 let shift_name = &self.context.shift_types[s];
 
-                let mut demands = Vec::new();
+                let mut min_demands = Vec::new();
+                let mut opt_demands = Vec::new();
                 for req in &self.context.week_data.requirements {
                     if req.shift_type == *shift_name {
                         let req_level = match day_name {
@@ -1240,9 +1678,11 @@ impl FitnessEvaluator<InrcGenome> for InrcOptimizer {
                             "Sunday" => &req.sunday,
                             _ => unreachable!(),
                         };
-                        let target = std::cmp::max(req_level.minimum, req_level.optimal);
-                        if target > 0 {
-                            demands.push((req.skill.clone(), target));
+                        if req_level.minimum > 0 {
+                            min_demands.push((req.skill.clone(), req_level.minimum));
+                        }
+                        if req_level.optimal > req_level.minimum {
+                            opt_demands.push((req.skill.clone(), req_level.optimal - req_level.minimum));
                         }
                     }
                 }
@@ -1257,10 +1697,13 @@ impl FitnessEvaluator<InrcGenome> for InrcOptimizer {
                 // Check HC2: Skills
                 for &n in &available_nurses {
                     let nurse = &self.context.scenario.nurses[n];
-                    let has_valid_skill = demands
+                    let has_valid_skill = min_demands
                         .iter()
-                        .any(|(skill, _)| nurse.skills.contains(skill));
-                    if !has_valid_skill && !demands.is_empty() {
+                        .any(|(skill, _)| nurse.skills.contains(skill))
+                        || opt_demands
+                            .iter()
+                            .any(|(skill, _)| nurse.skills.contains(skill));
+                    if !has_valid_skill && (!min_demands.is_empty() || !opt_demands.is_empty()) {
                         hc_skills += weights.hard_constraint_violation as usize;
                         hard_violations.push(Violation {
                             constraint_id: "HC2_SkillRequirements".to_string(),
@@ -1277,18 +1720,32 @@ impl FitnessEvaluator<InrcGenome> for InrcOptimizer {
                     }
                 }
 
-                // Run AssignmentSolver for Optimal Matching
+                // Run AssignmentSolver via Two-Stage Matching (Stage 1: Minimum, Stage 2: Optimal)
                 let workers: Vec<(usize, Vec<String>)> = available_nurses
                     .iter()
                     .map(|&n| (n, self.context.scenario.nurses[n].skills.clone()))
                     .collect();
 
-                let matching = BipartiteMatchingSolver.assign(&workers, &demands);
+                let min_matching = BipartiteMatchingSolver.assign(&workers, &min_demands);
+                let mut min_fulfilled_map = HashMap::new();
+                let mut matched_nurse_indices = std::collections::HashSet::new();
+                for (nurse_id, skill) in &min_matching.assignments {
+                    *min_fulfilled_map.entry(skill.clone()).or_insert(0) += 1;
+                    matched_nurse_indices.insert(*nurse_id);
+                }
 
-                // Count fulfilled requirements by skill
-                let mut fulfilled_map = HashMap::new();
-                for (_, skill) in &matching.assignments {
-                    *fulfilled_map.entry(skill.clone()).or_insert(0) += 1;
+                let unassigned_workers: Vec<(usize, Vec<String>)> = workers
+                    .iter()
+                    .filter(|(n, _)| !matched_nurse_indices.contains(n))
+                    .cloned()
+                    .collect();
+
+                let mut opt_fulfilled_map = HashMap::new();
+                if !unassigned_workers.is_empty() && !opt_demands.is_empty() {
+                    let opt_matching = BipartiteMatchingSolver.assign(&unassigned_workers, &opt_demands);
+                    for (_, skill) in &opt_matching.assignments {
+                        *opt_fulfilled_map.entry(skill.clone()).or_insert(0) += 1;
+                    }
                 }
 
                 // Score coverage penalties
@@ -1305,9 +1762,9 @@ impl FitnessEvaluator<InrcGenome> for InrcOptimizer {
                             _ => unreachable!(),
                         };
 
-                        let fulfilled = *fulfilled_map.get(&req.skill).unwrap_or(&0);
-                        if fulfilled < req_level.minimum {
-                            let missing = req_level.minimum - fulfilled;
+                        let min_fulfilled = *min_fulfilled_map.get(&req.skill).unwrap_or(&0);
+                        if min_fulfilled < req_level.minimum {
+                            let missing = req_level.minimum - min_fulfilled;
                             let cost = missing * weights.hard_constraint_violation as usize;
                             hc_coverage += cost;
                             hard_violations.push(Violation {
@@ -1315,15 +1772,19 @@ impl FitnessEvaluator<InrcGenome> for InrcOptimizer {
                                 severity: "Hard".to_string(),
                                 value: Some(missing as f64),
                                 expected: req_level.minimum.to_string(),
-                                actual: fulfilled.to_string(),
+                                actual: min_fulfilled.to_string(),
                                 description: format!(
                                     "Shift {} skill {} on {} lacks {} nurses (minimum)",
                                     shift_name, req.skill, day_name, missing
                                 ),
                                 penalty: cost as i32,
                             });
-                        } else if fulfilled < req_level.optimal {
-                            let missing = req_level.optimal - fulfilled;
+                        }
+
+                        let opt_fulfilled = *opt_fulfilled_map.get(&req.skill).unwrap_or(&0);
+                        let total_fulfilled = min_fulfilled + opt_fulfilled;
+                        if total_fulfilled < req_level.optimal {
+                            let missing = req_level.optimal - total_fulfilled;
                             let cost = missing as i32 * weights.optimal_coverage;
                             optimal_coverage_penalty += cost;
                             soft_violations.push(Violation {
@@ -1331,7 +1792,7 @@ impl FitnessEvaluator<InrcGenome> for InrcOptimizer {
                                 severity: "Soft".to_string(),
                                 value: Some(missing as f64),
                                 expected: req_level.optimal.to_string(),
-                                actual: fulfilled.to_string(),
+                                actual: total_fulfilled.to_string(),
                                 description: format!(
                                     "Shift {} skill {} on {} lacks {} nurses (optimal)",
                                     shift_name, req.skill, day_name, missing

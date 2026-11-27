@@ -18,10 +18,11 @@ use chronosentiment_adapter::nse_market_events::{
     depth_snapshot_row_from_cache_tick, DEPTH_JOURNAL_PROTOCOL_ID,
 };
 use chronosentiment_adapter::product::{
-    adapter_select_15m, build_tick_snapshot, evaluate_tick_policies_hygiened, snapshot_to_json,
-    Gate2xBookKind, RecommendationStabilizer, Gate2xFeatureSnapshot, Gate2xPositionManager,
-    OpenPlanState, PlanLifecycleConfig, PlanLifecycleManager, PlanQuote, TickFeatureBuffer,
-    TickQuote, ADAPTER_SELECT_15M_PROTOCOL_ID, CRYPTO_TICK_PROTOCOL_ID, PLAN_LIFECYCLE_PROTOCOL,
+    adapter_select_15m, build_tick_snapshot, evaluate_tick_policies_hygiened, ohlcv_trend_agreement,
+    snapshot_to_json, Gate2xBookKind, RecommendationStabilizer, Gate2xFeatureSnapshot,
+    Gate2xPositionManager, OpenPlanState, PlanLifecycleConfig, PlanLifecycleManager, PlanQuote,
+    TickFeatureBuffer, TickQuote, ADAPTER_SELECT_15M_PROTOCOL_ID, CRYPTO_TICK_PROTOCOL_ID,
+    OHLCV_TREND_AGREE_PROTOCOL_ID, PLAN_LIFECYCLE_PROTOCOL,
 };
 use serde::Deserialize;
 use serde_json::Value;
@@ -85,6 +86,14 @@ struct AdapterSelect15mRequest {
     candidate_side: String,
 }
 
+/// Gate 2E B: completed 15m closes + candidate side → trend-agreement stamp.
+#[derive(Debug, Deserialize)]
+struct TrendAgreeRequest {
+    #[serde(default)]
+    closes: Vec<f64>,
+    candidate_side: String,
+}
+
 fn main() {
     let args: Vec<String> = env::args().collect();
     let mut evidence_dir = "datasets/recommendation/historical_crypto".to_string();
@@ -93,6 +102,7 @@ fn main() {
     let mut tick_eval_loop = false;
     let mut depth_snapshot_loop = false;
     let mut adapter_select_15m_loop = false;
+    let mut trend_agree_loop = false;
     let mut book_arg: Option<String> = None;
     let mut i = 1;
     while i < args.len() {
@@ -128,19 +138,23 @@ fn main() {
             "--adapter-select-15m-loop" => {
                 adapter_select_15m_loop = true;
             }
+            "--trend-agree-loop" => {
+                trend_agree_loop = true;
+            }
             "--version" => {
                 println!("{VERSION}");
                 process::exit(0);
             }
             "-h" | "--help" => {
                 eprintln!(
-                    "rp608_position_decide ({VERSION} / {MANAGE_VERSION} / {PLAN_LIFECYCLE_PROTOCOL} / {CRYPTO_TICK_PROTOCOL_ID} / {DEPTH_JOURNAL_PROTOCOL_ID} / {ADAPTER_SELECT_15M_PROTOCOL_ID})\n\
+                    "rp608_position_decide ({VERSION} / {MANAGE_VERSION} / {PLAN_LIFECYCLE_PROTOCOL} / {CRYPTO_TICK_PROTOCOL_ID} / {DEPTH_JOURNAL_PROTOCOL_ID} / {ADAPTER_SELECT_15M_PROTOCOL_ID} / {OHLCV_TREND_AGREE_PROTOCOL_ID})\n\
                      One-shot:              JSON stdin snapshot → JSON stdout decision\n\
                      Gate2X manage:         --manage-loop  JSONL → JSONL\n\
                      Plan lifecycle manage: --plan-lifecycle-loop  JSONL plan+quote → JSONL result\n\
                      Crypto tick eval:      --tick-eval-loop  JSONL quote+genomes → B/C actions\n\
                      NSE depth side-path:   --depth-snapshot-loop  JSONL symbol+tick → depth row\n\
                      Adapter select 15m:    --adapter-select-15m-loop  JSONL closes+side → RecommendationStamp\n\
+                     Gate2E 15m trend B:    --trend-agree-loop  JSONL closes+side → agreement stamp\n\
                      --evidence-dir DIR   REC001h JSONL directory (crypto or NSE)\n\
                      --book crypto|nse    force book (else inferred from evidence-dir)\n\
                      --version            print protocol id\n\
@@ -187,6 +201,46 @@ fn main() {
                 Ok(s) => s,
                 Err(e) => {
                     eprintln!("serialize adapter-select-15m stamp: {e}");
+                    process::exit(1);
+                }
+            };
+            if writeln!(stdout, "{out}").is_err() {
+                process::exit(1);
+            }
+            let _ = stdout.flush();
+        }
+        return;
+    }
+
+    if trend_agree_loop {
+        eprintln!(
+            "[{OHLCV_TREND_AGREE_PROTOCOL_ID}] trend-agree-loop ready (Gate 2E B · Rust-owned)"
+        );
+        let stdin = io::stdin();
+        let mut stdout = io::stdout();
+        for line in stdin.lock().lines() {
+            let line = match line {
+                Ok(l) => l,
+                Err(e) => {
+                    eprintln!("stdin read: {e}");
+                    process::exit(1);
+                }
+            };
+            if line.trim().is_empty() {
+                continue;
+            }
+            let req: TrendAgreeRequest = match serde_json::from_str(&line) {
+                Ok(r) => r,
+                Err(e) => {
+                    eprintln!("parse trend-agree request: {e}");
+                    process::exit(1);
+                }
+            };
+            let stamp = ohlcv_trend_agreement(&req.closes, &req.candidate_side);
+            let out = match serde_json::to_string(&stamp) {
+                Ok(s) => s,
+                Err(e) => {
+                    eprintln!("serialize trend-agree stamp: {e}");
                     process::exit(1);
                 }
             };

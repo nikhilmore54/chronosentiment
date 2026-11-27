@@ -931,6 +931,10 @@ class TradePlanOverlayManager:
         """Clean-slate twin only: require Rust 15m soft-score ENTER (config override)."""
         return bool(self._config_overrides.get("require_adapter_select_15m"))
 
+    def _require_trend_agree(self) -> bool:
+        """B twin only: require L3/L8/L20 15m OHLCV agreement (config override)."""
+        return bool(self._config_overrides.get("require_trend_agree"))
+
     def _b_persist_min_fires(self) -> int:
         if "b_persist_min_fires" in self._config_overrides:
             try:
@@ -3922,6 +3926,45 @@ class TradePlanOverlayManager:
                 self._save_state()
                 return None
 
+        # Gate 2E B: 15m multi-lookback OHLCV trend agreement (observational twin).
+        if self._require_trend_agree():
+            closes_raw = card.get("ohlcv_closes_15m") or card.get("completed_closes") or []
+            closes: List[float] = []
+            if isinstance(closes_raw, list):
+                for x in closes_raw:
+                    try:
+                        closes.append(float(x))
+                    except (TypeError, ValueError):
+                        continue
+            ta = trend_agreement(closes, str(direction))
+            card["trend_agree"] = ta
+            if ta.get("blocks_entry"):
+                self.state["suppressed_signals_count"] = int(
+                    self.state.get("suppressed_signals_count") or 0
+                ) + 1
+                summ = self.state.setdefault("outcomes_summary", {})
+                summ["gate2e_trend_agree_suppressions"] = int(
+                    summ.get("gate2e_trend_agree_suppressions") or 0
+                ) + 1
+                self.state["last_suppressed_trend_agree"] = {
+                    "direction": direction,
+                    "suppressed_ms": now_ms,
+                    "book_id": self.book_id,
+                    **ta,
+                }
+                self._log_event(
+                    "SUPPRESSED_GATE2E_TREND_AGREE",
+                    {"direction": direction, "book_id": self.book_id},
+                    {
+                        "trend_agree": ta,
+                        "protocol_id": TREND_AGREE_PROTOCOL_ID,
+                        "card_bar_idx": card.get("bar_idx"),
+                        "n_closes": len(closes),
+                    },
+                )
+                self._save_state()
+                return None
+
         # Create new plan
         plan = calculate_trade_plan(card, quote=current_quote)
         if not plan:
@@ -3930,6 +3973,8 @@ class TradePlanOverlayManager:
         plan["volume_pattern_axes"] = bool(self.volume_pattern_axes)
         if isinstance(card.get("adapter_select_15m"), dict):
             plan["adapter_select_15m"] = card.get("adapter_select_15m")
+        if isinstance(card.get("trend_agree"), dict):
+            plan["trend_agree"] = card.get("trend_agree")
         self._stamp_gate2x_runtime_on_plan(plan)
         if not self.volume_pattern_axes:
             # Baseline twin: keep pre-volume plan geometry; no OHLCV surge latch.
