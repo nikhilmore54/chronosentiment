@@ -2,12 +2,12 @@
 
 **Protocol:** `RP-608-SCI-ADAPTER-REC-001`  
 **Date:** 2026-11-27 (Asia/Calcutta)  
-**Status:** DESIGN / CHARTER ONLY — no runtime code, no Pi daemon restart, no twin-knob edits this turn  
+**Status:** CHARTER FROZEN (Anuj S1–S10 · 2026-11-27 Asia/Calcutta) — design sealed; P1 offline package next; no Pi daemon restart / twin-knob edits  
 **Authority:** 0.0% until Gate 5 after sealed offline package + observational twin promote  
 **Working base:** `governance-hardening`  
 **Aligned with:** Project `preferences.md` · `.cursor/rules/chronosentiment-core.mdc` §3b/§3c · Gate 2 v2 (`docs/research/rp608_gate2_amendment_v2.md`) · Coralys no-touch · Rust-first / Python fail-closed I/O · 15m OHLCV first · books never pooled  
 
-**Supersedes (as the scientific path):** heuristic Gate 2E A/B knob stacks and clean-slate `adapter_select` soft-score `|S|≥0.35` as *promotion-grade* selection science. Those twins may continue **observational** on Pi; they are not the scientific promote path.
+**Supersedes (as the scientific path):** heuristic Gate 2E A/B knob stacks and clean-slate `adapter_select` soft-score `|S|≥0.35` as *promotion-grade* selection science. Those twins continue **observational** on Pi and are **baseline comparators** (S6); they are not the scientific promote path.
 
 **Repo mirror (PR):** `docs/research/rp608_scientific_coralys_adapter_recommendation_engine.md`
 
@@ -130,45 +130,45 @@ Baseline `OF_SUP` / ±0.30 on cards = **L1 resting imbalance** (locked). Scienti
 ### 4.1 Pipeline (conceptual)
 
 ```
-Coralys / Estimand sealed oracle @ t          completed 15m OHLCV @ t
-        │                                              │
-        ▼                                              ▼
-┌──────────────────────┐                    ┌──────────────────────┐
-│ Oracle feature pack  │                    │ Adapter feature pack │
-│ (black-box fields)   │                    │ (15m first; Rust)    │
-└──────────┬───────────┘                    └──────────┬───────────┘
-           └──────────────────┬─────────────────────────┘
-                              ▼
-                 ┌────────────────────────────┐
-                 │ Label join (offline only)  │  frozen exits → W/L, payoff, net
-                 │ Chronological / purged CV  │
-                 └──────────────┬─────────────┘
-                                ▼
-                 ┌────────────────────────────┐
-                 │ Model / rule family        │  fit on train; calibrate on val
-                 │ → p̂(win), û(expectancy)    │
-                 └──────────────┬─────────────┘
-                                ▼
-                 ┌────────────────────────────┐
-                 │ Decision policy            │  ENTER / STANDASIDE / INSUFFICIENT
-                 │ + uncertainty disclosure   │  + coverage forecast
-                 └──────────────┬─────────────┘
-                                ▼
-                 Hygiene (existing) → observational twin book → scorecard
+Coralys sealed oracle @ t (optional covariates)     completed 15m OHLCV + volume @ t
+        │                                                      │
+        ▼                                                      ▼
+┌──────────────────────┐                            ┌──────────────────────┐
+│ Oracle feature pack  │                            │ Adapter price+volume │
+│ (black-box; optional)│                            │ features (Rust)      │
+└──────────┬───────────┘                            └──────────┬───────────┘
+           └─────────────────────┬────────────────────────────────┘
+                                 ▼
+                    ┌────────────────────────────┐
+                    │ Label join (offline only)  │  frozen exits → W/L, payoff, net
+                    │ Chronological / purged CV  │
+                    └──────────────┬─────────────┘
+                                   ▼
+                    ┌────────────────────────────┐
+                    │ Adaptive ladder A→B +      │  fit train; calibrate val
+                    │ isotonic → p̂_L, p̂_S + CI   │  (S1=b generator)
+                    └──────────────┬─────────────┘
+                                   ▼
+                    ┌────────────────────────────┐
+                    │ Joint policy (S3)          │  ENTER / STANDASIDE / INSUFFICIENT
+                    │ + journal uncertainty (S9) │
+                    └──────────────┬─────────────┘
+                                   ▼
+                 Hygiene (existing) → new observational twin → scorecard vs baselines (S6)
 ```
 
 ### 4.2 Feature construction (15m first)
 
-**Phase-0 feature families (adapter-owned; completed bars only):**
+**Phase-0 feature families (adapter-owned; completed bars only; S10 = price + volume):**
 
 | Family | Sketch | Notes |
 | --- | --- | --- |
-| Signed returns | \(r_k=(c_{-1}-c_{-k})/\|c_{-k}\|\) for predeclared \(k\) (start `{3,8,20}`) | Magnitude retained (unlike B sign-only) |
-| Rank / z-score | Rolling rank or robust z of \|r_k\| vs prior completed window | Window length sealed before fit |
-| Path consistency | Fraction of L20 steps aligned with \(r_{20}\) | Continuity with prior research |
-| Side interaction | Features × candidate-side sign when D1=filter | Required if oracle side is input |
-| Oracle pack | Side, OF stamp, ATR/ref, pattern/regime **if present on card** | Pass-through; no Coralys edits |
-| Insufficient | Missing lookback / missing oracle side → `INSUFFICIENT` | Fail-closed |
+| **Price — signed returns** | \(r_k=(c_{-1}-c_{-k})/\|c_{-k}\|\) for predeclared \(k\) (start `{3,8,20}`) | Magnitude retained (unlike B sign-only) |
+| **Price — rank / path** | Rolling rank or robust z of \|r_k\|; fraction of L20 steps aligned with \(r_{20}\) | Window length sealed before fit |
+| **Volume — relative / surge** | Completed-bar volume vs rolling mean (e.g. 20); \(\Delta\log V\); rank of volume | Candle volume is a **bar feature**, not a tick trade-authenticity filter |
+| **Side scores (S1=b)** | Evaluate LONG and SHORT feature packs independently → \(\hat p_L, \hat p_S\) | Generator mode: pick argmax if joint cut clears; else STANDASIDE |
+| Oracle pack (optional covariates) | Coralys/Estimand sealed fields **if present** at \(t\) (OF stamp as L1 construct, ATR/ref, …) | Pass-through; no Coralys edits; may be absent under pure generator path |
+| Insufficient | Missing price/volume lookback → `INSUFFICIENT` | Fail-closed |
 
 **Later intervals** (5m, 1h, …) only after 15m package seals a scientific result or a deliberate multi-horizon extension decision — preferences: 15m first; score **per horizon book**, never pool.
 
@@ -192,7 +192,9 @@ Pick **one** family per sealed package (Anuj decision §8). Allowed v1 candidate
 | **C. Monotone scorecard + isotonic** | Maps a predeclared monotone transform of features to calibrated P(win) | Cut on calibrated p̂, not raw soft score |
 | **D. Predeclared sparse rule list** | Human-auditable; only if each clause has a predeclared hypothesis and coverage floor | No clause added after seeing holdout |
 
-**Not allowed for v1 promote path:** unconstrained gradient boosting / deep nets without a separate complexity protocol; random forests tuned on holdout; stacking Gate 2E A knobs as “features” without sealing.
+**Frozen choice (S2 + S8 adaptive):** start at **A**, always attach **isotonic calibration on validation** (C’s calibration layer), escalate to **B** only under the predeclared adaptive ladder in §8 — never jump to unconstrained ML.
+
+**Not allowed for v1 promote path:** unconstrained gradient boosting / deep nets without a separate complexity protocol; random forests tuned on holdout; stacking Gate 2E A knobs as “features” without sealing; online remine of coefficients from Pi soak.
 
 **Determinism:** frozen weights + frozen feature schema → same inputs → same recommendation (ChronoSentiment invariant). Offline CV may use fixed seeds only for non-decision tie-breaks; live path has **no** randomness.
 
@@ -201,11 +203,13 @@ Pick **one** family per sealed package (Anuj decision §8). Allowed v1 candidate
 1. Fit predictive score on train → raw \(s\).
 2. Calibrate on validation → \(\hat p = P(\mathrm{win}\mid s)\) (isotonic or Platt; method sealed).
 3. Optional expectancy map \(\hat u = \hat p\cdot\mathbb{E}[|win|] - (1-\hat p)\cdot\mathbb{E}[|loss|]\) using **train** payoff moments only (disclose; do not retune exits).
-4. **Policy (example form — exact cuts are Anuj decisions):**
-   - `INSUFFICIENT` if feature/oracle pack incomplete  
-   - `ENTER` if \(\hat p \ge p_{\min}\) **and** uncertainty band (e.g. bootstrap or Wilson CI lower bound) \(\ge p_{\mathrm{lb}}\) **and** forecast coverage within floor  
+4. **Policy (frozen S1=b · S3=joint):**
+   - Build \(\hat p_L, \hat p_S\) (and CIs) from price+volume features at \(t\)  
+   - `INSUFFICIENT` if feature pack incomplete  
+   - Candidate side = \(\arg\max(\hat p_L, \hat p_S)\); require \(\hat p_{\star} \ge p_{\min}\) **and** CI lower bound \(\ge p_{\mathrm{lb}}\) (joint)  
+   - Optional expectancy disclosure \(\hat u\) (train payoff moments) — **not** a substitute cut unless a later package freezes it  
    - else `STANDASIDE`
-5. Journal: \(\hat p\), CI / reliability bin, feature schema hash, model version, oracle side, band, block reason.
+5. Journal (frozen S9): \(\hat p_L/\hat p_S\), chosen side, CI / reliability bin, feature schema hash, model ladder stage (A|B), band, block reason. UI surfacing deferred.
 
 ### 4.6 Rust / Python ownership
 
@@ -265,28 +269,35 @@ Morning MTM / open marks are **not** substitutes for closed-trade W/L.
 
 | Phase | Deliverable | Exit criteria |
 | --- | --- | --- |
-| **P0 — Charter** (this doc) | Scientific method + boundaries + open decisions | Anuj accepts charter + answers §8 |
-| **P1 — Offline package** | Feature schema v1, labels under frozen exits, purged CV / chronological splits, model family fit, calibration, sealed holdout scorecard, leakage audit | Gate 2E-style review memo: ADVANCE_CANDIDATE or DO_NOT_ADVANCE **per book** |
+| **P0 — Charter** (this doc) | Scientific method + boundaries + **S1–S10 freeze** | **DONE** 2026-11-27 |
+| **P1 — Offline package** | Price+volume feature schema v1, labels under frozen exits, purged CV / chronological splits, adaptive A→B fit, joint calibration cuts, sealed holdout scorecard, leakage audit | Gate 2E-style review memo: ADVANCE_CANDIDATE or DO_NOT_ADVANCE **per book** |
 | **P2 — Sealed twin** | Rust apply path + new protocol id + Python fail-closed client + twin book dirs; env default off | Deterministic unit tests; no Coralys diffs; no PRIMARY mutation |
-| **P3 — Pi soak** | Anuj-gated arm on agreed books (15m; BTC/ETH first unless decided otherwise) | Dual soak with existing twins **unchanged**; journals + scorecard |
-| **P4 — Promote criteria** | Soak replicates offline direction on W/L; coverage floor; payoff/net disclosed | Gate 5 packet draft only after Anuj go; else HOLD/ABANDON |
+| **P3 — Pi soak** | Anuj-gated arm on agreed books (15m BTC first; ETH when join ready) | Dual soak baselines **unchanged**; journals + scorecard |
+| **P4 — Promote criteria** | Soak W/L direction matches offline; coverage floor; payoff/net disclosed; price+volume schema locked | Gate 5 packet draft only after Anuj go; else HOLD/ABANDON |
 
 ---
 
-## 8. Decisions Anuj must make before implementation
+## 8. Frozen decisions (Anuj 2026-11-27 Asia/Calcutta)
 
-| # | Decision | Options / prompt |
+| # | Anuj input | Freeze |
 | --- | --- | --- |
-| **S1** | Candidate source | (a) Filter on Coralys/Estimand candidate side (like D1=a), or (b) adapter may propose side from \(\hat p\) independently, or (c) rank-only / no side change |
-| **S2** | Model family for v1 package | A GLM · B elastic net · C monotone scorecard+isotonic · D sparse rule list |
-| **S3** | Primary cut | Threshold on calibrated \(\hat p\), on \(\hat u\), or joint (\(\hat p\) + CI lower bound) |
-| **S4** | First books / horizon | Confirm 15m BTC+ETH first; NSE timing; any other interval deferred |
-| **S5** | Train / purge / holdout windows | Explicit date ranges + purge length (≥ lookback + label horizon); name burned windows |
-| **S6** | Relation to running soaks | Confirm: leave Gate 2E B + `adapter_select` observational; scientific twin = **new** env/protocol only |
-| **S7** | Offline data locus | Which journals / decision-card archives / OHLCV stores are canonical for P1 |
-| **S8** | Complexity ceiling | Max features, max CV rounds, ban list for model classes in v1 |
-| **S9** | Uncertainty disclosure | Mandatory CI / reliability bins in journal and UI, or scorecard-only first |
-| **S10** | Promote bar vs offline | Soak must match offline W/L direction only, or also match magnitude / coverage bands |
+| **S1** | **b** | Adapter is a **side generator**: emit LONG/SHORT from \(\hat p_L/\hat p_S\) independently of Coralys candidate side. Coralys remains sealed oracle for optional covariates / position bridge only — not the entry-side authority on this twin. |
+| **S2** | Best suited | **Calibrated logistic / GLM (A)** as v1 default, with **isotonic calibration** on validation. Best suited because: (1) small-n per book, (2) interpretable coefficients for Gate 2E review, (3) pairs cleanly with joint CI cuts (S3), (4) deterministic apply path in Rust. Sparse rules (D) too brittle for price+volume interactions; unconstrained ML banned. |
+| **S3** | Joint | ENTER only if \(\hat p_{\star} \ge p_{\min}\) **and** CI lower bound \(\ge p_{\mathrm{lb}}\). Exact \(p_{\min}/p_{\mathrm{lb}}\) locked in P1 before holdout score (predeclared on validation only). |
+| **S4** | Sources connected | **15m first.** Book order: **BTC** offline+twin first (canonical 15m + REC-001-H history present); **ETH** as soon as OHLCV+label join is wired (sources connected — do not block design); **NSE** after crypto 15m package seals or parallel only if Anuj arms. Never pool books. Other intervals deferred. |
+| **S5** | Historical OHLCV/ticks available | **P1 chronological default (BTC 15m / 2024 store, Asia/Calcutta dates):** train `2024-01-01 → 2024-08-31`; purge/embargo ≥ max(lookback bars, label horizon) — default **10 completed 15m bars + label horizon**; validation `2024-09-01 → 2024-10-31`; **sealed holdout** `2024-11-01 → 2024-12-31`. Live RP-608 research windows already burned for *live-journal* remine (incl. 2026-11-03…05 and contaminated Gate 2E thr scans) stay burned. Tick history may support hygiene/replay audits; **entry features remain completed 15m OHLCV (+ bar volume)** unless a later package freezes tick features under the same firewall. |
+| **S6** | Leave running; use as baseline | Gate 2E B + `adapter_select` V1 stay armed observational; scientific twin = **new** protocol/env only. Scorecards compare scientific twin vs BASELINE **and** vs A/B/`adapter_select` as baselines — never share mutable knobs. |
+| **S7** | History available | Canonical P1 loci: `datasets/crypto_15m/binance_btcusdt_2024_15m.json` · `datasets/recommendation/historical_crypto/` (BTCUSDT.jsonl.gz) · Pi/shadow decision-card + trade-plan journals when labeling under frozen live exits · NSE `datasets/recommendation/historical/` only for NSE book (never pooled). ETH 15m join path to be recorded in P1 memo when wired. |
+| **S8** | Prefer adaptive | **Adaptive complexity ladder (sealed, not online):** Stage 0 = A (GLM) + isotonic; if validation fails predeclared calibration/coverage/power gates → Stage 1 = B (elastic net) with hyperparams chosen only inside train purged-CV, then re-calibrate on validation; **one** ladder choice frozen before holdout. Max features v1: ≤ 24 (price+volume core + optional oracle covariates). Max purged-CV rounds inside train: ≤ 5. Ban: GBDT/deep nets/RF; ban soak-time coefficient updates. |
+| **S9** | No idea → recommended default | **Journal-first:** every ENTER/STANDASIDE stamp must carry \(\hat p\), CI (or reliability bin), ladder stage, schema hash. Scorecard must show calibration ECE/reliability. **UI deferred** until after P2 twin exists. |
+| **S10** | Consider price + volume | Feature schema **must** include price **and** completed-bar volume families (S10). Promote bar: soak **W/L direction** matches offline ADVANCE_CANDIDATE **and** coverage floor met **and** payoff/net disclosed; magnitude band match optional disclosure, not a hard fail unless P1 freezes tighter bands. Price+volume ablation (price-only vs price+volume) predeclared inside train/val only — holdout sees the frozen winner once. |
+
+### 8.1 Still fixed at P1 kickoff (not reopening S1–S10)
+
+- Numeric \(p_{\min}\), \(p_{\mathrm{lb}}\) (from validation only).  
+- Exact feature column list / schema hash.  
+- ETH 15m archive path once connected.  
+- Label definition pointer (which frozen-exit journal fields).  
 
 ---
 
@@ -305,10 +316,10 @@ Morning MTM / open marks are **not** substitutes for closed-trade W/L.
 ## 10. Immediate ops constraints (this charter)
 
 - Do **not** restart Pi daemons.  
-- Do **not** change `RP608_ADAPTER_SELECT_15M_*` or Gate 2E B env/knobs.  
+- Do **not** change `RP608_ADAPTER_SELECT_15M_*` or Gate 2E B env/knobs (S6 baselines).  
 - Do **not** modify live twin soft-score weights or `|S|≥0.35`.  
-- Implementation waits on Anuj §8 answers.
+- S1–S10 are **frozen**; next authorized work is **P1 offline package** (still no Coralys edits, still authority 0%).
 
 ---
 
-*End of charter — `RP-608-SCI-ADAPTER-REC-001`.*
+*End of charter — `RP-608-SCI-ADAPTER-REC-001` · S1–S10 frozen 2026-11-27.*
