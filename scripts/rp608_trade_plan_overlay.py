@@ -4189,12 +4189,17 @@ class TradePlanOverlayManager:
 
         # Gate 2E regime-align + DI skew (decision-engine tune):
         # DIRECTIONAL adverse, or SIDEWAYS/TRANSITIONING with large DI skew fighting side.
-        # PRIMARY only by default; BASELINE/r50 twins remain ungated for CF.
+        # PRIMARY only by default; BASELINE/r50/SCI-clean twins remain ungated for CF.
+        # P1a: config skip_gate2e_regime_align forces non-blocking (stamp still written).
         regime_stamp = evaluate_regime_align(
             direction=str(direction),
             regime=regime_dict_from_card(card),
             book_id=self.book_id,
         )
+        if bool(self._config_overrides.get("skip_gate2e_regime_align")):
+            regime_stamp = dict(regime_stamp)
+            regime_stamp["blocks_entry"] = False
+            regime_stamp["p1a_sci_clean_bypass"] = True
         plan["regime_align"] = regime_stamp
         card["regime_align"] = regime_stamp
         if regime_stamp.get("blocks_entry"):

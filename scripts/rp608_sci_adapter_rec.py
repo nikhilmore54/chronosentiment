@@ -34,6 +34,12 @@ def twin_enabled(default: bool = False) -> bool:
     return str(raw).strip().lower() not in {"0", "false", "no", "off"}
 
 
+def clean_twin_enabled(default: bool = False) -> bool:
+    """P1a SCI-clean twin (no DI_SKEW/regime block). Anuj-gated; default off."""
+    raw = os.environ.get("RP608_SCI_ADAPTER_REC_CLEAN_TWIN", "1" if default else "0")
+    return str(raw).strip().lower() not in {"0", "false", "no", "off"}
+
+
 def frozen_pack_path() -> Path:
     env = os.environ.get("RP608_SCI_ADAPTER_REC_PACK", "").strip()
     if env:

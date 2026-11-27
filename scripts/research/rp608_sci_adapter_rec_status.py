@@ -199,6 +199,11 @@ def main() -> int:
         "trade_plan_overlay_sci_adapter_rec_v1",
         primary_suppress_event=_SCI_SUPPRESS,
     )
+    sci_clean = _book(
+        args.root,
+        "trade_plan_overlay_sci_adapter_rec_clean_v1",
+        primary_suppress_event=_SCI_SUPPRESS,
+    )
     primary = _book(args.root, "trade_plan_overlay_v1")
     baseline = _book(args.root, "trade_plan_overlay_baseline_parallel_v1")
     adapter_select = _book(
@@ -217,6 +222,7 @@ def main() -> int:
         "generated_utc": generated,
         "book": "BTCUSDT",
         "sci_adapter_rec": sci,
+        "sci_adapter_rec_clean": sci_clean,
         "primary_a": primary,
         "baseline": baseline,
         "adapter_select_baseline": adapter_select,
@@ -224,6 +230,7 @@ def main() -> int:
         "notes": [
             "W/L-first per book; never pooled (.cursor/rules chronosentiment-core §3b)",
             "SCI twin env RP608_SCI_ADAPTER_REC_TWIN=1 on BTC Pi observer (P3)",
+            "P1a SCI-clean env RP608_SCI_ADAPTER_REC_CLEAN_TWIN (default off; Anuj-gated)",
             "Gate 2E B + adapter_select left observational (S6)",
             "Journals: trade_plan_outcomes.jsonl + trade_plan_events.jsonl",
         ],
@@ -235,6 +242,7 @@ def main() -> int:
     print(f"[{PROTOCOL}] BTC scorecard  generated_utc={generated}")
     for name, block in (
         ("SCI_ADAPTER_REC", sci),
+        ("SCI_CLEAN", sci_clean),
         ("PRIMARY_A", primary),
         ("BASELINE", baseline),
         ("ADAPTER_SELECT", adapter_select),
@@ -247,7 +255,7 @@ def main() -> int:
             f"suppress={block['suppress']} open={block['open']}"
         )
         diag = block.get("event_diag") or {}
-        if diag and name in {"SCI_ADAPTER_REC", "ADAPTER_SELECT", "GATE2E_B"}:
+        if diag and name in {"SCI_ADAPTER_REC", "SCI_CLEAN", "ADAPTER_SELECT", "GATE2E_B"}:
             top = ", ".join(f"{k}={v}" for k, v in list(diag.items())[:6])
             print(f"    events: {top}")
     return 0

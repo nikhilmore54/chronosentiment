@@ -76,6 +76,10 @@ def regime_align_applies_to_book(book_id: Optional[str]) -> bool:
             "FLOOR_LOCK",
             "GATE2X_FLOOR",
             "TREND_AGREE",
+            # P1a SCI-clean twin: calibrator owns abstention; DI/regime stack off
+            # unless RP608_GATE2E_REGIME_ALIGN_BASELINE explicitly enables.
+            "SCI_ADAPTER_REC_CLEAN",
+            "SCI_CLEAN",
         )
     ):
         return gate2e_regime_align_baseline_enabled()
