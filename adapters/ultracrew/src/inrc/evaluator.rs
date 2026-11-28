@@ -1114,34 +1114,26 @@ impl InrcOptimizer {
                     .iter()
                     .find(|c| c.id == self.context.scenario.nurses[n].contract)
                     .unwrap();
+
                 let target = (contract.min_assignments + contract.max_assignments)
                     / (2 * self.context.scenario.number_of_weeks);
 
                 let mut best_cand: Option<(InrcGenome, i32)> = None;
                 let mut max_gain = 0;
 
-                let t_min = target.saturating_sub(1);
-                let t_max = target + 1;
-                let targets = if t_min != target {
-                    vec![t_min, target, t_max]
-                } else {
-                    vec![target, t_max]
-                };
-
-                // Test dynamic pricing across targets and shadow credit profiles
-                for &t in &targets {
-                    for credits in &[&shadow_credits, &zero_credits] {
-                        if let Some(cand_rot) = pricing_solver.solve_optimal_rotation(self, n, credits, t) {
-                            let mut test_genome = genome.clone();
-                            let mut changed_days = Vec::new();
-                            for d in 0..self.context.num_days {
-                                let cur_s = self.get_assigned_shift(genome, n, d);
-                                let rot_s = cand_rot[d];
-                                if cur_s != rot_s {
-                                    changed_days.push(d);
-                                    self.set_assigned_shift(&mut test_genome, n, d, rot_s);
-                                }
+                // Test dynamic pricing across shadow credits and zero credits
+                for credits in &[&shadow_credits, &zero_credits] {
+                    if let Some(cand_rot) = pricing_solver.solve_optimal_rotation(self, n, credits, target) {
+                        let mut test_genome = genome.clone();
+                        let mut changed_days = Vec::new();
+                        for d in 0..self.context.num_days {
+                            let cur_s = self.get_assigned_shift(genome, n, d);
+                            let rot_s = cand_rot[d];
+                            if cur_s != rot_s {
+                                changed_days.push(d);
+                                self.set_assigned_shift(&mut test_genome, n, d, rot_s);
                             }
+                        }
 
                         if changed_days.is_empty() {
                             continue;
@@ -1166,7 +1158,6 @@ impl InrcOptimizer {
                         }
                     }
                 }
-            }
 
                 if let Some((better_genome, _)) = best_cand {
                     *genome = better_genome;

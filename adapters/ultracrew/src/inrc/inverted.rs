@@ -333,16 +333,6 @@ impl InvertedContext {
                     }
                 }
 
-                // PRIMARY SKILL SPECIALIZATION for optimal slots
-                let primary_candidates: Vec<usize> = candidates
-                    .iter()
-                    .copied()
-                    .filter(|&n| self.nurse_primary_skill[n] == slot.skill)
-                    .collect();
-                if !primary_candidates.is_empty() {
-                    candidates = primary_candidates;
-                }
-
                 // Filter out HC4 forbidden successions if possible
                 let legal_candidates: Vec<usize> = if d == 0 {
                     candidates
@@ -466,7 +456,9 @@ impl InvertedContext {
             }
 
             // Fill optimal demand slots if nurses have remaining capacity (up to max_a)
-            for &sid in &self.opt_slots_by_day[d] {
+            let mut day_opt_slots = self.opt_slots_by_day[d].clone();
+            day_opt_slots.sort_by_key(|&sid| self.slots[sid].eligible_nurses.len());
+            for sid in day_opt_slots {
                 let slot = &self.slots[sid];
                 let mut candidates: Vec<usize> = slot
                     .eligible_nurses
@@ -508,14 +500,12 @@ impl InvertedContext {
                     }
                 }
 
-                // PRIMARY SKILL SPECIALIZATION for optimal slots
-                let primary_candidates: Vec<usize> = candidates
-                    .iter()
-                    .copied()
-                    .filter(|&n| self.nurse_primary_skill[n] == slot.skill)
-                    .collect();
-                if !primary_candidates.is_empty() {
-                    candidates = primary_candidates;
+                // PRIMARY SKILL SPECIALIZATION for optimal slots:
+                // Only allow nurses who hold slot.skill as their primary qualification.
+                // Never squander specialized clinical staff (Nurse, HeadNurse) on lower-tier optional slots.
+                candidates.retain(|&n| self.nurse_primary_skill[n] == slot.skill);
+                if candidates.is_empty() {
+                    continue;
                 }
 
                 if !candidates.is_empty() {

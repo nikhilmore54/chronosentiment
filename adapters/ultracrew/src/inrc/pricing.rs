@@ -310,14 +310,12 @@ impl NursePricingSolver {
                             c += (end_a - weekly_max) as i32 * 20;
                         }
 
-                        // Terminal Sunday boundary penalties
-                        if end_s > 0 {
+                        // Terminal Sunday boundary lookahead (only for intermediate weeks w < W - 1 and active work shifts)
+                        let num_weeks = optimizer.context.scenario.number_of_weeks;
+                        let week_k = (optimizer.context.history.week + 1).min(num_weeks);
+                        if week_k < num_weeks && end_s > 0 {
                             if end_streak < contract.min_consecutive_working_days {
                                 c += (contract.min_consecutive_working_days - end_streak) as i32 * 30;
-                            }
-                        } else {
-                            if end_streak < contract.min_consecutive_days_off {
-                                c += (contract.min_consecutive_days_off - end_streak) as i32 * 30;
                             }
                         }
 

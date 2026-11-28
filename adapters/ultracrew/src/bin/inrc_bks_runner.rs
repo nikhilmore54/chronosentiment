@@ -199,7 +199,8 @@ fn run_single_instance(
             }
             total_penalty += soft_pen;
             println!(
-                "    [METRICS] week {}: assign={:.0} streak={:.0} day_off={:.0} wend={:.0} pref={:.0} opt_cov={:.0}",
+                "    [METRICS] [{}] week {}: assign={:.0} streak={:.0} day_off={:.0} wend={:.0} pref={:.0} opt_cov={:.0}",
+                entry.instance_code,
                 week_num,
                 eval.metrics.get("assignment_penalty").unwrap_or(&0.0),
                 eval.metrics.get("work_streak_penalty").unwrap_or(&0.0),
