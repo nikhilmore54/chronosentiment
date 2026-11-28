@@ -177,6 +177,22 @@ Detail: `rp608_sci_adapter_rec_elr_sci_clean_observe_004_2026_11_28.md`
 
 ---
 
+## ELR-SCI-CLEAN-OBSERVE-005 — multi-book adverse (2026-11-28 ~12:06 Asia/Calcutta)
+
+| Field | Value |
+| --- | --- |
+| Result | **Inconclusive** |
+| Treatment differentiation | **Not observed** |
+| BTC SCI +2 / −$5.42 | `…5588784` fric giveback · `…5808143` dir SL — identical on both twins |
+| ETH B & AS +4 / −$8.15 | **4/4 plan_id + idx overlap** (shared pathway this window) |
+| Process note | Aggregate Δ verified via event ledger (matched here; do not assume next time) |
+| DI/regime differential | **Still absent** |
+| Decision | **hold** |
+
+Detail: `rp608_sci_adapter_rec_elr_sci_clean_observe_005_2026_11_28.md`
+
+---
+
 ## Non-negotiables
 
 1. Coralys remains sealed intelligence foundation.  
