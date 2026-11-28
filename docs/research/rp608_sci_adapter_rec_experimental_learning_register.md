@@ -124,6 +124,21 @@ Economics: Σgross −35.48 · Σfric 45.61 · Σnet −112.31 · 25 losses had 
 
 ---
 
+## ELR-004-OBSERVE — CLEAN vs stacked comparative (2026-11-28 ~08:46 Asia/Calcutta)
+
+RQ: Gate2E selection contamination removal → quality / coverage / after-cost on BTC?
+
+| Field | Content |
+| --- | --- |
+| Actual results | Post-arm overlap 2/2 plan_ids · closed n=1 identical net −4.27 · DI/PATH idle in window |
+| Observed failure | No differential coverage event yet; lifetime stacked still PATH 435 / DI 87 |
+| Learning | Cannot claim material economics delta until DI/PATH pressure or CLEAN-only plans appear |
+| Decision | **hold** both DNA · `INCONCLUSIVE_SAMPLE` · continue OBSERVE |
+
+Detail: `rp608_sci_adapter_rec_clean_vs_stacked_observe_2026_11_28.md`
+
+---
+
 ## Non-negotiables
 
 1. Coralys remains sealed intelligence foundation.  
