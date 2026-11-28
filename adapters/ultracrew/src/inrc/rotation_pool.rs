@@ -57,6 +57,18 @@ impl Rotation7 {
     pub fn complete_weekend(&self) -> bool {
         (self.shifts[5] > 0) == (self.shifts[6] > 0)
     }
+
+    #[inline(always)]
+    pub fn from_shifts(shifts: &[Option<usize>; 7]) -> Self {
+        let mut arr = [0u8; 7];
+        for d in 0..7 {
+            arr[d] = match shifts[d] {
+                None => 0,
+                Some(idx) => (idx + 1) as u8,
+            };
+        }
+        Self { shifts: arr }
+    }
 }
 
 /// Pool of precomputed zero-defect rotations per contract.
@@ -385,6 +397,68 @@ impl RotationPool {
                 legal && pen == 0
             })
             .collect()
+    }
+
+    /// Checks if nurse `nurse_idx` has the required skills to work `rotation` on all 7 days.
+    #[inline]
+    pub fn is_rotation_qualified(
+        rotation: &Rotation7,
+        nurse_idx: usize,
+        nurse_can_work: &[Vec<Vec<bool>>],
+    ) -> bool {
+        for d in 0..7 {
+            if let Some(s) = rotation.get_shift(d) {
+                if !nurse_can_work[nurse_idx][d][s] {
+                    return false;
+                }
+            }
+        }
+        true
+    }
+
+    /// Returns candidate zero-defect rotations for a nurse that:
+    /// 1. Are skill-qualified for the nurse across all 7 days
+    /// 2. Satisfy HC4 (no forbidden succession with Sunday history)
+    /// Sorted by boundary penalty (lowest penalty first).
+    pub fn get_candidate_rotations_for_nurse(
+        &self,
+        nurse_idx: usize,
+        contract_id: &str,
+        history: Option<&InrcNurseHistory>,
+        contract: &InrcContract,
+        scenario: &InrcScenario,
+        nurse_can_work: &[Vec<Vec<bool>>],
+        target_band: (usize, usize),
+    ) -> Vec<(Rotation7, i32)> {
+        let pool = match self.rotations_by_contract.get(contract_id) {
+            Some(p) => p,
+            None => return Vec::new(),
+        };
+
+        let target = (target_band.0 + target_band.1) / 2;
+
+        let mut candidates: Vec<(Rotation7, i32)> = pool
+            .iter()
+            .copied()
+            .filter_map(|r| {
+                if !Self::is_rotation_qualified(&r, nurse_idx, nurse_can_work) {
+                    return None;
+                }
+                let (legal, pen) = self.eval_boundary_cost(&r, history, contract, scenario);
+                if legal {
+                    Some((r, pen))
+                } else {
+                    None
+                }
+            })
+            .collect();
+
+        candidates.sort_by_key(|&(r, pen)| {
+            let a_diff = (r.total_assignments() as i32 - target as i32).abs();
+            (pen, a_diff)
+        });
+
+        candidates
     }
 }
 

@@ -47,6 +47,12 @@ pub struct InvertedContext {
     pub nurse_can_work: Vec<Vec<Vec<bool>>>,
     pub forbidden_matrix: Vec<Vec<bool>>, // [prev_shift][next_shift] -> forbidden
     pub history_forbidden: Vec<Vec<bool>>, // [nurse][shift] -> forbidden on day 0
+    pub nurse_min_work_days: Vec<usize>,
+    pub nurse_max_work_days: Vec<usize>,
+    pub nurse_min_off_days: Vec<usize>,
+    pub nurse_max_off_days: Vec<usize>,
+    pub nurse_initial_work_streak: Vec<usize>,
+    pub nurse_initial_off_streak: Vec<usize>,
 }
 
 impl InvertedContext {
@@ -195,6 +201,28 @@ impl InvertedContext {
             }
         }
 
+        let mut nurse_min_work_days = vec![0usize; num_nurses];
+        let mut nurse_max_work_days = vec![7usize; num_nurses];
+        let mut nurse_min_off_days = vec![0usize; num_nurses];
+        let mut nurse_max_off_days = vec![7usize; num_nurses];
+        for (idx, nurse) in scenario.nurses.iter().enumerate() {
+            if let Some(c) = scenario.contracts.iter().find(|c| c.id == nurse.contract) {
+                nurse_min_work_days[idx] = c.min_consecutive_working_days;
+                nurse_max_work_days[idx] = c.max_consecutive_working_days;
+                nurse_min_off_days[idx] = c.min_consecutive_days_off;
+                nurse_max_off_days[idx] = c.max_consecutive_days_off;
+            }
+        }
+
+        let mut nurse_initial_work_streak = vec![0usize; num_nurses];
+        let mut nurse_initial_off_streak = vec![0usize; num_nurses];
+        for h in &history.nurse_history {
+            if let Some(n_idx) = scenario.nurses.iter().position(|n| n.id == h.nurse) {
+                nurse_initial_work_streak[n_idx] = h.number_of_consecutive_working_days;
+                nurse_initial_off_streak[n_idx] = h.number_of_consecutive_days_off;
+            }
+        }
+
         Self {
             num_nurses,
             num_days,
@@ -209,15 +237,23 @@ impl InvertedContext {
             nurse_can_work,
             forbidden_matrix,
             history_forbidden,
+            nurse_min_work_days,
+            nurse_max_work_days,
+            nurse_min_off_days,
+            nurse_max_off_days,
+            nurse_initial_work_streak,
+            nurse_initial_off_streak,
         }
     }
 
     /// Constructs a 100% feasible initial genome by assigning nurses to demand slots.
-    /// Guarantees HC1 (Coverage) and HC2 (Skills) by construction.
+    /// Guarantees HC1 (Coverage) and HC2 (Skills) by construction while optimizing streak continuity.
     pub fn construct_feasible_genome(&self, rng: &mut StdRng) -> InrcGenome {
         let mut assigned_shift: Vec<Vec<Option<usize>>> =
             vec![vec![None; self.num_days]; self.num_nurses];
         let mut shift_counts = vec![0usize; self.num_nurses];
+        let mut current_work_streak = self.nurse_initial_work_streak.clone();
+        let mut current_off_streak = self.nurse_initial_off_streak.clone();
 
         for d in 0..self.num_days {
             // Sort mandatory slots: rarest skill first (fewest eligible nurses first)
@@ -233,14 +269,14 @@ impl InvertedContext {
                     .filter(|&n| assigned_shift[n][d].is_none())
                     .collect();
 
-                // Weekend coherence preference: on Sunday (d=6), prefer nurses who worked Saturday (d=5)
+                // Weekend coherence preference: on Sunday (d=6), strongly prefer nurses who worked Saturday (d=5)
                 if d == 6 {
                     let wend_candidates: Vec<usize> = candidates
                         .iter()
                         .copied()
                         .filter(|&n| assigned_shift[n][5].is_some())
                         .collect();
-                    if !wend_candidates.is_empty() && rng.gen_bool(0.75) {
+                    if !wend_candidates.is_empty() {
                         candidates = wend_candidates;
                     }
                 }
@@ -278,13 +314,43 @@ impl InvertedContext {
                 }
 
                 if !candidates.is_empty() {
-                    // Sort candidates by:
-                    // 1. Skill specialization (fewer skills first, to preserve multi-skilled nurses for rare skills)
-                    // 2. Workload balance (under-quota first)
                     candidates.sort_by_key(|&n| {
-                        let (_, max_a) = self.nurse_target_bands[n];
-                        let over = if shift_counts[n] >= max_a { 100 } else { 0 };
-                        (self.nurse_skills_count[n], over, shift_counts[n])
+                        let (min_a, max_a) = self.nurse_target_bands[n];
+                        let mut score = 0i32;
+
+                        if shift_counts[n] >= max_a {
+                            score += 600;
+                        } else if shift_counts[n] < min_a {
+                            score -= 200;
+                        }
+
+                        if current_work_streak[n] > 0 {
+                            let w = current_work_streak[n];
+                            if w < self.nurse_min_work_days[n] {
+                                score -= 800;
+                            } else if w >= self.nurse_max_work_days[n] {
+                                score += 1200;
+                            } else {
+                                score -= 100;
+                            }
+                        } else if current_off_streak[n] > 0 {
+                            let o = current_off_streak[n];
+                            if o < self.nurse_min_off_days[n] {
+                                score += 600;
+                            } else if o >= self.nurse_max_off_days[n] {
+                                score -= 600;
+                            }
+                        }
+
+                        if d > 0 {
+                            if let Some(prev_s) = assigned_shift[n][d - 1] {
+                                if prev_s == slot.shift_idx {
+                                    score -= 100;
+                                }
+                            }
+                        }
+
+                        (score, self.nurse_skills_count[n], shift_counts[n])
                     });
 
                     // Stochastic choice among top candidate pool
@@ -299,7 +365,7 @@ impl InvertedContext {
             // Fill optimal demand slots if nurses have remaining capacity (up to max_a)
             for &sid in &self.opt_slots_by_day[d] {
                 let slot = &self.slots[sid];
-                let candidates: Vec<usize> = slot
+                let mut candidates: Vec<usize> = slot
                     .eligible_nurses
                     .iter()
                     .copied()
@@ -318,11 +384,53 @@ impl InvertedContext {
                     })
                     .collect();
 
-                if let Some(&chosen) = candidates.choose(rng) {
-                    if rng.gen_bool(0.75) {
+                if d == 6 {
+                    let wend_candidates: Vec<usize> = candidates
+                        .iter()
+                        .copied()
+                        .filter(|&n| assigned_shift[n][5].is_some())
+                        .collect();
+                    if !wend_candidates.is_empty() {
+                        candidates = wend_candidates;
+                    }
+                }
+
+                if !candidates.is_empty() {
+                    candidates.sort_by_key(|&n| {
+                        let mut score = 0i32;
+                        if current_work_streak[n] > 0 {
+                            let w = current_work_streak[n];
+                            if w < self.nurse_min_work_days[n] {
+                                score -= 500;
+                            } else if w >= self.nurse_max_work_days[n] {
+                                score += 1000;
+                            }
+                        } else if current_off_streak[n] > 0 {
+                            let o = current_off_streak[n];
+                            if o < self.nurse_min_off_days[n] {
+                                score += 400;
+                            }
+                        }
+                        (score, shift_counts[n])
+                    });
+
+                    let pool_size = candidates.len().min(3);
+                    let chosen = candidates[rng.gen_range(0..pool_size)];
+                    if rng.gen_bool(0.80) {
                         assigned_shift[chosen][d] = Some(slot.shift_idx);
                         shift_counts[chosen] += 1;
                     }
+                }
+            }
+
+            // Update streaks at end of day d
+            for n in 0..self.num_nurses {
+                if assigned_shift[n][d].is_some() {
+                    current_work_streak[n] += 1;
+                    current_off_streak[n] = 0;
+                } else {
+                    current_off_streak[n] += 1;
+                    current_work_streak[n] = 0;
                 }
             }
         }

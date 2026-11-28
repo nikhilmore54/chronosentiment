@@ -982,6 +982,9 @@ impl ReasoningEngine for CoralysInrcEngine {
         let flow = crate::inrc::optimal_flow::DailyOptimalFlow::new();
         flow.optimize_all_days(&optimizer, &mut best_genome, &pacing);
 
+        // Pre-SA Rotation Projection Pass (seed SA with zero-defect rotation patterns)
+        optimizer.optimize_rotations(&mut best_genome);
+
         // 2. Post-GA Memetic Polish via Coralys Simulated Annealing Decision Engine
         let mut rng = match config.seed {
             Some(s) => rand::rngs::StdRng::seed_from_u64(s),
@@ -1002,6 +1005,9 @@ impl ReasoningEngine for CoralysInrcEngine {
 
         // Post-SA Min-Cost Flow Polish (capture any remaining free optimal coverage gains)
         flow.optimize_all_days(&optimizer, &mut best_genome, &pacing);
+
+        // Post-SA Rotation Projection Polish Pass
+        optimizer.optimize_rotations(&mut best_genome);
 
         // 3. Final Hard Constraint Safety Check (guarantee 0 HC)
         optimizer.repair_hard_constraints(&mut best_genome);

@@ -248,9 +248,15 @@ fn test_inrc_multi_week_rolling_horizon_benchmark() {
         }
         cumulative_penalty += next_state.total_soft_penalty;
 
+        let mut penalty_by_type = std::collections::HashMap::new();
+        for v in &eval.soft_constraint_violations {
+            *penalty_by_type.entry(v.constraint_id.clone()).or_insert(0) += v.penalty;
+        }
+
         println!(
-            "Week {} (WD-{}) -> Hard Violations: {}, Soft Penalty: {}, Feasible: {}",
-            week_num, wd_idx, hard_violations, next_state.total_soft_penalty, next_state.is_feasible
+            "Week {} (WD-{}) -> Hard Violations: {}, Soft Penalty: {}, Feasible: {}, Breakdown: {:?}",
+            week_num, wd_idx, hard_violations, next_state.total_soft_penalty, next_state.is_feasible,
+            penalty_by_type
         );
 
         let genome = InrcGenome {

@@ -19,6 +19,8 @@ pub struct InrcContext {
     pub history: Arc<InrcHistory>,
     pub ecology: WorkforceEcology,
     pub inverted: Arc<InvertedContext>,
+    pub rotation_pool: Arc<super::rotation_pool::RotationPool>,
+    pub candidate_rotations: Vec<Vec<(super::rotation_pool::Rotation7, i32)>>,
     pub num_nurses: usize,
     pub num_days: usize,          // usually 7 for a week
     pub shift_types: Vec<String>, // ordered list of shift types
@@ -102,12 +104,32 @@ impl InrcContext {
             }
         }
 
+        let rotation_pool = Arc::new(super::rotation_pool::RotationPool::build(&scenario));
+        let mut candidate_rotations = Vec::with_capacity(num_nurses);
+        for n in 0..num_nurses {
+            let nurse = &scenario.nurses[n];
+            let contract = scenario.contracts.iter().find(|c| c.id == nurse.contract).unwrap();
+            let hist = history.nurse_history.iter().find(|h| h.nurse == nurse.id);
+            let rots = rotation_pool.get_candidate_rotations_for_nurse(
+                n,
+                &nurse.contract,
+                hist,
+                contract,
+                &scenario,
+                &inverted.nurse_can_work,
+                inverted.nurse_target_bands[n],
+            );
+            candidate_rotations.push(rots);
+        }
+
         Self {
             scenario: Arc::new(scenario),
             week_data: Arc::new(week_data),
             history: Arc::new(history),
             ecology,
             inverted,
+            rotation_pool,
+            candidate_rotations,
             num_nurses,
             num_days,
             shift_types,
@@ -186,11 +208,15 @@ pub struct InrcOptimizer {
 }
 
 use rand::rngs::StdRng;
+use rand::Rng;
 
 impl GenomeFactory<InrcGenome> for InrcOptimizer {
     fn create(&self, rng: &mut StdRng) -> InrcGenome {
         let mut genome = self.context.inverted.construct_feasible_genome(rng);
         self.repair_hard_constraints(&mut genome);
+        if rng.gen_bool(0.20) {
+            self.optimize_rotations(&mut genome);
+        }
         genome
     }
 }
