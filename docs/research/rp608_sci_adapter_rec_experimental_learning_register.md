@@ -193,6 +193,20 @@ Detail: `rp608_sci_adapter_rec_elr_sci_clean_observe_005_2026_11_28.md`
 
 ---
 
+## ELR-SCI-CLEAN-OBSERVE-006 — quiet SCI pair (2026-11-28 ~12:33 Asia/Calcutta)
+
+| Field | Value |
+| --- | --- |
+| Result | **Inconclusive** |
+| Treatment differentiation | **Not observed** |
+| BTC SCI +2 / −$1.63 | `…7431540` (−0.50) · `…7564229` (−1.13) — both GIVEBACK / EXECUTION_FRICTION · identical twins |
+| DI/regime differential | **Still unmet** (PATH stamps on CLEAN ≠ DI) |
+| Decision | **hold** |
+
+Detail: `rp608_sci_adapter_rec_elr_sci_clean_observe_006_2026_11_28.md`
+
+---
+
 ## Non-negotiables
 
 1. Coralys remains sealed intelligence foundation.  
