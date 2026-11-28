@@ -13,7 +13,7 @@ In combinatorial nurse rostering (INRC-II), current heuristics frequently conver
 ### 1.1 The Single-Employee Greedy Allocation Trap
 When optimization algorithms evaluate moves one nurse at a time ($n \in \{0, \dots, N-1\}$):
 - **Skill Cannibalization:** Multi-skilled workers (e.g., nurses holding both `HeadNurse` and `Nurse` certifications) are greedily assigned to lower-tier slots (e.g., standard `Nurse` or `Caretaker`) early in the calendar week.
-- **Deficit Cascade:** When high-tier demand (e.g., `HeadNurse`) arises later in the week, specialized personnel are either exhausted, locked in incompatible shift successions, or at their statutory work streak cap. This triggers severe hard constraint violations ($HC_2$ Skill Shortage) or heavy soft penalties ($S_8$ Optimal Coverage Deficit).
+- **Deficit Cascade:** When high-tier demand (e.g., `HeadNurse`) arises later in the week, specialized personnel are either exhausted, locked in incompatible shift successions, or at their statutory work streak cap. This triggers severe hard constraint violations ($HC_2$ Skill Shortage) or heavy soft penalties ($S_1^{\text{lit}}$ / engine `S8_OptimalCoverage` Deficit).
 
 ### 1.2 The Weekly Horizon Tunnel-Vision Dilemma
 In multi-week competitions (e.g., 4-week and 8-week horizons), individual contracts—particularly non-full-time contracts (`PartTime`, `HalfTime`, `20Percent`)—exhibit structural cross-week coupling:
@@ -22,10 +22,26 @@ In multi-week competitions (e.g., 4-week and 8-week horizons), individual contra
   - $\text{Minimum Consecutive Working Days} = 5$.
   - $\text{Minimum Consecutive Days Off} = 5$.
 - **The Single-Week Paradox:** Under an isolated single-week planning window, a naive target band of $[1, 4]$ shifts is mathematically impossible to fulfill ergonomically:
-  - If the nurse is assigned $0$ shifts: they violate weekly minimum assignment pacing ($S_1$).
-  - If the nurse is assigned $1$ to $4$ shifts: they violate minimum consecutive working days ($S_2$, penalty 30–120 pts).
-  - If the nurse is assigned $5$ shifts: they exceed the naive weekly maximum ($S_1$, penalty 20 pts).
+  - If the nurse is assigned $0$ shifts: they violate naive weekly minimum assignment pacing ($S_6^{\text{lit}}$ / engine `S1_TotalAssignments`).
+  - If the nurse is assigned $1$ to $4$ shifts: they violate minimum consecutive working days ($S_2^{\text{lit}}$ / engine `S2_ConsecutiveWorkingDays`, penalty 30–120 pts).
+  - If the nurse is assigned $5$ shifts: they exceed the naive weekly maximum ($S_6^{\text{lit}}$ / engine `S1_TotalAssignments`, penalty 20 pts).
 - **The Holistic Reality:** The true global optimum requires **multi-week cohort staggering**: the nurse should be completely idle ($0$ shifts) in Week 0 and Week 2, and work a complete legal 5-day block ($5$ shifts) in Week 1 and Week 3, perfectly satisfying all constraints across the 4-week horizon.
+
+### 1.3 INRC-II Soft Constraint Notation Concordance
+To bridge internal solver telemetry with the formal operations research literature (Ceschia et al., 2019 / *Annals of Operations Research*), the table below establishes the exact concordance between official INRC-II competition soft constraints ($S_1^{\text{lit}}$–$S_7^{\text{lit}}$) and Coralys engine runtime metrics ($S_1^{\text{eng}}$–$S_8^{\text{eng}}$):
+
+| Official INRC-II ($S_k^{\text{lit}}$) | Coralys Engine ID ($S_k^{\text{eng}}$) | Mathematical Objective & Statutory Semantics | Unit Penalty |
+| :--- | :--- | :--- | :---: |
+| **$S_1$ (Optimal Coverage)** | `S8_OptimalCoverage` | Minimize understaffing below optimal demand: $\max(0, D^{\text{opt}} - \text{Assigned})$ | 30 |
+| **$S_2$ (Consecutive Working Days)** | `S2_ConsecutiveWorkingDays` | Minimize working streak deviations outside $[W_{\min}, W_{\max}]$ | 30 |
+| **$S_2$ (Consecutive Shift Types)** | `S4_ConsecutiveShiftDays` | Minimize consecutive shift-type assignments outside $[S_{\min}, S_{\max}]$ | 15 / 30 |
+| **$S_3$ (Consecutive Days Off)** | `S3_ConsecutiveDaysOff` | Minimize rest streak deviations outside $[O_{\min}, O_{\max}]$ | 30 |
+| **$S_4$ (Shift-Off Preferences)** | `S5_Preferences` | Minimize assignments on requested days/shifts off | 10 / 20 |
+| **$S_5$ (Complete Weekends)** | `S6_CompleteWeekends` | Penalize working Saturday without Sunday or vice versa | 30 |
+| **$S_6$ (Total Assignments)** | `S1_TotalAssignments` | Minimize total assignments outside contract bounds $[A_{\min}, A_{\max}]$ | 20 |
+| **$S_7$ (Max Working Weekends)** | `S7_MaxWorkingWeekends` | Minimize working weekends exceeding contract maximum $K_{\text{wend}}$ | 30 |
+
+*Throughout this document, constraints are referenced using their canonical INRC-II literature designations ($S_1^{\text{lit}}$–$S_7^{\text{lit}}$) with internal engine identifiers parenthesized for implementation traceability.*
 
 ---
 
@@ -43,8 +59,9 @@ $$\implies \text{HeadNurse} \succ \text{Nurse} \succ \text{Caretaker} \succ \tex
 
 ### 2.2 Primary Skill Specialization
 For each employee $n \in \mathcal{N}$:
-- **Primary Skill ($s_{\text{primary}}(n)$):** The highest / rarest capability possessed by nurse $n$:
-  $$s_{\text{primary}}(n) = \arg\min_{s \in \text{Skills}(n)} \text{Rarity}(s)$$
+- **Primary Skill ($s_{\text{primary}}(n)$):** The highest / rarest capability possessed by nurse $n$, with deterministic lexicographical and demand-volume tie-breaking:
+  $$s_{\text{primary}}(n) = \arg\min_{s \in \text{Skills}(n)} \left( \text{Rarity}(s), -\text{DemandVol}(s), \text{Lex}(s) \right)$$
+  where $\text{DemandVol}(s) = \sum_{d, \sigma} D^{\text{opt}}(d, \sigma, s)$ represents the total scenario-wide optimal demand volume for skill $s$, prioritizing clinical throughput when fleet rarities coincide, and $\text{Lex}(s)$ provides strict deterministic canonical ordering.
 - **Secondary Skills ($\mathcal{S}_{\text{sec}}(n)$):** All subordinate capabilities possessed by nurse $n$:
   $$\mathcal{S}_{\text{sec}}(n) = \text{Skills}(n) \setminus \{ s_{\text{primary}}(n) \}$$
 
@@ -140,7 +157,7 @@ The capability cohort and primary skill specialization architecture is integrate
 
 ### 6.1 Historical Boundary Continuity Invariant
 
-At the boundary between week $w - 1$ and week $w$, traditional single-week greedy heuristics evaluate Monday ($d=0$) in isolation, ignoring the preceding Sunday shift $s_{\text{prev}} \in \mathcal{H}$. This causes immediate shift streak fragmentation: if a nurse worked Night on Sunday and is assigned Early on Monday, both the Sunday Night streak terminates prematurely (incurring an $S_4$ min-streak penalty) and a 1-day isolated Early shift is created.
+At the boundary between week $w - 1$ and week $w$, traditional single-week greedy heuristics evaluate Monday ($d=0$) in isolation, ignoring the preceding Sunday shift $s_{\text{prev}} \in \mathcal{H}$. This causes immediate shift streak fragmentation: if a nurse worked Night on Sunday and is assigned Early on Monday, both the Sunday Night streak terminates prematurely (incurring an $S_2^{\text{lit}}$ / engine `S4_ConsecutiveShiftDays` min-streak penalty) and a 1-day isolated Early shift is created.
 
 To enforce temporal boundary continuity:
 1. **Day 0 History Coupling**: `InvertedContext` records each nurse's initial shift type $s_0(n)$ and initial shift streak $\ell_0(n)$ from `InrcHistory`.
@@ -150,35 +167,43 @@ To enforce temporal boundary continuity:
 
 ### 6.2 Zero-Allocation Multi-Round Rolling-Horizon Shift Streak Harmonizer
 
-In Phase 4, Coralys executes an iterative, in-place shift streak harmonizer operating over all skill cohorts $\mathcal{K}_{\text{skill}}$ across all 7 days:
-- For any day $d \in \{0, \dots, 6\}$ and any pair of nurses $u, v \in \mathcal{K}_{\text{skill}}$ that are both assigned shifts $s_u(d) \neq s_v(d)$:
-  - Tentatively swap their shift assignments in place on day $d$.
-  - Because $u$ and $v$ hold identical skills, clinical coverage and demand fulfillment are strictly invariant ($\Delta \text{Coverage} = 0$).
-  - Because both nurses were already working on day $d$, assignment counts and work/off patterns are strictly invariant ($\Delta \text{Workload} = 0$).
-  - If hard contracts hold and the combined soft penalty decreases ($\Delta \text{Penalty} < 0$), the swap is committed; otherwise, it is reverted in place with zero heap allocations.
-- The harmonization loop repeats until full convergence ($\Delta \text{Penalty} = 0$) or at most 10 rounds, propagating chained shift streak alignments across the entire 7-day horizon.
+Let $\mathcal{K}_{\text{skill}}(s)$ denote the primary skill equivalence class uniting all cohorts holding primary skill $s$:
+$$\mathcal{K}_{\text{skill}}(s) = \bigcup_{c \in \mathcal{C}} \mathcal{K}_{(c, s)} = \{ n \in \mathcal{N} \mid s_{\text{primary}}(n) = s \}$$
+
+While Phase 3 local search strictly preserves contract homogeneity within individual cohorts $\mathcal{K}_{(c, s)}$, the Phase 4 shift streak harmonizer operates over the broader primary skill equivalence class $\mathcal{K}_{\text{skill}}(s)$. This cross-contract relaxation is mathematically sound:
+1. **Workload Invariance:** For any day $d \in \{0, \dots, 6\}$ and any pair of nurses $u, v \in \mathcal{K}_{\text{skill}}(s)$ currently assigned shifts $s_u(d) \neq s_v(d)$ (with $s_u(d) > 0$ and $s_v(d) > 0$):
+   - Swapping their daily shift assignments leaves both nurses active on day $d$.
+   - The total weekly assignments for nurse $u$ and nurse $v$ are strictly unchanged ($\Delta \text{Workload}(u) = \Delta \text{Workload}(v) = 0$), preserving $S_6^{\text{lit}}$ (total assignments) and $S_7^{\text{lit}}$ (working weekends) across disparate contracts.
+2. **Coverage Invariance:** Because $u$ and $v$ share identical clinical capability $s_{\text{primary}} = s$, daily staffing coverage and skill requirements are strictly invariant ($\Delta \text{Coverage} = 0$).
+3. **Streak Smoothing:** If the swap resolves a mid-block shift transition ($S_2^{\text{lit}}$ shift-type succession penalty), the swap is committed in place with zero heap allocations; otherwise, it is reverted.
+
+The harmonization loop repeats until full convergence ($\Delta \text{Penalty} = 0$) or at most 10 rounds, propagating chained shift streak alignments across the entire 7-day horizon.
 
 ### 6.3 Alternating Contract Multi-Week Obligation Theorem
 
-**Theorem (Contractual Multi-Week Alternation):** Let $W$ be the horizon length in weeks, $A_{\max}$ be the maximum assignment limit, and $W_{\min}$ be the minimum consecutive working days. A contract mathematically forces alternating active/resting weeks if and only if:
+**Theorem 6.3 (Week-Contained Multi-Week Alternation):** Let $W$ be the planning horizon in weeks, $A_{\max}$ be the contract maximum assignment cap, and $W_{\min}$ be the statutory minimum consecutive working days. Under schedules with week-contained (non-boundary-spanning) work blocks, a contract mathematically forces at least one resting week ($A^{\text{week}} = 0$) if and only if:
 $$A_{\max} < W \times W_{\min}$$
 
-*Proof:* If a nurse works in all $W$ weeks, the minimum legal number of assignments in each week is $W_{\min}$ (since any work block must be at least $W_{\min}$ consecutive days to avoid an $S_2$ violation). Thus, working every week requires at least $W \times W_{\min}$ total assignments. If $A_{\max} < W \times W_{\min}$, the nurse cannot work in every week without exceeding $A_{\max}$ ($S_1$ violation). Therefore, the nurse must experience at least one week with 0 assignments (a resting week). $\blacksquare$
+*Proof:* In any week where a nurse is active, any legal work block contained entirely within the week must span at least $W_{\min}$ days to satisfy $S_2^{\text{lit}}$ ($S_2_{\text{work}}$). Therefore, active participation in week $w$ requires $A_w \ge W_{\min}$. If the nurse were active in all $W$ weeks, total assignments would satisfy:
+$$A_{\text{total}} = \sum_{w=0}^{W-1} A_w \ge W \times W_{\min}$$
+If $A_{\max} < W \times W_{\min}$, this implies $A_{\text{total}} > A_{\max}$, violating statutory contract bound $S_6^{\text{lit}}$ ($S_1^{\text{eng}}$). Thus, the nurse must have at least one week with $A_w = 0$. $\blacksquare$
 
-Consequently:
-- For alternating contracts ($A_{\max} < W \times W_{\min}$), Coralys sets the weekly minimum surrogate target to $A_{\min}^{\text{week}} = 0$, eliminating phantom weekly under-assignment penalties.
-- For non-alternating contracts ($A_{\max} \ge W \times W_{\min}$), $A_{\min}^{\text{week}} = \lfloor A_{\min} / W \rfloor$, preventing FullTime staff from defecting to zero assignments.
+**Remark 6.3.1 (Week-Boundary Spanning Blocks):** If a single continuous work block spans the boundary between week $w$ and week $w+1$ (e.g., Saturday–Sunday of week $w$ and Monday–Wednesday of week $w+1$, totaling 5 days), a nurse can be active in both calendar weeks with fewer than $2 \times W_{\min}$ shifts. However, because each continuous block still requires $\ge W_{\min}$ total shifts, a nurse can execute at most $K = \lfloor A_{\max} / W_{\min} \rfloor$ distinct blocks across the horizon. When $K < \lceil W / 2 \rceil$ (e.g., `HalfTime` in 4 weeks where $A_{\max} = 11$, $W_{\min} = 4 \implies K = 2$), the nurse can cover at most $2K$ week segments; any schedule requiring uniform activity in all weeks inevitably collapses into illegal fragments.
+
+**Corollary 6.3.2 (Single-Week Surrogate Target Relaxation):** In decoupled, rolling-horizon single-week optimization, condition $A_{\max} < W \times W_{\min}$ provides the exact, necessary structural criterion to set the single-week surrogate minimum to:
+$$A_{\min}^{\text{week}} = \begin{cases} 0 & \text{if } A_{\max} < W \times W_{\min} \text{ (Alternating Contract)} \\ \lfloor A_{\min} / W \rfloor & \text{if } A_{\max} \ge W \times W_{\min} \text{ (Non-Alternating Contract)} \end{cases}$$
+Setting $A_{\min}^{\text{week}} = 0$ for alternating contracts eliminates phantom single-week under-assignment penalties ($S_6^{\text{lit}}$ / $S_1^{\text{eng}}$), enabling constructive seeders and RCSP pricing solvers to schedule pristine resting weeks without artificial penalty distortion.
 
 ### 6.4 Preference-Aware Indexing & Deficit-Prioritized Block Augmentation
 
 1. **Shift-Off Request Indexing (`nurse_requested_off`)**:
    - `InvertedContext` indexes `week_data.shift_off_requests` into a 3D boolean tensor `nurse_requested_off[n][d][s]`.
-   - Constructive slot allocation adds a $+800$ penalty for assigning a nurse to their requested off shift ($S_5$), while the RCSP dynamic programming pricing DAG adds a $+10$ step cost to edge transitions.
+   - Constructive slot allocation adds a $+800$ penalty for assigning a nurse to their requested off shift ($S_4^{\text{lit}}$ / engine `S5_Preferences`), while the RCSP dynamic programming pricing DAG adds a $+10$ step cost to edge transitions.
 2. **Deficit-Prioritized Ergonomic Block Augmentation**:
    - In `DailyOptimalFlow`, block lengths include all valid contract streaks `[5, 4, 3, 2]`, unlocking 2-day contracts (`20Percent`) that were previously locked out.
-   - Idle candidates are sorted descending by remaining assignment deficit $\Delta A = A_{\text{target}} - A_{\text{current}}$, awarding complete multi-day blocks to nurses who need them most to eliminate $S_1$ under-assignment penalties.
+   - Idle candidates are sorted descending by remaining assignment deficit $\Delta A = A_{\text{target}} - A_{\text{current}}$, awarding complete multi-day blocks to nurses who need them most to eliminate $S_6^{\text{lit}}$ (engine `S1_TotalAssignments`) under-assignment penalties.
 3. **Isolated Optimal Avoidance**:
-   - In single-day constructive slot allocation, nurses with $W_{\min} > 1$ are strictly barred from receiving an optimal slot unless they are already working on the preceding day (`has_prev`). This prevents creating isolated 1-day work blocks that incur 90 points of $S_2$ and $S_4$ penalties to cover a 30-point optimal slot.
+   - In single-day constructive slot allocation, nurses with $W_{\min} > 1$ are strictly barred from receiving an optimal slot unless they are already working on the preceding day (`has_prev`). This prevents creating isolated 1-day work blocks that incur 90 points of $S_2^{\text{lit}}$ penalties to cover a 30-point optimal slot ($S_1^{\text{lit}}$ / engine `S8_OptimalCoverage`).
 
 ---
 
@@ -186,7 +211,7 @@ Consequently:
 
 1. **Primary Skill Reservation**:
    - For mandatory demand slots, primary clinical qualification is preferred if candidates exist, but falls back to secondary qualified personnel to strictly guarantee 100% $HC_1$ coverage.
-   - For optional demand slots ($S_8$), candidate pools strictly retain only nurses holding the demanded skill as their primary qualification (`self.nurse_primary_skill[n] == slot.skill`). This prevents high-tier personnel (`HeadNurse`, `Nurse`) from being squandered on optional lower-tier tasks (`Caretaker`, `Trainee`).
+   - For optional demand slots ($S_1^{\text{lit}}$ / engine `S8_OptimalCoverage`), candidate pools strictly retain only nurses holding the demanded skill as their primary qualification (`self.nurse_primary_skill[n] == slot.skill`). This prevents high-tier personnel (`HeadNurse`, `Nurse`) from being squandered on optional lower-tier tasks (`Caretaker`, `Trainee`).
 2. **Rarity-Ordered Demand Slot Scheduling**:
    - Daily optimal slots are sorted ascending by candidate pool cardinality (`eligible_nurses.len()`). Highly specialized slots with narrow staffing margins are staffed first, preserving generalist capacity for broader hospital needs.
 
