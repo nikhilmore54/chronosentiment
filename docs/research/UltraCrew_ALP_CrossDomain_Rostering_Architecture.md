@@ -15,8 +15,31 @@ In the Aircraft Landing Problem (ALP, `airland.rs`), Coralys achieved **8 of 18 
 This success was not achieved via stochastic population sampling (e.g., MOGA), but through a **Deterministic, Hierarchical Multi-Phase Metaheuristic Pipeline**:
 $$\text{Envelope Subproblem} \longrightarrow \text{Regret Seeding} \longrightarrow \text{VNS Ladder} \longrightarrow \text{Bottleneck ALNS} \longrightarrow \text{Rolling Window Polish}$$
 
-### The Mathematical Isomorphism Between ALP and Rostering
-Both the Aircraft Landing Problem and the Nurse Rostering Problem (INRC-II) occupy isomorphic mathematical landscapes:
+### The Mathematical Isomorphism Between ALP and Rostering: Primal and Dual Perspectives
+
+Both the Aircraft Landing Problem (ALP) and the Nurse Rostering Problem (INRC-II) occupy isomorphic combinatorial landscapes. This isomorphism operates across two complementary dualities:
+
+#### 1. Primal Mapping: Runways as Nurses, Planes as Shifts
+In the primal view, each nurse functions as a physical runway whose operational timeline spans calendar days $d \in \{0, \dots, 6\}$:
+- **Runway Resource:** Each nurse $n \in \mathcal{N}$ represents a continuous landing strip.
+- **Flight Operations (Shifts):** Individual shift duties (Early, Day, Late, Night) are flights requesting clearance to land on the nurse's runway.
+- **Runway Exclusion ($HC_3$):** Two planes cannot touch down simultaneously $\Longleftrightarrow$ A nurse cannot be assigned more than one shift per day.
+- **Wake Separation Matrix ($HC_4$ & $S_3$):** The required aerodynamic separation between successive landings $s_{ij}$ directly maps to forbidden shift successions (e.g., Night $\to$ Early) and statutory minimum rest gaps between working blocks.
+- **Runway Operating Fatigue ($W_{\max}$):** Runways require routine cooling/closure after sustained operation $\Longleftrightarrow$ Maximum consecutive working days cap.
+- **Mandatory Maintenance Closures ($O_{\min}$):** Minimum required idle duration before reopening the runway $\Longleftrightarrow$ Minimum consecutive days off.
+- **ILS Category Certification:** A CAT-III all-weather runway can handle any heavy/specialized arrival $\Longleftrightarrow$ A `HeadNurse` qualification can handle any complex or standard shift.
+
+#### 2. Dual Mapping: Nurses as Planes, Demand Channels as Runways
+In the dual view, nurses are the aircraft arriving from regional airspace, seeking assignment across multiple parallel runway channels:
+- **Aircraft Fleet:** The nurse population $\mathcal{N}$ arriving to be allocated across operational slots.
+- **Wake Turbulence Categories:**
+  - **Heavy Aircraft $\Longleftrightarrow$ `HeadNurse`:** High vortex impact, scarce resource, required for primary heavy slots; must not be throttled behind light aircraft.
+  - **Medium Aircraft $\Longleftrightarrow$ `Nurse`:** Mainline carrier workhorses handling general passenger volume.
+  - **Light Aircraft $\Longleftrightarrow$ `Caretaker` / `Trainee`:** Minimum separation footprint, strictly bounded payload capability.
+- **Flight Arrival Windows $[E_i, L_i]$:** Earliest and latest legal assignment bands $[A_{\min}, A_{\max}]$ defined by employment contracts.
+- **Target Touchdown Time $T_i$:** Paced contractual target assignment quota $\text{Target}(n)$.
+- **Early / Late Inconvenience Costs ($\alpha_i, \beta_i$):** Under-assignment and over-assignment penalties ($S_1$, 20 pts/shift deviation).
+- **Multi-Runway Assignment:** Partitioning planes across parallel runways to avoid inter-plane wake interference $\Longleftrightarrow$ Partitioning nurses across Capability Cohorts to eliminate skill cannibalization and streak conflicts.
 
 ```
 +---------------------------------------------------------------------------------------------------+
@@ -28,8 +51,10 @@ Both the Aircraft Landing Problem and the Nurse Rostering Problem (INRC-II) occu
 | Pairwise wake separation matrix    | Forbidden shift succession transitions (HC4)                 |
 | Earliest / Latest time windows     | Skill qualifications (HC2) & single-shift constraints (HC3)  |
 | Target landing times (early/late)  | Contract assignment quotas (S1) & preferred shifts (S8)      |
-| Multi-runway partitioning          | Contract & skill group partitioning (FT, PT, HT)             |
+| Multi-runway partitioning          | Capability Cohort partitioning & multi-week duty staggering  |
 | Subproblem: Optimal landing times  | Subproblem: Exact daily shift/skill bipartite matching       |
+| Wake Category Sorting (H > M > L)  | Primary Skill Specialization (HeadNurse > Nurse > Caretaker) |
+| Inter-Runway Kempe Block Swaps     | Intra-Cohort Multi-Day Kempe Block Swaps (ΔC = 0)            |
 +------------------------------------+--------------------------------------------------------------+
 ```
 
