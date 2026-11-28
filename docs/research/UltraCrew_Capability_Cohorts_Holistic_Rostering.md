@@ -169,21 +169,34 @@ Consequently:
 - For alternating contracts ($A_{\max} < W \times W_{\min}$), Coralys sets the weekly minimum surrogate target to $A_{\min}^{\text{week}} = 0$, eliminating phantom weekly under-assignment penalties.
 - For non-alternating contracts ($A_{\max} \ge W \times W_{\min}$), $A_{\min}^{\text{week}} = \lfloor A_{\min} / W \rfloor$, preventing FullTime staff from defecting to zero assignments.
 
+### 6.4 Preference-Aware Indexing & Deficit-Prioritized Block Augmentation
+
+1. **Shift-Off Request Indexing (`nurse_requested_off`)**:
+   - `InvertedContext` indexes `week_data.shift_off_requests` into a 3D boolean tensor `nurse_requested_off[n][d][s]`.
+   - Constructive slot allocation adds a $+800$ penalty for assigning a nurse to their requested off shift ($S_5$), while the RCSP dynamic programming pricing DAG adds a $+10$ step cost to edge transitions.
+2. **Deficit-Prioritized Ergonomic Block Augmentation**:
+   - In `DailyOptimalFlow`, block lengths include all valid contract streaks `[5, 4, 3, 2]`, unlocking 2-day contracts (`20Percent`) that were previously locked out.
+   - Idle candidates are sorted descending by remaining assignment deficit $\Delta A = A_{\text{target}} - A_{\text{current}}$, awarding complete multi-day blocks to nurses who need them most to eliminate $S_1$ under-assignment penalties.
+3. **Isolated Optimal Avoidance**:
+   - In single-day constructive slot allocation, nurses with $W_{\min} > 1$ are strictly barred from receiving an optimal slot unless they are already working on the preceding day (`has_prev`). This prevents creating isolated 1-day work blocks that incur 90 points of $S_2$ and $S_4$ penalties to cover a 30-point optimal slot.
+
 ---
 
 ## 7. Empirical Validation & Scorecard
 
-Across the full canonical INRC-II benchmark suite evaluated in release mode, Coralys demonstrates 100% statutory feasibility (0 hard constraint violations across all instances) and reaches sub-20% gap on `n030w4`:
+Across the full canonical INRC-II benchmark suite evaluated in release mode, Coralys demonstrates 100% statutory feasibility (0 hard constraint violations across all instances), breaks the sub-20% bound on `n030w4` (+18.86%), sub-35% on `n040w4` (+33.87%), and establishes a sub-100% mean gap fleet-wide:
 
 | Instance Code | Nurses | Weeks | BKS (LB) | SN-III | Coralys Score | Optimality Gap | Status |
 | :--- | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
-| `n030w4_1_6-2-9-1` | 30 | 4 | 1,670 | 1,670 | **2,000** | **+19.76%** | **FEASIBLE (0 HC)** |
-| `n040w4_0_2-0-6-1` | 40 | 4 | 1,565 | 1,565 | **2,330** | **+48.88%** | **FEASIBLE (0 HC)** |
-| `n050w4_0_0-4-8-7` | 50 | 4 | 1,315 | 1,315 | **2,730** | **+107.60%** | **FEASIBLE (0 HC)** |
-| `n060w4_1_6-1-1-5` | 60 | 4 | 2,450 | 2,450 | **4,490** | **+83.27%** | **FEASIBLE (0 HC)** |
-| `n080w4_2_4-3-3-3` | 80 | 4 | 3,300 | 3,300 | **4,525** | **+37.12%** | **FEASIBLE (0 HC)** |
-| `n100w4_0_1-1-0-8` | 100 | 4 | 1,170 | 1,170 | **3,835** | **+227.78%** | **FEASIBLE (0 HC)** |
-| `n120w4_1_4-6-2-6` | 120 | 4 | 2,020 | 2,020 | **6,430** | **+218.32%** | **FEASIBLE (0 HC)** |
+| `n030w4_1_6-2-9-1` | 30 | 4 | 1,670 | 1,670 | **1,985** | **+18.86%** | **FEASIBLE (0 HC)** |
+| `n040w4_0_2-0-6-1` | 40 | 4 | 1,565 | 1,565 | **2,095** | **+33.87%** | **FEASIBLE (0 HC)** |
+| `n050w4_0_0-4-8-7` | 50 | 4 | 1,315 | 1,315 | **2,575** | **+95.82%** | **FEASIBLE (0 HC)** |
+| `n060w4_1_6-1-1-5` | 60 | 4 | 2,450 | 2,450 | **4,350** | **+77.55%** | **FEASIBLE (0 HC)** |
+| `n080w4_2_4-3-3-3` | 80 | 4 | 3,300 | 3,300 | **5,100** | **+54.55%** | **FEASIBLE (0 HC)** |
+| `n100w4_0_1-1-0-8` | 100 | 4 | 1,170 | 1,170 | **3,330** | **+184.62%** | **FEASIBLE (0 HC)** |
+| `n120w4_1_4-6-2-6` | 120 | 4 | 2,020 | 2,020 | **6,550** | **+224.26%** | **FEASIBLE (0 HC)** |
 
-**Fleet-wide Feasibility Rate:** 100.0% (7/7 instances with 0 Hard Constraint violations).
+- **Zero-Violation Feasibility Rate:** 100.0% (7/7 instances with 0 Hard Constraint violations).
+- **Mean Optimality Gap to BKS:** **+98.50% (fleet-wide sub-100%)**.
+- **Fleet-Wide Evaluation Time:** 21.55 seconds.
 
