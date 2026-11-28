@@ -27,6 +27,17 @@
 | Next | First DI/regime differential event · continue ledger enrichment |
 | Decision | **hold** both DNA |
 
+## D1–D4 extension (2026-11-28 ~16:39 Asia/Calcutta)
+
+| Track | Result |
+| --- | --- |
+| D1 residual | **EXPLAINED** · Σ **−16.8135** = ~$1.20 × 14 non-GIVEBACK · Rust `(Ne+Nx)×12bps` net vs Python stamp `(Ne+Nx)×6bps` |
+| D2 class audit | Directional 7 stable; 3 TRAIL flip WIN under single-friction; friction still dominates |
+| D3 path | Booleans only (no first-adverse ts); SL adverse 7/7; TRAIL mfe+trail armed; GIVEBACK mfe 17/17 |
+| D4 capture | GIVEBACK ~16% of peak MFE; TRAIL ~65% gross then stamped −$1.20 |
+
+Detail: `rp608_sci_adapter_rec_elr_sci_clean_observe_008_d1d4_2026_11_28.md` · JSON `rp608_sci_adapter_rec_elr008_d1d4_ledger.json`
+
 ## Event ledger (unrounded nets)
 
 | # | plan_id | dir | exit | gross | fric | net (unrounded) | peak MFE | hold_s | mae_dist | class |

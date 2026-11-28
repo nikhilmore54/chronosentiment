@@ -222,6 +222,18 @@ Detail: `rp608_sci_adapter_rec_elr_sci_clean_observe_006_2026_11_28.md`
 
 Detail: `rp608_sci_adapter_rec_elr_sci_clean_observe_008_2026_11_28.md` · JSON `rp608_sci_adapter_rec_elr008_ledger31.json`
 
+### ELR-008 D1–D4 (2026-11-28 ~16:39 Asia/Calcutta)
+
+| Field | Value |
+| --- | --- |
+| D1 | Residual **−16.8135** explained: Rust closes use `(Ne+Nx)×12bps` in net while Python stamps `(Ne+Nx)×6bps` → Other ≈ 1× stamped fee on 14 non-GIVEBACK |
+| D2 | Class audit: 7 dir stable; 3 TRAIL misclass EXEC→WIN under single friction; friction still primary |
+| D3 | Path booleans only; no first-adverse timestamp |
+| D4 | GIVEBACK capture ~16% peak MFE; TRAIL ~65% gross / stamped net −1.20 |
+| Decision | **hold** · measurement finding only · no mid-soak fix |
+
+Detail: `rp608_sci_adapter_rec_elr_sci_clean_observe_008_d1d4_2026_11_28.md`
+
 ---
 
 ## Non-negotiables
