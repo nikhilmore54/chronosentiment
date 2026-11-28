@@ -107,10 +107,11 @@ Economics: Σgross −35.48 · Σfric 45.61 · Σnet −112.31 · 25 losses had 
 | Change boundary | New sealed book · stacked SCI untouched · same pack/cuts · no Gate 5 |
 | Expected outcome | Measurable coverage ownership + closed W/L/payoff/net vs stacked |
 | Failure criteria | CLEAN still hostile after-cost with clear ownership |
-| Actual results | ARMED 2026-11-28 · early (PLAN_CREATED≥1 · closed n≈0 at arm) |
-| Observed failure | TBD after closed sample |
-| Learning | TBD — must change next experiment when closed |
-| Decision | **continue** as sealed TRY · **do not retune mid-soak** |
+| Actual results | **Inconclusive** (Anuj 09:02) — closed n=1 identical to stacked; overlap 2/2 |
+| Observed failure | Treatment differentiation **not observed** |
+| Learning | Findings A–C: no different population yet; selection restriction ≠ missed edge; friction ≠ directional |
+| Next observation | **First valid DI / regime-alignment differential event** (not N more trades) |
+| Decision | **hold** both DNA · no new sealed package until differential event + outcome classified · **do not retune** |
 
 ## ELR-005 — ETH SCI-v1 P1 (offline)
 
@@ -124,18 +125,21 @@ Economics: Σgross −35.48 · Σfric 45.61 · Σnet −112.31 · 25 losses had 
 
 ---
 
-## ELR-004-OBSERVE — CLEAN vs stacked comparative (2026-11-28 ~08:46 Asia/Calcutta)
+## ELR-004-OBSERVE — CLEAN vs stacked comparative (updated 2026-11-28 ~09:02 Asia/Calcutta)
 
 RQ: Gate2E selection contamination removal → quality / coverage / after-cost on BTC?
 
-| Field | Content |
+| Field | Value |
 | --- | --- |
-| Actual results | Post-arm overlap 2/2 plan_ids · closed n=1 identical net −4.27 · DI/PATH idle in window |
-| Observed failure | No differential coverage event yet; lifetime stacked still PATH 435 / DI 87 |
-| Learning | Cannot claim material economics delta until DI/PATH pressure or CLEAN-only plans appear |
-| Decision | **hold** both DNA · `INCONCLUSIVE_SAMPLE` · continue OBSERVE |
+| Result | **Inconclusive** |
+| Treatment differentiation | **Not observed** |
+| Actual results | Post-arm overlap 2/2 · closed n=1 identical net −4.27 · DI/regime idle in window |
+| Measurement issues | PATH≠DI · Gate2E event-aligned only · Σnet vs (Σgross−Σfric) Δ **−32.42** · closed-only ≠ open |
+| Findings A–C | No different population · restriction ≠ missed edge · friction ⊥ directional |
+| Next observation | **First valid DI / regime-alignment differential event** |
+| Decision | **hold** · milestone ≠ N trades · no new sealed package · no corrective |
 
-Detail: `rp608_sci_adapter_rec_clean_vs_stacked_observe_2026_11_28.md`
+Detail: `rp608_sci_adapter_rec_clean_vs_stacked_observe_2026_11_28.md` · refine `rp608_sci_adapter_rec_observe_refine_2026_11_28_0902.md`
 
 ---
 

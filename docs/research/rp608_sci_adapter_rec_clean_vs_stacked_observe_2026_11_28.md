@@ -100,7 +100,7 @@ DI_SKEW: stacked lifetime **87** · post-arm **0** · CLEAN **0** (bypass holdin
 | Coverage ownership | **Not yet demonstrated differentially** — no CLEAN-only plans; DI/PATH idle post-arm. Lifetime stacked still proves contamination exists upstream of CLEAN’s short sample |
 | After-cost economics | **No material delta on aligned closed set** (n=1 identical −4.27). Lifetime stacked remains hostile (friction-dominant failure mix) |
 
-**Verdict:** `INCONCLUSIVE_SAMPLE` — keep both DNA frozen; continue OBSERVE until DI/PATH pressure creates CLEAN-only eligibility or aligned n supports failure-distribution contrast. One CLEAN loss ≠ discard (Anuj). Do not cut-ratchet. Next FIX still governed by ELR failure teaching rule (execution/exit-geometry on stacked lifetime), not by this incomplete coverage test alone.
+**Verdict:** `INCONCLUSIVE` / treatment differentiation **not observed** (Anuj refine 09:02). Keep both DNA frozen. **Milestone = first valid DI/regime differential eligibility event** (not N more trades); no new sealed package until that event + outcome classified. Findings A–C + measurement issues: `rp608_sci_adapter_rec_observe_refine_2026_11_28_0902.md`. One CLEAN loss ≠ discard. No corrective authorized.
 
 ---
 

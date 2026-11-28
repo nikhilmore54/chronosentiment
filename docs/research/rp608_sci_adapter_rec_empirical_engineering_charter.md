@@ -51,8 +51,9 @@ No corrective until evidence identifies the category. FIX addresses the cause, n
 - BTC SCI soak → `HOLD_SOAK` · do not retune  
 - ETH SCI-v1 → Anuj auth before twin arm  
 - ML-1D → `DO_NOT_ADVANCE` · preserve findings  
-- Next NEW experiment emerges from failure analysis (not a menu of P1a/P1b/P3)  
-- P1a if already sealed-armed: leave untouched as one TRY; score when closed  
+- P1a SCI-clean → frozen diagnostic DNA · Result Inconclusive · treatment differentiation not observed  
+- **Milestone (2026-11-28 09:02):** first valid DI/regime-alignment differential event — not N more trades; no new sealed package until event + outcome classified  
+- Next NEW experiment emerges from that differential OBSERVE (not a menu of P1b/P3)  
 
 ---
 

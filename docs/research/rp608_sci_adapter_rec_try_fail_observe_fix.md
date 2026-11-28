@@ -30,10 +30,11 @@ Success modes: positive · negative · diagnostic discovery.
 | Experiment | Decision |
 | --- | --- |
 | ML-1D BTC/ETH | **reject** / DO_NOT_ADVANCE |
-| BTC SCI stacked soak | **hold** HOLD_SOAK + event OBSERVE done |
-| P1a SCI-clean | **continue** sealed TRY (do not retune) |
+| BTC SCI stacked soak | **hold** HOLD_SOAK · frozen DNA |
+| P1a SCI-clean | **hold** sealed TRY · frozen DNA · Result Inconclusive |
 | ETH SCI-v1 twin | **hold** pending Anuj arm |
-| Next NEW after CLEAN closed + friction OBSERVE | Must target demonstrated category (likely execution-economics), not menu P1b/P3 |
+| **Next milestone** | First valid **DI / regime-alignment differential event** (+ outcome classified) — **not** N more trades |
+| Next NEW sealed package | **Blocked** until that milestone |
 
 ---
 
