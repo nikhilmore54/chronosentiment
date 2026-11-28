@@ -248,8 +248,8 @@ impl DailyOptimalFlow {
         let num_shifts = optimizer.context.shift_types.len();
         let mut total_improvement = 0i32;
 
-        // Try 3-day, 4-day, and 5-day ergonomic blocks across the week
-        for block_len in [3, 4, 5] {
+        // Try 5-day, 4-day, 3-day, and 2-day ergonomic blocks across the week
+        for block_len in [5, 4, 3, 2] {
             let max_start = if 7 >= block_len { 7 - block_len } else { 0 };
             for start_d in 0..=max_start {
                 let days: Vec<usize> = (start_d..start_d + block_len).collect();
@@ -259,18 +259,25 @@ impl DailyOptimalFlow {
                     continue;
                 }
 
-                for n in 0..num_nurses {
-                    let mut works_in_block = false;
-                    for &d in &days {
-                        if optimizer.get_assigned_shift(genome, n, d).is_some() {
-                            works_in_block = true;
-                            break;
+                let mut idle_nurses: Vec<usize> = (0..num_nurses)
+                    .filter(|&n| {
+                        for &d in &days {
+                            if optimizer.get_assigned_shift(genome, n, d).is_some() {
+                                return false;
+                            }
                         }
-                    }
-                    if works_in_block {
-                        continue;
-                    }
+                        true
+                    })
+                    .collect();
 
+                idle_nurses.sort_by_key(|&n| {
+                    let week_assignments = (0..7).filter(|&d| optimizer.get_assigned_shift(genome, n, d).is_some()).count();
+                    let target = &pacing.nurse_targets[n];
+                    let deficit = target.target_assignments.saturating_sub(week_assignments);
+                    std::cmp::Reverse(deficit)
+                });
+
+                for n in idle_nurses {
                     let nurse = &optimizer.context.scenario.nurses[n];
                     let contract = optimizer.context.scenario.contracts.iter().find(|c| c.id == nurse.contract).unwrap();
 

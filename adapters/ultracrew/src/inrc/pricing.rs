@@ -158,7 +158,11 @@ impl NursePricingSolver {
 
             // Deduct shadow credit for staffing on day 0
             if next_s > 0 {
-                step_cost -= shadow_credits[0][next_s - 1];
+                let s_idx = next_s - 1;
+                if optimizer.context.inverted.nurse_requested_off[nurse_idx][0][s_idx] {
+                    step_cost += 10;
+                }
+                step_cost -= shadow_credits[0][s_idx];
             }
 
             dp_cost[next_s][next_streak][0][next_assigns] = step_cost;
@@ -252,7 +256,11 @@ impl NursePricingSolver {
                                 }
 
                                 if next_s > 0 {
-                                    step_cost -= shadow_credits[d][next_s - 1];
+                                    let s_idx = next_s - 1;
+                                    if optimizer.context.inverted.nurse_requested_off[nurse_idx][d][s_idx] {
+                                        step_cost += 10;
+                                    }
+                                    step_cost -= shadow_credits[d][s_idx];
                                 }
 
                                 let total_cand_c = cur_c + step_cost;

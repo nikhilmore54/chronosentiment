@@ -1147,7 +1147,7 @@ impl InrcOptimizer {
                             continue;
                         }
 
-                        if self.nurse_has_forbidden_succession(&test_genome, n) {
+                        if !self.nurse_satisfies_hard_contracts(&test_genome, n) {
                             continue;
                         }
 

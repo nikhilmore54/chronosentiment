@@ -55,6 +55,7 @@ pub struct InvertedContext {
     pub nurse_initial_off_streak: Vec<usize>,
     pub nurse_initial_shift_type: Vec<Option<usize>>,
     pub nurse_initial_shift_streak: Vec<usize>,
+    pub nurse_requested_off: Vec<Vec<Vec<bool>>>,
     pub nurse_primary_skill: Vec<String>,
     pub nurse_secondary_skills: Vec<Vec<String>>,
 }
@@ -258,6 +259,17 @@ impl InvertedContext {
             }
         }
 
+        let mut nurse_requested_off = vec![vec![vec![false; num_shifts]; num_days]; num_nurses];
+        for req in &week_data.shift_off_requests {
+            if let Some(n_idx) = scenario.nurses.iter().position(|n| n.id == req.nurse) {
+                if let Some(d_idx) = days_map.iter().position(|&d| d == req.day) {
+                    if let Some(s_idx) = shift_types.iter().position(|s| s == &req.shift_type) {
+                        nurse_requested_off[n_idx][d_idx][s_idx] = true;
+                    }
+                }
+            }
+        }
+
         Self {
             num_nurses,
             num_days,
@@ -280,6 +292,7 @@ impl InvertedContext {
             nurse_initial_off_streak,
             nurse_initial_shift_type,
             nurse_initial_shift_streak,
+            nurse_requested_off,
             nurse_primary_skill,
             nurse_secondary_skills,
         }
@@ -436,6 +449,10 @@ impl InvertedContext {
                             }
                         }
 
+                        if self.nurse_requested_off[n][d][slot.shift_idx] {
+                            score += 800; // S5 preference avoidance
+                        }
+
                         (score, self.nurse_skills_count[n], shift_counts[n])
                     });
 
@@ -457,6 +474,16 @@ impl InvertedContext {
                     .copied()
                     .filter(|&n| {
                         if assigned_shift[n][d].is_some() || shift_counts[n] >= self.nurse_target_bands[n].1 {
+                            return false;
+                        }
+                        // Avoid isolated 1-day assignments that violate min_consecutive_working_days
+                        let has_prev = if d == 0 {
+                            self.nurse_initial_work_streak[n] > 0
+                        } else {
+                            assigned_shift[n][d - 1].is_some()
+                        };
+                        let min_w = self.nurse_min_work_days[n];
+                        if min_w > 1 && !has_prev {
                             return false;
                         }
                         if d == 0 {
@@ -549,6 +576,10 @@ impl InvertedContext {
                                 }
                             }
                         }
+                        if self.nurse_requested_off[n][d][slot.shift_idx] {
+                            score += 800; // S5 preference avoidance
+                        }
+
                         (score, self.nurse_skills_count[n], shift_counts[n])
                     });
 
