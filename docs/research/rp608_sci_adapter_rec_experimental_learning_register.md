@@ -234,6 +234,18 @@ Detail: `rp608_sci_adapter_rec_elr_sci_clean_observe_008_2026_11_28.md` · JSON 
 
 Detail: `rp608_sci_adapter_rec_elr_sci_clean_observe_008_d1d4_2026_11_28.md`
 
+### ELR-008 D5–D8 (2026-11-28 ~16:49 Asia/Calcutta)
+
+| Field | Value |
+| --- | --- |
+| D5 | Cost contract **design only**: 6 bps/leg; single `Net=Gross−Fees−Slip−Other(0)`; Rust must match Python stamp |
+| D6 | Exit-family diagnosis: GIVEBACK geometry → TRAIL measurement → SL directional |
+| D7 | Timestamped path observability spec (not implemented) |
+| D8 | Deferred sealed hyps H-COST-1 / H-GB-CAP-1 / H-SL-DIR-1 / H-PATH-1 |
+| Decision | **hold** · no implement · twins frozen |
+
+Detail: `rp608_sci_adapter_rec_elr_sci_clean_observe_008_d5d8_2026_11_28.md`
+
 ---
 
 ## Non-negotiables

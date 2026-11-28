@@ -38,6 +38,17 @@
 
 Detail: `rp608_sci_adapter_rec_elr_sci_clean_observe_008_d1d4_2026_11_28.md` · JSON `rp608_sci_adapter_rec_elr008_d1d4_ledger.json`
 
+## D5–D8 extension (2026-11-28 ~16:49 Asia/Calcutta)
+
+| Track | Result |
+| --- | --- |
+| D5 cost contract | **Design memo only** — authoritative 6 bps/leg; `Net = Gross − Fees − Slippage(0) − Other(0)`; single formula both authorities; no implement |
+| D6 exit families | GIVEBACK geometry bleed; TRAIL mostly measurement; SL directional; HORIZON weak path |
+| D7 path observability | Spec timestamp stamps (first-adverse / MFE-arm / trail-arm / giveback); not implementing |
+| D8 sealed hyps | H-COST-1 / H-GB-CAP-1 / H-SL-DIR-1 / H-PATH-1 deferred |
+
+Detail: `rp608_sci_adapter_rec_elr_sci_clean_observe_008_d5d8_2026_11_28.md`
+
 ## Event ledger (unrounded nets)
 
 | # | plan_id | dir | exit | gross | fric | net (unrounded) | peak MFE | hold_s | mae_dist | class |
