@@ -1063,10 +1063,15 @@ impl ReasoningEngine for CoralysInrcVndEngine {
                     .iter()
                     .find(|c| c.id == optimizer.context.scenario.nurses[n].contract)
                     .unwrap();
-                let min_a = contract.min_assignments / optimizer.context.scenario.number_of_weeks;
-                let max_a = (contract.max_assignments as f64
+                let min_a = if contract.min_consecutive_working_days > (contract.min_assignments / optimizer.context.scenario.number_of_weeks) {
+                    0
+                } else {
+                    contract.min_assignments / optimizer.context.scenario.number_of_weeks
+                };
+                let max_a = ((contract.max_assignments as f64
                     / optimizer.context.scenario.number_of_weeks as f64)
-                    .ceil() as usize;
+                    .ceil() as usize)
+                    .max(contract.min_consecutive_working_days);
                 (min_a, max_a)
             })
             .collect();

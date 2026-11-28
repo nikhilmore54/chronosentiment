@@ -53,6 +53,8 @@ pub struct InvertedContext {
     pub nurse_max_off_days: Vec<usize>,
     pub nurse_initial_work_streak: Vec<usize>,
     pub nurse_initial_off_streak: Vec<usize>,
+    pub nurse_primary_skill: Vec<String>,
+    pub nurse_secondary_skills: Vec<Vec<String>>,
 }
 
 impl InvertedContext {
@@ -160,6 +162,26 @@ impl InvertedContext {
             }
         }
 
+        // Compute skill rarity across the fleet (fewest fleet holders = highest qualification)
+        let mut skill_rarity: HashMap<String, usize> = HashMap::new();
+        for nurse in &scenario.nurses {
+            for sk in &nurse.skills {
+                *skill_rarity.entry(sk.clone()).or_insert(0) += 1;
+            }
+        }
+
+        // Determine primary and secondary skills for each nurse
+        let mut nurse_primary_skill = Vec::with_capacity(num_nurses);
+        let mut nurse_secondary_skills = Vec::with_capacity(num_nurses);
+        for nurse in &scenario.nurses {
+            let mut sorted_skills = nurse.skills.clone();
+            sorted_skills.sort_by_key(|sk| *skill_rarity.get(sk).unwrap_or(&usize::MAX));
+            let primary = sorted_skills.first().cloned().unwrap_or_default();
+            let secondary: Vec<String> = sorted_skills.into_iter().skip(1).collect();
+            nurse_primary_skill.push(primary);
+            nurse_secondary_skills.push(secondary);
+        }
+
         let nurse_target_bands: Vec<(usize, usize)> = (0..num_nurses)
             .map(|n| {
                 let contract = scenario
@@ -167,10 +189,15 @@ impl InvertedContext {
                     .iter()
                     .find(|c| c.id == scenario.nurses[n].contract)
                     .unwrap();
-                let min_a = contract.min_assignments / scenario.number_of_weeks;
-                let max_a = (contract.max_assignments as f64
+                let min_a = if contract.min_consecutive_working_days > (contract.min_assignments / scenario.number_of_weeks) {
+                    0
+                } else {
+                    contract.min_assignments / scenario.number_of_weeks
+                };
+                let max_a = ((contract.max_assignments as f64
                     / scenario.number_of_weeks as f64)
-                    .ceil() as usize;
+                    .ceil() as usize)
+                    .max(contract.min_consecutive_working_days);
                 (min_a, max_a)
             })
             .collect();
@@ -243,6 +270,8 @@ impl InvertedContext {
             nurse_max_off_days,
             nurse_initial_work_streak,
             nurse_initial_off_streak,
+            nurse_primary_skill,
+            nurse_secondary_skills,
         }
     }
 
@@ -281,6 +310,16 @@ impl InvertedContext {
                     }
                 }
 
+                // PRIMARY SKILL SPECIALIZATION for optimal slots
+                let primary_candidates: Vec<usize> = candidates
+                    .iter()
+                    .copied()
+                    .filter(|&n| self.nurse_primary_skill[n] == slot.skill)
+                    .collect();
+                if !primary_candidates.is_empty() {
+                    candidates = primary_candidates;
+                }
+
                 // Filter out HC4 forbidden successions if possible
                 let legal_candidates: Vec<usize> = if d == 0 {
                     candidates
@@ -302,6 +341,18 @@ impl InvertedContext {
                 };
                 if !legal_candidates.is_empty() {
                     candidates = legal_candidates;
+                }
+
+                // PRIMARY SKILL SPECIALIZATION:
+                // Strongly prefer nurses who hold slot.skill as their primary qualification.
+                // Prevents specialized personnel (e.g. HeadNurse) from being squandered on general slots.
+                let primary_candidates: Vec<usize> = candidates
+                    .iter()
+                    .copied()
+                    .filter(|&n| self.nurse_primary_skill[n] == slot.skill)
+                    .collect();
+                if !primary_candidates.is_empty() {
+                    candidates = primary_candidates;
                 }
 
                 if candidates.is_empty() {
@@ -408,6 +459,16 @@ impl InvertedContext {
                     if !wend_candidates.is_empty() {
                         candidates = wend_candidates;
                     }
+                }
+
+                // PRIMARY SKILL SPECIALIZATION for optimal slots
+                let primary_candidates: Vec<usize> = candidates
+                    .iter()
+                    .copied()
+                    .filter(|&n| self.nurse_primary_skill[n] == slot.skill)
+                    .collect();
+                if !primary_candidates.is_empty() {
+                    candidates = primary_candidates;
                 }
 
                 if !candidates.is_empty() {

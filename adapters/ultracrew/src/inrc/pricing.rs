@@ -284,10 +284,15 @@ impl NursePricingSolver {
                         }
 
                         // S1 contract assignment bound penalty (exact zero penalty within [weekly_min, weekly_max] band)
-                        let weekly_min = contract.min_assignments / optimizer.context.scenario.number_of_weeks;
-                        let weekly_max = (contract.max_assignments as f64
+                        let weekly_min = if contract.min_consecutive_working_days > (contract.min_assignments / optimizer.context.scenario.number_of_weeks) {
+                            0
+                        } else {
+                            contract.min_assignments / optimizer.context.scenario.number_of_weeks
+                        };
+                        let weekly_max = ((contract.max_assignments as f64
                             / optimizer.context.scenario.number_of_weeks as f64)
-                            .ceil() as usize;
+                            .ceil() as usize)
+                            .max(contract.min_consecutive_working_days);
                         if end_a < weekly_min {
                             c += (weekly_min - end_a) as i32 * 20;
                         } else if end_a > weekly_max {
