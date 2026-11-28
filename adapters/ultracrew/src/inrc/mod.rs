@@ -22,6 +22,6 @@ pub mod types;
 pub mod validator;
 
 pub use decision_plugin::{
-    get_inrc_bks_entry, CoralysInrcEngine, InrcAction, InrcBksEntry, InrcDecisionPlugin,
-    InrcOptimizationConfig, InrcState, CANONICAL_INRC_BKS_TABLE,
+    get_inrc_bks_entry, CoralysInrcEngine, CoralysInrcVndEngine, InrcAction, InrcBksEntry,
+    InrcDecisionPlugin, InrcOptimizationConfig, InrcState, CANONICAL_INRC_BKS_TABLE,
 };

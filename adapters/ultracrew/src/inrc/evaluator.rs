@@ -975,6 +975,61 @@ impl InrcOptimizer {
         false
     }
 
+    /// Audits all hard statutory constraints on nurse `n`:
+    /// 1. HC4: No forbidden shift succession across days and history boundary
+    /// 2. HC4: Max consecutive working days cap
+    /// 3. HC4: Max total assignments cap across cumulative horizon
+    pub fn nurse_satisfies_hard_contracts(&self, genome: &InrcGenome, n: usize) -> bool {
+        if self.nurse_has_forbidden_succession(genome, n) {
+            return false;
+        }
+
+        let nurse = &self.context.scenario.nurses[n];
+        let contract = self
+            .context
+            .scenario
+            .contracts
+            .iter()
+            .find(|c| c.id == nurse.contract)
+            .unwrap();
+        let hist = self
+            .context
+            .history
+            .nurse_history
+            .iter()
+            .find(|h| &h.nurse == &nurse.id);
+        let prev_total = hist.map(|h| h.number_of_assignments).unwrap_or(0);
+        let week_assignments = (0..self.context.num_days)
+            .filter(|&d| self.get_assigned_shift(genome, n, d).is_some())
+            .count();
+        if prev_total + week_assignments > contract.max_assignments {
+            return false;
+        }
+
+        let prev_consecutive = hist
+            .map(|h| {
+                if h.number_of_consecutive_days_off > 0 {
+                    0
+                } else {
+                    h.number_of_consecutive_assignments
+                }
+            })
+            .unwrap_or(0);
+        let mut current_streak = prev_consecutive;
+        for d in 0..self.context.num_days {
+            if self.get_assigned_shift(genome, n, d).is_some() {
+                current_streak += 1;
+                if current_streak > contract.max_consecutive_working_days {
+                    return false;
+                }
+            } else {
+                current_streak = 0;
+            }
+        }
+
+        true
+    }
+
     /// High-throughput O(1) incremental Simulated Annealing powered by Coralys.
     /// All decision-making (cooling schedules, acceptance gates, stagnation restarts)
     /// is executed directly by [`coralys_moga::annealing::SimulatedAnnealingEngine`].
