@@ -1063,7 +1063,7 @@ impl ReasoningEngine for CoralysInrcVndEngine {
                     .iter()
                     .find(|c| c.id == optimizer.context.scenario.nurses[n].contract)
                     .unwrap();
-                let min_a = if contract.min_consecutive_working_days > (contract.min_assignments / optimizer.context.scenario.number_of_weeks) {
+                let min_a = if contract.max_assignments < optimizer.context.scenario.number_of_weeks * contract.min_consecutive_working_days {
                     0
                 } else {
                     contract.min_assignments / optimizer.context.scenario.number_of_weeks
@@ -1360,33 +1360,44 @@ impl ReasoningEngine for CoralysInrcVndEngine {
         // ═════════════════════════════════════════════════════════════════════════
         // PHASE 4: ROLLING-HORIZON LOCAL WINDOW POLISH (SHIFT STREAK HARMONIZER)
         // ═════════════════════════════════════════════════════════════════════════
-        for d in 0..num_days.saturating_sub(1) {
-            for grp in &eligible_groups {
-                for i in 0..grp.len().saturating_sub(1) {
-                    for j in (i + 1)..grp.len() {
-                        let u = grp[i];
-                        let v = grp[j];
-                        let (s_u0, s_u1) = (optimizer.get_assigned_shift(&best_genome, u, d), optimizer.get_assigned_shift(&best_genome, u, d + 1));
-                        let (s_v0, s_v1) = (optimizer.get_assigned_shift(&best_genome, v, d), optimizer.get_assigned_shift(&best_genome, v, d + 1));
+        let run_shift_streak_harmonizer = |current_genome: &mut InrcGenome| {
+            let mut p4_improved = true;
+            let mut p4_round = 0;
+            while p4_improved && p4_round < 10 {
+                p4_improved = false;
+                p4_round += 1;
+                for d in 0..num_days {
+                    for grp in &eligible_groups {
+                        for i in 0..grp.len().saturating_sub(1) {
+                            for j in (i + 1)..grp.len() {
+                                let u = grp[i];
+                                let v = grp[j];
+                                let s_u = optimizer.get_assigned_shift(current_genome, u, d);
+                                let s_v = optimizer.get_assigned_shift(current_genome, v, d);
 
-                        if s_u0.is_some() && s_u1.is_some() && s_v0.is_some() && s_v1.is_some() {
-                            if s_u0 != s_u1 || s_v0 != s_v1 {
-                                // Test swapping day d+1 to harmonize consecutive shifts
-                                let mut cand = best_genome.clone();
-                                let old_p_u = optimizer.eval_nurse_soft_penalty(&best_genome, u);
-                                let old_p_v = optimizer.eval_nurse_soft_penalty(&best_genome, v);
+                                if let (Some(su), Some(sv)) = (s_u, s_v) {
+                                    if su != sv {
+                                        let old_p_u = optimizer.eval_nurse_soft_penalty(current_genome, u);
+                                        let old_p_v = optimizer.eval_nurse_soft_penalty(current_genome, v);
 
-                                optimizer.set_assigned_shift(&mut cand, u, d + 1, s_v1);
-                                optimizer.set_assigned_shift(&mut cand, v, d + 1, s_u1);
+                                        optimizer.set_assigned_shift(current_genome, u, d, Some(sv));
+                                        optimizer.set_assigned_shift(current_genome, v, d, Some(su));
 
-                                if optimizer.nurse_satisfies_hard_contracts(&cand, u)
-                                    && optimizer.nurse_satisfies_hard_contracts(&cand, v)
-                                {
-                                    let new_p_u = optimizer.eval_nurse_soft_penalty(&cand, u);
-                                    let new_p_v = optimizer.eval_nurse_soft_penalty(&cand, v);
-                                    let delta = (new_p_u + new_p_v) - (old_p_u + old_p_v);
-                                    if delta < 0 {
-                                        best_genome = cand;
+                                        if optimizer.nurse_satisfies_hard_contracts(current_genome, u)
+                                            && optimizer.nurse_satisfies_hard_contracts(current_genome, v)
+                                        {
+                                            let new_p_u = optimizer.eval_nurse_soft_penalty(current_genome, u);
+                                            let new_p_v = optimizer.eval_nurse_soft_penalty(current_genome, v);
+                                            let delta = (new_p_u + new_p_v) - (old_p_u + old_p_v);
+                                            if delta < 0 {
+                                                p4_improved = true;
+                                                continue;
+                                            }
+                                        }
+
+                                        // Revert swap
+                                        optimizer.set_assigned_shift(current_genome, u, d, Some(su));
+                                        optimizer.set_assigned_shift(current_genome, v, d, Some(sv));
                                     }
                                 }
                             }
@@ -1394,10 +1405,15 @@ impl ReasoningEngine for CoralysInrcVndEngine {
                     }
                 }
             }
-        }
+        };
+
+        run_shift_streak_harmonizer(&mut best_genome);
 
         // Post-VND Min-Cost Flow Polish (capture any remaining free optimal coverage gains)
         flow.optimize_all_days(&optimizer, &mut best_genome, &pacing);
+
+        // Final polish pass for shift streak continuity
+        run_shift_streak_harmonizer(&mut best_genome);
 
         // Final Hard Constraint Safety Check (guarantee 0 HC)
         optimizer.repair_hard_constraints(&mut best_genome);

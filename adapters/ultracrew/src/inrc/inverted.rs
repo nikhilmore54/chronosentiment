@@ -53,6 +53,8 @@ pub struct InvertedContext {
     pub nurse_max_off_days: Vec<usize>,
     pub nurse_initial_work_streak: Vec<usize>,
     pub nurse_initial_off_streak: Vec<usize>,
+    pub nurse_initial_shift_type: Vec<Option<usize>>,
+    pub nurse_initial_shift_streak: Vec<usize>,
     pub nurse_primary_skill: Vec<String>,
     pub nurse_secondary_skills: Vec<Vec<String>>,
 }
@@ -189,7 +191,7 @@ impl InvertedContext {
                     .iter()
                     .find(|c| c.id == scenario.nurses[n].contract)
                     .unwrap();
-                let min_a = if contract.min_consecutive_working_days > (contract.min_assignments / scenario.number_of_weeks) {
+                let min_a = if contract.max_assignments < scenario.number_of_weeks * contract.min_consecutive_working_days {
                     0
                 } else {
                     contract.min_assignments / scenario.number_of_weeks
@@ -243,10 +245,16 @@ impl InvertedContext {
 
         let mut nurse_initial_work_streak = vec![0usize; num_nurses];
         let mut nurse_initial_off_streak = vec![0usize; num_nurses];
+        let mut nurse_initial_shift_type = vec![None; num_nurses];
+        let mut nurse_initial_shift_streak = vec![0usize; num_nurses];
         for h in &history.nurse_history {
             if let Some(n_idx) = scenario.nurses.iter().position(|n| n.id == h.nurse) {
                 nurse_initial_work_streak[n_idx] = h.number_of_consecutive_working_days;
                 nurse_initial_off_streak[n_idx] = h.number_of_consecutive_days_off;
+                if h.last_assigned_shift_type != "None" && !h.last_assigned_shift_type.is_empty() {
+                    nurse_initial_shift_type[n_idx] = shift_types.iter().position(|s| s == &h.last_assigned_shift_type);
+                }
+                nurse_initial_shift_streak[n_idx] = h.number_of_consecutive_assignments;
             }
         }
 
@@ -270,6 +278,8 @@ impl InvertedContext {
             nurse_max_off_days,
             nurse_initial_work_streak,
             nurse_initial_off_streak,
+            nurse_initial_shift_type,
+            nurse_initial_shift_streak,
             nurse_primary_skill,
             nurse_secondary_skills,
         }
@@ -411,7 +421,17 @@ impl InvertedContext {
                         if d > 0 {
                             if let Some(prev_s) = assigned_shift[n][d - 1] {
                                 if prev_s == slot.shift_idx {
-                                    score -= 100;
+                                    score -= 400;
+                                } else {
+                                    score += 200;
+                                }
+                            }
+                        } else if let Some(hist_s) = self.nurse_initial_shift_type[n] {
+                            if self.nurse_initial_work_streak[n] > 0 {
+                                if hist_s == slot.shift_idx {
+                                    score -= 400;
+                                } else {
+                                    score += 200;
                                 }
                             }
                         }
@@ -509,6 +529,24 @@ impl InvertedContext {
                                 score -= 800;
                             } else if shift_counts[n] < min_a {
                                 score -= 500;
+                            }
+                        }
+
+                        if d > 0 {
+                            if let Some(prev_s) = assigned_shift[n][d - 1] {
+                                if prev_s == slot.shift_idx {
+                                    score -= 400;
+                                } else {
+                                    score += 200;
+                                }
+                            }
+                        } else if let Some(hist_s) = self.nurse_initial_shift_type[n] {
+                            if self.nurse_initial_work_streak[n] > 0 {
+                                if hist_s == slot.shift_idx {
+                                    score -= 400;
+                                } else {
+                                    score += 200;
+                                }
                             }
                         }
                         (score, self.nurse_skills_count[n], shift_counts[n])

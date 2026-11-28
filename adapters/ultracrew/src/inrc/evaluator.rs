@@ -902,7 +902,7 @@ impl InrcOptimizer {
         }
 
         // S1: Assignments
-        let weekly_min = if contract.min_consecutive_working_days > (contract.min_assignments / self.context.scenario.number_of_weeks) {
+        let weekly_min = if contract.max_assignments < self.context.scenario.number_of_weeks * contract.min_consecutive_working_days {
             0
         } else {
             contract.min_assignments / self.context.scenario.number_of_weeks
@@ -2782,7 +2782,7 @@ impl FitnessEvaluator<InrcGenome> for InrcOptimizer {
             }
 
             // S1: Assignments (Scaled for 1 week)
-            let weekly_min = if contract.min_consecutive_working_days > (contract.min_assignments / self.context.scenario.number_of_weeks) {
+            let weekly_min = if contract.max_assignments < self.context.scenario.number_of_weeks * contract.min_consecutive_working_days {
                 0
             } else {
                 contract.min_assignments / self.context.scenario.number_of_weeks

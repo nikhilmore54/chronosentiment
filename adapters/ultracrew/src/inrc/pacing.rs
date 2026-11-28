@@ -105,7 +105,7 @@ impl HorizonPacing {
             let avoid_weekend = remaining_working_weekends == 0;
 
             // Target pacing calculation
-            let min_week = if contract.min_consecutive_working_days > (contract.min_assignments / total_weeks) {
+            let min_week = if contract.max_assignments < total_weeks * contract.min_consecutive_working_days {
                 0
             } else {
                 contract.min_assignments / total_weeks

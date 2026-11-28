@@ -128,6 +128,9 @@ impl NursePricingSolver {
                     if s > contract.max_consecutive_working_days {
                         c += (s - contract.max_consecutive_working_days) as i32 * 30;
                     }
+                    if next_s != init_shift {
+                        c += 15; // S4 succession penalty from Sunday history
+                    }
                     (s, c)
                 } else {
                     // Transition Off -> Work: check if previous off streak met min_off
@@ -284,7 +287,7 @@ impl NursePricingSolver {
                         }
 
                         // S1 contract assignment bound penalty (exact zero penalty within [weekly_min, weekly_max] band)
-                        let weekly_min = if contract.min_consecutive_working_days > (contract.min_assignments / optimizer.context.scenario.number_of_weeks) {
+                        let weekly_min = if contract.max_assignments < optimizer.context.scenario.number_of_weeks * contract.min_consecutive_working_days {
                             0
                         } else {
                             contract.min_assignments / optimizer.context.scenario.number_of_weeks
