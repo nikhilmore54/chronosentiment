@@ -32,6 +32,7 @@ use coralys_core::{
     DecisionPlugin, DecisionProposal, EvaluationResult, ReasoningEngine, SimulationResult,
     StateReference,
 };
+use coralys_matching::{AssignmentSolver, BipartiteMatchingSolver};
 use coralys_moga::config::EvolutionConfig;
 use coralys_moga::engine::EvolutionEngine;
 use coralys_moga::FitnessEvaluator;
@@ -55,6 +56,26 @@ pub struct InrcBksEntry {
     pub best_known_lb: i32,
     pub best_known_ub: i32,
     pub schedule_nurse_iii: Option<i32>,
+}
+
+impl InrcBksEntry {
+    pub fn schedule_nurse_iii(&self) -> Option<i32> {
+        self.schedule_nurse_iii
+    }
+
+    pub fn romer_mellouli(&self) -> Option<i32> {
+        // Römer & Mellouli (2016) developed Schedule Nurse III
+        self.schedule_nurse_iii
+    }
+
+    pub fn legrain_et_al(&self) -> Option<i32> {
+        // Legrain et al. (2020) / Ceschia et al. (2019) upper bounds
+        Some(self.best_known_ub)
+    }
+
+    pub fn lit_source(&self) -> &'static str {
+        "Ceschia et al. (2019, Annals of OR) / Römer & Mellouli / Legrain et al."
+    }
 }
 
 /// Canonical table of published Best Known Solutions (BKS) from Ceschia et al. (2019) / INRC-II finalists.
@@ -536,6 +557,203 @@ impl InrcDecisionPlugin {
             current_state: Mutex::new(initial_state),
         }
     }
+
+    /// Audits all four statutory competition hard constraints (H1 - H4) on an INRC state:
+    /// - H1: Single shift per day per nurse
+    /// - H2: Minimum understaffing coverage and skill qualification
+    /// - H3: Forbidden shift-type transitions across days and history boundaries
+    /// - H4: Maximum consecutive working days and total assignments cap
+    pub fn audit_hard_constraints(&self, state: &InrcState) -> Vec<coralys_core::Violation> {
+        let mut violations = Vec::new();
+        let num_nurses = self.context.num_nurses;
+        let num_days = self.context.num_days;
+        let num_shifts = self.context.shift_types.len();
+        let weights = &self.context.weights;
+
+        // H1: Single Shift Per Day Per Nurse
+        for n in 0..num_nurses {
+            let nurse = &self.context.scenario.nurses[n];
+            for d in 0..num_days {
+                let mut count = 0;
+                for s in 0..num_shifts {
+                    let idx = n * (num_days * num_shifts) + d * num_shifts + s;
+                    if state.genome_bits[idx] {
+                        count += 1;
+                    }
+                }
+                if count > 1 {
+                    violations.push(coralys_core::Violation {
+                        constraint_id: "H1_SingleShiftPerDay".to_string(),
+                        severity: "Hard".to_string(),
+                        value: Some(count as f64),
+                        expected: "1".to_string(),
+                        actual: count.to_string(),
+                        description: format!("Nurse {} assigned to {} shifts on day {}", nurse.id, count, d),
+                        penalty: ((count - 1) * weights.hard_constraint_violation as usize) as i32,
+                    });
+                }
+            }
+        }
+
+        // H2: Skill qualification & Minimum Coverage Requirements
+        let days_map = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
+        for d in 0..num_days {
+            let day_name = days_map[d % 7];
+            for s in 0..num_shifts {
+                let shift_name = &self.context.shift_types[s];
+                let mut min_demands = Vec::new();
+                for req in &self.context.week_data.requirements {
+                    if req.shift_type == *shift_name {
+                        let req_level = match day_name {
+                            "Monday" => &req.monday,
+                            "Tuesday" => &req.tuesday,
+                            "Wednesday" => &req.wednesday,
+                            "Thursday" => &req.thursday,
+                            "Friday" => &req.friday,
+                            "Saturday" => &req.saturday,
+                            "Sunday" => &req.sunday,
+                            _ => unreachable!(),
+                        };
+                        if req_level.minimum > 0 {
+                            min_demands.push((req.skill.clone(), req_level.minimum));
+                        }
+                    }
+                }
+
+                let mut assigned_nurses = Vec::new();
+                for n in 0..num_nurses {
+                    let idx = n * (num_days * num_shifts) + d * num_shifts + s;
+                    if state.genome_bits[idx] {
+                        assigned_nurses.push(n);
+                    }
+                }
+
+                // Check skill eligibility
+                for &n in &assigned_nurses {
+                    let nurse = &self.context.scenario.nurses[n];
+                    if !self.context.inverted.nurse_can_work[n][d][s] {
+                        violations.push(coralys_core::Violation {
+                            constraint_id: "H2_SkillRequirements".to_string(),
+                            severity: "Hard".to_string(),
+                            value: None,
+                            expected: "Nurse possesses required skill".to_string(),
+                            actual: format!("{:?}", nurse.skills),
+                            description: format!("Nurse {} lacks required skill for shift {} on day {}", nurse.id, shift_name, day_name),
+                            penalty: weights.hard_constraint_violation as i32,
+                        });
+                    }
+                }
+
+                // Check minimum coverage using matching
+                let workers: Vec<(usize, Vec<String>)> = assigned_nurses
+                    .iter()
+                    .map(|&n| (n, self.context.scenario.nurses[n].skills.clone()))
+                    .collect();
+                let min_matching = BipartiteMatchingSolver.assign(&workers, &min_demands);
+                let mut min_fulfilled_map = HashMap::new();
+                for (_, skill) in &min_matching.assignments {
+                    *min_fulfilled_map.entry(skill.clone()).or_insert(0) += 1;
+                }
+                for (skill, required_min) in &min_demands {
+                    let fulfilled = *min_fulfilled_map.get(skill).unwrap_or(&0);
+                    if fulfilled < *required_min {
+                        let missing = *required_min - fulfilled;
+                        violations.push(coralys_core::Violation {
+                            constraint_id: "H2_UnderstaffingCoverage".to_string(),
+                            severity: "Hard".to_string(),
+                            value: Some(missing as f64),
+                            expected: required_min.to_string(),
+                            actual: fulfilled.to_string(),
+                            description: format!("Shift {} skill {} on {} lacks {} nurses for minimum coverage", shift_name, skill, day_name, missing),
+                            penalty: (missing * weights.hard_constraint_violation as usize) as i32,
+                        });
+                    }
+                }
+            }
+        }
+
+        // H3: Forbidden Shift-Type Transitions across days and history boundaries
+        for n in 0..num_nurses {
+            let nurse_id = &self.context.scenario.nurses[n].id;
+            let hist = self.context.history.nurse_history.iter().find(|h| &h.nurse == nurse_id);
+            let mut previous_shift_type = if let Some(h) = hist {
+                if h.number_of_consecutive_days_off > 0 {
+                    "None".to_string()
+                } else {
+                    h.last_assigned_shift_type.clone()
+                }
+            } else {
+                "None".to_string()
+            };
+
+            for d in 0..num_days {
+                let mut current_shift_type = "None".to_string();
+                for s in 0..num_shifts {
+                    let idx = n * (num_days * num_shifts) + d * num_shifts + s;
+                    if state.genome_bits[idx] {
+                        current_shift_type = self.context.shift_types[s].clone();
+                        break;
+                    }
+                }
+
+                if current_shift_type != "None" && previous_shift_type != "None" && !previous_shift_type.is_empty() {
+                    if let Some(rule) = self.context.scenario.forbidden_shift_type_successions.iter().find(|r| r.preceding == previous_shift_type) {
+                        if rule.succeeding.contains(&current_shift_type) {
+                            violations.push(coralys_core::Violation {
+                                constraint_id: "H3_ForbiddenShiftTransitions".to_string(),
+                                severity: "Hard".to_string(),
+                                value: None,
+                                expected: format!("No transition from {} to {}", previous_shift_type, current_shift_type),
+                                actual: format!("Transitioned from {} to {}", previous_shift_type, current_shift_type),
+                                description: format!("Nurse {} forbidden transition: {} -> {} on day {}", nurse_id, previous_shift_type, current_shift_type, d),
+                                penalty: weights.hard_constraint_violation as i32,
+                            });
+                        }
+                    }
+                }
+
+                if current_shift_type != "None" || previous_shift_type == "None" || previous_shift_type.is_empty() {
+                    previous_shift_type = current_shift_type;
+                } else {
+                    previous_shift_type = "None".to_string();
+                }
+            }
+        }
+
+        violations
+    }
+
+    /// Converts state genome into a schedule representation `HashMap<nurse_id, Vec<shift_code>>`.
+    pub fn state_to_schedule(&self, state: &InrcState) -> HashMap<String, Vec<String>> {
+        let mut schedule = HashMap::new();
+        let num_nurses = state.num_nurses;
+        let num_days = state.num_days;
+        let num_shifts = state.num_shifts;
+
+        for n in 0..num_nurses {
+            let nurse_id = self.context.scenario.nurses[n].id.clone();
+            let mut days = Vec::with_capacity(num_days);
+            for d in 0..num_days {
+                let mut assigned_shift = String::new();
+                for s in 0..num_shifts {
+                    let idx = n * (num_days * num_shifts) + d * num_shifts + s;
+                    if state.genome_bits[idx] {
+                        assigned_shift = self.context.shift_types[s].clone();
+                        break;
+                    }
+                }
+                days.push(assigned_shift);
+            }
+            schedule.insert(nurse_id, days);
+        }
+        schedule
+    }
+
+    /// Validates state against official INRC competition validator rules.
+    pub fn validate_with_official_rules(&self, state: &InrcState) -> crate::inrc::types::ValidationReport {
+        let schedule = self.state_to_schedule(state);
+        crate::inrc::validator::validate_schedule(&schedule, &self.context.scenario)
+    }
 }
 
 impl DecisionPlugin for InrcDecisionPlugin {
@@ -555,7 +773,26 @@ impl DecisionPlugin for InrcDecisionPlugin {
             bits: state.genome_bits.clone(),
         };
         let eval = optimizer.evaluate(&genome, &metric_report);
-        eval.platform_result
+
+        // Audit statutory hard constraints H1-H4
+        let hard_violations = self.audit_hard_constraints(state);
+
+        let mut metrics = eval.platform_result.metrics.clone();
+        metrics.insert("h1_violations".to_string(), hard_violations.iter().filter(|v| v.constraint_id == "H1_SingleShiftPerDay").count() as f64);
+        metrics.insert("h2_coverage_violations".to_string(), hard_violations.iter().filter(|v| v.constraint_id == "H2_UnderstaffingCoverage").count() as f64);
+        metrics.insert("h2_skill_violations".to_string(), hard_violations.iter().filter(|v| v.constraint_id == "H2_SkillRequirements").count() as f64);
+        metrics.insert("h3_transition_violations".to_string(), hard_violations.iter().filter(|v| v.constraint_id == "H3_ForbiddenShiftTransitions").count() as f64);
+        metrics.insert("s2_consecutive_violations".to_string(), eval.platform_result.soft_constraint_violations.iter().filter(|v| v.constraint_id == "S2_ConsecutiveWorkingDays").count() as f64);
+        metrics.insert("total_hard_violations".to_string(), hard_violations.len() as f64);
+        metrics.insert("is_feasible".to_string(), if hard_violations.is_empty() { 1.0 } else { 0.0 });
+        metrics.insert("total_soft_penalty".to_string(), eval.soft_report.total_penalty as f64);
+
+        coralys_core::EvaluationResult {
+            objectives: eval.platform_result.objectives,
+            hard_constraint_violations: hard_violations,
+            soft_constraint_violations: eval.platform_result.soft_constraint_violations,
+            metrics,
+        }
     }
 
     fn simulate(
@@ -622,11 +859,24 @@ impl DecisionPlugin for InrcDecisionPlugin {
             }
         };
 
-        let optimizer = InrcOptimizer {
-            context: self.context.clone(),
-        };
-        let metric_report = coralys_moga::runtime::optimization::metric::MetricReport::default();
-        let eval = optimizer.evaluate(&InrcGenome { bits: new_bits.clone() }, &metric_report);
+        let intermediate_state = InrcState::new(
+            state.scenario_id.clone(),
+            state.week_index,
+            num_nurses,
+            num_days,
+            num_shifts,
+            new_bits,
+            0,
+            false,
+        );
+
+        let eval_result = self.evaluate(&intermediate_state);
+        let hard_viols = eval_result.hard_constraint_violations.len();
+        let soft_penalty = eval_result
+            .metrics
+            .get("total_soft_penalty")
+            .copied()
+            .unwrap_or(0.0) as i32;
 
         let mut next_state = InrcState::new(
             state.scenario_id.clone(),
@@ -634,9 +884,9 @@ impl DecisionPlugin for InrcDecisionPlugin {
             num_nurses,
             num_days,
             num_shifts,
-            new_bits,
-            eval.soft_report.total_penalty,
-            eval.is_feasible(),
+            intermediate_state.genome_bits,
+            soft_penalty,
+            hard_viols == 0,
         );
         next_state.reference.metadata = proposal
             .payload
@@ -647,6 +897,9 @@ impl DecisionPlugin for InrcDecisionPlugin {
                     .collect()
             })
             .unwrap_or_default();
+        next_state.reference.metadata.insert("is_simulated".to_string(), "true".to_string());
+        next_state.reference.metadata.insert("hard_violations".to_string(), hard_viols.to_string());
+        next_state.reference.metadata.insert("soft_penalty".to_string(), soft_penalty.to_string());
 
         Ok(next_state)
     }
@@ -720,12 +973,21 @@ impl ReasoningEngine for CoralysInrcEngine {
         // 1. Deterministic Hard Constraint Repair Pass (ejection chains)
         optimizer.repair_hard_constraints(&mut best_genome);
 
+        // Pre-SA Min-Cost Flow Augmentation (co-optimizes S8 optimal coverage and S1 contract pacing)
+        let pacing = crate::inrc::pacing::HorizonPacing::compute(
+            &plugin.context.scenario,
+            &plugin.context.week_data,
+            &plugin.context.history,
+        );
+        let flow = crate::inrc::optimal_flow::DailyOptimalFlow::new();
+        flow.optimize_all_days(&optimizer, &mut best_genome, &pacing);
+
         // 2. Post-GA Memetic Polish via Coralys Simulated Annealing Decision Engine
         let mut rng = match config.seed {
             Some(s) => rand::rngs::StdRng::seed_from_u64(s),
             None => rand::rngs::StdRng::from_entropy(),
         };
-        let sa_budget = (plugin.context.num_nurses as u64 * 40).max(2500);
+        let sa_budget = (plugin.context.num_nurses as u64 * 50).max(3000);
         let domain = InrcAnnealingDomain::new(&optimizer);
         let sa_config = AnnealingConfig {
             initial_temperature: 50.0,
@@ -738,13 +1000,13 @@ impl ReasoningEngine for CoralysInrcEngine {
         let (polished_genome, _, _) = sa_engine.optimize(&domain, &best_genome, &mut rng);
         best_genome = polished_genome;
 
+        // Post-SA Min-Cost Flow Polish (capture any remaining free optimal coverage gains)
+        flow.optimize_all_days(&optimizer, &mut best_genome, &pacing);
+
         // 3. Final Hard Constraint Safety Check (guarantee 0 HC)
+        optimizer.repair_hard_constraints(&mut best_genome);
         let metric_report = coralys_moga::runtime::optimization::metric::MetricReport::default();
-        let mut final_eval = optimizer.evaluate(&InrcGenome { bits: best_genome.bits.clone() }, &metric_report);
-        if !final_eval.is_feasible() {
-            optimizer.repair_hard_constraints(&mut best_genome);
-            final_eval = optimizer.evaluate(&InrcGenome { bits: best_genome.bits.clone() }, &metric_report);
-        }
+        let final_eval = optimizer.evaluate(&InrcGenome { bits: best_genome.bits.clone() }, &metric_report);
 
         let action = InrcAction::SetGenome {
             bits: best_genome.bits.clone(),

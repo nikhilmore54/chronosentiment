@@ -297,6 +297,17 @@ impl InrcOptimizer {
             }
         }
 
+        // 2b. Eject any nurse assigned to a shift where they lack required skills (HC2)
+        for n in 0..num_nurses {
+            for d in 0..num_days {
+                if let Some(s) = self.get_assigned_shift(genome, n, d) {
+                    if !self.context.inverted.nurse_can_work[n][d][s] {
+                        self.set_assigned_shift(genome, n, d, None);
+                    }
+                }
+            }
+        }
+
         // 3. Ejection chain repair for minimum coverage & skills (HC1 & HC2)
 
         for _pass in 0..20 {
@@ -984,6 +995,9 @@ impl InrcOptimizer {
         }
 
         let domain = InrcAnnealingDomain::new(self);
+        // Pre-SA Min-Cost Flow Augmentation (staff unmet optimal slots with qualified idle nurses)
+        domain.optimal_flow.optimize_all_days(self, genome, &domain.pacing);
+
         let sa_config = AnnealingConfig {
             initial_temperature: 50.0,
             cooling_rate: 0.99998,
@@ -995,6 +1009,9 @@ impl InrcOptimizer {
 
         let (best_genome, _, _) = sa_engine.optimize(&domain, genome, rng);
         *genome = best_genome;
+
+        // Post-SA Min-Cost Flow Polish (capture remaining free optimal coverage)
+        domain.optimal_flow.optimize_all_days(self, genome, &domain.pacing);
         self.evaluate(genome, &Default::default())
     }
 }
@@ -1008,6 +1025,11 @@ pub struct InrcAnnealingDomain<'a> {
     pub eligible_groups: Vec<Vec<usize>>,
     pub nurse_can_work: Vec<Vec<Vec<bool>>>,
     pub nurse_target_bands: Vec<(usize, usize)>,
+    pub pacing: super::pacing::HorizonPacing,
+    pub optimal_flow: super::optimal_flow::DailyOptimalFlow,
+    pub ruin_recreate: super::ruin_recreate::ClusterRuinRecreate,
+    pub contract_clusters: HashMap<String, Vec<usize>>,
+    pub lookahead: super::lookahead::SundayLookahead,
 }
 
 impl<'a> InrcAnnealingDomain<'a> {
@@ -1082,11 +1104,26 @@ impl<'a> InrcAnnealingDomain<'a> {
             })
             .collect();
 
+        let pacing = super::pacing::HorizonPacing::compute(
+            &optimizer.context.scenario,
+            &optimizer.context.week_data,
+            &optimizer.context.history,
+        );
+        let optimal_flow = super::optimal_flow::DailyOptimalFlow::new();
+        let ruin_recreate = super::ruin_recreate::ClusterRuinRecreate::new();
+        let contract_clusters = super::ruin_recreate::ClusterRuinRecreate::find_contract_clusters(optimizer);
+        let lookahead = super::lookahead::SundayLookahead::new();
+
         Self {
             optimizer,
             eligible_groups,
             nurse_can_work,
             nurse_target_bands,
+            pacing,
+            optimal_flow,
+            ruin_recreate,
+            contract_clusters,
+            lookahead,
         }
     }
 }
@@ -1100,7 +1137,8 @@ impl<'a> AnnealingDomain<InrcGenome> for InrcAnnealingDomain<'a> {
         let num_days = self.optimizer.context.num_days;
         let days: Vec<usize> = (0..num_days).collect();
         let (_, s8) = self.optimizer.eval_days_coverage(genome, &days);
-        (soft + s8) as f64
+        let lookahead_pen = self.lookahead.eval_total_terminal_penalty(self.optimizer, genome);
+        (soft + s8 + lookahead_pen) as f64
     }
 
     fn propose_move(
@@ -1115,7 +1153,7 @@ impl<'a> AnnealingDomain<InrcGenome> for InrcAnnealingDomain<'a> {
 
         let op_choice = rng_core.gen_range(0..100);
 
-        if op_choice < 20 {
+        if op_choice < 15 {
             // Operator 5: Targeted Weekend Kempe Harmonizer (Directly eliminates S6 incomplete weekends)
             let mut sat_only = Vec::new();
             let mut sun_only = Vec::new();
@@ -1161,7 +1199,7 @@ impl<'a> AnnealingDomain<InrcGenome> for InrcAnnealingDomain<'a> {
                     }
                 }
             }
-        } else if op_choice < 40 {
+        } else if op_choice < 30 {
             // Operator 6: Targeted Optimal Demand Staffing (Directly reduces S8 optimal coverage deficit)
             let d = rng_core.gen_range(0..num_days);
             let opt_slots = &self.optimizer.context.inverted.opt_slots_by_day[d];
@@ -1207,9 +1245,22 @@ impl<'a> AnnealingDomain<InrcGenome> for InrcAnnealingDomain<'a> {
                     }
                 }
             }
+        } else if op_choice < 45 {
+            // Operator 7: Daily Min-Cost Flow Augmentation (Exact bipartite S8 <-> S1 co-optimization)
+            let d = rng_core.gen_range(0..num_days);
+            let mut cand = current.clone();
+            let gain = self.optimal_flow.optimize_day(self.optimizer, &mut cand, d, &self.pacing);
+            if gain > 0 {
+                return Some((cand, -gain as f64));
+            }
+        } else if op_choice < 60 {
+            // Operator 8: Cluster Ruin-and-Recreate LNS (Multi-nurse escape from local minima)
+            if let Some((cand, delta)) = self.ruin_recreate.step(self.optimizer, current, rng_core, &self.contract_clusters) {
+                return Some((cand, delta));
+            }
         }
 
-        if op_choice < 60 {
+        if op_choice < 75 {
             // Operator 1: 3-Day Contiguous Streak-Repair / Stub Ejection & Consolidation (S2/S4)
             let n = rng_core.gen_range(0..num_nurses);
             let mut stub_d = None;
@@ -1271,7 +1322,7 @@ impl<'a> AnnealingDomain<InrcGenome> for InrcAnnealingDomain<'a> {
             return None;
         }
 
-        if op_choice < 75 {
+        if op_choice < 88 {
             // Operator 2: Multi-Day Kempe-Chain Workload Transfer (S1)
             let mut over_nurses = Vec::new();
             let mut under_nurses = Vec::new();
@@ -1356,7 +1407,7 @@ impl<'a> AnnealingDomain<InrcGenome> for InrcAnnealingDomain<'a> {
             return None;
         }
 
-        if rng_core.gen_bool(0.25) {
+        if op_choice < 94 {
             // Operator 3: Single-nurse shift block reassignment (rebalance S8 optimal coverage & S1 assignment quotas)
             let n = rng_core.gen_range(0..num_nurses);
             let block_len = if rng_core.gen_bool(0.60) { 2 } else { 1 };

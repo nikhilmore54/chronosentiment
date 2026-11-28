@@ -28,15 +28,16 @@ pub fn validate_schedule(
                 .unwrap();
             let mut current_work_streak = 0;
             let mut current_off_streak = 0;
+            let effective_days = shifts.len().min(num_days);
 
-            for d in 0..=num_days {
-                // Go to num_days to evaluate the final streak
-                let shift = if d < num_days {
+            for d in 0..=effective_days {
+                // Go to effective_days to evaluate the final streak
+                let shift = if d < effective_days {
                     shifts[d].clone()
                 } else {
                     "".to_string()
                 };
-                let is_work = d < num_days && !shift.is_empty() && !shift.contains("SICK-");
+                let is_work = d < effective_days && !shift.is_empty() && !shift.contains("SICK-");
 
                 if is_work {
                     total_shifts += 1;
@@ -95,13 +96,13 @@ pub fn validate_schedule(
                         current_work_streak = 0;
                     }
 
-                    if d < num_days {
+                    if d < effective_days {
                         current_off_streak += 1;
                     }
                 }
 
                 // Succession checks
-                if d > 0 && d < num_days {
+                if d > 0 && d < effective_days {
                     let prev = &shifts[d - 1];
                     let curr = &shifts[d];
                     if !prev.is_empty()

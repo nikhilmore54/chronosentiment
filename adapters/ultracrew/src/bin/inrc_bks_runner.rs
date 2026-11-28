@@ -42,6 +42,14 @@ struct Cli {
     #[arg(short, long)]
     quick: bool,
 
+    /// Run only 4-week instances (14 instances)
+    #[arg(long)]
+    w4: bool,
+
+    /// Run only 8-week instances (14 instances)
+    #[arg(long)]
+    w8: bool,
+
     /// Run all 28 canonical instances
     #[arg(short, long)]
     all: bool,
@@ -87,11 +95,14 @@ pub struct InstanceBenchmarkTelemetry {
     pub best_known_lb: i32,
     pub best_known_ub: i32,
     pub schedule_nurse_iii: Option<i32>,
+    pub romer_mellouli_bks: Option<i32>,
+    pub legrain_et_al_bks: Option<i32>,
     pub lit_source: String,
     pub coralys_penalty: i32,
     pub optimality_gap_pct: f64,
     pub is_feasible: bool,
     pub total_hard_violations: usize,
+    pub hard_violations_by_type: std::collections::HashMap<String, usize>,
     pub weekly_breakdown: Vec<WeeklyBenchmarkTelemetry>,
     pub total_solve_time_ms: f64,
 }
@@ -146,6 +157,7 @@ fn run_single_instance(
     let mut total_penalty = 0i32;
     let mut all_feasible = true;
     let mut total_hard_violations = 0usize;
+    let mut hard_violations_by_type: std::collections::HashMap<String, usize> = std::collections::HashMap::new();
 
     for (week_num, &wd_idx) in entry.week_indices.iter().enumerate() {
         let wd_path = scenario_dir.join(format!("WD-{}-{}.json", entry.scenario, wd_idx));
@@ -178,6 +190,7 @@ fn run_single_instance(
 
             for v in &eval.hard_constraint_violations {
                 eprintln!("  [HC-VIOLATION] week {}: {} - {}", week_num, v.constraint_id, v.description);
+                *hard_violations_by_type.entry(v.constraint_id.clone()).or_insert(0) += 1;
             }
 
             if hard_viols > 0 {
@@ -230,12 +243,15 @@ fn run_single_instance(
         week_indices: entry.week_indices.to_vec(),
         best_known_lb: entry.best_known_lb,
         best_known_ub: entry.best_known_ub,
-        schedule_nurse_iii: entry.schedule_nurse_iii,
-        lit_source: "Ceschia et al. (2019) / INRC-II BKS".to_string(),
+        schedule_nurse_iii: entry.schedule_nurse_iii(),
+        romer_mellouli_bks: entry.romer_mellouli(),
+        legrain_et_al_bks: entry.legrain_et_al(),
+        lit_source: entry.lit_source().to_string(),
         coralys_penalty: total_penalty,
         optimality_gap_pct: gap_pct,
         is_feasible: all_feasible,
         total_hard_violations,
+        hard_violations_by_type,
         weekly_breakdown: weekly_telemetry,
         total_solve_time_ms: total_time_ms,
     })
@@ -258,6 +274,16 @@ fn main() {
         CANONICAL_INRC_BKS_TABLE
             .iter()
             .filter(|e| e.instance_code.contains(filter) || e.scenario.contains(filter))
+            .collect()
+    } else if args.w4 {
+        CANONICAL_INRC_BKS_TABLE
+            .iter()
+            .filter(|e| e.num_weeks == 4)
+            .collect()
+    } else if args.w8 {
+        CANONICAL_INRC_BKS_TABLE
+            .iter()
+            .filter(|e| e.num_weeks == 8)
             .collect()
     } else if args.quick {
         // One 4-week instance for each fleet size (30, 40, 50, 60, 80, 100, 120)
@@ -410,18 +436,23 @@ fn main() {
     serde_json::to_writer_pretty(json_file, &results).expect("Failed to write JSON telemetry");
     println!("Wrote JSON telemetry: {}", json_path.display());
 
+    let bench_results_path = out_dir.join("benchmark_results.json");
+    let bench_file = File::create(&bench_results_path).expect("Failed to create benchmark_results.json");
+    serde_json::to_writer_pretty(bench_file, &results).expect("Failed to write benchmark_results.json");
+    println!("Wrote Benchmark results: {}", bench_results_path.display());
+
     // Serialize CSV Telemetry
     let csv_path = out_dir.join("canonical_inrc_bks_benchmarks.csv");
     let mut csv_file = File::create(&csv_path).expect("Failed to create CSV output file");
     writeln!(
         csv_file,
-        "instance_code,scenario,num_nurses,num_weeks,history_idx,best_known_lb,best_known_ub,schedule_nurse_iii,coralys_penalty,optimality_gap_pct,is_feasible,total_hard_violations,total_solve_time_ms"
+        "instance_code,scenario,num_nurses,num_weeks,history_idx,best_known_lb,best_known_ub,schedule_nurse_iii,romer_mellouli,legrain_et_al,coralys_penalty,optimality_gap_pct,is_feasible,total_hard_violations,total_solve_time_ms"
     ).unwrap();
 
     for r in &results {
         writeln!(
             csv_file,
-            "{},{},{},{},{},{},{},{},{},{:.4},{},{},{:.2}",
+            "{},{},{},{},{},{},{},{},{},{},{},{:.4},{},{},{:.2}",
             r.instance_code,
             r.scenario,
             r.num_nurses,
@@ -430,6 +461,8 @@ fn main() {
             r.best_known_lb,
             r.best_known_ub,
             r.schedule_nurse_iii.map(|v| v.to_string()).unwrap_or_default(),
+            r.romer_mellouli_bks.map(|v| v.to_string()).unwrap_or_default(),
+            r.legrain_et_al_bks.map(|v| v.to_string()).unwrap_or_default(),
             r.coralys_penalty,
             r.optimality_gap_pct,
             r.is_feasible,
