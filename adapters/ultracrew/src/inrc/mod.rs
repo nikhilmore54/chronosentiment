@@ -14,6 +14,7 @@ pub mod optimization;
 pub mod pacing;
 pub mod parser;
 pub mod planning;
+pub mod pricing;
 pub mod rotation_pool;
 pub mod ruin_recreate;
 pub mod schedule_optimizer;

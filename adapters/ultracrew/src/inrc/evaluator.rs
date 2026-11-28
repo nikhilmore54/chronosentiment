@@ -1036,51 +1036,77 @@ impl InrcOptimizer {
             improved = false;
             iter += 1;
 
-            // Pass 1: Single-nurse rotation projection
+            // Pass 1: Dynamic RCSP Pricing Projection (On-the-fly shortest path on DAG, zero static cache)
+            let pricing_solver = super::pricing::NursePricingSolver::new();
+            let shadow_credits = pricing_solver.compute_shadow_credits(self, genome);
+            let zero_credits = [[0i32; super::pricing::MAX_PRICING_SHIFTS]; 7];
+
             for n in 0..num_nurses {
                 let old_p = self.eval_nurse_soft_penalty(genome, n);
                 if old_p == 0 {
                     continue;
                 }
 
-                let candidates = &self.context.candidate_rotations[n];
+                let contract = self
+                    .context
+                    .scenario
+                    .contracts
+                    .iter()
+                    .find(|c| c.id == self.context.scenario.nurses[n].contract)
+                    .unwrap();
+                let target = (contract.min_assignments + contract.max_assignments)
+                    / (2 * self.context.scenario.number_of_weeks);
+
                 let mut best_cand: Option<(InrcGenome, i32)> = None;
                 let mut max_gain = 0;
 
-                for (cand_rot, _) in candidates.iter().take(80) {
-                    let mut test_genome = genome.clone();
-                    let mut changed_days = Vec::new();
-                    for d in 0..self.context.num_days {
-                        let cur_s = self.get_assigned_shift(genome, n, d);
-                        let rot_s = cand_rot.get_shift(d);
-                        if cur_s != rot_s {
-                            changed_days.push(d);
-                            self.set_assigned_shift(&mut test_genome, n, d, rot_s);
+                let t_min = target.saturating_sub(1);
+                let t_max = target + 1;
+                let targets = if t_min != target {
+                    vec![t_min, target, t_max]
+                } else {
+                    vec![target, t_max]
+                };
+
+                // Test dynamic pricing across targets and shadow credit profiles
+                for &t in &targets {
+                    for credits in &[&shadow_credits, &zero_credits] {
+                        if let Some(cand_rot) = pricing_solver.solve_optimal_rotation(self, n, credits, t) {
+                            let mut test_genome = genome.clone();
+                            let mut changed_days = Vec::new();
+                            for d in 0..self.context.num_days {
+                                let cur_s = self.get_assigned_shift(genome, n, d);
+                                let rot_s = cand_rot[d];
+                                if cur_s != rot_s {
+                                    changed_days.push(d);
+                                    self.set_assigned_shift(&mut test_genome, n, d, rot_s);
+                                }
+                            }
+
+                        if changed_days.is_empty() {
+                            continue;
+                        }
+
+                        if self.nurse_has_forbidden_succession(&test_genome, n) {
+                            continue;
+                        }
+
+                        let (is_feas, new_s8) = self.eval_days_coverage(&test_genome, &changed_days);
+                        if !is_feas {
+                            continue;
+                        }
+
+                        let (_, old_s8) = self.eval_days_coverage(genome, &changed_days);
+                        let new_p = self.eval_nurse_soft_penalty(&test_genome, n);
+                        let gain = (old_p - new_p) + (old_s8 - new_s8);
+
+                        if gain > max_gain {
+                            max_gain = gain;
+                            best_cand = Some((test_genome, gain));
                         }
                     }
-
-                    if changed_days.is_empty() {
-                        continue;
-                    }
-
-                    if self.nurse_has_forbidden_succession(&test_genome, n) {
-                        continue;
-                    }
-
-                    let (is_feas, new_s8) = self.eval_days_coverage(&test_genome, &changed_days);
-                    if !is_feas {
-                        continue;
-                    }
-
-                    let (_, old_s8) = self.eval_days_coverage(genome, &changed_days);
-                    let new_p = self.eval_nurse_soft_penalty(&test_genome, n);
-                    let gain = (old_p - new_p) + (old_s8 - new_s8);
-
-                    if gain > max_gain {
-                        max_gain = gain;
-                        best_cand = Some((test_genome, gain));
-                    }
                 }
+            }
 
                 if let Some((better_genome, _)) = best_cand {
                     *genome = better_genome;
@@ -1125,6 +1151,9 @@ impl InrcOptimizer {
 
                         let old_p_u = self.eval_nurse_soft_penalty(genome, u);
                         let old_p_v = self.eval_nurse_soft_penalty(genome, v);
+                        if old_p_u == 0 && old_p_v == 0 {
+                            continue;
+                        }
 
                         let mut cand = genome.clone();
                         for d in 0..self.context.num_days {
@@ -1313,6 +1342,7 @@ pub struct InrcAnnealingDomain<'a> {
     pub ruin_recreate: super::ruin_recreate::ClusterRuinRecreate,
     pub contract_clusters: HashMap<String, Vec<usize>>,
     pub lookahead: super::lookahead::SundayLookahead,
+    pub pricing_solver: super::pricing::NursePricingSolver,
 }
 
 impl<'a> InrcAnnealingDomain<'a> {
@@ -1407,6 +1437,7 @@ impl<'a> InrcAnnealingDomain<'a> {
         let ruin_recreate = super::ruin_recreate::ClusterRuinRecreate::new();
         let contract_clusters = super::ruin_recreate::ClusterRuinRecreate::find_contract_clusters(optimizer);
         let lookahead = super::lookahead::SundayLookahead::new();
+        let pricing_solver = super::pricing::NursePricingSolver::new();
 
         Self {
             optimizer,
@@ -1419,6 +1450,7 @@ impl<'a> InrcAnnealingDomain<'a> {
             ruin_recreate,
             contract_clusters,
             lookahead,
+            pricing_solver,
         }
     }
 }
@@ -1481,19 +1513,37 @@ impl<'a> AnnealingDomain<InrcGenome> for InrcAnnealingDomain<'a> {
                 }
             }
         } else if op_choice < 30 {
-            // Operator 10: Zero-Defect Rotation Injection / LNS
-            let n = rng_core.gen_range(0..num_nurses);
-            let candidates = &self.optimizer.context.candidate_rotations[n];
+            // Operator 10: Dynamic RCSP Pricing on DAG (On-the-fly line of work without static caching)
+            let n = if rng_core.gen_bool(0.75) {
+                let mut candidate_nurses = Vec::new();
+                for u in 0..num_nurses {
+                    if self.optimizer.eval_nurse_soft_penalty(current, u) > 0 {
+                        candidate_nurses.push(u);
+                    }
+                }
+                if !candidate_nurses.is_empty() {
+                    candidate_nurses[rng_core.gen_range(0..candidate_nurses.len())]
+                } else {
+                    rng_core.gen_range(0..num_nurses)
+                }
+            } else {
+                rng_core.gen_range(0..num_nurses)
+            };
+            let shadow_credits = self.pricing_solver.compute_shadow_credits(self.optimizer, current);
+            let (target_min, target_max) = self.nurse_target_bands[n];
+            let target = (target_min + target_max) / 2;
 
-            if !candidates.is_empty() {
-                let pick = rng_core.gen_range(0..candidates.len().min(15));
-                let (cand_rot, _) = candidates[pick];
-
+            if let Some(cand_rot) = self.pricing_solver.solve_optimal_rotation(
+                self.optimizer,
+                n,
+                &shadow_credits,
+                target,
+            ) {
                 let mut cand = current.clone();
                 let mut changed_days = Vec::new();
                 for d in 0..num_days {
                     let cur_s = self.optimizer.get_assigned_shift(current, n, d);
-                    let rot_s = cand_rot.get_shift(d);
+                    let rot_s = cand_rot[d];
                     if cur_s != rot_s {
                         changed_days.push(d);
                         self.optimizer.set_assigned_shift(&mut cand, n, d, rot_s);

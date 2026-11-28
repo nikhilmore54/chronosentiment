@@ -105,22 +105,7 @@ impl InrcContext {
         }
 
         let rotation_pool = Arc::new(super::rotation_pool::RotationPool::build(&scenario));
-        let mut candidate_rotations = Vec::with_capacity(num_nurses);
-        for n in 0..num_nurses {
-            let nurse = &scenario.nurses[n];
-            let contract = scenario.contracts.iter().find(|c| c.id == nurse.contract).unwrap();
-            let hist = history.nurse_history.iter().find(|h| h.nurse == nurse.id);
-            let rots = rotation_pool.get_candidate_rotations_for_nurse(
-                n,
-                &nurse.contract,
-                hist,
-                contract,
-                &scenario,
-                &inverted.nurse_can_work,
-                inverted.nurse_target_bands[n],
-            );
-            candidate_rotations.push(rots);
-        }
+        let candidate_rotations = vec![Vec::new(); num_nurses];
 
         Self {
             scenario: Arc::new(scenario),
