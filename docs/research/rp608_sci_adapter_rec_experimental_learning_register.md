@@ -246,6 +246,21 @@ Detail: `rp608_sci_adapter_rec_elr_sci_clean_observe_008_d1d4_2026_11_28.md`
 
 Detail: `rp608_sci_adapter_rec_elr_sci_clean_observe_008_d5d8_2026_11_28.md`
 
+### ELR-008 Anuj disposition D5–D8 (2026-11-28 ~16:56 Asia/Calcutta)
+
+| Field | Value |
+| --- | --- |
+| Scope | Docs only · D1–D4 preserved · no predictive experiment · twins frozen · exits/Coralys/Gate5 untouched |
+| D5.1 BLOCKER | Anuj must confirm **5+1 vs 6+0** before any implementation; preferred if config authoritative: Fees=(Ne+Nx)×5/10000, Slip=(Ne+Nx)×1/10000; else 6+0 + comment reconcile; no “actual exchange fees” label on composite |
+| Invariant | `|Net−(Gross−Fees−Slippage−Other)|<0.02` else `DATA_MEASUREMENT` |
+| Near-zero | Preserve math net sign + near-zero flag; do not promote ~+0.0007 TRAIL |
+| Sequence | D5.1 → D5.2 offline parity → D5.3 validation → D7 path design (event-order + single-writer for Python GIVEBACK) → D6 retrospective under reconciled economics → D8 one authorized hypothesis |
+| D6 | `EXECUTION_FRICTION` ≠ proven root cause |
+| D8 | H-COST-1 priority + historical restatement; H-GB-CAP-1 deferred Gate5; H-SL-DIR-1 needs DI; H-PATH-1 observability-only |
+| Decision | **hold** · no code |
+
+Detail: addendum in `rp608_sci_adapter_rec_elr_sci_clean_observe_008_d5d8_2026_11_28.md` · store `sci-adapter-rec-elr-008-d5-disposition-anuj-2026-11-28.md`
+
 ---
 
 ## Non-negotiables
