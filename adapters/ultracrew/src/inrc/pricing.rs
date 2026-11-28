@@ -39,7 +39,7 @@ impl NursePricingSolver {
         optimizer: &InrcOptimizer,
         nurse_idx: usize,
         shadow_credits: &[[i32; MAX_PRICING_SHIFTS]; 7],
-        target_assignments: usize,
+        _target_assignments: usize,
     ) -> Option<[Option<usize>; 7]> {
         let num_shifts = optimizer.context.shift_types.len();
         let nurse = &optimizer.context.scenario.nurses[nurse_idx];
@@ -283,9 +283,16 @@ impl NursePricingSolver {
                             continue;
                         }
 
-                        // S1 target assignments deviation penalty
-                        let assign_dev = (end_a as i32 - target_assignments as i32).abs();
-                        c += assign_dev * 20;
+                        // S1 contract assignment bound penalty (exact zero penalty within [weekly_min, weekly_max] band)
+                        let weekly_min = contract.min_assignments / optimizer.context.scenario.number_of_weeks;
+                        let weekly_max = (contract.max_assignments as f64
+                            / optimizer.context.scenario.number_of_weeks as f64)
+                            .ceil() as usize;
+                        if end_a < weekly_min {
+                            c += (weekly_min - end_a) as i32 * 20;
+                        } else if end_a > weekly_max {
+                            c += (end_a - weekly_max) as i32 * 20;
+                        }
 
                         // Terminal Sunday boundary penalties
                         if end_s > 0 {
@@ -347,6 +354,26 @@ impl NursePricingSolver {
 
                     if current_staffed < total_demand {
                         credits[d][s] = 30; // exact marginal shadow price for covering deficit
+                    } else {
+                        // Check if skill mismatch still causes deficit on this shift
+                        let mut worker_masks = [0u8; 64];
+                        let mut worker_count = 0;
+                        for n in 0..num_nurses {
+                            if optimizer.get_bit(genome, n, d, s) {
+                                if worker_count < 64 {
+                                    worker_masks[worker_count] = optimizer.context.nurse_skill_masks[n];
+                                    worker_count += 1;
+                                }
+                            }
+                        }
+                        let (_, shift_s8) = crate::inrc::evaluator::fast_eval_shift_coverage(
+                            demand,
+                            &worker_masks[0..worker_count],
+                            optimizer.context.weights.optimal_coverage,
+                        );
+                        if shift_s8 > 0 {
+                            credits[d][s] = 30;
+                        }
                     }
                 }
             }

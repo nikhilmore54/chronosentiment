@@ -76,7 +76,7 @@ impl DailyOptimalFlow {
                         week_assignments += 1;
                     }
                 }
-                let target = &pacing.nurse_targets[n];
+                let _target = &pacing.nurse_targets[n];
 
                 let nurse = &optimizer.context.scenario.nurses[n];
                 let contract = optimizer.context.scenario.contracts.iter().find(|c| c.id == nurse.contract).unwrap();
@@ -85,15 +85,6 @@ impl DailyOptimalFlow {
                 if prev_total + week_assignments >= contract.max_assignments {
                     continue; // Strict H4 cap: never exceed max total assignments
                 }
-
-                // Pacing guidance: negative cost (credit) if nurse needs assignments
-                let s1_credit = if week_assignments < target.target_assignments {
-                    20
-                } else if week_assignments >= target.max_assignments {
-                    -30 // Over-assigning beyond max is penalized
-                } else {
-                    0
-                };
 
                 let old_p_n = optimizer.eval_nurse_soft_penalty(genome, n);
 
@@ -172,8 +163,8 @@ impl DailyOptimalFlow {
                         0
                     };
 
-                    // Total objective delta: delta_s8 + delta_nurse + lookahead_delta - s1_credit
-                    let total_delta = delta_s8 + delta_nurse + lookahead_delta - s1_credit;
+                    // Total objective delta: delta_s8 + delta_nurse + lookahead_delta
+                    let total_delta = delta_s8 + delta_nurse + lookahead_delta;
                     let reduction = -total_delta;
 
                     if reduction > best_reduction {
@@ -244,6 +235,133 @@ impl DailyOptimalFlow {
         total_improvement
     }
 
+    /// Evaluates multi-day block augmenting moves (2-day and 3-day consecutive assignments)
+    /// to assign idle nurses whose assignment quota is below target without violating
+    /// min_consecutive_working_days.
+    pub fn optimize_blocks(
+        &self,
+        optimizer: &InrcOptimizer,
+        genome: &mut InrcGenome,
+        pacing: &HorizonPacing,
+    ) -> i32 {
+        let num_nurses = optimizer.context.num_nurses;
+        let num_shifts = optimizer.context.shift_types.len();
+        let mut total_improvement = 0i32;
+
+        // Try 3-day, 4-day, and 5-day ergonomic blocks across the week
+        for block_len in [3, 4, 5] {
+            let max_start = if 7 >= block_len { 7 - block_len } else { 0 };
+            for start_d in 0..=max_start {
+                let days: Vec<usize> = (start_d..start_d + block_len).collect();
+
+                let (base_feas, mut current_s8) = optimizer.eval_days_coverage(genome, &days);
+                if !base_feas {
+                    continue;
+                }
+
+                for n in 0..num_nurses {
+                    let mut works_in_block = false;
+                    for &d in &days {
+                        if optimizer.get_assigned_shift(genome, n, d).is_some() {
+                            works_in_block = true;
+                            break;
+                        }
+                    }
+                    if works_in_block {
+                        continue;
+                    }
+
+                    let nurse = &optimizer.context.scenario.nurses[n];
+                    let contract = optimizer.context.scenario.contracts.iter().find(|c| c.id == nurse.contract).unwrap();
+
+                    // Ergonomic compliance: block length must satisfy contract bounds
+                    if block_len < contract.min_consecutive_working_days || block_len > contract.max_consecutive_working_days {
+                        continue;
+                    }
+
+                    let hist = optimizer.context.history.nurse_history.iter().find(|h| &h.nurse == &nurse.id);
+                    let prev_total = hist.map(|h| h.number_of_assignments).unwrap_or(0);
+                    let week_assignments = (0..7).filter(|&d| optimizer.get_assigned_shift(genome, n, d).is_some()).count();
+
+                    if prev_total + week_assignments + block_len > contract.max_assignments {
+                        continue;
+                    }
+                    let target = &pacing.nurse_targets[n];
+                    if week_assignments + block_len > target.max_assignments {
+                        continue;
+                    }
+
+                    let old_p_n = optimizer.eval_nurse_soft_penalty(genome, n);
+
+                    for s in 0..num_shifts {
+                        let s_type = &optimizer.context.scenario.shift_types[s];
+                        if block_len < s_type.min_consecutive || block_len > s_type.max_consecutive {
+                            continue;
+                        }
+
+                        let mut can_work_all = true;
+                        for &d in &days {
+                            if !optimizer.context.inverted.nurse_can_work[n][d][s] {
+                                can_work_all = false;
+                                break;
+                            }
+                        }
+                        if !can_work_all {
+                            continue;
+                        }
+
+                        if start_d == 0 {
+                            if optimizer.context.inverted.history_forbidden[n][s] {
+                                continue;
+                            }
+                        } else if let Some(prev) = optimizer.get_assigned_shift(genome, n, start_d - 1) {
+                            if optimizer.context.inverted.forbidden_matrix[prev][s] {
+                                continue;
+                            }
+                        }
+
+                        let end_d = start_d + block_len - 1;
+                        if end_d + 1 < 7 {
+                            if let Some(next) = optimizer.get_assigned_shift(genome, n, end_d + 1) {
+                                if optimizer.context.inverted.forbidden_matrix[s][next] {
+                                    continue;
+                                }
+                            }
+                        }
+
+                        let mut cand = genome.clone();
+                        for &d in &days {
+                            optimizer.set_assigned_shift(&mut cand, n, d, Some(s));
+                        }
+
+                        if !optimizer.nurse_satisfies_hard_contracts(&cand, n) {
+                            continue;
+                        }
+
+                        let (cand_feas, cand_s8) = optimizer.eval_days_coverage(&cand, &days);
+                        if !cand_feas {
+                            continue;
+                        }
+
+                        let delta_s8 = cand_s8 - current_s8;
+                        let new_p_n = optimizer.eval_nurse_soft_penalty(&cand, n);
+                        let delta_nurse = new_p_n - old_p_n;
+                        let net_delta = delta_s8 + delta_nurse;
+
+                        if net_delta < 0 {
+                            *genome = cand;
+                            total_improvement += -net_delta;
+                            current_s8 = cand_s8;
+                            break;
+                        }
+                    }
+                }
+            }
+        }
+
+        total_improvement
+    }
+
     /// Optimizes shift staffing across all 7 days of the planning week using min-cost flow.
     pub fn optimize_all_days(
         &self,
@@ -252,7 +370,10 @@ impl DailyOptimalFlow {
         pacing: &HorizonPacing,
     ) -> i32 {
         let mut total_improvement = 0i32;
-        // Prioritize Weekend (5, 6), then weekdays in coupling order
+        // 1. Multi-Day Block Augmentation (assigns ergonomic blocks to idle nurses)
+        total_improvement += self.optimize_blocks(optimizer, genome, pacing);
+
+        // 2. Single-day fine-tuning & trimming
         let day_order = [5, 6, 4, 3, 2, 1, 0];
         for &d in &day_order {
             total_improvement += self.optimize_day(optimizer, genome, d, pacing);

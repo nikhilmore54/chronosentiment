@@ -318,10 +318,20 @@ impl InvertedContext {
                         let (min_a, max_a) = self.nurse_target_bands[n];
                         let mut score = 0i32;
 
-                        if shift_counts[n] >= max_a {
-                            score += 600;
-                        } else if shift_counts[n] < min_a {
-                            score -= 200;
+                        let remaining_days = self.num_days - d;
+                        let needed = min_a.saturating_sub(shift_counts[n]);
+
+                        // Pacing Urgency: nurses who will violate S1 if not assigned immediately
+                        if needed > 0 {
+                            if remaining_days <= needed {
+                                score -= 3000;
+                            } else if remaining_days <= needed + 1 {
+                                score -= 1200;
+                            } else {
+                                score -= 400;
+                            }
+                        } else if shift_counts[n] >= max_a {
+                            score += 1500;
                         }
 
                         if current_work_streak[n] > 0 {
@@ -329,16 +339,21 @@ impl InvertedContext {
                             if w < self.nurse_min_work_days[n] {
                                 score -= 800;
                             } else if w >= self.nurse_max_work_days[n] {
-                                score += 1200;
+                                score += 2000;
+                            } else if shift_counts[n] >= min_a {
+                                score += 300;
                             } else {
                                 score -= 100;
                             }
                         } else if current_off_streak[n] > 0 {
                             let o = current_off_streak[n];
                             if o < self.nurse_min_off_days[n] {
-                                score += 600;
+                                score += 800;
                             } else if o >= self.nurse_max_off_days[n] {
-                                score -= 600;
+                                score -= 800;
+                            } else if shift_counts[n] < min_a {
+                                // Rested nurse with quota deficit: strong incentive to start working
+                                score -= 500;
                             }
                         }
 
@@ -397,29 +412,51 @@ impl InvertedContext {
 
                 if !candidates.is_empty() {
                     candidates.sort_by_key(|&n| {
+                        let (min_a, max_a) = self.nurse_target_bands[n];
                         let mut score = 0i32;
+
+                        let remaining_days = self.num_days - d;
+                        let needed = min_a.saturating_sub(shift_counts[n]);
+                        if needed > 0 {
+                            if remaining_days <= needed {
+                                score -= 3000;
+                            } else if remaining_days <= needed + 1 {
+                                score -= 1200;
+                            } else {
+                                score -= 400;
+                            }
+                        } else if shift_counts[n] >= max_a {
+                            score += 1500;
+                        }
+
                         if current_work_streak[n] > 0 {
                             let w = current_work_streak[n];
                             if w < self.nurse_min_work_days[n] {
-                                score -= 500;
+                                score -= 800;
                             } else if w >= self.nurse_max_work_days[n] {
-                                score += 1000;
+                                score += 2000;
+                            } else if shift_counts[n] >= min_a {
+                                score += 300;
+                            } else {
+                                score -= 100;
                             }
                         } else if current_off_streak[n] > 0 {
                             let o = current_off_streak[n];
                             if o < self.nurse_min_off_days[n] {
-                                score += 400;
+                                score += 800;
+                            } else if o >= self.nurse_max_off_days[n] {
+                                score -= 800;
+                            } else if shift_counts[n] < min_a {
+                                score -= 500;
                             }
                         }
-                        (score, shift_counts[n])
+                        (score, self.nurse_skills_count[n], shift_counts[n])
                     });
 
                     let pool_size = candidates.len().min(3);
                     let chosen = candidates[rng.gen_range(0..pool_size)];
-                    if rng.gen_bool(0.80) {
-                        assigned_shift[chosen][d] = Some(slot.shift_idx);
-                        shift_counts[chosen] += 1;
-                    }
+                    assigned_shift[chosen][d] = Some(slot.shift_idx);
+                    shift_counts[chosen] += 1;
                 }
             }
 

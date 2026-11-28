@@ -17,8 +17,8 @@
     "romer_mellouli_bks": 1670,
     "legrain_et_al_bks": 1670,
     "lit_source": "Ceschia et al. (2019, Annals of OR) / Römer & Mellouli / Legrain et al.",
-    "coralys_penalty": 2095,
-    "optimality_gap_pct": 25.449101796407188,
+    "coralys_penalty": 2100,
+    "optimality_gap_pct": 25.748502994011975,
     "is_feasible": true,
     "total_hard_violations": 0,
     "hard_violations_by_type": {},
@@ -27,32 +27,32 @@
         "week_idx": 0,
         "week_data_idx": 6,
         "hard_violations": 0,
-        "soft_penalty": 715,
-        "solve_time_ms": 2531.4501250000003
+        "soft_penalty": 695,
+        "solve_time_ms": 2524.419292
       },
       {
         "week_idx": 1,
         "week_data_idx": 2,
         "hard_violations": 0,
-        "soft_penalty": 395,
-        "solve_time_ms": 2518.725666
+        "soft_penalty": 375,
+        "solve_time_ms": 2527.266542
       },
       {
         "week_idx": 2,
         "week_data_idx": 9,
         "hard_violations": 0,
-        "soft_penalty": 575,
-        "solve_time_ms": 2515.5225
+        "soft_penalty": 500,
+        "solve_time_ms": 2530.371583
       },
       {
         "week_idx": 3,
         "week_data_idx": 1,
         "hard_violations": 0,
-        "soft_penalty": 410,
-        "solve_time_ms": 2524.1849589999997
+        "soft_penalty": 530,
+        "solve_time_ms": 2519.314917
       }
     ],
-    "total_solve_time_ms": 10115.003708
+    "total_solve_time_ms": 10114.55675
   },
   {
     "instance_code": "n040w4_0_2-0-6-1",
@@ -72,8 +72,8 @@
     "romer_mellouli_bks": 1565,
     "legrain_et_al_bks": 1565,
     "lit_source": "Ceschia et al. (2019, Annals of OR) / Römer & Mellouli / Legrain et al.",
-    "coralys_penalty": 2165,
-    "optimality_gap_pct": 38.33865814696485,
+    "coralys_penalty": 2115,
+    "optimality_gap_pct": 35.14376996805112,
     "is_feasible": true,
     "total_hard_violations": 0,
     "hard_violations_by_type": {},
@@ -82,32 +82,32 @@
         "week_idx": 0,
         "week_data_idx": 2,
         "hard_violations": 0,
-        "soft_penalty": 580,
-        "solve_time_ms": 2542.093166
+        "soft_penalty": 510,
+        "solve_time_ms": 2541.786083
       },
       {
         "week_idx": 1,
         "week_data_idx": 0,
         "hard_violations": 0,
-        "soft_penalty": 450,
-        "solve_time_ms": 2540.232667
+        "soft_penalty": 390,
+        "solve_time_ms": 2543.2877089999997
       },
       {
         "week_idx": 2,
         "week_data_idx": 6,
         "hard_violations": 0,
-        "soft_penalty": 595,
-        "solve_time_ms": 2544.9349589999997
+        "soft_penalty": 605,
+        "solve_time_ms": 2562.3692079999996
       },
       {
         "week_idx": 3,
         "week_data_idx": 1,
         "hard_violations": 0,
-        "soft_penalty": 540,
-        "solve_time_ms": 2526.6237499999997
+        "soft_penalty": 610,
+        "solve_time_ms": 2534.325125
       }
     ],
-    "total_solve_time_ms": 10166.019209
+    "total_solve_time_ms": 10192.820167
   },
   {
     "instance_code": "n050w4_0_0-4-8-7",
@@ -127,8 +127,8 @@
     "romer_mellouli_bks": 1315,
     "legrain_et_al_bks": 1315,
     "lit_source": "Ceschia et al. (2019, Annals of OR) / Römer & Mellouli / Legrain et al.",
-    "coralys_penalty": 2510,
-    "optimality_gap_pct": 90.8745247148289,
+    "coralys_penalty": 2685,
+    "optimality_gap_pct": 104.18250950570342,
     "is_feasible": true,
     "total_hard_violations": 0,
     "hard_violations_by_type": {},
@@ -137,32 +137,32 @@
         "week_idx": 0,
         "week_data_idx": 0,
         "hard_violations": 0,
-        "soft_penalty": 560,
-        "solve_time_ms": 2550.3378749999997
+        "soft_penalty": 440,
+        "solve_time_ms": 2676.027959
       },
       {
         "week_idx": 1,
         "week_data_idx": 4,
         "hard_violations": 0,
-        "soft_penalty": 610,
-        "solve_time_ms": 2548.1775
+        "soft_penalty": 805,
+        "solve_time_ms": 2569.286834
       },
       {
         "week_idx": 2,
         "week_data_idx": 8,
         "hard_violations": 0,
-        "soft_penalty": 770,
-        "solve_time_ms": 2549.225041
+        "soft_penalty": 790,
+        "solve_time_ms": 2570.088417
       },
       {
         "week_idx": 3,
         "week_data_idx": 7,
         "hard_violations": 0,
-        "soft_penalty": 570,
-        "solve_time_ms": 2562.741541
+        "soft_penalty": 650,
+        "solve_time_ms": 2562.97275
       }
     ],
-    "total_solve_time_ms": 10220.367417
+    "total_solve_time_ms": 10390.036792
   },
   {
     "instance_code": "n060w4_1_6-1-1-5",
@@ -182,8 +182,8 @@
     "romer_mellouli_bks": 2450,
     "legrain_et_al_bks": 2450,
     "lit_source": "Ceschia et al. (2019, Annals of OR) / Römer & Mellouli / Legrain et al.",
-    "coralys_penalty": 6025,
-    "optimality_gap_pct": 145.91836734693877,
+    "coralys_penalty": 6415,
+    "optimality_gap_pct": 161.83673469387756,
     "is_feasible": true,
     "total_hard_violations": 0,
     "hard_violations_by_type": {},
@@ -192,32 +192,32 @@
         "week_idx": 0,
         "week_data_idx": 6,
         "hard_violations": 0,
-        "soft_penalty": 1440,
-        "solve_time_ms": 2575.5612499999997
+        "soft_penalty": 1405,
+        "solve_time_ms": 2617.511625
       },
       {
         "week_idx": 1,
         "week_data_idx": 1,
         "hard_violations": 0,
-        "soft_penalty": 1415,
-        "solve_time_ms": 2583.233167
+        "soft_penalty": 1745,
+        "solve_time_ms": 2619.901917
       },
       {
         "week_idx": 2,
         "week_data_idx": 1,
         "hard_violations": 0,
-        "soft_penalty": 1595,
-        "solve_time_ms": 2581.540583
+        "soft_penalty": 1780,
+        "solve_time_ms": 2606.200875
       },
       {
         "week_idx": 3,
         "week_data_idx": 5,
         "hard_violations": 0,
-        "soft_penalty": 1575,
-        "solve_time_ms": 2553.7857910000002
+        "soft_penalty": 1485,
+        "solve_time_ms": 2566.992167
       }
     ],
-    "total_solve_time_ms": 10303.008625
+    "total_solve_time_ms": 10419.976625000001
   },
   {
     "instance_code": "n080w4_2_4-3-3-3",
@@ -237,8 +237,8 @@
     "romer_mellouli_bks": 3300,
     "legrain_et_al_bks": 3300,
     "lit_source": "Ceschia et al. (2019, Annals of OR) / Römer & Mellouli / Legrain et al.",
-    "coralys_penalty": 5970,
-    "optimality_gap_pct": 80.9090909090909,
+    "coralys_penalty": 6550,
+    "optimality_gap_pct": 98.48484848484848,
     "is_feasible": true,
     "total_hard_violations": 0,
     "hard_violations_by_type": {},
@@ -247,32 +247,32 @@
         "week_idx": 0,
         "week_data_idx": 4,
         "hard_violations": 0,
-        "soft_penalty": 1955,
-        "solve_time_ms": 3366.9050829999996
+        "soft_penalty": 1820,
+        "solve_time_ms": 3592.6533329999997
       },
       {
         "week_idx": 1,
         "week_data_idx": 3,
         "hard_violations": 0,
-        "soft_penalty": 1415,
-        "solve_time_ms": 3341.0530409999997
+        "soft_penalty": 1665,
+        "solve_time_ms": 3339.110334
       },
       {
         "week_idx": 2,
         "week_data_idx": 3,
         "hard_violations": 0,
-        "soft_penalty": 1290,
-        "solve_time_ms": 3288.832167
+        "soft_penalty": 1835,
+        "solve_time_ms": 3340.4440000000004
       },
       {
         "week_idx": 3,
         "week_data_idx": 3,
         "hard_violations": 0,
-        "soft_penalty": 1310,
-        "solve_time_ms": 3288.170666
+        "soft_penalty": 1230,
+        "solve_time_ms": 3308.3516670000004
       }
     ],
-    "total_solve_time_ms": 13298.070083
+    "total_solve_time_ms": 13628.771209
   },
   {
     "instance_code": "n100w4_0_1-1-0-8",
@@ -292,8 +292,8 @@
     "romer_mellouli_bks": 1170,
     "legrain_et_al_bks": 1170,
     "lit_source": "Ceschia et al. (2019, Annals of OR) / Römer & Mellouli / Legrain et al.",
-    "coralys_penalty": 2930,
-    "optimality_gap_pct": 150.42735042735043,
+    "coralys_penalty": 3470,
+    "optimality_gap_pct": 196.58119658119656,
     "is_feasible": true,
     "total_hard_violations": 0,
     "hard_violations_by_type": {},
@@ -302,32 +302,32 @@
         "week_idx": 0,
         "week_data_idx": 1,
         "hard_violations": 0,
-        "soft_penalty": 975,
-        "solve_time_ms": 4223.567125
+        "soft_penalty": 1135,
+        "solve_time_ms": 4380.05775
       },
       {
         "week_idx": 1,
         "week_data_idx": 1,
         "hard_violations": 0,
-        "soft_penalty": 510,
-        "solve_time_ms": 4191.469333
+        "soft_penalty": 790,
+        "solve_time_ms": 4271.6655
       },
       {
         "week_idx": 2,
         "week_data_idx": 0,
         "hard_violations": 0,
-        "soft_penalty": 735,
-        "solve_time_ms": 4196.970917
+        "soft_penalty": 860,
+        "solve_time_ms": 4191.182458
       },
       {
         "week_idx": 3,
         "week_data_idx": 8,
         "hard_violations": 0,
-        "soft_penalty": 710,
-        "solve_time_ms": 4125.551542
+        "soft_penalty": 685,
+        "solve_time_ms": 4116.792709
       }
     ],
-    "total_solve_time_ms": 16756.195042000003
+    "total_solve_time_ms": 16978.162542
   },
   {
     "instance_code": "n120w4_1_4-6-2-6",
@@ -347,8 +347,8 @@
     "romer_mellouli_bks": 2020,
     "legrain_et_al_bks": 2020,
     "lit_source": "Ceschia et al. (2019, Annals of OR) / Römer & Mellouli / Legrain et al.",
-    "coralys_penalty": 7500,
-    "optimality_gap_pct": 271.2871287128713,
+    "coralys_penalty": 7935,
+    "optimality_gap_pct": 292.82178217821786,
     "is_feasible": true,
     "total_hard_violations": 0,
     "hard_violations_by_type": {},
@@ -357,31 +357,31 @@
         "week_idx": 0,
         "week_data_idx": 4,
         "hard_violations": 0,
-        "soft_penalty": 2095,
-        "solve_time_ms": 5341.655833
+        "soft_penalty": 1905,
+        "solve_time_ms": 6006.714125
       },
       {
         "week_idx": 1,
         "week_data_idx": 6,
         "hard_violations": 0,
-        "soft_penalty": 1900,
-        "solve_time_ms": 5497.537458
+        "soft_penalty": 2050,
+        "solve_time_ms": 5452.400166
       },
       {
         "week_idx": 2,
         "week_data_idx": 2,
         "hard_violations": 0,
-        "soft_penalty": 1745,
-        "solve_time_ms": 5298.925125000001
+        "soft_penalty": 1765,
+        "solve_time_ms": 5412.012
       },
       {
         "week_idx": 3,
         "week_data_idx": 6,
         "hard_violations": 0,
-        "soft_penalty": 1760,
-        "solve_time_ms": 5182.250749999999
+        "soft_penalty": 2215,
+        "solve_time_ms": 5295.475332999999
       }
     ],
-    "total_solve_time_ms": 21336.379084
+    "total_solve_time_ms": 22183.284834
   }
 ]

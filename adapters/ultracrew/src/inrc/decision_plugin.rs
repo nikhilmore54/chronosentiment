@@ -963,9 +963,25 @@ impl ReasoningEngine for CoralysInrcVndEngine {
         // PHASE 1 & 2: PACED MINIMUM MARGINAL REGRET SEEDING
         // ═════════════════════════════════════════════════════════════════════════
         // Deterministic initial genome construction prioritizing rare skills, weekend cohesion,
-        // and statutory bounds (HC1-HC4).
+        // statutory bounds (HC1-HC4), and minimum assignment pacing.
         let mut best_genome = optimizer.context.inverted.construct_feasible_genome(&mut rng);
         optimizer.repair_hard_constraints(&mut best_genome);
+
+        let eval_seed_cost = |g: &InrcGenome| -> i32 {
+            let (_, s8) = optimizer.eval_days_coverage(g, &[0, 1, 2, 3, 4, 5, 6]);
+            let p_sum: i32 = (0..num_nurses).map(|n| optimizer.eval_nurse_soft_penalty(g, n)).sum();
+            s8 + p_sum
+        };
+        let mut best_seed_cost = eval_seed_cost(&best_genome);
+        for _ in 0..5 {
+            let mut cand = optimizer.context.inverted.construct_feasible_genome(&mut rng);
+            optimizer.repair_hard_constraints(&mut cand);
+            let cost = eval_seed_cost(&cand);
+            if cost < best_seed_cost {
+                best_seed_cost = cost;
+                best_genome = cand;
+            }
+        }
 
         // Pre-optimization Min-Cost Flow Augmentation (co-optimizes S8 demand and S1 contract pacing)
         let pacing = crate::inrc::pacing::HorizonPacing::compute(
@@ -1253,6 +1269,7 @@ impl ReasoningEngine for CoralysInrcVndEngine {
 
                 // ── Neighborhood 4: Dynamic RCSP Pricing on DAG ────────────────────────
                 let shadow_credits = pricing_solver.compute_shadow_credits(&optimizer, current_genome);
+                let zero_credits = [[0i32; crate::inrc::pricing::MAX_PRICING_SHIFTS]; 7];
                 let mut nurses_by_penalty: Vec<usize> = (0..num_nurses).collect();
                 nurses_by_penalty.sort_by_key(|&n| std::cmp::Reverse(optimizer.eval_nurse_soft_penalty(current_genome, n)));
 
@@ -1262,31 +1279,44 @@ impl ReasoningEngine for CoralysInrcVndEngine {
                     }
                     let (target_min, target_max) = nurse_target_bands[n];
                     let target = (target_min + target_max) / 2;
+                    let targets = [target.saturating_sub(1), target, target + 1];
 
-                    if let Some(cand_rot) = pricing_solver.solve_optimal_rotation(&optimizer, n, &shadow_credits, target) {
-                        let mut changed_days = Vec::new();
-                        let mut cand = current_genome.clone();
-                        for d in 0..num_days {
-                            let cur_s = optimizer.get_assigned_shift(current_genome, n, d);
-                            let rot_s = cand_rot[d];
-                            if cur_s != rot_s {
-                                changed_days.push(d);
-                                optimizer.set_assigned_shift(&mut cand, n, d, rot_s);
-                            }
-                        }
-                        if !changed_days.is_empty() && optimizer.nurse_satisfies_hard_contracts(&cand, n) {
-                            let (is_feas, new_s8) = optimizer.eval_days_coverage(&cand, &changed_days);
-                            if is_feas {
-                                let (_, old_s8) = optimizer.eval_days_coverage(current_genome, &changed_days);
-                                let old_p = optimizer.eval_nurse_soft_penalty(current_genome, n);
-                                let new_p = optimizer.eval_nurse_soft_penalty(&cand, n);
-                                let delta = (new_p - old_p) + (new_s8 - old_s8);
-                                if delta < 0 {
-                                    *current_genome = cand;
-                                    outer_improved = true;
+                    let mut best_rcsp_cand: Option<(InrcGenome, i32)> = None;
+                    let mut max_rcsp_gain = 0;
+
+                    for &t in &targets {
+                        for credits in &[&shadow_credits, &zero_credits] {
+                            if let Some(cand_rot) = pricing_solver.solve_optimal_rotation(&optimizer, n, credits, t) {
+                                let mut changed_days = Vec::new();
+                                let mut cand = current_genome.clone();
+                                for d in 0..num_days {
+                                    let cur_s = optimizer.get_assigned_shift(current_genome, n, d);
+                                    let rot_s = cand_rot[d];
+                                    if cur_s != rot_s {
+                                        changed_days.push(d);
+                                        optimizer.set_assigned_shift(&mut cand, n, d, rot_s);
+                                    }
+                                }
+                                if !changed_days.is_empty() && optimizer.nurse_satisfies_hard_contracts(&cand, n) {
+                                    let (is_feas, new_s8) = optimizer.eval_days_coverage(&cand, &changed_days);
+                                    if is_feas {
+                                        let (_, old_s8) = optimizer.eval_days_coverage(current_genome, &changed_days);
+                                        let old_p = optimizer.eval_nurse_soft_penalty(current_genome, n);
+                                        let new_p = optimizer.eval_nurse_soft_penalty(&cand, n);
+                                        let gain = (old_p - new_p) + (old_s8 - new_s8);
+                                        if gain > max_rcsp_gain {
+                                            max_rcsp_gain = gain;
+                                            best_rcsp_cand = Some((cand, gain));
+                                        }
+                                    }
                                 }
                             }
                         }
+                    }
+
+                    if let Some((better_genome, _)) = best_rcsp_cand {
+                        *current_genome = better_genome;
+                        outer_improved = true;
                     }
                 }
             }
