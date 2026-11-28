@@ -143,6 +143,23 @@ Detail: `rp608_sci_adapter_rec_clean_vs_stacked_observe_2026_11_28.md` · refine
 
 ---
 
+## ELR-SCI-CLEAN-OBSERVE-002 — paired new closes (2026-11-28 ~10:34 Asia/Calcutta)
+
+| Field | Value |
+| --- | --- |
+| Result | **Inconclusive** |
+| Treatment differentiation | **Not observed** |
+| Board | stacked 1/43 −126.71 · CLEAN 0/6 −14.40 |
+| Paired Δnet −$5.62 | Sum of two new identical closes (−4.37 SL directional + −1.25 giveback friction) — **between-book Δ = 0** |
+| New plan_ids | `…8551607`, `…0715969` — present and identical on both twins |
+| DI/regime differential | **Still unobserved** (post-arm DI/PATH/regime = 0) |
+| Next observation | First valid DI/regime-alignment differential event |
+| Decision | **hold** · no force differential · no new sealed package |
+
+Detail: `rp608_sci_adapter_rec_elr_sci_clean_observe_002_2026_11_28.md`
+
+---
+
 ## Non-negotiables
 
 1. Coralys remains sealed intelligence foundation.  
