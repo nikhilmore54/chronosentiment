@@ -56,3 +56,6 @@ scripts/verify_manifest.py
 scripts/lint_forbidden_semantics.py
 scripts/test_ordering_invariance.py
 scripts/validate_schema_conformance.py
+
+# SCI-ADAPTER-REC P1 working extracts
+artifacts/rp608_sci_adapter_rec_p1/BTCUSDT.jsonl

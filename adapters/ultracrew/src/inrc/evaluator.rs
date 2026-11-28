@@ -297,6 +297,17 @@ impl InrcOptimizer {
             }
         }
 
+        // 2b. Eject any nurse assigned to a shift where they lack required skills (HC2)
+        for n in 0..num_nurses {
+            for d in 0..num_days {
+                if let Some(s) = self.get_assigned_shift(genome, n, d) {
+                    if !self.context.inverted.nurse_can_work[n][d][s] {
+                        self.set_assigned_shift(genome, n, d, None);
+                    }
+                }
+            }
+        }
+
         // 3. Ejection chain repair for minimum coverage & skills (HC1 & HC2)
 
         for _pass in 0..20 {
@@ -891,10 +902,15 @@ impl InrcOptimizer {
         }
 
         // S1: Assignments
-        let weekly_min = contract.min_assignments / self.context.scenario.number_of_weeks;
-        let weekly_max = (contract.max_assignments as f64
+        let weekly_min = if contract.max_assignments < self.context.scenario.number_of_weeks * contract.min_consecutive_working_days {
+            0
+        } else {
+            contract.min_assignments / self.context.scenario.number_of_weeks
+        };
+        let weekly_max = ((contract.max_assignments as f64
             / self.context.scenario.number_of_weeks as f64)
-            .ceil() as usize;
+            .ceil() as usize)
+            .max(contract.min_consecutive_working_days);
         if week_assignments < weekly_min {
             penalty += (weekly_min - week_assignments) as i32 * weights.assignments;
         }
@@ -964,6 +980,61 @@ impl InrcOptimizer {
         false
     }
 
+    /// Audits all hard statutory constraints on nurse `n`:
+    /// 1. HC4: No forbidden shift succession across days and history boundary
+    /// 2. HC4: Max consecutive working days cap
+    /// 3. HC4: Max total assignments cap across cumulative horizon
+    pub fn nurse_satisfies_hard_contracts(&self, genome: &InrcGenome, n: usize) -> bool {
+        if self.nurse_has_forbidden_succession(genome, n) {
+            return false;
+        }
+
+        let nurse = &self.context.scenario.nurses[n];
+        let contract = self
+            .context
+            .scenario
+            .contracts
+            .iter()
+            .find(|c| c.id == nurse.contract)
+            .unwrap();
+        let hist = self
+            .context
+            .history
+            .nurse_history
+            .iter()
+            .find(|h| &h.nurse == &nurse.id);
+        let prev_total = hist.map(|h| h.number_of_assignments).unwrap_or(0);
+        let week_assignments = (0..self.context.num_days)
+            .filter(|&d| self.get_assigned_shift(genome, n, d).is_some())
+            .count();
+        if prev_total + week_assignments > contract.max_assignments {
+            return false;
+        }
+
+        let prev_consecutive = hist
+            .map(|h| {
+                if h.number_of_consecutive_days_off > 0 {
+                    0
+                } else {
+                    h.number_of_consecutive_assignments
+                }
+            })
+            .unwrap_or(0);
+        let mut current_streak = prev_consecutive;
+        for d in 0..self.context.num_days {
+            if self.get_assigned_shift(genome, n, d).is_some() {
+                current_streak += 1;
+                if current_streak > contract.max_consecutive_working_days {
+                    return false;
+                }
+            } else {
+                current_streak = 0;
+            }
+        }
+
+        true
+    }
+
     /// High-throughput O(1) incremental Simulated Annealing powered by Coralys.
     /// All decision-making (cooling schedules, acceptance gates, stagnation restarts)
     /// is executed directly by [`coralys_moga::annealing::SimulatedAnnealingEngine`].
@@ -983,7 +1054,13 @@ impl InrcOptimizer {
             self.repair_hard_constraints(genome);
         }
 
+        // Pre-SA Rotation Projection Pass (seed SA with zero-defect rotation patterns)
+        self.optimize_rotations(genome);
+
         let domain = InrcAnnealingDomain::new(self);
+        // Pre-SA Min-Cost Flow Augmentation (staff unmet optimal slots with qualified idle nurses)
+        domain.optimal_flow.optimize_all_days(self, genome, &domain.pacing);
+
         let sa_config = AnnealingConfig {
             initial_temperature: 50.0,
             cooling_rate: 0.99998,
@@ -995,7 +1072,309 @@ impl InrcOptimizer {
 
         let (best_genome, _, _) = sa_engine.optimize(&domain, genome, rng);
         *genome = best_genome;
+
+        // Post-SA Min-Cost Flow Polish (capture remaining free optimal coverage)
+        domain.optimal_flow.optimize_all_days(self, genome, &domain.pacing);
+
+        // Post-SA Rotation Projection Polish Pass
+        self.optimize_rotations(genome);
+
         self.evaluate(genome, &Default::default())
+    }
+
+    /// Performs greedy descent in rotation space:
+    /// Pass 1: Proposes candidate zero-defect rotations from `RotationPool` for nurses with soft defects,
+    ///         accepting any move that preserves hard constraint feasibility and improves soft penalties.
+    /// Pass 2: Pairwise rotation Kempe swaps between nurses sharing identical contract and skill profiles
+    ///         (strictly invariant coverage) to resolve boundary/weekend/assignment defects.
+    pub fn optimize_rotations(&self, genome: &mut InrcGenome) {
+        let num_nurses = self.context.num_nurses;
+        let mut improved = true;
+        let mut iter = 0;
+
+        while improved && iter < 3 {
+            improved = false;
+            iter += 1;
+
+            // Pass 1: Dynamic RCSP Pricing Projection (On-the-fly shortest path on DAG, zero static cache)
+            let pricing_solver = super::pricing::NursePricingSolver::new();
+            let shadow_credits = pricing_solver.compute_shadow_credits(self, genome);
+            let zero_credits = [[0i32; super::pricing::MAX_PRICING_SHIFTS]; 7];
+
+            for n in 0..num_nurses {
+                let old_p = self.eval_nurse_soft_penalty(genome, n);
+                if old_p == 0 {
+                    continue;
+                }
+
+                let contract = self
+                    .context
+                    .scenario
+                    .contracts
+                    .iter()
+                    .find(|c| c.id == self.context.scenario.nurses[n].contract)
+                    .unwrap();
+
+                let target = (contract.min_assignments + contract.max_assignments)
+                    / (2 * self.context.scenario.number_of_weeks);
+
+                let mut best_cand: Option<(InrcGenome, i32)> = None;
+                let mut max_gain = 0;
+
+                // Test dynamic pricing across shadow credits and zero credits
+                for credits in &[&shadow_credits, &zero_credits] {
+                    if let Some(cand_rot) = pricing_solver.solve_optimal_rotation(self, n, credits, target) {
+                        let mut test_genome = genome.clone();
+                        let mut changed_days = Vec::new();
+                        for d in 0..self.context.num_days {
+                            let cur_s = self.get_assigned_shift(genome, n, d);
+                            let rot_s = cand_rot[d];
+                            if cur_s != rot_s {
+                                changed_days.push(d);
+                                self.set_assigned_shift(&mut test_genome, n, d, rot_s);
+                            }
+                        }
+
+                        if changed_days.is_empty() {
+                            continue;
+                        }
+
+                        if !self.nurse_satisfies_hard_contracts(&test_genome, n) {
+                            continue;
+                        }
+
+                        let (is_feas, new_s8) = self.eval_days_coverage(&test_genome, &changed_days);
+                        if !is_feas {
+                            continue;
+                        }
+
+                        let (_, old_s8) = self.eval_days_coverage(genome, &changed_days);
+                        let new_p = self.eval_nurse_soft_penalty(&test_genome, n);
+                        let gain = (old_p - new_p) + (old_s8 - new_s8);
+
+                        if gain > max_gain {
+                            max_gain = gain;
+                            best_cand = Some((test_genome, gain));
+                        }
+                    }
+                }
+
+                if let Some((better_genome, _)) = best_cand {
+                    *genome = better_genome;
+                    improved = true;
+                }
+            }
+
+            // Pass 2: Pairwise Rotation Kempe Swaps
+            let mut map: HashMap<String, Vec<usize>> = HashMap::new();
+            for n in 0..num_nurses {
+                let contract_id = self.context.scenario.nurses[n].contract.clone();
+                map.entry(contract_id).or_default().push(n);
+            }
+
+            for nurses in map.values() {
+                if nurses.len() < 2 {
+                    continue;
+                }
+                for i in 0..nurses.len() {
+                    for j in (i + 1)..nurses.len() {
+                        let u = nurses[i];
+                        let v = nurses[j];
+
+                        let mut qualified = true;
+                        for d in 0..self.context.num_days {
+                            if let Some(s_v) = self.get_assigned_shift(genome, v, d) {
+                                if !self.context.inverted.nurse_can_work[u][d][s_v] {
+                                    qualified = false;
+                                    break;
+                                }
+                            }
+                            if let Some(s_u) = self.get_assigned_shift(genome, u, d) {
+                                if !self.context.inverted.nurse_can_work[v][d][s_u] {
+                                    qualified = false;
+                                    break;
+                                }
+                            }
+                        }
+                        if !qualified {
+                            continue;
+                        }
+
+                        let old_p_u = self.eval_nurse_soft_penalty(genome, u);
+                        let old_p_v = self.eval_nurse_soft_penalty(genome, v);
+                        if old_p_u == 0 && old_p_v == 0 {
+                            continue;
+                        }
+
+                        let mut cand = genome.clone();
+                        for d in 0..self.context.num_days {
+                            let s_u = self.get_assigned_shift(genome, u, d);
+                            let s_v = self.get_assigned_shift(genome, v, d);
+                            self.set_assigned_shift(&mut cand, u, d, s_v);
+                            self.set_assigned_shift(&mut cand, v, d, s_u);
+                        }
+
+                        if self.nurse_has_forbidden_succession(&cand, u)
+                            || self.nurse_has_forbidden_succession(&cand, v)
+                        {
+                            continue;
+                        }
+
+                        let (is_feas, new_s8) = self.eval_days_coverage(&cand, &[0, 1, 2, 3, 4, 5, 6]);
+                        if !is_feas {
+                            continue;
+                        }
+
+                        let (_, old_s8) = self.eval_days_coverage(genome, &[0, 1, 2, 3, 4, 5, 6]);
+                        let new_p_u = self.eval_nurse_soft_penalty(&cand, u);
+                        let new_p_v = self.eval_nurse_soft_penalty(&cand, v);
+                        let gain = ((old_p_u + old_p_v) - (new_p_u + new_p_v)) + (old_s8 - new_s8);
+
+                        if gain > 0 {
+                            *genome = cand;
+                            improved = true;
+                        }
+                    }
+                }
+            }
+
+            // Pass 3: Targeted Stub Transfer (Heal isolated 1-day work stubs to adjacent working nurses)
+            for u in 0..num_nurses {
+                for d in 0..self.context.num_days {
+                    let s_u = match self.get_assigned_shift(genome, u, d) {
+                        Some(s) => s,
+                        None => continue,
+                    };
+
+                    let prev_works = if d == 0 {
+                        let hist = self.context.history.nurse_history.iter().find(|h| h.nurse == self.context.scenario.nurses[u].id);
+                        hist.map(|h| h.number_of_consecutive_working_days > 0).unwrap_or(false)
+                    } else {
+                        self.get_assigned_shift(genome, u, d - 1).is_some()
+                    };
+
+                    let next_works = if d + 1 < self.context.num_days {
+                        self.get_assigned_shift(genome, u, d + 1).is_some()
+                    } else {
+                        false
+                    };
+
+                    // Isolated work stub
+                    if !prev_works && !next_works {
+                        for v in 0..num_nurses {
+                            if v == u || self.get_assigned_shift(genome, v, d).is_some() {
+                                continue;
+                            }
+                            if !self.context.inverted.nurse_can_work[v][d][s_u] {
+                                continue;
+                            }
+
+                            let v_prev_works = if d == 0 {
+                                let hist = self.context.history.nurse_history.iter().find(|h| h.nurse == self.context.scenario.nurses[v].id);
+                                hist.map(|h| h.number_of_consecutive_working_days > 0).unwrap_or(false)
+                            } else {
+                                self.get_assigned_shift(genome, v, d - 1).is_some()
+                            };
+
+                            let v_next_works = if d + 1 < self.context.num_days {
+                                self.get_assigned_shift(genome, v, d + 1).is_some()
+                            } else {
+                                false
+                            };
+
+                            if v_prev_works || v_next_works {
+                                let mut cand = genome.clone();
+                                self.set_assigned_shift(&mut cand, u, d, None);
+                                self.set_assigned_shift(&mut cand, v, d, Some(s_u));
+
+                                if !self.nurse_has_forbidden_succession(&cand, u)
+                                    && !self.nurse_has_forbidden_succession(&cand, v)
+                                {
+                                    let (is_feas, new_s8) = self.eval_days_coverage(&cand, &[d]);
+                                    if is_feas {
+                                        let (_, old_s8) = self.eval_days_coverage(genome, &[d]);
+                                        let old_p = self.eval_nurse_soft_penalty(genome, u) + self.eval_nurse_soft_penalty(genome, v);
+                                        let new_p = self.eval_nurse_soft_penalty(&cand, u) + self.eval_nurse_soft_penalty(&cand, v);
+                                        let gain = (old_p - new_p) + (old_s8 - new_s8);
+
+                                        if gain > 0 {
+                                            *genome = cand;
+                                            improved = true;
+                                            break;
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            // Pass 4: Shift Streak Kempe Harmonizer (Direct S4 Eliminator)
+            // Eliminates shift type fragmentation by swapping shifts on day d between two working nurses
+            for d in 0..self.context.num_days {
+                for u in 0..num_nurses {
+                    let s_u = match self.get_assigned_shift(genome, u, d) {
+                        Some(s) => s,
+                        None => continue,
+                    };
+
+                    let prev_s_u = if d == 0 {
+                        let hist = self.context.history.nurse_history.iter().find(|h| h.nurse == self.context.scenario.nurses[u].id);
+                        hist.and_then(|h| {
+                            if h.number_of_consecutive_days_off > 0 || h.last_assigned_shift_type.is_empty() || h.last_assigned_shift_type == "None" {
+                                None
+                            } else {
+                                self.context.shift_types.iter().position(|s| s == &h.last_assigned_shift_type)
+                            }
+                        })
+                    } else {
+                        self.get_assigned_shift(genome, u, d - 1)
+                    };
+
+                    if let Some(target_shift) = prev_s_u {
+                        if s_u != target_shift {
+                            for v in 0..num_nurses {
+                                if v == u {
+                                    continue;
+                                }
+                                if self.get_assigned_shift(genome, v, d) != Some(target_shift) {
+                                    continue;
+                                }
+
+                                if !self.context.inverted.nurse_can_work[u][d][target_shift]
+                                    || !self.context.inverted.nurse_can_work[v][d][s_u]
+                                {
+                                    continue;
+                                }
+
+                                let mut cand = genome.clone();
+                                self.set_assigned_shift(&mut cand, u, d, Some(target_shift));
+                                self.set_assigned_shift(&mut cand, v, d, Some(s_u));
+
+                                if !self.nurse_has_forbidden_succession(&cand, u)
+                                    && !self.nurse_has_forbidden_succession(&cand, v)
+                                {
+                                    let (is_feas, new_s8) = self.eval_days_coverage(&cand, &[d]);
+                                    if is_feas {
+                                        let (_, old_s8) = self.eval_days_coverage(genome, &[d]);
+                                        let old_p = self.eval_nurse_soft_penalty(genome, u) + self.eval_nurse_soft_penalty(genome, v);
+                                        let new_p = self.eval_nurse_soft_penalty(&cand, u) + self.eval_nurse_soft_penalty(&cand, v);
+                                        let gain = (old_p - new_p) + (old_s8 - new_s8);
+
+                                        if gain > 0 {
+                                            *genome = cand;
+                                            improved = true;
+                                            break;
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
     }
 }
 
@@ -1006,8 +1385,15 @@ impl InrcOptimizer {
 pub struct InrcAnnealingDomain<'a> {
     pub optimizer: &'a InrcOptimizer,
     pub eligible_groups: Vec<Vec<usize>>,
+    pub contract_skill_groups: Vec<Vec<usize>>,
     pub nurse_can_work: Vec<Vec<Vec<bool>>>,
     pub nurse_target_bands: Vec<(usize, usize)>,
+    pub pacing: super::pacing::HorizonPacing,
+    pub optimal_flow: super::optimal_flow::DailyOptimalFlow,
+    pub ruin_recreate: super::ruin_recreate::ClusterRuinRecreate,
+    pub contract_clusters: HashMap<String, Vec<usize>>,
+    pub lookahead: super::lookahead::SundayLookahead,
+    pub pricing_solver: super::pricing::NursePricingSolver,
 }
 
 impl<'a> InrcAnnealingDomain<'a> {
@@ -1023,6 +1409,17 @@ impl<'a> InrcAnnealingDomain<'a> {
             skill_groups.entry(s).or_default().push(n);
         }
         let eligible_groups: Vec<Vec<usize>> = skill_groups
+            .into_values()
+            .filter(|g| g.len() >= 2)
+            .collect();
+
+        let mut contract_skill_map: HashMap<(String, u8), Vec<usize>> = HashMap::new();
+        for n in 0..num_nurses {
+            let contract_id = optimizer.context.scenario.nurses[n].contract.clone();
+            let mask = optimizer.context.nurse_skill_masks[n];
+            contract_skill_map.entry((contract_id, mask)).or_default().push(n);
+        }
+        let contract_skill_groups: Vec<Vec<usize>> = contract_skill_map
             .into_values()
             .filter(|g| g.len() >= 2)
             .collect();
@@ -1082,11 +1479,29 @@ impl<'a> InrcAnnealingDomain<'a> {
             })
             .collect();
 
+        let pacing = super::pacing::HorizonPacing::compute(
+            &optimizer.context.scenario,
+            &optimizer.context.week_data,
+            &optimizer.context.history,
+        );
+        let optimal_flow = super::optimal_flow::DailyOptimalFlow::new();
+        let ruin_recreate = super::ruin_recreate::ClusterRuinRecreate::new();
+        let contract_clusters = super::ruin_recreate::ClusterRuinRecreate::find_contract_clusters(optimizer);
+        let lookahead = super::lookahead::SundayLookahead::new();
+        let pricing_solver = super::pricing::NursePricingSolver::new();
+
         Self {
             optimizer,
             eligible_groups,
+            contract_skill_groups,
             nurse_can_work,
             nurse_target_bands,
+            pacing,
+            optimal_flow,
+            ruin_recreate,
+            contract_clusters,
+            lookahead,
+            pricing_solver,
         }
     }
 }
@@ -1100,7 +1515,8 @@ impl<'a> AnnealingDomain<InrcGenome> for InrcAnnealingDomain<'a> {
         let num_days = self.optimizer.context.num_days;
         let days: Vec<usize> = (0..num_days).collect();
         let (_, s8) = self.optimizer.eval_days_coverage(genome, &days);
-        (soft + s8) as f64
+        let lookahead_pen = self.lookahead.eval_total_terminal_penalty(self.optimizer, genome);
+        (soft + s8 + lookahead_pen) as f64
     }
 
     fn propose_move(
@@ -1115,7 +1531,88 @@ impl<'a> AnnealingDomain<InrcGenome> for InrcAnnealingDomain<'a> {
 
         let op_choice = rng_core.gen_range(0..100);
 
-        if op_choice < 20 {
+        if op_choice < 15 {
+            // Operator 9: Pairwise Full-Week Rotation Kempe Swap (Zero Coverage Disruption)
+            if !self.contract_skill_groups.is_empty() {
+                let grp_idx = rng_core.gen_range(0..self.contract_skill_groups.len());
+                let grp = &self.contract_skill_groups[grp_idx];
+                let i1 = rng_core.gen_range(0..grp.len());
+                let mut i2 = rng_core.gen_range(0..grp.len());
+                if i1 == i2 {
+                    i2 = (i1 + 1) % grp.len();
+                }
+                let (u, v) = (grp[i1], grp[i2]);
+
+                let old_p_u = self.optimizer.eval_nurse_soft_penalty(current, u);
+                let old_p_v = self.optimizer.eval_nurse_soft_penalty(current, v);
+
+                let mut cand = current.clone();
+                for d in 0..num_days {
+                    let s_u = self.optimizer.get_assigned_shift(current, u, d);
+                    let s_v = self.optimizer.get_assigned_shift(current, v, d);
+                    self.optimizer.set_assigned_shift(&mut cand, u, d, s_v);
+                    self.optimizer.set_assigned_shift(&mut cand, v, d, s_u);
+                }
+
+                if !self.optimizer.nurse_has_forbidden_succession(&cand, u)
+                    && !self.optimizer.nurse_has_forbidden_succession(&cand, v)
+                {
+                    let new_p_u = self.optimizer.eval_nurse_soft_penalty(&cand, u);
+                    let new_p_v = self.optimizer.eval_nurse_soft_penalty(&cand, v);
+                    let delta = (new_p_u + new_p_v) - (old_p_u + old_p_v);
+                    return Some((cand, delta as f64));
+                }
+            }
+        } else if op_choice < 30 {
+            // Operator 10: Dynamic RCSP Pricing on DAG (On-the-fly line of work without static caching)
+            let n = if rng_core.gen_bool(0.75) {
+                let mut candidate_nurses = Vec::new();
+                for u in 0..num_nurses {
+                    if self.optimizer.eval_nurse_soft_penalty(current, u) > 0 {
+                        candidate_nurses.push(u);
+                    }
+                }
+                if !candidate_nurses.is_empty() {
+                    candidate_nurses[rng_core.gen_range(0..candidate_nurses.len())]
+                } else {
+                    rng_core.gen_range(0..num_nurses)
+                }
+            } else {
+                rng_core.gen_range(0..num_nurses)
+            };
+            let shadow_credits = self.pricing_solver.compute_shadow_credits(self.optimizer, current);
+            let (target_min, target_max) = self.nurse_target_bands[n];
+            let target = (target_min + target_max) / 2;
+
+            if let Some(cand_rot) = self.pricing_solver.solve_optimal_rotation(
+                self.optimizer,
+                n,
+                &shadow_credits,
+                target,
+            ) {
+                let mut cand = current.clone();
+                let mut changed_days = Vec::new();
+                for d in 0..num_days {
+                    let cur_s = self.optimizer.get_assigned_shift(current, n, d);
+                    let rot_s = cand_rot[d];
+                    if cur_s != rot_s {
+                        changed_days.push(d);
+                        self.optimizer.set_assigned_shift(&mut cand, n, d, rot_s);
+                    }
+                }
+
+                if !changed_days.is_empty() && !self.optimizer.nurse_has_forbidden_succession(&cand, n) {
+                    let (is_feas, new_s8) = self.optimizer.eval_days_coverage(&cand, &changed_days);
+                    if is_feas {
+                        let (_, old_s8) = self.optimizer.eval_days_coverage(current, &changed_days);
+                        let old_p = self.optimizer.eval_nurse_soft_penalty(current, n);
+                        let new_p = self.optimizer.eval_nurse_soft_penalty(&cand, n);
+                        let delta = (new_p - old_p) + (new_s8 - old_s8);
+                        return Some((cand, delta as f64));
+                    }
+                }
+            }
+        } else if op_choice < 42 {
             // Operator 5: Targeted Weekend Kempe Harmonizer (Directly eliminates S6 incomplete weekends)
             let mut sat_only = Vec::new();
             let mut sun_only = Vec::new();
@@ -1161,7 +1658,7 @@ impl<'a> AnnealingDomain<InrcGenome> for InrcAnnealingDomain<'a> {
                     }
                 }
             }
-        } else if op_choice < 40 {
+        } else if op_choice < 54 {
             // Operator 6: Targeted Optimal Demand Staffing (Directly reduces S8 optimal coverage deficit)
             let d = rng_core.gen_range(0..num_days);
             let opt_slots = &self.optimizer.context.inverted.opt_slots_by_day[d];
@@ -1207,9 +1704,22 @@ impl<'a> AnnealingDomain<InrcGenome> for InrcAnnealingDomain<'a> {
                     }
                 }
             }
+        } else if op_choice < 66 {
+            // Operator 7: Daily Min-Cost Flow Augmentation (Exact bipartite S8 <-> S1 co-optimization)
+            let d = rng_core.gen_range(0..num_days);
+            let mut cand = current.clone();
+            let gain = self.optimal_flow.optimize_day(self.optimizer, &mut cand, d, &self.pacing);
+            if gain > 0 {
+                return Some((cand, -gain as f64));
+            }
+        } else if op_choice < 76 {
+            // Operator 8: Cluster Ruin-and-Recreate LNS (Multi-nurse escape from local minima)
+            if let Some((cand, delta)) = self.ruin_recreate.step(self.optimizer, current, rng_core, &self.contract_clusters) {
+                return Some((cand, delta));
+            }
         }
 
-        if op_choice < 60 {
+        if op_choice < 88 {
             // Operator 1: 3-Day Contiguous Streak-Repair / Stub Ejection & Consolidation (S2/S4)
             let n = rng_core.gen_range(0..num_nurses);
             let mut stub_d = None;
@@ -1271,7 +1781,7 @@ impl<'a> AnnealingDomain<InrcGenome> for InrcAnnealingDomain<'a> {
             return None;
         }
 
-        if op_choice < 75 {
+        if op_choice < 88 {
             // Operator 2: Multi-Day Kempe-Chain Workload Transfer (S1)
             let mut over_nurses = Vec::new();
             let mut under_nurses = Vec::new();
@@ -1356,7 +1866,7 @@ impl<'a> AnnealingDomain<InrcGenome> for InrcAnnealingDomain<'a> {
             return None;
         }
 
-        if rng_core.gen_bool(0.25) {
+        if op_choice < 94 {
             // Operator 3: Single-nurse shift block reassignment (rebalance S8 optimal coverage & S1 assignment quotas)
             let n = rng_core.gen_range(0..num_nurses);
             let block_len = if rng_core.gen_bool(0.60) { 2 } else { 1 };
@@ -2263,10 +2773,15 @@ impl FitnessEvaluator<InrcGenome> for InrcOptimizer {
             }
 
             // S1: Assignments (Scaled for 1 week)
-            let weekly_min = contract.min_assignments / self.context.scenario.number_of_weeks;
-            let weekly_max = (contract.max_assignments as f64
+            let weekly_min = if contract.max_assignments < self.context.scenario.number_of_weeks * contract.min_consecutive_working_days {
+                0
+            } else {
+                contract.min_assignments / self.context.scenario.number_of_weeks
+            };
+            let weekly_max = ((contract.max_assignments as f64
                 / self.context.scenario.number_of_weeks as f64)
-                .ceil() as usize;
+                .ceil() as usize)
+                .max(contract.min_consecutive_working_days);
 
             if week_assignments < weekly_min {
                 let diff = weekly_min - week_assignments;

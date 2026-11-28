@@ -19,6 +19,8 @@ pub struct InrcContext {
     pub history: Arc<InrcHistory>,
     pub ecology: WorkforceEcology,
     pub inverted: Arc<InvertedContext>,
+    pub rotation_pool: Arc<super::rotation_pool::RotationPool>,
+    pub candidate_rotations: Vec<Vec<(super::rotation_pool::Rotation7, i32)>>,
     pub num_nurses: usize,
     pub num_days: usize,          // usually 7 for a week
     pub shift_types: Vec<String>, // ordered list of shift types
@@ -102,12 +104,17 @@ impl InrcContext {
             }
         }
 
+        let rotation_pool = Arc::new(super::rotation_pool::RotationPool::build(&scenario));
+        let candidate_rotations = vec![Vec::new(); num_nurses];
+
         Self {
             scenario: Arc::new(scenario),
             week_data: Arc::new(week_data),
             history: Arc::new(history),
             ecology,
             inverted,
+            rotation_pool,
+            candidate_rotations,
             num_nurses,
             num_days,
             shift_types,
@@ -186,11 +193,15 @@ pub struct InrcOptimizer {
 }
 
 use rand::rngs::StdRng;
+use rand::Rng;
 
 impl GenomeFactory<InrcGenome> for InrcOptimizer {
     fn create(&self, rng: &mut StdRng) -> InrcGenome {
         let mut genome = self.context.inverted.construct_feasible_genome(rng);
         self.repair_hard_constraints(&mut genome);
+        if rng.gen_bool(0.20) {
+            self.optimize_rotations(&mut genome);
+        }
         genome
     }
 }

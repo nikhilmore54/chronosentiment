@@ -1,0 +1,55 @@
+{
+  "protocol_id": "RP-608-SCI-ADAPTER-REC-ML1D-001",
+  "schema_version": "1.2",
+  "package": "ML1D_P1B_LIVE_PLAN_TRANSFER",
+  "book": "BTCUSDT_LIVE_PLAN_OVERLAY",
+  "label_source": "/Users/nikhil/ChronoSentiment_MEGA_FINAL/artifacts/rp608_econ_edge_diag/source_journals_2026-11-05/crypto/trade_plan_outcomes.jsonl",
+  "candle_source": "/Users/nikhil/ChronoSentiment_MEGA_FINAL/datasets/crypto_15m/binance_btcusdt_2026q4_15m.json",
+  "frozen_pack": "/Users/nikhil/ChronoSentiment_MEGA_FINAL/docs/research/rp608_sci_adapter_rec_ml1d/btc_ml1d_reliability_packs.json",
+  "n_plans": 1014,
+  "n_joined": 890,
+  "n_skipped_map": 0,
+  "n_skipped_feat": 0,
+  "n_horizon_censored": 124,
+  "span_entry_ms": [
+    1792974600100,
+    1793921422303
+  ],
+  "experiments": [
+    {
+      "baseline_wr": 0.40337078651685393,
+      "coverage": 1.0,
+      "enter_n": 890,
+      "enter_wr": 0.40337078651685393,
+      "fold": "p1b_E0",
+      "mean_net_usdt": -0.30402247191010684,
+      "payoff_asym": 1.261893672884473,
+      "wilson_wr_lb": 0.37162292318547707
+    },
+    {
+      "baseline_wr": 0.40337078651685393,
+      "coverage": 0.6224719101123596,
+      "enter_n": 554,
+      "enter_wr": 0.48736462093862815,
+      "fold": "p1b_E1",
+      "mean_net_usdt": 0.6327617328519858,
+      "payoff_asym": 1.4095396089288175,
+      "wilson_wr_lb": 0.44597295061345743
+    },
+    {
+      "baseline_wr": 0.40337078651685393,
+      "coverage": 0.03258426966292135,
+      "enter_n": 29,
+      "enter_wr": 0.4482758620689655,
+      "fold": "p1b_E3",
+      "mean_net_usdt": -0.9448275862068967,
+      "payoff_asym": 0.2643453544146385,
+      "wilson_wr_lb": 0.284131680230372
+    }
+  ],
+  "verdict": "DO_NOT_ADVANCE_TRANSFER_OBSERVATIONAL",
+  "verdict_reasons": [
+    "span_too_short_for_sealed_firewall joined=890 (~11d live plans)"
+  ],
+  "note": "Frozen 2024 ML-1D packs applied to 2026 live-plan TP/SL outcomes with real net_pnl_usdt. Not Gate5. Not twin. Horizon/ambiguous censored."
+}
