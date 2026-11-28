@@ -160,6 +160,23 @@ Detail: `rp608_sci_adapter_rec_elr_sci_clean_observe_002_2026_11_28.md`
 
 ---
 
+## ELR-SCI-CLEAN-OBSERVE-004 — broad adverse interval (2026-11-28 ~11:37 Asia/Calcutta)
+
+| Field | Value |
+| --- | --- |
+| Result | **Inconclusive** |
+| Treatment differentiation | **Not observed** |
+| Paired Δnet −$8.83 / +5 closes | Five identical shared SCI plan_ids; between-book Δ=0 |
+| Failure mix | 1× DIRECTIONAL SL · 4× EXECUTION_FRICTION giveback |
+| B/AS overlap | No shared plan_id / decision idx; parallel SHORT givebacks nearby |
+| DI/regime differential | **Still absent** |
+| Next | First DI/regime differential · cross-control attribution only · no classifier |
+| Decision | **hold** |
+
+Detail: `rp608_sci_adapter_rec_elr_sci_clean_observe_004_2026_11_28.md`
+
+---
+
 ## Non-negotiables
 
 1. Coralys remains sealed intelligence foundation.  
