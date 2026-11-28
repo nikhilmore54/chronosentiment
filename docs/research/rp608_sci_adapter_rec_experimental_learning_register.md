@@ -207,6 +207,23 @@ Detail: `rp608_sci_adapter_rec_elr_sci_clean_observe_006_2026_11_28.md`
 
 ---
 
+## ELR-SCI-CLEAN-OBSERVE-008 — no treatment exposure (2026-11-28 ~16:33 Asia/Calcutta)
+
+| Field | Value |
+| --- | --- |
+| Result | **INCONCLUSIVE_NO_TREATMENT_EXPOSURE** |
+| Treatment differentiation | **Not observed** |
+| Overlap | **31/31** · clean_only 0 · DI 0/0 · PATH common |
+| Matched net expectancy | ≈ **−1.8932258064516128** · Σnet **−58.69** · Δecon **0** |
+| Failure mix | EXECUTION_FRICTION 24 · DIRECTIONAL_FAILURE 7 |
+| Artefact | Retrospective 31-event ledger started (gross/fric/exit/MFE/hold_s/mae_dist/class; unrounded nets) |
+| Next | First DI/regime differential · continue ledger |
+| Decision | **hold** |
+
+Detail: `rp608_sci_adapter_rec_elr_sci_clean_observe_008_2026_11_28.md` · JSON `rp608_sci_adapter_rec_elr008_ledger31.json`
+
+---
+
 ## Non-negotiables
 
 1. Coralys remains sealed intelligence foundation.  
